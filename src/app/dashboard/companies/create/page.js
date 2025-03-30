@@ -8,9 +8,9 @@ import { ArrowLeft as ArrowLeftIcon } from "@phosphor-icons/react/dist/ssr/Arrow
 
 import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
-import { contactCreateForm } from "@/components/dashboard/contact/contact-create-form";
+import { CompanyCreateForm } from "@/components/dashboard/company/company-create-form";
 
-export const metadata = { title: `Create | contacts | Dashboard | ${appConfig.name}` };
+export const metadata = { title: `Create | companies | Dashboard | ${appConfig.title}` };
 
 export default function Page() {
 	return (
@@ -28,19 +28,19 @@ export default function Page() {
 						<Link
 							color="text.primary"
 							component={RouterLink}
-							href={paths.dashboard.contacts.list}
+							href={paths.dashboard.companies.list}
 							sx={{ alignItems: "center", display: "inline-flex", gap: 1 }}
 							variant="subtitle2"
 						>
 							<ArrowLeftIcon fontSize="var(--icon-fontSize-md)" />
-							contacts
+							Companies
 						</Link>
 					</div>
 					<div>
-						<Typography variant="h4">Create contact</Typography>
+						<Typography variant="h4">Create company</Typography>
 					</div>
 				</Stack>
-				<contactCreateForm />
+				<CompanyCreateForm />
 			</Stack>
 		</Box>
 	);

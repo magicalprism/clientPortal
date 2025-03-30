@@ -7,7 +7,7 @@ function noop() {
 	// No operation
 }
 
-export function contactsPagination({ count, page }) {
+export function CompaniesPagination({ count, page }) {
 	// You should implement the pagination using a similar logic as the filters.
 	// Note that when page change, you should keep the filter search params.
 

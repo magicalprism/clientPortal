@@ -13,9 +13,9 @@ import { DotsThree as DotsThreeIcon } from "@phosphor-icons/react/dist/ssr/DotsT
 import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
 import { BreadcrumbsSeparator } from "@/components/core/breadcrumbs-separator";
-import { PostForm } from "@/components/dashboard/blog/post-form";
+import { PostForm } from "@/components/dashboard/resource/post-form";
 
-export const metadata = { title: `Create | Blog | Dashboard | ${appConfig.name}` };
+export const metadata = { title: `Create | Resource | Dashboard | ${appConfig.name}` };
 
 export default function Page() {
 	return (
@@ -34,8 +34,8 @@ export default function Page() {
 						<Link color="text.primary" component={RouterLink} href={paths.dashboard.overview} variant="subtitle2">
 							Dashboard
 						</Link>
-						<Link color="text.primary" component={RouterLink} href={paths.dashboard.blog.list} variant="subtitle2">
-							Blog
+						<Link color="text.primary" component={RouterLink} href={paths.dashboard.resource.list} variant="subtitle2">
+							Resource
 						</Link>
 						<Typography color="text.secondary" variant="subtitle2">
 							Create
@@ -55,10 +55,10 @@ export default function Page() {
 				>
 					<Typography variant="subtitle1">Hello, Sofia</Typography>
 					<Stack direction="row" spacing={2} sx={{ alignItems: "center", display: { xs: "none", sm: "flex" } }}>
-						<Button color="secondary" component={RouterLink} href={paths.dashboard.blog.list}>
+						<Button color="secondary" component={RouterLink} href={paths.dashboard.resource.list}>
 							Cancel
 						</Button>
-						<Button component={RouterLink} href={paths.dashboard.blog.details("1")} variant="contained">
+						<Button component={RouterLink} href={paths.dashboard.resource.details("1")} variant="contained">
 							Publish changes
 						</Button>
 						<IconButton>
@@ -68,7 +68,7 @@ export default function Page() {
 				</Card>
 				<PostForm />
 				<Box sx={{ display: { sm: "none" } }}>
-					<Button component={RouterLink} href={paths.dashboard.blog.details("1")} variant="contained">
+					<Button component={RouterLink} href={paths.dashboard.resource.details("1")} variant="contained">
 						Publish changes
 					</Button>
 				</Box>

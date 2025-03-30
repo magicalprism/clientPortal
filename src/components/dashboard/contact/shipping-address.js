@@ -7,17 +7,17 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { PencilSimple as PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 
-export function ShippingAddress({ address }) {
+export function ShippingAddress({}) {
 	return (
 		<Card sx={{ borderRadius: 1, height: "100%" }} variant="outlined">
 			<CardContent>
 				<Stack spacing={2}>
 					<Typography>
-						{address.street},
+						{address_1},
 						<br />
-						{address.city}, {address.state}, {address.country},
+						{city}, {state}, {country},
 						<br />
-						{address.zipCode}
+						{postal}
 					</Typography>
 					<Stack direction="row" spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
 						{address.primary ? <Chip color="warning" label="Primary" variant="soft" /> : <span />}

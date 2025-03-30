@@ -15,7 +15,7 @@ import {
   Stack,
   Typography,
 } from "@mui/material";
-import Grid from "@mui/material/Grid2"; // <-- Use Grid2 for original spacing
+import Grid from "@mui/material/Grid2";
 
 import {
   ArrowLeft as ArrowLeftIcon,
@@ -39,16 +39,23 @@ import { Notifications } from "@/components/dashboard/contact/notifications";
 import { Payments } from "@/components/dashboard/contact/payments";
 
 export const metadata = {
-  title: `Details | Contacts | Dashboard | ${appConfig.name}`,
+  title: `Details | Contacts | Dashboard | ${appConfig.title}`,
 };
 
-export default async function Page(props) {
+export default async function Page({ params }) {
   const supabase = await createClient();
-  const { contactId } = await Promise.resolve(props.params);
+  const { contactId } = params;
 
   const { data: contact, error } = await supabase
     .from("contact")
-    .select("*, company(*)")
+    .select(`
+      *,
+      company_contact (
+        company:companyId (
+          title
+        )
+      )
+    `)
     .eq("id", contactId)
     .maybeSingle();
 
@@ -87,7 +94,11 @@ export default async function Page(props) {
             </Link>
           </div>
 
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
+          <Stack
+            direction={{ xs: "column", sm: "row" }}
+            spacing={3}
+            sx={{ alignItems: "flex-start" }}
+          >
             <Stack direction="row" spacing={2} sx={{ alignItems: "center", flex: "1 1 auto" }}>
               <Avatar src={contact.avatar} sx={{ "--Avatar-size": "64px" }}>
                 {contact.title?.[0]}
@@ -116,15 +127,20 @@ export default async function Page(props) {
         </Stack>
 
         <Grid container spacing={4}>
-          <Grid
-            xs={12}
-            lg={4}
-          >
+          <Grid xs={12} lg={4}>
             <Stack spacing={4}>
               <Card>
                 <CardHeader
-                  action={<IconButton><PencilSimpleIcon /></IconButton>}
-                  avatar={<Avatar><UserIcon fontSize="var(--Icon-fontSize)" /></Avatar>}
+                  action={
+                    <IconButton>
+                      <PencilSimpleIcon />
+                    </IconButton>
+                  }
+                  avatar={
+                    <Avatar>
+                      <UserIcon fontSize="var(--Icon-fontSize)" />
+                    </Avatar>
+                  }
                   title="Basic details"
                 />
                 <PropertyList
@@ -132,15 +148,15 @@ export default async function Page(props) {
                   orientation="vertical"
                   sx={{ "--PropertyItem-padding": "12px 24px" }}
                 >
-                  <PropertyItem name="Contact ID" value={<Chip label={contact.id} size="small" variant="soft" />} />
-                  <PropertyItem name="Name" value={contact.title} />
-                  <PropertyItem name="Email" value={contact.email} />
-                  <PropertyItem name="Phone" value={contact.tel || "-"} />
-                  {contact.company && (
-                    <PropertyItem name="Company" value={contact.company.title} />
+                  <PropertyItem title="Contact ID" value={<Chip label={contact.id} size="small" variant="soft" />} />
+                  <PropertyItem title="Name" value={contact.title} />
+                  <PropertyItem title="Email" value={contact.email} />
+                  <PropertyItem title="Phone" value={contact.tel || "-"} />
+                  {contact.company_contact?.company?.title && (
+                    <PropertyItem title="Company" value={contact.company_contact.company.title} />
                   )}
                   <PropertyItem
-                    name="Quota"
+                    title="Quota"
                     value={
                       <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
                         <LinearProgress value={quota} variant="determinate" sx={{ flex: "1 1 auto" }} />
@@ -155,7 +171,11 @@ export default async function Page(props) {
 
               <Card>
                 <CardHeader
-                  avatar={<Avatar><ShieldWarningIcon fontSize="var(--Icon-fontSize)" /></Avatar>}
+                  avatar={
+                    <Avatar>
+                      <ShieldWarningIcon fontSize="var(--Icon-fontSize)" />
+                    </Avatar>
+                  }
                   title="Security"
                 />
                 <CardContent>
@@ -172,10 +192,7 @@ export default async function Page(props) {
             </Stack>
           </Grid>
 
-          <Grid
-            xs={12}
-            lg={8}
-          >
+          <Grid xs={12} lg={8}>
             <Stack spacing={4}>
               <Payments
                 ordersValue={0}
@@ -187,18 +204,21 @@ export default async function Page(props) {
               <Card>
                 <CardHeader
                   action={<Button color="secondary" startIcon={<PencilSimpleIcon />}>Edit</Button>}
-                  avatar={<Avatar><CreditCardIcon fontSize="var(--Icon-fontSize)" /></Avatar>}
+                  avatar={
+                    <Avatar>
+                      <CreditCardIcon fontSize="var(--Icon-fontSize)" />
+                    </Avatar>
+                  }
                   title="Billing details"
                 />
                 <CardContent>
                   <Card sx={{ borderRadius: 1 }} variant="outlined">
                     <PropertyList divider={<Divider />} sx={{ "--PropertyItem-padding": "16px" }}>
-                      <PropertyItem name="Credit card" value="**** 4142" />
-                      <PropertyItem name="Country" value="United States" />
-                      <PropertyItem name="State" value="Michigan" />
-                      <PropertyItem name="City" value="Southfield" />
-                      <PropertyItem name="Address" value="1721 Bartlett Avenue, 48034" />
-                      <PropertyItem name="Tax ID" value="EU87956621" />
+                      <PropertyItem title="Credit card" value="**** 4142" />
+                      <PropertyItem title="Address" value={contact.address_1 || "-"} />
+                      <PropertyItem title="City" value={contact.city || "-"} />
+                      <PropertyItem title="State" value={contact.state || "-"} />
+                      <PropertyItem title="Country" value={contact.country || "-"} />
                     </PropertyList>
                   </Card>
                 </CardContent>
@@ -207,7 +227,11 @@ export default async function Page(props) {
               <Card>
                 <CardHeader
                   action={<Button color="secondary" startIcon={<PlusIcon />}>Add</Button>}
-                  avatar={<Avatar><HouseIcon fontSize="var(--Icon-fontSize)" /></Avatar>}
+                  avatar={
+                    <Avatar>
+                      <HouseIcon fontSize="var(--Icon-fontSize)" />
+                    </Avatar>
+                  }
                   title="Shipping addresses"
                 />
                 <CardContent>

@@ -4,478 +4,284 @@ import * as React from "react";
 import RouterLink from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Autocomplete from "@mui/material/Autocomplete";
-import Avatar from "@mui/material/Avatar";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardActions from "@mui/material/CardActions";
-import CardContent from "@mui/material/CardContent";
-import Checkbox from "@mui/material/Checkbox";
-import Divider from "@mui/material/Divider";
-import FormControl from "@mui/material/FormControl";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import FormHelperText from "@mui/material/FormHelperText";
-import Grid from "@mui/material/Grid2";
-import InputLabel from "@mui/material/InputLabel";
-import OutlinedInput from "@mui/material/OutlinedInput";
-import Select from "@mui/material/Select";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { Camera as CameraIcon } from "@phosphor-icons/react/dist/ssr/Camera";
-import { Controller, useForm } from "react-hook-form";
 import { z as zod } from "zod";
+import { Controller, useForm } from "react-hook-form";
 
-import { paths } from "@/paths";
-import { logger } from "@/lib/default-logger";
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Divider,
+  FormControl,
+  FormHelperText,
+  Grid,
+  InputLabel,
+  OutlinedInput,
+  Select,
+  Stack,
+  Typography,
+} from "@mui/material";
+import { Camera as CameraIcon } from "@phosphor-icons/react/dist/ssr/Camera";
+
 import { Option } from "@/components/core/option";
 import { toast } from "@/components/core/toaster";
+import { logger } from "@/lib/default-logger";
+import { paths } from "@/paths";
+
+import { createClient } from "@/lib/supabase/browser";
 
 const countryOptions = [
-	{ label: "United States", value: "us" },
-	{ label: "Germany", value: "de" },
-	{ label: "Spain", value: "es" },
+  { label: "United States", value: "us" },
+  { label: "Germany", value: "de" },
+  { label: "Spain", value: "es" },
 ];
 
 function fileToBase64(file) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.readAsDataURL(file);
-		reader.addEventListener("load", () => {
-			resolve(reader.result);
-		});
-		reader.addEventListener("error", () => {
-			reject(new Error("Error converting file to base64"));
-		});
-	});
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = () => reject(new Error("Error converting file to base64"));
+  });
 }
 
 const schema = zod.object({
-	avatar: zod.string().optional(),
-	name: zod.string().min(1, "Name is required").max(255),
-	email: zod.string().email("Must be a valid email").min(1, "Email is required").max(255),
-	phone: zod.string().min(1, "Phone is required").max(15),
-	company: zod.string().max(255),
-	billingAddress: zod.object({
-		country: zod.string().min(1, "Country is required").max(255),
-		state: zod.string().min(1, "State is required").max(255),
-		city: zod.string().min(1, "City is required").max(255),
-		zipCode: zod.string().min(1, "Zip code is required").max(255),
-		line1: zod.string().min(1, "Street line 1 is required").max(255),
-		line2: zod.string().max(255).optional(),
-	}),
-	taxId: zod.string().max(255).optional(),
-	timezone: zod.string().min(1, "Timezone is required").max(255),
-	language: zod.string().min(1, "Language is required").max(255),
-	currency: zod.string().min(1, "Currency is required").max(255),
+  thumbnail: zod.string().optional(),
+  title: zod.string().min(1, "Title is required").max(255),
+  billing_email: zod.string().email("Must be a valid billing email").max(255),
+  tel: zod.string().min(1, "Phone is required").max(15),
+  country: zod.string().min(1, "Country is required"),
+  state: zod.string().min(1, "State is required"),
+  city: zod.string().min(1, "City is required"),
+  postal: zod.string().min(1, "Zip code is required"),
+  address_1: zod.string().min(1, "Address is required"),
+  taxId: zod.string().optional(),
+  timezone: zod.string().min(1, "Timezone is required"),
 });
 
 const defaultValues = {
-	avatar: "",
-	name: "",
-	email: "",
-	phone: "",
-	company: "",
-	billingAddress: { country: "us", state: "", city: "", zipCode: "", line1: "", line2: "" },
-	taxId: "",
-	timezone: "new_york",
-	language: "en",
-	currency: "USD",
+  thumbnail: "",
+  title: "",
+  billing_email: "",
+  tel: "",
+  country: "us",
+  state: "",
+  city: "",
+  postal: "",
+  address_1: "",
+  taxId: "",
+  timezone: "new_york",
 };
 
-export function contactCreateForm() {
-	const router = useRouter();
+export function CompanyCreateForm() {
+  const router = useRouter();
+  const supabase = createClient();
+  const thumbnailInputRef = React.useRef(null);
 
-	const {
-		control,
-		handleSubmit,
-		formState: { errors },
-		setValue,
-		watch,
-	} = useForm({ defaultValues, resolver: zodResolver(schema) });
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+    setValue,
+    watch,
+  } = useForm({
+    defaultValues,
+    resolver: zodResolver(schema),
+  });
 
-	const onSubmit = React.useCallback(
-		async (_) => {
-			try {
-				// Make API request
-				toast.success("contact updated");
-				router.push(paths.dashboard.contacts.details("1"));
-			} catch (error) {
-				logger.error(error);
-				toast.error("Something went wrong!");
-			}
-		},
-		[router]
-	);
+  const thumbnail = watch("thumbnail");
 
-	const avatarInputRef = React.useRef(null);
-	const avatar = watch("avatar");
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const url = await fileToBase64(file);
+      setValue("thumbnail", url);
+    }
+  };
 
-	const handleAvatarChange = React.useCallback(
-		async (event) => {
-			const file = event.target.files?.[0];
+  const onSubmit = async (data) => {
+    try {
+      const { data: result, error } = await supabase
+        .from("company")
+        .insert({
+          thumbnail: data.thumbnail,
+          title: data.title,
+          billing_email: data.billing_email,
+          tel: data.tel,
+          country: data.country,
+          state: data.state,
+          city: data.city,
+          postal: data.postal,
+          address_1: data.address_1,
+          tax_id: data.taxId,
+          timezone: data.timezone,
+        })
+        .select()
+        .single();
 
-			if (file) {
-				const url = await fileToBase64(file);
-				setValue("avatar", url);
-			}
-		},
-		[setValue]
-	);
+      if (error) throw new Error(error.message || "Supabase insert failed");
+      if (!result?.id) throw new Error("Missing company ID");
 
-	return (
-		<form onSubmit={handleSubmit(onSubmit)}>
-			<Card>
-				<CardContent>
-					<Stack divider={<Divider />} spacing={4}>
-						<Stack spacing={3}>
-							<Typography variant="h6">Account information</Typography>
-							<Grid container spacing={3}>
-								<Grid size={12}>
-									<Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
-										<Box
-											sx={{
-												border: "1px dashed var(--mui-palette-divider)",
-												borderRadius: "50%",
-												display: "inline-flex",
-												p: "4px",
-											}}
-										>
-											<Avatar
-												src={avatar}
-												sx={{
-													"--Avatar-size": "100px",
-													"--Icon-fontSize": "var(--icon-fontSize-lg)",
-													alignItems: "center",
-													bgcolor: "var(--mui-palette-background-level1)",
-													color: "var(--mui-palette-text-primary)",
-													display: "flex",
-													justifyContent: "center",
-												}}
-											>
-												<CameraIcon fontSize="var(--Icon-fontSize)" />
-											</Avatar>
-										</Box>
-										<Stack spacing={1} sx={{ alignItems: "flex-start" }}>
-											<Typography variant="subtitle1">Avatar</Typography>
-											<Typography variant="caption">Min 400x400px, PNG or JPEG</Typography>
-											<Button
-												color="secondary"
-												onClick={() => {
-													avatarInputRef.current?.click();
-												}}
-												variant="outlined"
-											>
-												Select
-											</Button>
-											<input hidden onChange={handleAvatarChange} ref={avatarInputRef} type="file" />
-										</Stack>
-									</Stack>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="name"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.name)} fullWidth>
-												<InputLabel required>Name</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.name ? <FormHelperText>{errors.name.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="email"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.email)} fullWidth>
-												<InputLabel required>Email address</InputLabel>
-												<OutlinedInput {...field} type="email" />
-												{errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="phone"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.phone)} fullWidth>
-												<InputLabel required>Phone number</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.phone ? <FormHelperText>{errors.phone.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="company"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.company)} fullWidth>
-												<InputLabel>Company</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.company ? <FormHelperText>{errors.company.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Billing information</Typography>
-							<Grid container spacing={3}>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.country"
-										render={({ field }) => (
-											<Autocomplete
-												{...field}
-												getOptionLabel={(option) => option.label}
-												onChange={(_, value) => {
-													if (value) {
-														field.onChange(value.value);
-													}
-												}}
-												options={countryOptions}
-												renderInput={(params) => (
-													<FormControl error={Boolean(errors.billingAddress?.country)} fullWidth>
-														<InputLabel required>Country</InputLabel>
-														<OutlinedInput inputProps={params.inputProps} ref={params.InputProps.ref} />
-														{errors.billingAddress?.country ? (
-															<FormHelperText>{errors.billingAddress?.country?.message}</FormHelperText>
-														) : null}
-													</FormControl>
-												)}
-												renderOption={(props, option) => (
-													<Option {...props} key={option.value} value={option.value}>
-														{option.label}
-													</Option>
-												)}
-												value={countryOptions.find((option) => option.value === field.value)}
-											/>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.state"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.state)} fullWidth>
-												<InputLabel required>State</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.state ? (
-													<FormHelperText>{errors.billingAddress?.state?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.city"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.city)} fullWidth>
-												<InputLabel required>City</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.city ? (
-													<FormHelperText>{errors.billingAddress?.city?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.zipCode"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.zipCode)} fullWidth>
-												<InputLabel required>Zip code</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.zipCode ? (
-													<FormHelperText>{errors.billingAddress?.zipCode?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.line1"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.line1)} fullWidth>
-												<InputLabel required>Address</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.line1 ? (
-													<FormHelperText>{errors.billingAddress?.line1?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="taxId"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.taxId)} fullWidth>
-												<InputLabel>Tax ID</InputLabel>
-												<OutlinedInput {...field} placeholder="e.g EU372054390" />
-												{errors.taxId ? <FormHelperText>{errors.taxId.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Shipping information</Typography>
-							<FormControlLabel control={<Checkbox defaultChecked />} label="Same as billing address" />
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Additional information</Typography>
-							<Grid container spacing={3}>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="timezone"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.timezone)} fullWidth>
-												<InputLabel required>Timezone</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a timezone</Option>
-													<Option value="new_york">US - New York</Option>
-													<Option value="california">US - California</Option>
-													<Option value="london">UK - London</Option>
-												</Select>
-												{errors.timezone ? <FormHelperText>{errors.timezone.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="language"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.language)} fullWidth>
-												<InputLabel required>Language</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a language</Option>
-													<Option value="en">English</Option>
-													<Option value="es">Spanish</Option>
-													<Option value="de">German</Option>
-												</Select>
-												{errors.language ? <FormHelperText>{errors.language.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="currency"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.currency)} fullWidth>
-												<InputLabel>Currency</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a currency</Option>
-													<Option value="USD">USD</Option>
-													<Option value="EUR">EUR</Option>
-													<Option value="RON">RON</Option>
-												</Select>
-												{errors.currency ? <FormHelperText>{errors.currency.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-					</Stack>
-				</CardContent>
-				<CardActions sx={{ justifyContent: "flex-end" }}>
-					<Button color="secondary" component={RouterLink} href={paths.dashboard.contacts.list}>
-						Cancel
-					</Button>
-					<Button type="submit" variant="contained">
-						Create contact
-					</Button>
-				</CardActions>
-			</Card>
-		</form>
-	);
+      toast.success("Company created");
+      router.push(paths.dashboard.companies.details(result.id));
+    } catch (err) {
+      console.error("Submit error:", err);
+      logger.error(err?.message || JSON.stringify(err));
+      toast.error("Failed to create company");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Card>
+        <CardContent>
+          <Stack divider={<Divider />} spacing={4}>
+            <Typography variant="h6">Company Details</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Stack direction="row" spacing={3} alignItems="center">
+                  <Box
+                    sx={{
+                      border: "1px dashed var(--mui-palette-divider)",
+                      borderRadius: "50%",
+                      display: "inline-flex",
+                      p: "4px",
+                    }}
+                  >
+                    <Avatar
+                      src={thumbnail}
+                      sx={{
+                        width: 100,
+                        height: 100,
+                        bgcolor: "background.level1",
+                        color: "text.primary",
+                      }}
+                    >
+                      <CameraIcon />
+                    </Avatar>
+                  </Box>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle1">Thumbnail</Typography>
+                    <Typography variant="caption">400x400px, PNG or JPEG</Typography>
+                    <Button
+                      color="secondary"
+                      variant="outlined"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                    >
+                      Select
+                    </Button>
+                    <input
+                      hidden
+                      ref={thumbnailInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleAvatarChange}
+                    />
+                  </Stack>
+                </Stack>
+              </Grid>
+
+              {[
+                { name: "title", label: "Title", required: true },
+                { name: "billing_email", label: "Billing Email", required: true },
+                { name: "tel", label: "Phone", required: true },
+              ].map(({ name, label, required }) => (
+                <Grid item xs={12} md={6} key={name}>
+                  <Controller
+                    control={control}
+                    name={name}
+                    render={({ field }) => (
+                      <FormControl fullWidth error={Boolean(errors[name])}>
+                        <InputLabel required={required}>{label}</InputLabel>
+                        <OutlinedInput {...field} type={name === "billing_email" ? "email" : "text"} />
+                        {errors[name] && <FormHelperText>{errors[name].message}</FormHelperText>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+
+            <Typography variant="h6">Address Info</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  control={control}
+                  name="country"
+                  render={({ field }) => (
+                    <Autocomplete
+                      options={countryOptions}
+                      getOptionLabel={(opt) => opt.label}
+                      value={countryOptions.find((opt) => opt.value === field.value) || null}
+                      onChange={(_, val) => field.onChange(val?.value || "")}
+                      renderInput={(params) => (
+                        <FormControl fullWidth error={Boolean(errors.country)}>
+                          <InputLabel required>Country</InputLabel>
+                          <OutlinedInput inputProps={params.inputProps} ref={params.InputProps.ref} />
+                          {errors.country && <FormHelperText>{errors.country.message}</FormHelperText>}
+                        </FormControl>
+                      )}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {["state", "city", "postal", "address_1", "taxId"].map((key) => (
+                <Grid item xs={12} md={6} key={key}>
+                  <Controller
+                    control={control}
+                    name={key}
+                    render={({ field }) => (
+                      <FormControl fullWidth error={Boolean(errors[key])}>
+                        <InputLabel required={key !== "taxId"}>
+                          {key === "address_1" ? "Address" : key.charAt(0).toUpperCase() + key.slice(1)}
+                        </InputLabel>
+                        <OutlinedInput {...field} />
+                        {errors[key] && <FormHelperText>{errors[key].message}</FormHelperText>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+
+            <Typography variant="h6">Preferences</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  control={control}
+                  name="timezone"
+                  render={({ field }) => (
+                    <FormControl fullWidth error={Boolean(errors.timezone)}>
+                      <InputLabel required>Timezone</InputLabel>
+                      <Select {...field}>
+                        <Option value="">Select a timezone</Option>
+                        <Option value="new_york">US - New York</Option>
+                        <Option value="california">US - California</Option>
+                        <Option value="london">UK - London</Option>
+                      </Select>
+                      {errors.timezone && <FormHelperText>{errors.timezone.message}</FormHelperText>}
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Stack>
+        </CardContent>
+
+        <CardActions sx={{ justifyContent: "flex-end" }}>
+          <Button color="secondary" component={RouterLink} href={paths.dashboard.companies.list}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained">
+            Create Company
+          </Button>
+        </CardActions>
+      </Card>
+    </form>
+  );
 }

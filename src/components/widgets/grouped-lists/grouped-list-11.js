@@ -26,7 +26,7 @@ const campaigns = [
 	},
 	{
 		id: "CMP-003",
-		name: "New prospects blog",
+		name: "New prospects resource",
 		target: "Woman Married Group",
 		platform: "Facebook",
 		clickRate: 7.94,

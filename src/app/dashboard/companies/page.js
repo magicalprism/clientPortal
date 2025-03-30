@@ -1,4 +1,9 @@
-import * as React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -7,136 +12,108 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
-import { appConfig } from "@/config/app";
+import { createClient } from "@/lib/supabase/browser"; // ✅ Correct import
 import { dayjs } from "@/lib/dayjs";
-import { contactsFilters } from "@/components/dashboard/contact/contact-filters";
-import { contactsPagination } from "@/components/dashboard/contact/contact-pagination";
-import { contactsSelectionProvider } from "@/components/dashboard/contact/contact-selection-context";
-import { ContactsTable } from "@/components/dashboard/contact/contact-table";
 
-export const metadata = { title: `List | contacts | Dashboard | ${appConfig.name}` };
+import { CompaniesFilters } from "@/components/dashboard/company/company-filters";
+import { CompaniesPagination } from "@/components/dashboard/company/company-pagination";
+import { CompaniesSelectionProvider } from "@/components/dashboard/company/company-selection-context";
+import { CompaniesTable } from "@/components/dashboard/company/company-table";
 
-const contacts = [
-	{
-		id: "USR-005",
-		name: "Fran Perez",
-		avatar: "/assets/avatar-5.png",
-		email: "fran.perez@domain.com",
-		phone: "(815) 704-0045",
-		quota: 50,
-		status: "active",
-		createdAt: dayjs().subtract(1, "hour").toDate(),
-	},
-	{
-		id: "USR-004",
-		name: "Penjani Inyene",
-		avatar: "/assets/avatar-4.png",
-		email: "penjani.inyene@domain.com",
-		phone: "(803) 937-8925",
-		quota: 100,
-		status: "active",
-		createdAt: dayjs().subtract(3, "hour").toDate(),
-	},
-	{
-		id: "USR-003",
-		name: "Carson Darrin",
-		avatar: "/assets/avatar-3.png",
-		email: "carson.darrin@domain.com",
-		phone: "(715) 278-5041",
-		quota: 10,
-		status: "blocked",
-		createdAt: dayjs().subtract(1, "hour").subtract(1, "day").toDate(),
-	},
-	{
-		id: "USR-002",
-		name: "Siegbert Gottfried",
-		avatar: "/assets/avatar-2.png",
-		email: "siegbert.gottfried@domain.com",
-		phone: "(603) 766-0431",
-		quota: 0,
-		status: "pending",
-		createdAt: dayjs().subtract(7, "hour").subtract(1, "day").toDate(),
-	},
-	{
-		id: "USR-001",
-		name: "Miron Vitold",
-		avatar: "/assets/avatar-1.png",
-		email: "miron.vitold@domain.com",
-		phone: "(425) 434-5535",
-		quota: 50,
-		status: "active",
-		createdAt: dayjs().subtract(2, "hour").subtract(2, "day").toDate(),
-	},
-];
+export default function Page() {
+  const searchParams = useSearchParams();
+  const title = searchParams.get("title") || "";
+  const status = searchParams.get("status") || "";
+  const sortDir = searchParams.get("sortDir") || "desc";
 
-export default async function Page({ searchParams }) {
-	const { email, phone, sortDir, status } = await searchParams;
+  const [companies, setCompanies] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-	const sortedcontacts = applySort(contacts, sortDir);
-	const filteredcontacts = applyFilters(sortedcontacts, { email, phone, status });
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoading(true);
 
-	return (
-		<Box
-			sx={{
-				maxWidth: "var(--Content-maxWidth)",
-				m: "var(--Content-margin)",
-				p: "var(--Content-padding)",
-				width: "var(--Content-width)",
-			}}
-		>
-			<Stack spacing={4}>
-				<Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
-					<Box sx={{ flex: "1 1 auto" }}>
-						<Typography variant="h4">contacts</Typography>
-					</Box>
-					<Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-						<Button startIcon={<PlusIcon />} variant="contained">
-							Add
-						</Button>
-					</Box>
-				</Stack>
-				<contactsSelectionProvider contacts={filteredcontacts}>
-					<Card>
-						<contactsFilters filters={{ email, phone, status }} sortDir={sortDir} />
-						<Divider />
-						<Box sx={{ overflowX: "auto" }}>
-							<ContactsTable rows={filteredcontacts} />
-						</Box>
-						<Divider />
-						<contactsPagination count={filteredcontacts.length + 100} page={0} />
-					</Card>
-				</contactsSelectionProvider>
-			</Stack>
-		</Box>
-	);
+      const supabase = createClient(); // ✅ Init here
+
+      const { data, error } = await supabase.from("company").select("*");
+
+      if (error) {
+        console.error("Error loading companies:", error.message);
+        setCompanies([]);
+        return;
+      }
+
+      const enriched = data.map((c) => ({
+        ...c,
+        createdAt: dayjs(c.createdAt ?? c.created_at).toDate(),
+      }));
+
+      const sorted = applySort(enriched, sortDir);
+      const filtered = applyFilters(sorted, { title, status });
+
+      setCompanies(filtered);
+      setLoading(false);
+    };
+
+    fetchCompanies();
+  }, [title, status, sortDir]);
+
+  return (
+    <Box
+      sx={{
+        maxWidth: "var(--Content-maxWidth)",
+        m: "var(--Content-margin)",
+        p: "var(--Content-padding)",
+        width: "var(--Content-width)",
+      }}
+    >
+      <Stack spacing={4}>
+        <Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
+          <Box sx={{ flex: "1 1 auto" }}>
+            <Typography variant="h4">Companies</Typography>
+          </Box>
+          <Box>
+		  <Button
+			component={Link}
+			href="/dashboard/companies/create"
+			startIcon={<PlusIcon />}
+			variant="contained"
+			>
+			Add
+			</Button>
+
+          </Box>
+        </Stack>
+
+        <CompaniesSelectionProvider companies={companies}>
+          <Card>
+            <CompaniesFilters filters={{ title, status }} sortDir={sortDir} />
+            <Divider />
+            <Box sx={{ overflowX: "auto" }}>
+              <CompaniesTable rows={companies} />
+            </Box>
+            <Divider />
+            <CompaniesPagination count={companies.length} page={0} />
+          </Card>
+        </CompaniesSelectionProvider>
+      </Stack>
+    </Box>
+  );
 }
 
-// Sorting and filtering has to be done on the server.
-
-function applySort(row, sortDir) {
-	return row.sort((a, b) => {
-		if (sortDir === "asc") {
-			return a.createdAt.getTime() - b.createdAt.getTime();
-		}
-
-		return b.createdAt.getTime() - a.createdAt.getTime();
-	});
+function applySort(rows, sortDir) {
+  return rows.sort((a, b) => {
+    if (sortDir === "asc") {
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    }
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
 }
 
-function applyFilters(row, { email, phone, status }) {
-	return row.filter((item) => {
-		if (email && !item.email?.toLowerCase().includes(email.toLowerCase())) {
-			return false;
-		}
-
-		if (phone && !item.phone?.toLowerCase().includes(phone.toLowerCase())) {
-			return false;
-		}
-
-		if (status && item.status !== status) {
-			return false;
-		}
-
-		return true;
-	});
+function applyFilters(rows, { title, status }) {
+  return rows.filter((item) => {
+    if (title && !item.title?.toLowerCase().includes(title.toLowerCase())) return false;
+    if (status && item.status?.toLowerCase() !== status.toLowerCase()) return false;
+    return true;
+  });
 }

@@ -1,4 +1,9 @@
-import * as React from "react";
+"use client";
+
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
 import Card from "@mui/material/Card";
@@ -7,91 +12,118 @@ import Stack from "@mui/material/Stack";
 import Typography from "@mui/material/Typography";
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
-import { appConfig } from "@/config/app";
+import { createClient } from "@/lib/supabase/browser";
 import { dayjs } from "@/lib/dayjs";
-import { createClient } from "@/lib/supabase/server";
 
-// Component imports (PascalCase named exports, even if filenames are dashed)
 import { ContactsFilters } from "@/components/dashboard/contact/contact-filters";
 import { ContactsPagination } from "@/components/dashboard/contact/contact-pagination";
 import { ContactsSelectionProvider } from "@/components/dashboard/contact/contact-selection-context";
 import { ContactsTable } from "@/components/dashboard/contact/contact-table";
 
-export const metadata = {
-	title: `List | Contacts | Dashboard | ${appConfig.title}`,
-};
+export default function Page() {
+  const searchParams = useSearchParams();
 
-export default async function Page({ searchParams }) {
-	const supabase = await createClient();
-	const { title, email, tel, sortDir, status } = searchParams;
+  const title = searchParams.get("title") || "";
+  const email = searchParams.get("email") || "";
+  const tel = searchParams.get("tel") || "";
+  const status = searchParams.get("status") || "";
+  const sortDir = searchParams.get("sortDir") || "desc";
 
-	const { data: contactsRaw, error } = await supabase.from("contact").select("*");
+  const [contacts, setContacts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-	if (error) {
-		console.error("Error loading contacts:", error.message);
-	}
+  useEffect(() => {
+    const fetchContacts = async () => {
+      setLoading(true);
 
-	const contacts = (contactsRaw || []).map((c) => ({
-		...c,
-		createdAt: dayjs(c.createdAt ?? c.created_at).toDate(),
-	}));
+      const supabase = createClient();
+      const { data, error } = await supabase.from("contact").select("*");
 
-	const sortedContacts = applySort(contacts, sortDir);
-	const filteredContacts = applyFilters(sortedContacts, { title, email, tel, status });
+      if (error) {
+        console.error("Error loading contacts:", error.message);
+        setContacts([]);
+        return;
+      }
 
-	return (
-		<Box
-			sx={{
-				maxWidth: "var(--Content-maxWidth)",
-				m: "var(--Content-margin)",
-				p: "var(--Content-padding)",
-				width: "var(--Content-width)",
-			}}
-		>
-			<Stack spacing={4}>
-				<Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
-					<Box sx={{ flex: "1 1 auto" }}>
-						<Typography variant="h4">Contacts</Typography>
-					</Box>
-					<Box sx={{ display: "flex", justifyContent: "flex-end" }}>
-						<Button startIcon={<PlusIcon />} variant="contained">
-							Add
-						</Button>
-					</Box>
-				</Stack>
-				<ContactsSelectionProvider contacts={filteredContacts}>
-					<Card>
-						<ContactsFilters filters={{ title, email, tel, status }} sortDir={sortDir} />
-						<Divider />
-						<Box sx={{ overflowX: "auto" }}>
-							<ContactsTable rows={filteredContacts} />
-						</Box>
-						<Divider />
-						<ContactsPagination count={filteredContacts.length + 100} page={0} />
-					</Card>
-				</ContactsSelectionProvider>
-			</Stack>
-		</Box>
-	);
+      const enriched = data.map((c) => ({
+        ...c,
+        createdAt: dayjs(c.createdAt ?? c.created_at).toDate(),
+      }));
+
+      const sorted = applySort(enriched, sortDir);
+      const filtered = applyFilters(sorted, { title, email, tel, status });
+
+      setContacts(filtered);
+      setLoading(false);
+    };
+
+    fetchContacts();
+  }, [title, email, tel, status, sortDir]);
+
+  return (
+    <Box
+      sx={{
+        maxWidth: "var(--Content-maxWidth)",
+        m: "var(--Content-margin)",
+        p: "var(--Content-padding)",
+        width: "var(--Content-width)",
+      }}
+    >
+      <Stack spacing={4}>
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={3}
+          sx={{ alignItems: "flex-start" }}
+        >
+          <Box sx={{ flex: "1 1 auto" }}>
+            <Typography variant="h4">Contacts</Typography>
+          </Box>
+          <Box>
+            <Button
+              component={Link}
+              href="/dashboard/contacts/create"
+              startIcon={<PlusIcon />}
+              variant="contained"
+            >
+              Add
+            </Button>
+          </Box>
+        </Stack>
+
+        <ContactsSelectionProvider contacts={contacts}>
+          <Card>
+            <ContactsFilters
+              filters={{ title, email, tel, status }}
+              sortDir={sortDir}
+            />
+            <Divider />
+            <Box sx={{ overflowX: "auto" }}>
+              <ContactsTable rows={contacts} />
+            </Box>
+            <Divider />
+            <ContactsPagination count={contacts.length} page={0} />
+          </Card>
+        </ContactsSelectionProvider>
+      </Stack>
+    </Box>
+  );
 }
 
-// Sort by createdAt
 function applySort(rows, sortDir) {
-	return rows.sort((a, b) => {
-		if (sortDir === "asc") {
-			return a.createdAt.getTime() - b.createdAt.getTime();
-		}
-		return b.createdAt.getTime() - a.createdAt.getTime();
-	});
+  return rows.sort((a, b) => {
+    if (sortDir === "asc") {
+      return a.createdAt.getTime() - b.createdAt.getTime();
+    }
+    return b.createdAt.getTime() - a.createdAt.getTime();
+  });
 }
 
-// Filter by email, tel, or status
 function applyFilters(rows, { title, email, tel, status }) {
-	return rows.filter((item) => {
-		if (title && !item.title?.toLowerCase().includes(title.toLowerCase())) return false;
-		if (email && !item.email?.toLowerCase().includes(email.toLowerCase())) return false;
-		if (tel && !item.tel?.toLowerCase().includes(tel.toLowerCase())) return false;
-		if (status && item.status !== status) return false;
-		return true;
-	});
+  return rows.filter((item) => {
+    if (title && !item.title?.toLowerCase().includes(title.toLowerCase())) return false;
+    if (email && !item.email?.toLowerCase().includes(email.toLowerCase())) return false;
+    if (tel && !item.tel?.toLowerCase().includes(tel.toLowerCase())) return false;
+    if (status && item.status?.toLowerCase() !== status.toLowerCase()) return false;
+    return true;
+  });
 }

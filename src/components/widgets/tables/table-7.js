@@ -15,9 +15,9 @@ const entries = [
 	{ url: "/", visitors: 95_847, uniqueVisits: 8584, bounceRate: 16 },
 	{ url: "/auth/login", visitors: 7500, uniqueVisits: 648, bounceRate: 5 },
 	{ url: "/dashboard", visitors: 85_406, uniqueVisits: 568, bounceRate: 2 },
-	{ url: "/blog/top-5-react-frameworks", visitors: 75_050, uniqueVisits: 12_322, bounceRate: 12 },
-	{ url: "/blog/understand-programming-principles", visitors: 68_003, uniqueVisits: 11_645, bounceRate: 10 },
-	{ url: "/blog/design-patterns", visitors: 49_510, uniqueVisits: 10_259, bounceRate: 8 },
+	{ url: "/resource/top-5-react-frameworks", visitors: 75_050, uniqueVisits: 12_322, bounceRate: 12 },
+	{ url: "/resource/understand-programming-principles", visitors: 68_003, uniqueVisits: 11_645, bounceRate: 10 },
+	{ url: "/resource/design-patterns", visitors: 49_510, uniqueVisits: 10_259, bounceRate: 8 },
 ];
 
 const columns = [

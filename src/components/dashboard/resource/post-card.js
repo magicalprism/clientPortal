@@ -17,7 +17,7 @@ export function PostCard({ post }) {
 		<Card>
 			<CardMedia
 				component={RouterLink}
-				href={paths.dashboard.blog.details("1")}
+				href={paths.dashboard.resource.details("1")}
 				image={post.cover}
 				sx={{ height: "280px" }}
 			/>
@@ -27,7 +27,7 @@ export function PostCard({ post }) {
 						<Chip label={post.category} />
 					</div>
 					<div>
-						<Link color="text.primary" component={RouterLink} href={paths.dashboard.blog.details("1")} variant="h5">
+						<Link color="text.primary" component={RouterLink} href={paths.dashboard.resource.details("1")} variant="h5">
 							{post.title}
 						</Link>
 					</div>

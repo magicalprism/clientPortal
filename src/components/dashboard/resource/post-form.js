@@ -109,7 +109,7 @@ export function PostForm() {
 											Photo not uploaded
 										</Typography>
 										<Typography color="text.secondary" variant="subtitle1">
-											Image used for the blog post cover and also for Open Graph meta
+											Image used for the resource post cover and also for Open Graph meta
 										</Typography>
 									</Stack>
 								)}

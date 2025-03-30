@@ -25,7 +25,7 @@ const columns = [
 				{new Intl.NumberFormat("en-US", { style: "currency", currency: row.currency }).format(row.amount)}
 			</Typography>
 		),
-		name: "Amount",
+		title: "Amount",
 		width: "200px",
 	},
 	{
@@ -40,14 +40,14 @@ const columns = [
 
 			return <Chip color={color} label={label} size="small" variant="soft" />;
 		},
-		name: "Status",
+		title: "Status",
 		width: "200px",
 	},
 	{
 		formatter: (row) => {
 			return <Link variant="inherit">{row.invoiceId}</Link>;
 		},
-		name: "Invoice ID",
+		title: "Invoice ID",
 		width: "150px",
 	},
 	{
@@ -56,7 +56,7 @@ const columns = [
 				{dayjs(row.createdAt).format("MMM D, YYYY hh:mm A")}
 			</Typography>
 		),
-		name: "Date",
+		title: "Date",
 		align: "right",
 	},
 ];

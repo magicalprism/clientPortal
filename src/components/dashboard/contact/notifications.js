@@ -24,7 +24,7 @@ const columns = [
 				{row.type}
 			</Typography>
 		),
-		name: "Type",
+		title: "Type",
 		width: "300px",
 	},
 	{
@@ -38,7 +38,7 @@ const columns = [
 
 			return <Chip color={color} label={label} size="small" variant="soft" />;
 		},
-		name: "Status",
+		title: "Status",
 		width: "200px",
 	},
 	{
@@ -47,7 +47,7 @@ const columns = [
 				{dayjs(row.createdAt).format("MMM D, YYYY hh:mm A")}
 			</Typography>
 		),
-		name: "Date",
+		title: "Date",
 		align: "right",
 	},
 ];
@@ -56,7 +56,7 @@ export function Notifications({ notifications }) {
 	return (
 		<Card>
 			<CardHeader
-				avatar={
+				thumbnail={
 					<Avatar>
 						<EnvelopeSimpleIcon fontSize="var(--Icon-fontSize)" />
 					</Avatar>
@@ -66,7 +66,7 @@ export function Notifications({ notifications }) {
 			<CardContent>
 				<Stack spacing={3}>
 					<Stack spacing={2}>
-						<Select defaultValue="last_invoice" name="type" sx={{ maxWidth: "100%", width: "320px" }}>
+						<Select defaultValue="last_invoice" title="type" sx={{ maxWidth: "100%", width: "320px" }}>
 							<Option value="last_invoice">Resend last invoice</Option>
 							<Option value="password_reset">Send password reset</Option>
 							<Option value="verification">Send verification</Option>

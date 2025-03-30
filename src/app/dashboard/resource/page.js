@@ -16,10 +16,10 @@ import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
 import { dayjs } from "@/lib/dayjs";
 import { BreadcrumbsSeparator } from "@/components/core/breadcrumbs-separator";
-import { Newsletter } from "@/components/dashboard/blog/newsletter";
-import { PostCard } from "@/components/dashboard/blog/post-card";
+import { Newsletter } from "@/components/dashboard/resource/newsletter";
+import { PostCard } from "@/components/dashboard/resource/post-card";
 
-export const metadata = { title: `List | Blog | Dashboard | ${appConfig.name}` };
+export const metadata = { title: `List | Resource | Dashboard | ${appConfig.name}` };
 
 const posts = [
 	{
@@ -81,8 +81,8 @@ export default function Page() {
 						<Link color="text.primary" component={RouterLink} href={paths.dashboard.overview} variant="subtitle2">
 							Dashboard
 						</Link>
-						<Link color="text.primary" component={RouterLink} href={paths.dashboard.blog.list} variant="subtitle2">
-							Blog
+						<Link color="text.primary" component={RouterLink} href={paths.dashboard.resource.list} variant="subtitle2">
+							Resource
 						</Link>
 						<Typography color="text.secondary" variant="subtitle2">
 							List
@@ -101,7 +101,7 @@ export default function Page() {
 					}}
 				>
 					<Typography variant="subtitle1">Hello, Sofia</Typography>
-					<Button component={RouterLink} href={paths.dashboard.blog.create} variant="contained">
+					<Button component={RouterLink} href={paths.dashboard.resource.create} variant="contained">
 						New post
 					</Button>
 				</Card>

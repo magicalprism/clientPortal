@@ -1,481 +1,289 @@
 "use client";
+import Link from "next/link"; // ✅ This is the Next.js router link
 
-import * as React from "react";
-import RouterLink from "next/link";
+import React, { useRef, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { zodResolver } from "@hookform/resolvers/zod";
-import Autocomplete from "@mui/material/Autocomplete";
-import Avatar from "@mui/material/Avatar";
-import Box from "@mui/material/Box";
-import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import CardActions from "@mui/material/CardActions";
-import CardContent from "@mui/material/CardContent";
-import Checkbox from "@mui/material/Checkbox";
-import Divider from "@mui/material/Divider";
-import FormControl from "@mui/material/FormControl";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import FormHelperText from "@mui/material/FormHelperText";
-import Grid from "@mui/material/Grid2";
-import InputLabel from "@mui/material/InputLabel";
-import OutlinedInput from "@mui/material/OutlinedInput";
-import Select from "@mui/material/Select";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { Camera as CameraIcon } from "@phosphor-icons/react/dist/ssr/Camera";
 import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { z as zod } from "zod";
 
-import { paths } from "@/paths";
-import { logger } from "@/lib/default-logger";
+import {
+  Autocomplete,
+  Avatar,
+  Box,
+  Button,
+  Card,
+  CardActions,
+  CardContent,
+  Divider,
+  FormControl,
+  FormHelperText,
+  Grid,
+  InputLabel,
+  OutlinedInput,
+  Select,
+  Stack,
+  Typography,
+} from "@mui/material";
+
+import { Camera as CameraIcon } from "@phosphor-icons/react/dist/ssr/Camera";
+
 import { Option } from "@/components/core/option";
 import { toast } from "@/components/core/toaster";
-
-const countryOptions = [
-	{ label: "United States", value: "us" },
-	{ label: "Germany", value: "de" },
-	{ label: "Spain", value: "es" },
-];
-
-function fileToBase64(file) {
-	return new Promise((resolve, reject) => {
-		const reader = new FileReader();
-		reader.readAsDataURL(file);
-		reader.addEventListener("load", () => {
-			resolve(reader.result);
-		});
-		reader.addEventListener("error", () => {
-			reject(new Error("Error converting file to base64"));
-		});
-	});
-}
+import { logger } from "@/lib/default-logger";
+import { paths } from "@/paths";
+import { createClient } from "@/lib/supabase/browser";
 
 const schema = zod.object({
-	avatar: zod.string().optional(),
-	name: zod.string().min(1, "Name is required").max(255),
-	email: zod.string().email("Must be a valid email").min(1, "Email is required").max(255),
-	phone: zod.string().min(1, "Phone is required").max(15),
-	company: zod.string().max(255),
-	billingAddress: zod.object({
-		country: zod.string().min(1, "Country is required").max(255),
-		state: zod.string().min(1, "State is required").max(255),
-		city: zod.string().min(1, "City is required").max(255),
-		zipCode: zod.string().min(1, "Zip code is required").max(255),
-		line1: zod.string().min(1, "Street line 1 is required").max(255),
-		line2: zod.string().max(255).optional(),
-	}),
-	taxId: zod.string().max(255).optional(),
-	timezone: zod.string().min(1, "Timezone is required").max(255),
-	language: zod.string().min(1, "Language is required").max(255),
-	currency: zod.string().min(1, "Currency is required").max(255),
+  title: zod.string().min(1, "Name is required"),
+  email: zod.string().email("Enter a valid email"),
+  tel: zod.string().min(1, "Phone is required"),
+  status: zod.string().optional(),
+  company_id: zod.string().optional(),
+  country: zod.string(),
+  state: zod.string(),
+  city: zod.string(),
+  postal: zod.string(),
+  address_1: zod.string(),
+  address_2: zod.string().optional(),
+  timezone: zod.string(),
+  thumbnail: zod.string().optional(),
 });
 
 const defaultValues = {
-	avatar: "",
-	name: "",
-	email: "",
-	phone: "",
-	company: "",
-	billingAddress: { country: "us", state: "", city: "", zipCode: "", line1: "", line2: "" },
-	taxId: "",
-	timezone: "new_york",
-	language: "en",
-	currency: "USD",
+  title: "",
+  email: "",
+  tel: "",
+  status: "active",
+  company_id: "",
+  country: "us",
+  state: "",
+  city: "",
+  postal: "",
+  address_1: "",
+  address_2: "",
+  timezone: "new_york",
+  thumbnail: "",
 };
 
+const countryOptions = [
+  { label: "United States", value: "us" },
+  { label: "Germany", value: "de" },
+  { label: "Spain", value: "es" },
+];
+
 export function ContactCreateForm() {
-	const router = useRouter();
+  const router = useRouter();
+  const supabase = createClient();
+  const [companies, setCompanies] = useState([]);
+  const thumbnailInputRef = useRef(null);
 
-	const {
-		control,
-		handleSubmit,
-		formState: { errors },
-		setValue,
-		watch,
-	} = useForm({ defaultValues, resolver: zodResolver(schema) });
+  const {
+    control,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    defaultValues,
+    resolver: zodResolver(schema),
+  });
 
-	const onSubmit = React.useCallback(
-		async (_) => {
-			try {
-				// Make API request
-				toast.success("contact updated");
-				router.push(paths.dashboard.contacts.details("1"));
-			} catch (error) {
-				logger.error(error);
-				toast.error("Something went wrong!");
-			}
-		},
-		[router]
-	);
+  const thumbnail = watch("thumbnail");
 
-	const avatarInputRef = React.useRef(null);
-	const avatar = watch("avatar");
+  const handleAvatarChange = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-	const handleAvatarChange = React.useCallback(
-		async (event) => {
-			const file = event.target.files?.[0];
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => setValue("thumbnail", reader.result);
+    reader.onerror = () => toast.error("Image upload failed");
+  };
 
-			if (file) {
-				const url = await fileToBase64(file);
-				setValue("avatar", url);
-			}
-		},
-		[setValue]
-	);
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      const { data, error } = await supabase.from("company").select("id, title");
+      if (error) {
+        logger.error("Failed to fetch companies");
+        return;
+      }
+      setCompanies(data || []);
+    };
 
-	return (
-		<form onSubmit={handleSubmit(onSubmit)}>
-			<Card>
-				<CardContent>
-					<Stack divider={<Divider />} spacing={4}>
-						<Stack spacing={3}>
-							<Typography variant="h6">Account information</Typography>
-							<Grid container spacing={3}>
-								<Grid size={12}>
-									<Stack direction="row" spacing={3} sx={{ alignItems: "center" }}>
-										<Box
-											sx={{
-												border: "1px dashed var(--mui-palette-divider)",
-												borderRadius: "50%",
-												display: "inline-flex",
-												p: "4px",
-											}}
-										>
-											<Avatar
-												src={avatar}
-												sx={{
-													"--Avatar-size": "100px",
-													"--Icon-fontSize": "var(--icon-fontSize-lg)",
-													alignItems: "center",
-													bgcolor: "var(--mui-palette-background-level1)",
-													color: "var(--mui-palette-text-primary)",
-													display: "flex",
-													justifyContent: "center",
-												}}
-											>
-												<CameraIcon fontSize="var(--Icon-fontSize)" />
-											</Avatar>
-										</Box>
-										<Stack spacing={1} sx={{ alignItems: "flex-start" }}>
-											<Typography variant="subtitle1">Avatar</Typography>
-											<Typography variant="caption">Min 400x400px, PNG or JPEG</Typography>
-											<Button
-												color="secondary"
-												onClick={() => {
-													avatarInputRef.current?.click();
-												}}
-												variant="outlined"
-											>
-												Select
-											</Button>
-											<input hidden onChange={handleAvatarChange} ref={avatarInputRef} type="file" />
-										</Stack>
-									</Stack>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="name"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.name)} fullWidth>
-												<InputLabel required>Name</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.name ? <FormHelperText>{errors.name.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="email"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.email)} fullWidth>
-												<InputLabel required>Email address</InputLabel>
-												<OutlinedInput {...field} type="email" />
-												{errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="phone"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.phone)} fullWidth>
-												<InputLabel required>Phone number</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.phone ? <FormHelperText>{errors.phone.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="company"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.company)} fullWidth>
-												<InputLabel>Company</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.company ? <FormHelperText>{errors.company.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Billing information</Typography>
-							<Grid container spacing={3}>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.country"
-										render={({ field }) => (
-											<Autocomplete
-												{...field}
-												getOptionLabel={(option) => option.label}
-												onChange={(_, value) => {
-													if (value) {
-														field.onChange(value.value);
-													}
-												}}
-												options={countryOptions}
-												renderInput={(params) => (
-													<FormControl error={Boolean(errors.billingAddress?.country)} fullWidth>
-														<InputLabel required>Country</InputLabel>
-														<OutlinedInput inputProps={params.inputProps} ref={params.InputProps.ref} />
-														{errors.billingAddress?.country ? (
-															<FormHelperText>{errors.billingAddress?.country?.message}</FormHelperText>
-														) : null}
-													</FormControl>
-												)}
-												renderOption={(props, option) => (
-													<Option {...props} key={option.value} value={option.value}>
-														{option.label}
-													</Option>
-												)}
-												value={countryOptions.find((option) => option.value === field.value)}
-											/>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.state"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.state)} fullWidth>
-												<InputLabel required>State</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.state ? (
-													<FormHelperText>{errors.billingAddress?.state?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.city"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.city)} fullWidth>
-												<InputLabel required>City</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.city ? (
-													<FormHelperText>{errors.billingAddress?.city?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.zipCode"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.zipCode)} fullWidth>
-												<InputLabel required>Zip code</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.zipCode ? (
-													<FormHelperText>{errors.billingAddress?.zipCode?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="billingAddress.line1"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.billingAddress?.line1)} fullWidth>
-												<InputLabel required>Address</InputLabel>
-												<OutlinedInput {...field} />
-												{errors.billingAddress?.line1 ? (
-													<FormHelperText>{errors.billingAddress?.line1?.message}</FormHelperText>
-												) : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="taxId"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.taxId)} fullWidth>
-												<InputLabel>Tax ID</InputLabel>
-												<OutlinedInput {...field} placeholder="e.g EU372054390" />
-												{errors.taxId ? <FormHelperText>{errors.taxId.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Shipping information</Typography>
-							<FormControlLabel control={<Checkbox defaultChecked />} label="Same as billing address" />
-						</Stack>
-						<Stack spacing={3}>
-							<Typography variant="h6">Additional information</Typography>
-							<Grid container spacing={3}>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="timezone"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.timezone)} fullWidth>
-												<InputLabel required>Timezone</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a timezone</Option>
-													<Option value="new_york">US - New York</Option>
-													<Option value="california">US - California</Option>
-													<Option value="london">UK - London</Option>
-												</Select>
-												{errors.timezone ? <FormHelperText>{errors.timezone.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="language"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.language)} fullWidth>
-												<InputLabel required>Language</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a language</Option>
-													<Option value="en">English</Option>
-													<Option value="es">Spanish</Option>
-													<Option value="de">German</Option>
-												</Select>
-												{errors.language ? <FormHelperText>{errors.language.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-								<Grid
-									size={{
-										md: 6,
-										xs: 12,
-									}}
-								>
-									<Controller
-										control={control}
-										name="currency"
-										render={({ field }) => (
-											<FormControl error={Boolean(errors.currency)} fullWidth>
-												<InputLabel>Currency</InputLabel>
-												<Select {...field}>
-													<Option value="">Select a currency</Option>
-													<Option value="USD">USD</Option>
-													<Option value="EUR">EUR</Option>
-													<Option value="RON">RON</Option>
-												</Select>
-												{errors.currency ? <FormHelperText>{errors.currency.message}</FormHelperText> : null}
-											</FormControl>
-										)}
-									/>
-								</Grid>
-							</Grid>
-						</Stack>
-					</Stack>
-				</CardContent>
-				<CardActions sx={{ justifyContent: "flex-end" }}>
-					<Button color="secondary" component={RouterLink} href={paths.dashboard.contacts.list}>
-						Cancel
-					</Button>
-					<Button type="submit" variant="contained">
-						Create contact
-					</Button>
-				</CardActions>
-			</Card>
-		</form>
-	);
+    fetchCompanies();
+  }, [supabase]);
+
+  const onSubmit = async (data) => {
+    try {
+      const { data: result, error } = await supabase
+        .from("contact")
+        .insert([data])
+        .select()
+        .single();
+
+      if (error || !result?.id) throw new Error(error?.message || "Insert failed");
+
+      toast.success("Contact created");
+      router.push(paths.dashboard.contacts.details(result.id));
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create contact");
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)}>
+      <Card>
+        <CardContent>
+          <Stack divider={<Divider />} spacing={4}>
+            <Typography variant="h6">Contact Details</Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12}>
+                <Stack direction="row" spacing={3} alignItems="center">
+                  <Box sx={{ border: "1px dashed var(--mui-palette-divider)", borderRadius: "50%", p: 1 }}>
+                    <Avatar
+                      src={thumbnail}
+                      sx={{ width: 100, height: 100, bgcolor: "background.level1" }}
+                    >
+                      <CameraIcon />
+                    </Avatar>
+                  </Box>
+                  <Stack spacing={1}>
+                    <Typography variant="subtitle1">Thumbnail</Typography>
+                    <Typography variant="caption">400x400px, PNG or JPEG</Typography>
+                    <Button
+                      variant="outlined"
+                      color="secondary"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                    >
+                      Select
+                    </Button>
+                    <input
+                      ref={thumbnailInputRef}
+                      type="file"
+                      accept="image/*"
+                      hidden
+                      onChange={handleAvatarChange}
+                    />
+                  </Stack>
+                </Stack>
+              </Grid>
+
+              {["title", "email", "tel", "status"].map((field) => (
+                <Grid item xs={12} md={6} key={field}>
+                  <Controller
+                    name={field}
+                    control={control}
+                    render={({ field: controllerField }) => (
+                      <FormControl fullWidth error={!!errors[field]}>
+                        <InputLabel required>{field === "title" ? "Name" : field.charAt(0).toUpperCase() + field.slice(1)}</InputLabel>
+                        <OutlinedInput {...controllerField} />
+                        {errors[field] && <FormHelperText>{errors[field].message}</FormHelperText>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              ))}
+
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="company_id"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth>
+                      <InputLabel>Company</InputLabel>
+                      <Select native {...field}>
+                        <option value="">None</option>
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>
+                            {company.title}
+                          </option>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+            </Grid>
+
+            <Typography variant="h6">Address</Typography>
+
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="country"
+                  control={control}
+                  render={({ field }) => (
+                    <Autocomplete
+                      options={countryOptions}
+                      getOptionLabel={(o) => o.label}
+                      value={countryOptions.find((c) => c.value === field.value) || null}
+                      onChange={(_, value) => field.onChange(value?.value || "")}
+                      renderInput={(params) => (
+                        <FormControl fullWidth error={!!errors.country}>
+                          <InputLabel required>Country</InputLabel>
+                          <OutlinedInput inputProps={params.inputProps} ref={params.InputProps.ref} />
+                          {errors.country && <FormHelperText>{errors.country.message}</FormHelperText>}
+                        </FormControl>
+                      )}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {["state", "city", "postal", "address_1", "address_2"].map((field) => (
+                <Grid item xs={12} md={6} key={field}>
+                  <Controller
+                    name={field}
+                    control={control}
+                    render={({ field: controllerField }) => (
+                      <FormControl fullWidth error={!!errors[field]}>
+                        <InputLabel required={field !== "address_2"}>
+                          {field.replace("_", " ").replace(/\b\w/g, (l) => l.toUpperCase())}
+                        </InputLabel>
+                        <OutlinedInput {...controllerField} />
+                        {errors[field] && <FormHelperText>{errors[field].message}</FormHelperText>}
+                      </FormControl>
+                    )}
+                  />
+                </Grid>
+              ))}
+            </Grid>
+
+            <Typography variant="h6">Preferences</Typography>
+            <Grid container spacing={3}>
+              <Grid item xs={12} md={6}>
+                <Controller
+                  name="timezone"
+                  control={control}
+                  render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.timezone}>
+                      <InputLabel required>Timezone</InputLabel>
+                      <Select {...field}>
+                        <Option value="new_york">US - New York</Option>
+                        <Option value="california">US - California</Option>
+                        <Option value="london">UK - London</Option>
+                      </Select>
+                      {errors.timezone && <FormHelperText>{errors.timezone.message}</FormHelperText>}
+                    </FormControl>
+                  )}
+                />
+              </Grid>
+            </Grid>
+          </Stack>
+        </CardContent>
+        <CardActions sx={{ justifyContent: "flex-end" }}>
+        <Button color="secondary" component={Link} href={paths.dashboard.contacts.list}>
+
+            Cancel
+          </Button>
+          <Button type="submit" variant="contained">
+            Create Contact
+          </Button>
+        </CardActions>
+      </Card>
+    </form>
+  );
 }

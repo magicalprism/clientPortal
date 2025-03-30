@@ -45,7 +45,7 @@ const articles = {
 			id: "ART-3",
 			description: "Algolia's architecture is heavily redundant, hosting every application on …",
 			title: "Using NetInfo API to Improve Algolia's JavaScript Client",
-			category: "Resources / Blog posts",
+			category: "Resources / Resource posts",
 		},
 		{
 			id: "ART-4",

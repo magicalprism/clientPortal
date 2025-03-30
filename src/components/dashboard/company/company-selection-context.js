@@ -8,7 +8,7 @@ function noop() {
 	// No operation
 }
 
-export const contactsSelectionContext = React.createContext({
+export const companiesSelectionContext = React.createContext({
 	deselectAll: noop,
 	deselectOne: noop,
 	selectAll: noop,
@@ -18,13 +18,13 @@ export const contactsSelectionContext = React.createContext({
 	selectedAll: false,
 });
 
-export function contactsSelectionProvider({ children, contacts = [] }) {
-	const contactIds = React.useMemo(() => contacts.map((contact) => contact.id), [contacts]);
-	const selection = useSelection(contactIds);
+export function CompaniesSelectionProvider({ children, companies = [] }) {
+	const companyIds = React.useMemo(() => companies.map((company) => company.id), [companies]);
+	const selection = useSelection(companyIds);
 
-	return <contactsSelectionContext.Provider value={{ ...selection }}>{children}</contactsSelectionContext.Provider>;
+	return <companiesSelectionContext.Provider value={{ ...selection }}>{children}</companiesSelectionContext.Provider>;
 }
 
-export function usecontactsSelection() {
-	return React.useContext(contactsSelectionContext);
+export function useCompaniesSelection() {
+	return React.useContext(companiesSelectionContext);
 }

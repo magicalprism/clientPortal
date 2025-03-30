@@ -13,273 +13,181 @@ import Tab from "@mui/material/Tab";
 import Tabs from "@mui/material/Tabs";
 import Typography from "@mui/material/Typography";
 
+import { DeleteSelectedButton } from "@/components/core/delete-selected-button";
 import { paths } from "@/paths";
 import { FilterButton, FilterPopover, useFilterContext } from "@/components/core/filter-button";
 import { Option } from "@/components/core/option";
-
 import { useContactsSelection } from "./contact-selection-context";
 
-// The tabs should be generated using API data.
+// Static tab values — can be dynamic later
 const tabs = [
-	{ label: "All", value: "", count: 5 },
-	{ label: "Client", value: "client", count: 2 },
-	{ label: "Active", value: "active", count: 1 },
-	{ label: "Team", value: "team", count: 1 },
-	{ label: "Archived", value: "archived", count: 1 },
+  { label: "All", value: "", count: 5 },
+  { label: "Client", value: "client", count: 2 },
+  { label: "Active", value: "active", count: 1 },
+  { label: "Team", value: "team", count: 1 },
+  { label: "Archived", value: "archived", count: 1 },
 ];
 
 export function ContactsFilters({ filters = {}, sortDir = "desc" }) {
-	const { title, email, phone, status } = filters;
+  const { title, email, phone, status } = filters;
+  const router = useRouter();
+  const selection = useContactsSelection();
 
-	const router = useRouter();
+  const updateSearchParams = React.useCallback(
+    (newFilters, newSortDir) => {
+      const searchParams = new URLSearchParams();
 
-	const selection = useContactsSelection();
+      if (newSortDir === "asc") {
+        searchParams.set("sortDir", newSortDir);
+      }
 
-	const updateSearchParams = React.useCallback(
-		(newFilters, newSortDir) => {
-			const searchParams = new URLSearchParams();
+      if (newFilters.title?.trim()) {
+        searchParams.set("title", newFilters.title.trim());
+      }
 
-			if (newSortDir === "asc") {
-				searchParams.set("sortDir", newSortDir);
-			}
+      if (newFilters.email?.trim()) {
+        searchParams.set("email", newFilters.email.trim());
+      }
 
-			if (newFilters.status) {
-				searchParams.set("status", newFilters.status);
-			}
-			if (newFilters.title) {
-				searchParams.set("title", newFilters.title);
-			}
+      if (newFilters.phone?.trim()) {
+        searchParams.set("tel", newFilters.phone.trim());
+      }
 
-			if (newFilters.email) {
-				searchParams.set("email", newFilters.email);
-			}
+      if (newFilters.status?.trim()) {
+        searchParams.set("status", newFilters.status.trim());
+      }
 
-			if (newFilters.phone) {
-				searchParams.set("phone", newFilters.phone);
-			}
+      router.push(`${paths.dashboard.contacts.list}?${searchParams.toString()}`);
+    },
+    [router]
+  );
 
-			router.push(`${paths.dashboard.contacts.list}?${searchParams.toString()}`);
-		},
-		[router]
-	);
+  const handleSortChange = (event) => {
+    updateSearchParams(filters, event.target.value);
+  };
 
-	const handleClearFilters = React.useCallback(() => {
-		updateSearchParams({}, sortDir);
-	}, [updateSearchParams, sortDir]);
+  const handleClearFilters = () => {
+    updateSearchParams({}, sortDir);
+  };
 
-	const handleStatusChange = React.useCallback(
-		(_, value) => {
-			updateSearchParams({ ...filters, status: value }, sortDir);
-		},
-		[updateSearchParams, filters, sortDir]
-	);
+  const handleChange = (key, value = "") => {
+    updateSearchParams(
+      {
+        ...filters,
+        [key]: value,
+      },
+      sortDir
+    );
+  };
 
-	const handleTitleChange = React.useCallback(
-		(value) => {
-			updateSearchParams({ ...filters, title: value }, sortDir);
-		},
-		[updateSearchParams, filters, sortDir]
-	);
+  const hasFilters = !!title || !!email || !!phone || !!status;
 
-	const handleEmailChange = React.useCallback(
-		(value) => {
-			updateSearchParams({ ...filters, email: value }, sortDir);
-		},
-		[updateSearchParams, filters, sortDir]
-	);
+  return (
+    <div>
+      <Tabs
+        sx={{ px: 3 }}
+        value={status ?? ""}
+        onChange={(e, value) => handleChange("status", value)}
+        variant="scrollable"
+      >
+        {tabs.map((tab) => (
+          <Tab
+            key={tab.value}
+            value={tab.value}
+            label={tab.label}
+            icon={<Chip label={tab.count} size="small" variant="soft" />}
+            iconPosition="end"
+            sx={{ minHeight: "auto" }}
+          />
+        ))}
+      </Tabs>
 
-	const handlePhoneChange = React.useCallback(
-		(value) => {
-			updateSearchParams({ ...filters, phone: value }, sortDir);
-		},
-		[updateSearchParams, filters, sortDir]
-	);
+      <Divider />
 
-	const handleSortChange = React.useCallback(
-		(event) => {
-			updateSearchParams(filters, event.target.value);
-		},
-		[updateSearchParams, filters]
-	);
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", px: 3, py: 2 }}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: "center", flex: "1 1 auto", flexWrap: "wrap" }}>
+          <FilterButton
+            displayValue={title}
+            label="Name"
+            onFilterApply={(value) => handleChange("title", value)}
+            onFilterDelete={() => handleChange("title")}
+            popover={<TextFilterPopover label="Name" />}
+            value={title}
+          />
 
-	const hasFilters = title || status || email || phone;
+          <FilterButton
+            displayValue={email}
+            label="Email"
+            onFilterApply={(value) => handleChange("email", value)}
+            onFilterDelete={() => handleChange("email")}
+            popover={<TextFilterPopover label="Email" />}
+            value={email}
+          />
 
-	return (
-		<div>
-			<Tabs onChange={handleStatusChange} sx={{ px: 3 }} value={status ?? ""} variant="scrollable">
-				{tabs.map((tab) => (
-					<Tab
-						icon={<Chip label={tab.count} size="small" variant="soft" />}
-						iconPosition="end"
-						key={tab.value}
-						label={tab.label}
-						sx={{ minHeight: "auto" }}
-						tabIndex={0}
-						value={tab.value}
-					/>
-				))}
-			</Tabs>
-			<Divider />
-			<Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", px: 3, py: 2 }}>
-				<Stack direction="row" spacing={2} sx={{ alignItems: "center", flex: "1 1 auto", flexWrap: "wrap" }}>
-				<FilterButton
-						displayValue={title}
-						label="Name"
-						onFilterApply={(value) => {
-							handleTitleChange(value);
-						}}
-						onFilterDelete={() => {
-							handleTitleChange();
-						}}
-						popover={<TitleFilterPopover />}
-						value={title}
-					/>
-					<FilterButton
-						displayValue={email}
-						label="Email"
-						onFilterApply={(value) => {
-							handleEmailChange(value);
-						}}
-						onFilterDelete={() => {
-							handleEmailChange();
-						}}
-						popover={<EmailFilterPopover />}
-						value={email}
-					/>
-					<FilterButton
-						displayValue={phone}
-						label="Phone number"
-						onFilterApply={(value) => {
-							handlePhoneChange(value);
-						}}
-						onFilterDelete={() => {
-							handlePhoneChange();
-						}}
-						popover={<PhoneFilterPopover />}
-						value={phone}
-					/>
-					{hasFilters ? <Button onClick={handleClearFilters}>Clear filters</Button> : null}
-				</Stack>
-				{selection.selectedAny ? (
-					<Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-						<Typography color="text.secondary" variant="body2">
-							{selection.selected.size} selected
-						</Typography>
-						<Button color="error" variant="contained">
-							Delete
-						</Button>
-					</Stack>
-				) : null}
-				<Select name="sort" onChange={handleSortChange} sx={{ maxWidth: "100%", width: "120px" }} value={sortDir}>
-					<Option value="desc">Newest</Option>
-					<Option value="asc">Oldest</Option>
-				</Select>
-			</Stack>
-		</div>
-	);
+          <FilterButton
+            displayValue={phone}
+            label="Phone"
+            onFilterApply={(value) => handleChange("phone", value)}
+            onFilterDelete={() => handleChange("phone")}
+            popover={<TextFilterPopover label="Phone" />}
+            value={phone}
+          />
+
+          {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
+        </Stack>
+
+        {selection.selectedAny && (
+          <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
+            <Typography color="text.secondary" variant="body2">
+              {selection.selected.size} selected
+            </Typography>
+            <DeleteSelectedButton
+              selection={selection}
+              tableName="contact"
+              entityLabel="contact"
+            />
+          </Stack>
+        )}
+
+        <Select
+          title="sort"
+          onChange={handleSortChange}
+          sx={{ maxWidth: "100%", width: "120px" }}
+          value={sortDir}
+        >
+          <Option value="desc">Newest</Option>
+          <Option value="asc">Oldest</Option>
+        </Select>
+      </Stack>
+    </div>
+  );
 }
 
-function TitleFilterPopover() {
-	const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
-	const [value, setValue] = React.useState("");
+// Generic text popover used for all filters
+function TextFilterPopover({ label }) {
+  const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
+  const [value, setValue] = React.useState("");
 
-	React.useEffect(() => {
-		setValue(initialValue ?? "");
-	}, [initialValue]);
+  React.useEffect(() => {
+    setValue(initialValue ?? "");
+  }, [initialValue]);
 
-	return (
-		<FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title="Filter by name">
-			<FormControl>
-				<OutlinedInput
-					onChange={(event) => {
-						setValue(event.target.value);
-					}}
-					onKeyUp={(event) => {
-						if (event.key === "Enter") {
-							onApply(value);
-						}
-					}}
-					value={value}
-				/>
-			</FormControl>
-			<Button
-				onClick={() => {
-					onApply(value);
-				}}
-				variant="contained"
-			>
-				Apply
-			</Button>
-		</FilterPopover>
-	);
-}
-
-function EmailFilterPopover() {
-	const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
-	const [value, setValue] = React.useState("");
-
-	React.useEffect(() => {
-		setValue(initialValue ?? "");
-	}, [initialValue]);
-
-	return (
-		<FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title="Filter by email">
-			<FormControl>
-				<OutlinedInput
-					onChange={(event) => {
-						setValue(event.target.value);
-					}}
-					onKeyUp={(event) => {
-						if (event.key === "Enter") {
-							onApply(value);
-						}
-					}}
-					value={value}
-				/>
-			</FormControl>
-			<Button
-				onClick={() => {
-					onApply(value);
-				}}
-				variant="contained"
-			>
-				Apply
-			</Button>
-		</FilterPopover>
-	);
-}
-
-function PhoneFilterPopover() {
-	const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
-	const [value, setValue] = React.useState("");
-
-	React.useEffect(() => {
-		setValue(initialValue ?? "");
-	}, [initialValue]);
-
-	return (
-		<FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title="Filter by phone number">
-			<FormControl>
-				<OutlinedInput
-					onChange={(event) => {
-						setValue(event.target.value);
-					}}
-					onKeyUp={(event) => {
-						if (event.key === "Enter") {
-							onApply(value);
-						}
-					}}
-					value={value}
-				/>
-			</FormControl>
-			<Button
-				onClick={() => {
-					onApply(value);
-				}}
-				variant="contained"
-			>
-				Apply
-			</Button>
-		</FilterPopover>
-	);
+  return (
+    <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title={`Filter by ${label}`}>
+      <FormControl>
+        <OutlinedInput
+          onChange={(event) => setValue(event.target.value)}
+          onKeyUp={(event) => {
+            if (event.key === "Enter") {
+              onApply(value);
+            }
+          }}
+          value={value}
+        />
+      </FormControl>
+      <Button onClick={() => onApply(value)} variant="contained">
+        Apply
+      </Button>
+    </FilterPopover>
+  );
 }

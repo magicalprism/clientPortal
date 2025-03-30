@@ -26,13 +26,23 @@ export const dashboardConfig = {
 					matcher: { type: "startsWith", href: "/dashboard/settings" },
 				},
 				{
+					key: "companies",
+					title: "Companies",
+					icon: "users",
+					items: [
+						{ key: "companies", title: "List companies", href: paths.dashboard.companies.list },
+						{ key: "companies:create", title: "Create company", href: paths.dashboard.companies.create },
+
+					],
+				},
+				{
 					key: "contacts",
-					title: "contacts",
+					title: "Contacts",
 					icon: "users",
 					items: [
 						{ key: "contacts", title: "List contacts", href: paths.dashboard.contacts.list },
 						{ key: "contacts:create", title: "Create contact", href: paths.dashboard.contacts.create },
-						{ key: "contacts:details", title: "contact details", href: paths.dashboard.contacts.details("1") },
+
 					],
 				},
 				{
@@ -90,13 +100,13 @@ export const dashboardConfig = {
 					],
 				},
 				{
-					key: "blog",
-					title: "Blog",
+					key: "resource",
+					title: "Resource",
 					icon: "text-align-left",
 					items: [
-						{ key: "blog", title: "List posts", href: paths.dashboard.blog.list },
-						{ key: "blog:create", title: "Create post", href: paths.dashboard.blog.create },
-						{ key: "blog:details", title: "Post details", href: paths.dashboard.blog.details("1") },
+						{ key: "resource", title: "List posts", href: paths.dashboard.resource.list },
+						{ key: "resource:create", title: "Create post", href: paths.dashboard.resource.create },
+						{ key: "resource:details", title: "Post details", href: paths.dashboard.resource.details("1") },
 					],
 				},
 				{

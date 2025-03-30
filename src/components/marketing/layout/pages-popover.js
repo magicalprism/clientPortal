@@ -22,7 +22,7 @@ const groups = [
 		key: "group-1",
 		title: "Marketing",
 		items: [
-			{ key: "blog", title: "Blog", href: paths.dashboard.blog.list },
+			{ key: "resource", title: "Resource", href: paths.dashboard.resource.list },
 			{ key: "pricing", title: "Pricing", href: paths.pricing },
 			{ key: "contact", title: "Contact", href: paths.contact },
 			{ key: "checkout", title: "Checkout", href: paths.checkout },

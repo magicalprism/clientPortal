@@ -60,10 +60,10 @@ export const paths = {
 		academy: { browse: "/dashboard/academy", details: (courseId) => `/dashboard/academy/courses/${courseId}` },
 		analytics: "/dashboard/analytics",
 		blank: "/dashboard/blank",
-		blog: {
-			list: "/dashboard/blog",
-			details: (postId) => `/dashboard/blog/${postId}`,
-			create: "/dashboard/blog/create",
+		resource: {
+			list: "/dashboard/resource",
+			details: (postId) => `/dashboard/resource/${postId}`,
+			create: "/dashboard/resource/create",
 		},
 		calendar: "/dashboard/calendar",
 		chat: {
@@ -76,6 +76,11 @@ export const paths = {
 			list: "/dashboard/contacts",
 			create: "/dashboard/contacts/create",
 			details: (contactId) => `/dashboard/contacts/${contactId}`,
+		},
+		companies: {
+			list: "/dashboard/companies",
+			create: "/dashboard/companies/create",
+			details: (contactId) => `/dashboard/companies/${contactId}`,
 		},
 		eCommerce: "/dashboard/e-commerce",
 		fileStorage: "/dashboard/file-storage",

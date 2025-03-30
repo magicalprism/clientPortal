@@ -16,12 +16,12 @@ import { appConfig } from "@/config/app";
 import { paths } from "@/paths";
 import { dayjs } from "@/lib/dayjs";
 import { BreadcrumbsSeparator } from "@/components/core/breadcrumbs-separator";
-import { CommentAdd } from "@/components/dashboard/blog/comment-add";
-import { CommentBox } from "@/components/dashboard/blog/comment-box";
-import { Content } from "@/components/dashboard/blog/content";
-import { Newsletter } from "@/components/dashboard/blog/newsletter";
+import { CommentAdd } from "@/components/dashboard/resource/comment-add";
+import { CommentBox } from "@/components/dashboard/resource/comment-box";
+import { Content } from "@/components/dashboard/resource/content";
+import { Newsletter } from "@/components/dashboard/resource/newsletter";
 
-export const metadata = { title: `Details | Blog | Dashboard | ${appConfig.name}` };
+export const metadata = { title: `Details | Resource | Dashboard | ${appConfig.name}` };
 
 const content = `## Cras at molestie lacus. Phasellus feugiat leo quis sem iaculis, sed mattis nibh accumsan.
 
@@ -82,8 +82,8 @@ export default function Page() {
 						<Link color="text.primary" component={RouterLink} href={paths.dashboard.overview} variant="subtitle2">
 							Dashboard
 						</Link>
-						<Link color="text.primary" component={RouterLink} href={paths.dashboard.blog.list} variant="subtitle2">
-							Blog
+						<Link color="text.primary" component={RouterLink} href={paths.dashboard.resource.list} variant="subtitle2">
+							Resource
 						</Link>
 						<Typography color="text.secondary" variant="subtitle2">
 							Details
@@ -102,7 +102,7 @@ export default function Page() {
 					}}
 				>
 					<Typography variant="subtitle1">Hello, Sofia</Typography>
-					<Button component={RouterLink} href={paths.dashboard.blog.create} variant="contained">
+					<Button component={RouterLink} href={paths.dashboard.resource.create} variant="contained">
 						Edit post
 					</Button>
 				</Card>

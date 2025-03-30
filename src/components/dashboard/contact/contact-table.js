@@ -30,11 +30,11 @@ const columns = [
 					<Link
 						color="inherit"
 						component={RouterLink}
-						href={paths.dashboard.contacts.details("1")}
+						href={paths.dashboard.contacts.details(row.id)}
 						sx={{ whiteSpace: "nowrap" }}
 						variant="subtitle2"
 					>
-						{row.name}
+						{row.title}
 					</Link>
 					<Typography color="text.secondary" variant="body2">
 						{row.title}
@@ -42,11 +42,11 @@ const columns = [
 				</div>
 			</Stack>
 		),
-		name: "Name",
+		title: "Name",
 		width: "250px",
 	},
-	{ field: "email", name: "Email", width: "150px" },
-	{ field: "tel", name: "Phone number", width: "150px" },
+	{ field: "email", title: "Email", width: "150px" },
+	{ field: "tel", title: "Phone number", width: "150px" },
 
 	{
 		formatter: (row) => {
@@ -59,7 +59,7 @@ const columns = [
 
 			return <Chip icon={icon} label={label} size="small" variant="outlined" />;
 		},
-		name: "Role",
+		title: "Role",
 		width: "150px",
 	},
 	{
@@ -68,7 +68,7 @@ const columns = [
 				<PencilSimpleIcon />
 			</IconButton>
 		),
-		name: "Actions",
+		title: "Actions",
 		hideName: true,
 		width: "100px",
 		align: "right",
