@@ -148,7 +148,16 @@ export const dashboardConfig = {
 					matcher: { type: "startsWith", href: "/dashboard/chat" },
 				},
 				{ key: "calendar", title: "Calendar", href: paths.dashboard.calendar, icon: "calendar-check" },
-				{ key: "tasks", title: "Tasks", href: paths.dashboard.tasks, icon: "kanban" },
+				{
+					key: "tasks",
+					title: "Tasks",
+					icon: "Kanban",
+					items: [
+						{ key: "tasks", title: "List tasks", href: paths.dashboard.tasks.list },
+						{ key: "tasks:create", title: "Create contact", href: paths.dashboard.tasks.create },
+
+					],
+				},
 			],
 		},
 		{

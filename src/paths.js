@@ -122,7 +122,11 @@ export const paths = {
 			profile: { timeline: "/dashboard/social/profile", connections: "/dashboard/social/profile/connections" },
 			feed: "/dashboard/social/feed",
 		},
-		tasks: "/dashboard/tasks",
+		tasks: {
+			list: "/dashboard/tasks",
+			create: "/dashboard/tasks/create",
+			details: (contactId) => `/dashboard/contacts/${contactId}`,
+		},
 	},
 	pdf: { invoice: (invoiceId) => `/pdf/invoices/${invoiceId}` },
 	components: {

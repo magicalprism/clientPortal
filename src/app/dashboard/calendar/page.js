@@ -1,90 +1,72 @@
-import * as React from "react";
-import Box from "@mui/material/Box";
+"use client";
 
-import { appConfig } from "@/config/app";
-import { dayjs } from "@/lib/dayjs";
+import * as React from "react";
+import { useSearchParams } from "next/navigation";
+import Box from "@mui/material/Box";
+import { createClient } from "@/lib/supabase/browser";
 import { CalendarProvider } from "@/components/dashboard/calendar/calendar-context";
 import { CalendarView } from "@/components/dashboard/calendar/calendar-view";
 
-export const metadata = { title: `Calendar | Dashboard | ${appConfig.name}` };
+const supabase = createClient();
 
-const events = [
-	{
-		id: "EV-007",
-		title: "Sign contract",
-		description: "Discuss about the new partnership",
-		start: dayjs().subtract(6, "day").set("hour", 17).set("minute", 30).toDate(),
-		end: dayjs().subtract(6, "day").set("hour", 19).set("minute", 0).toDate(),
-		allDay: false,
-	},
-	{
-		id: "EV-006",
-		title: "Lunch meeting",
-		description: "Meeting with the client",
-		start: dayjs().add(2, "day").set("hour", 12).set("minute", 0).toDate(),
-		end: dayjs().add(2, "day").set("hour", 15).set("minute", 30).toDate(),
-		allDay: false,
-	},
-	{
-		id: "EV-005",
-		title: "Scrum meeting",
-		description: "Discuss about the new project",
-		start: dayjs().add(5, "day").set("hour", 8).set("minute", 0).toDate(),
-		end: dayjs().add(5, "day").set("hour", 12).set("minute", 0).toDate(),
-		allDay: false,
-	},
-	{
-		id: "EV-004",
-		title: "Meet the team",
-		description: "Introduction to the new team members",
-		start: dayjs().subtract(11, "day").startOf("day").toDate(),
-		end: dayjs().subtract(11, "day").endOf("day").toDate(),
-		allDay: true,
-	},
-	{
-		id: "EV-003",
-		title: "Fire John",
-		description: "Sorry, John!",
-		start: dayjs().add(3, "day").set("hour", 7).set("minute", 30).toDate(),
-		end: dayjs().add(3, "day").set("hour", 7).set("minute", 31).toDate(),
-		allDay: false,
-		priority: "high",
-	},
-	{
-		id: "EV-002",
-		title: "Design meeting",
-		description: "Plan the new design for the landing page",
-		start: dayjs().subtract(6, "day").set("hour", 9).set("minute", 0).toDate(),
-		end: dayjs().subtract(6, "day").set("hour", 9).set("minute", 30).toDate(),
-		allDay: false,
-		priority: "medium",
-	},
-	{
-		id: "EV-001",
-		title: "HR meeting",
-		description: "Discuss about the new open positions",
-		start: dayjs().set("hour", 15).set("minute", 30).toDate(),
-		end: dayjs().set("hour", 17).set("minute", 30).toDate(),
-		allDay: false,
-		priority: "medium",
-	},
-];
+export default function Page() {
+  const [events, setEvents] = React.useState([]);
+  const [filterType, setFilterType] = React.useState("all");
 
-export default async function Page({ searchParams }) {
-	const { view = "dayGridMonth" } = await searchParams;
+  const searchParams = useSearchParams();
+  const view = searchParams.get("view") || "dayGridMonth";
 
-	return (
-		<Box
-			sx={{
-				maxWidth: "var(--Content-maxWidth)",
-				m: "var(--Content-margin)",
-				p: "var(--Content-padding)",
-				width: "var(--Content-width)",
-			}}
-		>
-			<CalendarProvider events={events}>
-				<CalendarView view={view} />
-			</CalendarProvider>
-		</Box>
-	);
+  React.useEffect(() => {
+    const fetchEvents = async () => {
+      let query = supabase.from("tasks").select("*");
+
+      if (filterType !== "all") {
+        query = query.eq("type", filterType);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        console.error("Error fetching events:", error);
+      } else {
+        const parsed = data.map((event) => ({
+          ...event,
+          start: new Date(event.start),
+          end: new Date(event.end),
+        }));
+        setEvents(parsed);
+      }
+    };
+
+    fetchEvents();
+  }, [filterType]);
+
+  return (
+    <Box
+      sx={{
+        maxWidth: "var(--Content-maxWidth)",
+        m: "var(--Content-margin)",
+        p: "var(--Content-padding)",
+        width: "var(--Content-width)",
+      }}
+    >
+      <Box sx={{ mb: 2 }}>
+        <label htmlFor="filter">Filter by type: </label>
+        <select
+          id="filter"
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+        >
+          <option value="all">All</option>
+          <option value="meeting">Meetings</option>
+          <option value="task">Tasks</option>
+          <option value="reminder">Reminders</option>
+        </select>
+      </Box>
+
+      <CalendarProvider events={events}>
+        <CalendarView view={view} />
+      </CalendarProvider>
+    </Box>
+  );
 }

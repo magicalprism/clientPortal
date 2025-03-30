@@ -13,44 +13,71 @@ import { List as ListIcon } from "@phosphor-icons/react/dist/ssr/List";
 import { dayjs } from "@/lib/dayjs";
 
 export function TaskCard({ onOpen, task }) {
-	const { assignees = [], attachments = [], comments = [], description, dueDate, id, subtasks = [], title } = task;
+	const {
+		id,
+		title,
+		description,
+		assignees = [],
+		attachments = [],
+		comments = [],
+		subtasks = [],
+		dueDate, // Expect this to be already normalized to JS Date
+	} = task;
+
+	const getDueText = () => {
+		if (!dueDate) return null;
+
+		const days = dayjs(dueDate).diff(dayjs(), "day");
+
+		if (days < 0) return `Overdue by ${Math.abs(days)} day${Math.abs(days) === 1 ? "" : "s"}`;
+		if (days === 0) return "Due today";
+		if (days === 1) return "Due tomorrow";
+		return `Due in ${days} days`;
+	};
 
 	return (
 		<Card>
 			<Stack spacing={2} sx={{ p: 3 }}>
-				{dueDate ? (
-					<div>
-						<Typography color="text.secondary" variant="body2">
-							Due {dayjs(dueDate).diff(dayjs(), "day")} days
-						</Typography>
-					</div>
-				) : null}
+				{dueDate && (
+					<Typography color="text.secondary" variant="body2">
+						{getDueText()}
+					</Typography>
+				)}
+
 				<Stack spacing={0.5}>
 					<Typography
-						onClick={() => {
-							onOpen?.(id);
-						}}
-						sx={{ cursor: "pointer", ":hover": { color: "var(--mui-palette-primary-main)" } }}
 						variant="subtitle1"
+						role="button"
+						tabIndex={0}
+						sx={{
+							cursor: "pointer",
+							":hover": { color: "var(--mui-palette-primary-main)" },
+						}}
+						onClick={() => id && onOpen?.(id)}
+						onKeyDown={(e) => e.key === "Enter" && id && onOpen?.(id)}
 					>
 						{title}
 					</Typography>
-					<Typography variant="body2">{description}</Typography>
+					{description && <Typography variant="body2">{description}</Typography>}
 				</Stack>
+
 				<Stack direction="row" spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
-					<div>
-						{assignees.length > 0 ? (
-							<AvatarGroup sx={{ flex: "1 1 auto" }}>
-								{assignees.map((assignee) => (
-									<Avatar key={assignee.id} src={assignee.avatar} />
-								))}
-							</AvatarGroup>
-						) : null}
-					</div>
+					{assignees.length > 0 && (
+						<AvatarGroup>
+							{assignees.map((assignee) => (
+								<Avatar
+									key={assignee.id}
+									src={assignee.avatar || undefined}
+									alt={assignee.name || "User"}
+								/>
+							))}
+						</AvatarGroup>
+					)}
+
 					<Stack direction="row" spacing={1}>
-						{attachments.length > 0 ? <LinkIcon fontSize="var(--icon-fontSize-md)" /> : null}
-						{comments.length > 0 ? <ChatIcon fontSize="var(--icon-fontSize-md)" /> : null}
-						{subtasks.length > 0 ? <ListIcon fontSize="var(--icon-fontSize-md)" /> : null}
+						{attachments.length > 0 && <LinkIcon fontSize="var(--icon-fontSize-md)" />}
+						{comments.length > 0 && <ChatIcon fontSize="var(--icon-fontSize-md)" />}
+						{subtasks.length > 0 && <ListIcon fontSize="var(--icon-fontSize-md)" />}
 					</Stack>
 				</Stack>
 			</Stack>

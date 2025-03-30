@@ -209,3 +209,27 @@ function canDrop({ active, over }) {
 
 	return true;
 }
+
+
+const dragTask = async (active, over) => {
+	if (!active || !over) return;
+  
+	const taskId = active.id;
+	const newStatus =
+	  over.id === 'COL-001' ? 'Todo' :
+	  over.id === 'COL-002' ? 'Progress' :
+	  over.id === 'COL-003' ? 'Done' : null;
+  
+	if (!newStatus) return;
+  
+	// ✅ Update Supabase
+	const { error } = await supabase
+	  .from('task')
+	  .update({ status: newStatus })
+	  .eq('id', taskId);
+  
+	if (error) {
+	  console.error('Failed to update task status in Supabase:', error.message);
+	  return;
+	}
+}
