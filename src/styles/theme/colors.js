@@ -137,3 +137,10 @@ export const tomatoOrange = {
 	900: "#7e1110",
 	950: "#440608",
 };
+
+export const taskTypeColors = {
+	meeting: royalBlue[500],
+	task: chateauGreen[500],
+	reminder: tomatoOrange[500],
+  };
+  

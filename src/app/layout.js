@@ -20,6 +20,7 @@ import { SettingsButton } from "@/components/core/settings/settings-button";
 import { SettingsProvider } from "@/components/core/settings/settings-context";
 import { ThemeProvider } from "@/components/core/theme-provider";
 import { Toaster } from "@/components/core/toaster";
+import { ProtectedRoute } from "@/components/auth/supabase/ProtectedRoute";
 
 export const metadata = { title: appConfig.name };
 
@@ -58,31 +59,38 @@ export default async function Layout({ children }) {
 	const settings = await getPersistedSettings();
 	const direction = settings.direction ?? appConfig.direction;
 	const language = settings.language ?? appConfig.language;
+	const content =
+		appConfig.authStrategy === AuthStrategy.SUPABASE ? (
+			<ProtectedRoute>{children}</ProtectedRoute>
+		) : (
+			children
+		);
 
-	return (
-		<html dir={direction} lang={language} suppressHydrationWarning>
-			<body>
-				<InitColorSchemeScript attribute="class" />
-				<AuthProvider>
-					<Analytics>
-						<LocalizationProvider>
-							<SettingsProvider settings={settings}>
-								<I18nProvider lng={language}>
-									<EmotionCacheProvider options={{ key: "mui" }}>
-										<Rtl direction={direction}>
-											<ThemeProvider>
-												{children}
-												<SettingsButton />
-												<Toaster position="bottom-right" />
-											</ThemeProvider>
-										</Rtl>
-									</EmotionCacheProvider>
-								</I18nProvider>
-							</SettingsProvider>
-						</LocalizationProvider>
-					</Analytics>
-				</AuthProvider>
-			</body>
-		</html>
-	);
-}
+		return (
+			<html dir={direction} lang={language} suppressHydrationWarning>
+				<body>
+					<InitColorSchemeScript attribute="class" />
+					<AuthProvider>
+						<Analytics>
+							<LocalizationProvider>
+								<SettingsProvider settings={settings}>
+									<I18nProvider lng={language}>
+										<EmotionCacheProvider options={{ key: "mui" }}>
+											<Rtl direction={direction}>
+												<ThemeProvider>
+													{content}
+													<SettingsButton />
+													<Toaster position="bottom-right" />
+												</ThemeProvider>
+											</Rtl>
+										</EmotionCacheProvider>
+									</I18nProvider>
+								</SettingsProvider>
+							</LocalizationProvider>
+						</Analytics>
+					</AuthProvider>
+				</body>
+			</html>
+		);
+	}
+	

@@ -1,11 +1,11 @@
 import * as React from "react";
 import Box from "@mui/material/Box";
 import Typography from "@mui/material/Typography";
-
+import { taskTypeColors } from "@/styles/theme/colors"; // adjust path as needed
 import { dayjs } from "@/lib/dayjs";
 
 export function EventContent(arg) {
-	const { priority = "low" } = arg.event.extendedProps;
+	const { priority = "low", type } = arg.event.extendedProps;
 
 	const color =
 		priority === "high"
@@ -14,16 +14,21 @@ export function EventContent(arg) {
 				? "var(--mui-palette-warning-main)"
 				: "transparent";
 
+	const typeColor = taskTypeColors?.[type] || "#ccc";
+
 	const startTime = arg.event.start ? dayjs(arg.event.start).format("h:mm A") : null;
 	const endTime = arg.event.end ? dayjs(arg.event.end).format("h:mm A") : null;
 
-	const inline = arg.event.start && arg.event.end && dayjs(arg.event.end).diff(dayjs(arg.event.start), "minute") < 30;
+	const inline =
+		arg.event.start &&
+		arg.event.end &&
+		dayjs(arg.event.end).diff(dayjs(arg.event.start), "minute") < 30;
 
 	return (
 		<React.Fragment>
 			<Box
 				sx={{
-					backgroundColor: color,
+					backgroundColor: typeColor || color,
 					height: "100%",
 					left: 0,
 					position: "absolute",

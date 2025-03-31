@@ -6,6 +6,7 @@ import Box from "@mui/material/Box";
 import { createClient } from "@/lib/supabase/browser";
 import { CalendarProvider } from "@/components/dashboard/calendar/calendar-context";
 import { CalendarView } from "@/components/dashboard/calendar/calendar-view";
+import { CalendarFilters } from "@/components/dashboard/calendar/calendar-filters";
 
 const supabase = createClient();
 
@@ -16,30 +17,47 @@ export default function Page() {
   const searchParams = useSearchParams();
   const view = searchParams.get("view") || "dayGridMonth";
 
-  React.useEffect(() => {
-    const fetchEvents = async () => {
-      let query = supabase.from("tasks").select("*");
+  const type = searchParams.get("type") || "all";
+const title = searchParams.get("title") || "";
 
-      if (filterType !== "all") {
-        query = query.eq("type", filterType);
+React.useEffect(() => {
+  const fetchEvents = async () => {
+    try {
+      let query = supabase.from("task").select("*");
+
+      if (type !== "all") {
+        query = query.eq("type", type);
+      }
+
+      if (title) {
+        query = query.ilike("title", `%${title}%`);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error("Error fetching events:", error);
-      } else {
-        const parsed = data.map((event) => ({
-          ...event,
-          start: new Date(event.start),
-          end: new Date(event.end),
-        }));
-        setEvents(parsed);
+        console.error("Supabase fetch error:", error);
+        return;
       }
-    };
 
-    fetchEvents();
-  }, [filterType]);
+      const parsed = data.map((event) => ({
+        id: event.id || `temp-${Math.random()}`,
+        ...event,
+        start: new Date(event.start || event.due_date),
+        end: new Date(event.due_date),
+      }));
+
+      setEvents(parsed);
+    } catch (err) {
+      console.error("Unexpected fetch error:", err);
+    }
+  };
+
+  fetchEvents();
+}, [type, title]);
+
+  
+  
 
   return (
     <Box
@@ -52,16 +70,7 @@ export default function Page() {
     >
       <Box sx={{ mb: 2 }}>
         <label htmlFor="filter">Filter by type: </label>
-        <select
-          id="filter"
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-        >
-          <option value="all">All</option>
-          <option value="meeting">Meetings</option>
-          <option value="task">Tasks</option>
-          <option value="reminder">Reminders</option>
-        </select>
+        <CalendarFilters />
       </Box>
 
       <CalendarProvider events={events}>
@@ -70,3 +79,4 @@ export default function Page() {
     </Box>
   );
 }
+

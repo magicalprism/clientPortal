@@ -1,7 +1,6 @@
 "use client";
 
 import * as React from "react";
-
 import { createClient as createSupabaseClient } from "@/lib/supabase/browser";
 
 export const AuthContext = React.createContext({
@@ -19,16 +18,32 @@ export const AuthProvider = ({ children }) => {
 		user: null,
 	});
 
+	// ✅ Get current session on initial load
 	React.useEffect(() => {
+		const getSession = async () => {
+			const { data, error } = await supabaseClient.auth.getSession();
+			const user = data?.session?.user ?? null;
+
+			setState({
+				isAuthenticated: Boolean(user),
+				isLoading: false,
+				user,
+			});
+		};
+
+		getSession();
+
+		// ✅ Listen to auth state changes
 		const {
 			data: { subscription },
-		} = supabaseClient.auth.onAuthStateChange((_, session) => {
-			setState((prevState) => ({
-				...prevState,
-				isAuthenticated: Boolean(session?.user),
+		} = supabaseClient.auth.onAuthStateChange((_event, session) => {
+			const user = session?.user ?? null;
+
+			setState({
+				isAuthenticated: Boolean(user),
 				isLoading: false,
-				user: session?.user ?? null,
-			}));
+				user,
+			});
 		});
 
 		return () => {
@@ -36,7 +51,11 @@ export const AuthProvider = ({ children }) => {
 		};
 	}, [supabaseClient]);
 
-	return <AuthContext.Provider value={{ ...state }}>{children}</AuthContext.Provider>;
+	return (
+		<AuthContext.Provider value={{ ...state }}>
+			{children}
+		</AuthContext.Provider>
+	);
 };
 
 export function useAuth() {

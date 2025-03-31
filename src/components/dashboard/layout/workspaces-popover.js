@@ -7,8 +7,7 @@ import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 
 export const workspaces = [
-	{ name: "Devias", avatar: "/assets/workspace-avatar-1.png" },
-	{ name: "Carpatin", avatar: "/assets/workspace-avatar-2.png" },
+	{ name: "Lena Forrey, Inc.", avatar: "/assets/workspace-avatar-1.png" },
 ];
 
 export function WorkspacesPopover({ anchorEl, onChange, onClose, open = false }) {

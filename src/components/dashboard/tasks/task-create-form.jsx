@@ -36,8 +36,12 @@ const schema = zod.object({
   status: zod.string().min(1, "Status is required"),
   due_date: zod.string().optional(),
   urgency: zod.coerce.number().min(0).max(5).optional(),
-  type: zod.string().optional(),
-});
+  type: zod.enum(["Task", "Meeting", "Appointment", "Reminder"], {
+    type: zod.enum(["Task", "Meeting", "Appointment", "Reminder"], {
+        errorMap: () => ({ message: "Type is required" }),
+      }),
+}),
+})
 
 const defaultValues = {
   title: "",
@@ -45,7 +49,7 @@ const defaultValues = {
   status: "Todo",
   due_date: "",
   urgency: 1,
-  type: "",
+  type: "Task",
 };
 
 export function TaskCreateForm() {
@@ -170,16 +174,23 @@ export function TaskCreateForm() {
 
               <Grid item xs={12} md={6}>
                 <Controller
-                  control={control}
-                  name="type"
-                  render={({ field }) => (
-                    <FormControl fullWidth>
-                      <InputLabel>Type</InputLabel>
-                      <OutlinedInput {...field} />
+                    control={control}
+                    name="type"
+                    render={({ field }) => (
+                    <FormControl fullWidth error={!!errors.type}>
+                        <InputLabel required>Type</InputLabel>
+                        <Select {...field} label="Type">
+                        <Option value="Task">Task</Option>
+                        <Option value="Meeting">Meeting</Option>
+                        <Option value="Appointment">Appointment</Option>
+                        <Option value="Reminder">Reminder</Option>
+                        </Select>
+                        {errors.type && <FormHelperText>{errors.type.message}</FormHelperText>}
                     </FormControl>
-                  )}
+                    )}
                 />
-              </Grid>
+                </Grid>
+
             </Grid>
           </Stack>
         </CardContent>

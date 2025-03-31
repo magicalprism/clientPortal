@@ -1,62 +1,78 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import * as React from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link";
-
 import Box from "@mui/material/Box";
 import Button from "@mui/material/Button";
-import Card from "@mui/material/Card";
-import Divider from "@mui/material/Divider";
-import Stack from "@mui/material/Stack";
-import Typography from "@mui/material/Typography";
-import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
-import { createClient } from "@/lib/supabase/browser"; // ✅ Correct import
-import { dayjs } from "@/lib/dayjs";
+import { createClient } from "@/lib/supabase/browser";
+import { CalendarProvider } from "@/components/dashboard/calendar/calendar-context";
+import { CalendarView } from "@/components/dashboard/calendar/calendar-view";
+import { CalendarFilters } from "@/components/dashboard/calendar/calendar-filters";
+import { EventDialog } from "@/components/dashboard/calendar/event-dialog"; // ✅ this is your modal
 
-import { CompaniesFilters } from "@/components/dashboard/company/company-filters";
-import { CompaniesPagination } from "@/components/dashboard/company/company-pagination";
-import { CompaniesSelectionProvider } from "@/components/dashboard/company/company-selection-context";
-import { CompaniesTable } from "@/components/dashboard/company/company-table";
+const supabase = createClient();
 
 export default function Page() {
+  const [events, setEvents] = React.useState([]);
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogRange, setDialogRange] = React.useState(null); // for selecting a date/time range
+
   const searchParams = useSearchParams();
+  const view = searchParams.get("view") || "dayGridMonth";
+  const type = searchParams.get("type") || "all";
   const title = searchParams.get("title") || "";
-  const status = searchParams.get("status") || "";
-  const sortDir = searchParams.get("sortDir") || "desc";
 
-  const [companies, setCompanies] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const fetchEvents = async () => {
+    let query = supabase.from("task").select("*");
 
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      setLoading(true);
+    if (type !== "all") {
+      query = query.eq("type", type);
+    }
+    if (title) {
+      query = query.ilike("title", `%${title}%`);
+    }
 
-      const supabase = createClient(); // ✅ Init here
+    const { data, error } = await query;
+    if (error) {
+      console.error("❌ Supabase fetch error:", error.message);
+      return;
+    }
 
-      const { data, error } = await supabase.from("company").select("*");
+    const parsed = data.map((event) => ({
+      ...event,
+      id: event.id,
+      start: new Date(event.start || event.due_date),
+      end: new Date(event.due_date),
+    }));
 
-      if (error) {
-        console.error("Error loading companies:", error.message);
-        setCompanies([]);
-        return;
-      }
+    setEvents(parsed);
+  };
 
-      const enriched = data.map((c) => ({
-        ...c,
-        createdAt: dayjs(c.createdAt ?? c.created_at).toDate(),
-      }));
+  React.useEffect(() => {
+    fetchEvents();
+  }, [type, title]);
 
-      const sorted = applySort(enriched, sortDir);
-      const filtered = applyFilters(sorted, { title, status });
+  // ✅ handle new event insert
+  const handleCreateEvent = async (newEvent) => {
+    const { error } = await supabase.from("task").insert({
+      title: newEvent.title,
+      description: newEvent.description,
+      start: newEvent.start.toISOString(),
+      due_date: newEvent.end.toISOString(),
+      allDay: newEvent.allDay,
+      priority: newEvent.priority,
+      type: "task", // Or dynamic based on form if needed
+    });
 
-      setCompanies(filtered);
-      setLoading(false);
-    };
+    if (error) {
+      console.error("❌ Insert error:", error.message);
+    } else {
+      await fetchEvents(); // refresh list
+    }
 
-    fetchCompanies();
-  }, [title, status, sortDir]);
+    setDialogOpen(false);
+  };
 
   return (
     <Box
@@ -67,53 +83,30 @@ export default function Page() {
         width: "var(--Content-width)",
       }}
     >
-      <Stack spacing={4}>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={3} sx={{ alignItems: "flex-start" }}>
-          <Box sx={{ flex: "1 1 auto" }}>
-            <Typography variant="h4">Companies</Typography>
-          </Box>
-          <Box>
-		  <Button
-			component={Link}
-			href="/dashboard/companies/create"
-			startIcon={<PlusIcon />}
-			variant="contained"
-			>
-			Add
-			</Button>
+      <Box sx={{ display: "flex", justifyContent: "space-between", mb: 2 }}>
+        <CalendarFilters />
+        <Button onClick={() => setDialogOpen(true)} variant="contained">
+          Add Event
+        </Button>
+      </Box>
 
-          </Box>
-        </Stack>
+      <CalendarProvider events={events}>
+        <CalendarView
+          view={view}
+          onRangeSelect={(range) => {
+            setDialogRange(range);
+            setDialogOpen(true);
+          }}
+        />
+      </CalendarProvider>
 
-        <CompaniesSelectionProvider companies={companies}>
-          <Card>
-            <CompaniesFilters filters={{ title, status }} sortDir={sortDir} />
-            <Divider />
-            <Box sx={{ overflowX: "auto" }}>
-              <CompaniesTable rows={companies} />
-            </Box>
-            <Divider />
-            <CompaniesPagination count={companies.length} page={0} />
-          </Card>
-        </CompaniesSelectionProvider>
-      </Stack>
+      <EventDialog
+        action="create"
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onCreate={handleCreateEvent} // ✅ now wired up
+        range={dialogRange}
+      />
     </Box>
   );
-}
-
-function applySort(rows, sortDir) {
-  return rows.sort((a, b) => {
-    if (sortDir === "asc") {
-      return a.createdAt.getTime() - b.createdAt.getTime();
-    }
-    return b.createdAt.getTime() - a.createdAt.getTime();
-  });
-}
-
-function applyFilters(rows, { title, status }) {
-  return rows.filter((item) => {
-    if (title && !item.title?.toLowerCase().includes(title.toLowerCase())) return false;
-    if (status && item.status?.toLowerCase() !== status.toLowerCase()) return false;
-    return true;
-  });
 }

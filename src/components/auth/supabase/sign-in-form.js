@@ -39,11 +39,8 @@ const defaultValues = { email: "", password: "" };
 
 export function SignInForm() {
 	const [supabaseClient] = React.useState(createSupabaseClient());
-
 	const router = useRouter();
-
-	const [showPassword, setShowPassword] = React.useState();
-
+	const [showPassword, setShowPassword] = React.useState(false);
 	const [isPending, setIsPending] = React.useState(false);
 
 	const {
@@ -53,65 +50,57 @@ export function SignInForm() {
 		formState: { errors },
 	} = useForm({ defaultValues, resolver: zodResolver(schema) });
 
-	const onAuth = React.useCallback(
-		async (providerId) => {
-			setIsPending(true);
+	const onAuth = async (providerId) => {
+		setIsPending(true);
 
-			const redirectToUrl = new URL(paths.auth.supabase.callback.pkce, globalThis.location.origin);
-			redirectToUrl.searchParams.set("next", paths.dashboard.overview);
+		const redirectToUrl = new URL(paths.auth.supabase.callback.pkce, globalThis.location.origin);
+		redirectToUrl.searchParams.set("next", paths.dashboard.overview);
 
-			const { data, error } = await supabaseClient.auth.signInWithOAuth({
-				provider: providerId,
-				options: { redirectTo: redirectToUrl.href },
-			});
+		const { data, error } = await supabaseClient.auth.signInWithOAuth({
+			provider: providerId,
+			options: { redirectTo: redirectToUrl.href },
+		});
 
-			if (error) {
-				setIsPending(false);
-				toast.error(error.message);
+		if (error) {
+			setIsPending(false);
+			toast.error(error.message);
+			return;
+		}
+
+		globalThis.location.href = data.url;
+	};
+
+	const onSubmit = async (values) => {
+		console.log("🟡 Form values:", values);
+		setIsPending(true);
+
+		const { data, error } = await supabaseClient.auth.signInWithPassword({
+			email: values.email,
+			password: values.password,
+		});
+
+		if (error) {
+			console.error("❌ Sign-in error:", error.message);
+			if (error.message.toLowerCase().includes("email not confirmed")) {
+				const searchParams = new URLSearchParams({ email: values.email });
+				router.push(`${paths.auth.supabase.signUpConfirm}?${searchParams.toString()}`);
 				return;
 			}
+			setError("root", { type: "server", message: error.message });
+			setIsPending(false);
+			return;
+		}
 
-			globalThis.location.href = data.url;
-		},
-		[supabaseClient]
-	);
-
-	const onSubmit = React.useCallback(
-		async (values) => {
-			setIsPending(true);
-
-			const { error } = await supabaseClient.auth.signInWithPassword({
-				email: values.email,
-				password: values.password,
-			});
-
-			if (error) {
-				if (error.message.includes("Email not confirmed")) {
-					// You should resend the verification email.
-					// For the sake of simplicity, we will just redirect to the confirmation page.
-					const searchParams = new URLSearchParams({ email: values.email });
-					router.push(`${paths.auth.supabase.signUpConfirm}?${searchParams.toString()}`);
-					return;
-				}
-
-				setError("root", { type: "server", message: error.message });
-				setIsPending(false);
-				return;
-			}
-
-			// On router refresh the sign-in page component will automatically redirect to the dashboard.
-			router.refresh();
-		},
-		[supabaseClient, router, setError]
-	);
+		console.log("✅ Sign-in success:", data);
+		router.refresh();
+	};
 
 	return (
 		<Stack spacing={4}>
-			<div>
-				<Box component={RouterLink} href={paths.home} sx={{ display: "inline-block", fontSize: 0 }}>
-					<DynamicLogo colorDark="light" colorLight="dark" height={32} width={122} />
-				</Box>
-			</div>
+			<Box component={RouterLink} href={paths.home} sx={{ display: "inline-block", fontSize: 0 }}>
+				<DynamicLogo colorDark="light" colorLight="dark" height={32} width={122} />
+			</Box>
+
 			<Stack spacing={1}>
 				<Typography variant="h5">Sign in</Typography>
 				<Typography color="text.secondary" variant="body2">
@@ -121,85 +110,83 @@ export function SignInForm() {
 					</Link>
 				</Typography>
 			</Stack>
+
 			<Stack spacing={3}>
 				<Stack spacing={2}>
 					{oAuthProviders.map((provider) => (
 						<Button
+							key={provider.id}
+							variant="outlined"
 							color="secondary"
 							disabled={isPending}
-							endIcon={<Box alt="" component="img" height={24} src={provider.logo} width={24} />}
-							key={provider.id}
-							onClick={() => {
-								onAuth(provider.id).catch(() => {
-									// noop
-								});
-							}}
-							variant="outlined"
+							onClick={() => onAuth(provider.id)}
+							endIcon={<Box component="img" src={provider.logo} alt="" height={24} width={24} />}
 						>
 							Continue with {provider.name}
 						</Button>
 					))}
 				</Stack>
+
 				<Divider>or</Divider>
-				<Stack spacing={2}>
-					<form onSubmit={handleSubmit(onSubmit)}>
-						<Stack spacing={2}>
-							<Controller
-								control={control}
-								name="email"
-								render={({ field }) => (
-									<FormControl error={Boolean(errors.email)}>
-										<InputLabel>Email address</InputLabel>
-										<OutlinedInput {...field} type="email" />
-										{errors.email ? <FormHelperText>{errors.email.message}</FormHelperText> : null}
-									</FormControl>
-								)}
-							/>
-							<Controller
-								control={control}
-								name="password"
-								render={({ field }) => (
-									<FormControl error={Boolean(errors.password)}>
-										<InputLabel>Password</InputLabel>
-										<OutlinedInput
-											{...field}
-											endAdornment={
-												showPassword ? (
-													<EyeIcon
-														cursor="pointer"
-														fontSize="var(--icon-fontSize-md)"
-														onClick={() => {
-															setShowPassword(false);
-														}}
-													/>
-												) : (
-													<EyeSlashIcon
-														cursor="pointer"
-														fontSize="var(--icon-fontSize-md)"
-														onClick={() => {
-															setShowPassword(true);
-														}}
-													/>
-												)
-											}
-											type={showPassword ? "text" : "password"}
-										/>
-										{errors.password ? <FormHelperText>{errors.password.message}</FormHelperText> : null}
-									</FormControl>
-								)}
-							/>
-							{errors.root ? <Alert color="error">{errors.root.message}</Alert> : null}
-							<Button disabled={isPending} type="submit" variant="contained">
-								Sign in
-							</Button>
-						</Stack>
-					</form>
-					<div>
-						<Link component={RouterLink} href={paths.auth.supabase.resetPassword} variant="subtitle2">
-							Forgot password?
-						</Link>
-					</div>
-				</Stack>
+
+				<form onSubmit={handleSubmit(onSubmit)} noValidate>
+					<Stack spacing={2}>
+						<Controller
+							control={control}
+							name="email"
+							render={({ field }) => (
+								<FormControl error={Boolean(errors.email)}>
+									<InputLabel>Email address</InputLabel>
+									<OutlinedInput {...field} type="email" label="Email address" />
+									{errors.email && <FormHelperText>{errors.email.message}</FormHelperText>}
+								</FormControl>
+							)}
+						/>
+
+						<Controller
+							control={control}
+							name="password"
+							render={({ field }) => (
+								<FormControl error={Boolean(errors.password)}>
+									<InputLabel>Password</InputLabel>
+									<OutlinedInput
+										{...field}
+										type={showPassword ? "text" : "password"}
+										label="Password"
+										endAdornment={
+											showPassword ? (
+												<EyeIcon
+													cursor="pointer"
+													fontSize="var(--icon-fontSize-md)"
+													onClick={() => setShowPassword(false)}
+												/>
+											) : (
+												<EyeSlashIcon
+													cursor="pointer"
+													fontSize="var(--icon-fontSize-md)"
+													onClick={() => setShowPassword(true)}
+												/>
+											)
+										}
+									/>
+									{errors.password && <FormHelperText>{errors.password.message}</FormHelperText>}
+								</FormControl>
+							)}
+						/>
+
+						{errors.root && <Alert severity="error">{errors.root.message}</Alert>}
+
+						<Button type="submit" variant="contained" disabled={isPending}>
+							Sign in
+						</Button>
+					</Stack>
+				</form>
+
+				<div>
+					<Link component={RouterLink} href={paths.auth.supabase.resetPassword} variant="subtitle2">
+						Forgot password?
+					</Link>
+				</div>
 			</Stack>
 		</Stack>
 	);

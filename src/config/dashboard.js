@@ -76,6 +76,14 @@ export const dashboardConfig = {
 					],
 				},
 				{
+					key: "onboarding",
+					title: "Onboarding",
+					icon: "read-cv-logo",
+					items: [
+						{ key: "index:onboarding", title: "Onboarding Forms", href: "/dashboard/onboarding" },
+					],
+				},
+				{
 					key: "jobs",
 					title: "Jobs",
 					icon: "read-cv-logo",
@@ -151,7 +159,7 @@ export const dashboardConfig = {
 				{
 					key: "tasks",
 					title: "Tasks",
-					icon: "Kanban",
+					icon: "kanban",
 					items: [
 						{ key: "tasks", title: "List tasks", href: paths.dashboard.tasks.list },
 						{ key: "tasks:create", title: "Create contact", href: paths.dashboard.tasks.create },
@@ -173,28 +181,22 @@ export const dashboardConfig = {
 							key: "auth:sign-in",
 							title: "Sign in",
 							items: [
-								{ key: "auth:sign-in:centered", title: "Centered", href: paths.auth.samples.signIn.centered },
-								{ key: "auth:sign-in:split", title: "Split", href: paths.auth.samples.signIn.split },
+								{ key: "auth:sign-in:centered", title: "Centered", href: "/auth/supabase/sign-in", },
 							],
 						},
 						{
 							key: "auth:sign-up",
 							title: "Sign up",
 							items: [
-								{ key: "auth:sign-up:centered", title: "Centered", href: paths.auth.samples.signUp.centered },
-								{ key: "auth:sign-up:split", title: "Split", href: paths.auth.samples.signUp.split },
+								{ key: "auth:sign-up:centered", title: "Centered", href: "/auth/supabase/sign-out", },
+
 							],
 						},
 						{
 							key: "auth:reset-password",
 							title: "Reset password",
 							items: [
-								{
-									key: "auth:reset-password:centered",
-									title: "Centered",
-									href: paths.auth.samples.resetPassword.centered,
-								},
-								{ key: "auth:reset-password:split", title: "Split", href: paths.auth.samples.resetPassword.split },
+								{ key: "auth:reset-password:split", title: "Split", href: "/auth/supabase/reset-password", },
 							],
 						},
 						{
@@ -235,37 +237,14 @@ export const dashboardConfig = {
 			],
 		},
 		{
-			key: "misc",
-			title: "Misc",
+			key: "external",
+			title: "External",
 			items: [
-				{ key: "i18n", title: "i18n", href: paths.dashboard.i18n, icon: "translate" },
-				{
-					key: "levels:level-0",
-					title: "Level 0",
-					icon: "align-left",
-					items: [
-						{
-							key: "levels:level-1a",
-							title: "Level 1a",
-							items: [
-								{
-									key: "levels:level-2a",
-									title: "Level 2a",
-									items: [
-										{ key: "levels:level-3a", title: "Level 3a" },
-										{ key: "levels:level-3b", title: "Level 3b", disabled: true },
-									],
-								},
-								{ key: "levels:level-2b", title: "Level 2b" },
-							],
-						},
-						{ key: "levels:level-1b", title: "Level 1b" },
-					],
-				},
-				{ key: "disabled", title: "Disabled", disabled: true, icon: "warning-diamond" },
-				{ key: "label", title: "Label", icon: "file", label: "New" },
-				{ key: "blank", title: "Blank", href: paths.dashboard.blank, icon: "file-dashed" },
-				{ key: "external", title: "External link", href: "https://devias.io", external: true, icon: "link" },
+				{ key: "managewp", title: "ManageWp", href: "https://orion.managewp.com/", external: true, icon: "link" },
+				{ key: "gdrive", title: "Shared Drives", href: "https://drive.google.com/drive/u/0/shared-drives", external: true, icon: "link" },
+				{ key: "flywp", title: "FlyWp", href: "https://app.flywp.com/servers", external: true, icon: "link" },
+				{ key: "webstudio", title: "Web Studio", href: "https://apps.webstudio.is/dashboard", external: true, icon: "link" },
+				{ key: "theme", title: "Devias Kit Docs", href: "https://material-kit-pro-react-docs-bslicwx3m-devias.vercel.app/welcome", external: true, icon: "link" },
 			],
 		},
 	],

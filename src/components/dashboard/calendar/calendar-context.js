@@ -1,6 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { createClient } from "@/lib/supabase/browser";
+
+const supabase = createClient();
 
 function noop() {
 	// No operation
@@ -18,65 +21,118 @@ export function CalendarProvider({ children, events: initialEvents = [] }) {
 	const [events, setEvents] = React.useState(new Map());
 	const [currentEventId, setCurrentEventId] = React.useState();
 
+	// Initialize events from props
 	React.useEffect(() => {
-		setEvents(new Map(initialEvents.map((event) => [event.id, event])));
+		const mapped = new Map(
+			initialEvents.map((event) => [String(event.id), { ...event }])
+		);
+		setEvents(mapped);
 	}, [initialEvents]);
 
-	const handleCreateEvent = React.useCallback(
-		(params) => {
-			const updatedEvents = new Map(events);
+	// Create
+	const handleCreateEvent = React.useCallback(async (inserted) => {
+		const parsed = {
+			id: String(inserted.id),
+			title: inserted.title,
+			start: new Date(inserted.start ?? inserted.due_date),
+			end: new Date(inserted.due_date),
+			...inserted,
+		};
 
-			// Create event
-			const event = { id: `EV-${Date.now()}`, ...params };
+		// Check if pivot entry already exists
+		if (parsed.checklist_id && parsed.task_id) {
+			const { data: existing, error: selectError } = await supabase
+				.from("checklist_task")
+				.select("id")
+				.eq("checklist_id", parsed.checklist_id)
+				.eq("task_id", parsed.task_id)
+				.maybeSingle();
 
-			// Add event
-			updatedEvents.set(event.id, event);
+			if (!existing) {
+				const { error: insertError } = await supabase.from("checklist_task").insert({
+					checklist_id: parsed.checklist_id,
+					task_id: parsed.task_id,
+				});
 
-			// Dispatch update
-			setEvents(updatedEvents);
-		},
-		[events]
-	);
+				if (insertError) {
+					console.error("❌ Pivot insert failed:", insertError.message);
+				}
+			} else {
+				console.log("✅ Pivot entry already exists, skipping insert.");
+			}
+		}
 
-	const handleUpdateEvent = React.useCallback(
-		(eventId, params) => {
-			const event = events.get(eventId);
+		setEvents((prev) => {
+			const next = new Map(prev);
+			next.set(parsed.id, parsed);
+			return next;
+		});
+	}, []);
 
-			// Event might no longer exist
-			if (!event) {
+	// Update (modifies existing only)
+	const handleUpdateEvent = React.useCallback(async (eventId, params) => {
+		try {
+			console.log("🧪 Updating event:", eventId, params);
+
+			const { error } = await supabase
+				.from("task")
+				.update({
+					title: params.title,
+					description: params.description,
+					start: params.start?.toISOString(),
+					due_date: params.end?.toISOString(),
+					allDay: params.allDay,
+					priority: params.priority,
+				})
+				.eq("id", eventId);
+
+			if (error) {
+				console.error("❌ Supabase update error:", error.message);
 				return;
 			}
 
-			const updatedEvents = new Map(events);
+			setEvents((prev) => {
+				const next = new Map(prev);
+				const existing = next.get(String(eventId));
 
-			// Update event
-			updatedEvents.set(eventId, { ...event, ...params });
+				if (!existing) {
+					console.warn(`⚠️ Event with ID ${eventId} not found in state`);
+					return prev;
+				}
 
-			// Dispatch update
-			setEvents(updatedEvents);
-		},
-		[events]
-	);
+				next.set(String(eventId), {
+					...existing,
+					...params,
+					start: new Date(params.start),
+					end: new Date(params.end),
+				});
 
-	const handleDeleteEvent = React.useCallback(
-		(eventId) => {
-			const event = events.get(eventId);
+				return next;
+			});
+		} catch (err) {
+			console.error("❌ Unexpected error during updateEvent:", err);
+		}
+	}, []);
 
-			// Event might no longer exist
-			if (!event) {
+	// Delete
+	const handleDeleteEvent = React.useCallback(async (eventId) => {
+		try {
+			const { error } = await supabase.from("task").delete().eq("id", eventId);
+
+			if (error) {
+				console.error("❌ Supabase delete error:", error.message);
 				return;
 			}
 
-			const updatedEvents = new Map(events);
-
-			// Delete event
-			updatedEvents.delete(eventId);
-
-			// Dispatch update
-			setEvents(updatedEvents);
-		},
-		[events]
-	);
+			setEvents((prev) => {
+				const next = new Map(prev);
+				next.delete(String(eventId));
+				return next;
+			});
+		} catch (err) {
+			console.error("❌ Unexpected error during deleteEvent:", err);
+		}
+	}, []);
 
 	return (
 		<CalendarContext.Provider

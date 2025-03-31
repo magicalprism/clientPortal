@@ -31,23 +31,17 @@ export function CalendarView({ view = "dayGridMonth" }) {
 		React.useContext(CalendarContext);
 
 	const router = useRouter();
-
 	const calendarRef = React.useRef(null);
-
 	const [date, setDate] = React.useState(new Date());
-
 	const createDialog = useDialog();
-
 	const currentEvent = currentEventId ? events.get(currentEventId) : undefined;
 
 	const handleViewChange = React.useCallback(
 		(value) => {
 			const calendarApi = calendarRef.current?.getApi();
-
 			if (calendarApi) {
 				calendarApi.changeView(value);
 			}
-
 			router.push(`${paths.dashboard.calendar}?view=${value}`);
 		},
 		[router]
@@ -55,7 +49,6 @@ export function CalendarView({ view = "dayGridMonth" }) {
 
 	const handleDateToday = React.useCallback(() => {
 		const calendarApi = calendarRef.current?.getApi();
-
 		if (calendarApi) {
 			calendarApi.today();
 			setDate(calendarApi.getDate());
@@ -64,7 +57,6 @@ export function CalendarView({ view = "dayGridMonth" }) {
 
 	const handleDatePrev = React.useCallback(() => {
 		const calendarApi = calendarRef.current?.getApi();
-
 		if (calendarApi) {
 			calendarApi.prev();
 			setDate(calendarApi.getDate());
@@ -73,7 +65,6 @@ export function CalendarView({ view = "dayGridMonth" }) {
 
 	const handleDateNext = React.useCallback(() => {
 		const calendarApi = calendarRef.current?.getApi();
-
 		if (calendarApi) {
 			calendarApi.next();
 			setDate(calendarApi.getDate());
@@ -87,11 +78,9 @@ export function CalendarView({ view = "dayGridMonth" }) {
 	const handleRangeSelect = React.useCallback(
 		(arg) => {
 			const calendarApi = calendarRef.current?.getApi();
-
 			if (calendarApi) {
 				calendarApi.unselect();
 			}
-
 			createDialog.handleOpen({ range: { start: arg.start, end: arg.end } });
 		},
 		[createDialog]
@@ -99,7 +88,7 @@ export function CalendarView({ view = "dayGridMonth" }) {
 
 	const handleEventSelect = React.useCallback(
 		(arg) => {
-			setCurrentEventId(arg.event.id);
+			setCurrentEventId(arg.event.id?.toString());
 		},
 		[setCurrentEventId]
 	);
