@@ -3,6 +3,7 @@ export const paths = {
 	checkout: "/checkout",
 	contact: "/contact",
 	pricing: "/pricing",
+	onboarding: (onboardingId) => `/onboarding/${onboardingId}`,
 	auth: {
 		custom: {
 			signIn: "/auth/custom/sign-in",
@@ -80,12 +81,13 @@ export const paths = {
 		companies: {
 			list: "/dashboard/companies",
 			create: "/dashboard/companies/create",
-			details: (contactId) => `/dashboard/companies/${contactId}`,
+			details: (companiesId) => `/dashboard/companies/${companiesId}`,
 		},
 		onboarding: {
 			list: "/dashboard/onboarding",
 			create: "/dashboard/onboarding/create",
-			details: (contactId) => `/dashboard/onboarding/${contactId}`,
+			details: (onboardingId) => `/dashboard/onboarding/${onboardingId}`,
+			
 		},
 		eCommerce: "/dashboard/e-commerce",
 		fileStorage: "/dashboard/file-storage",

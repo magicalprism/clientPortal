@@ -1,52 +1,49 @@
-"use client"
+"use client";
 
-import React, { useEffect, useState } from "react"
-import { useSearchParams } from "next/navigation"
-import Link from "next/link"
+import React, { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 
-import Box from "@mui/material/Box"
-import Button from "@mui/material/Button"
-import Card from "@mui/material/Card"
-import Divider from "@mui/material/Divider"
-import Stack from "@mui/material/Stack"
-import Typography from "@mui/material/Typography"
-import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus"
+import Box from "@mui/material/Box";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import Divider from "@mui/material/Divider";
+import Stack from "@mui/material/Stack";
+import Typography from "@mui/material/Typography";
+import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
-import { createClient } from "@/lib/supabase/browser"
-import { dayjs } from "@/lib/dayjs"
+import { createClient } from "@/lib/supabase/browser";
+import { dayjs } from "@/lib/dayjs";
 
-import { OnboardingFilters } from "@/components/dashboard/onboarding/onboarding-filters"
-import { OnboardingTable } from "@/components/dashboard/onboarding/onboarding-table"
+import { OnboardingFilters } from "@/components/dashboard/onboarding/onboarding-filters";
+import { OnboardingTable } from "@/components/dashboard/onboarding/onboarding-table";
+import { OnboardingSelectionProvider } from "@/components/dashboard/onboarding/onboarding-selection-context";
 
 export default function OnboardingArchive() {
-  const searchParams = useSearchParams()
+  const searchParams = useSearchParams();
 
-  const rawTitle = searchParams.get("title")
-const rawProject = searchParams.get("project_id")
-const rawSortDir = searchParams.get("sortDir")
+  const rawTitle = searchParams.get("title");
+  const rawProject = searchParams.get("project_id");
+  const rawSortDir = searchParams.get("sortDir");
 
-const title = rawTitle || ""
-const project = rawProject || ""
-const sortDir = rawSortDir || "desc"
+  const title = rawTitle || "";
+  const project = rawProject || "";
+  const sortDir = rawSortDir || "desc";
 
-  
-
-  const [rows, setRows] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true)
-      const supabase = createClient()
+      setLoading(true);
+      const supabase = createClient();
 
-      const { data, error } = await supabase
-        .from("onboarding")
-        .select("*")
+      const { data, error } = await supabase.from("onboarding").select("*");
 
       if (error) {
-        console.error("Error loading onboarding entries:", error.message)
-        setRows([])
-        return
+        console.error("Error loading onboarding entries:", error.message);
+        setRows([]);
+        return;
       }
 
       const enriched = (data || []).map((entry) => ({
@@ -54,18 +51,19 @@ const sortDir = rawSortDir || "desc"
         title: entry.title || "",
         project_id: entry.project_id || "",
         createdAt: dayjs(entry.created_at).toDate(),
-        status: entry.onboarding.status || "Approved"
-      }))
+        status: entry.status || "",
+        value: entry.value || "", // Add this if your table formatter expects it
+      }));
 
-      const sorted = applySort(enriched, sortDir)
-      const filtered = applyFilters(sorted, { title, project })
+      const sorted = applySort(enriched, sortDir);
+      const filtered = applyFilters(sorted, { title, project });
 
-      setRows(filtered)
-      setLoading(false)
-    }
+      setRows(filtered);
+      setLoading(false);
+    };
 
-    fetchData()
-  }, [title, project, sortDir])
+    fetchData();
+  }, [title, project, sortDir]);
 
   return (
     <Box
@@ -98,34 +96,38 @@ const sortDir = rawSortDir || "desc"
         </Stack>
 
         <Card>
-          <OnboardingFilters
-            filters={{ title, project }}
-            sortDir={sortDir}
-          />
-          <Divider />
-          <Box sx={{ overflowX: "auto" }}>
-            <OnboardingTable rows={rows} />
-          </Box>
-          <Divider />
-        </Card>
+            <OnboardingSelectionProvider onboarding={rows}>
+                <OnboardingFilters filters={{ title, project }} sortDir={sortDir} />
+                <Divider />
+                <Box sx={{ overflowX: "auto" }}>
+                <OnboardingTable rows={rows} />
+                </Box>
+                <Divider />
+            </OnboardingSelectionProvider>
+            </Card>
       </Stack>
     </Box>
-  )
+  );
 }
 
 function applySort(rows, sortDir) {
   return rows.sort((a, b) => {
-    if (!a.createdAt || !b.createdAt) return 0
+    if (!a.createdAt || !b.createdAt) return 0;
     return sortDir === "asc"
       ? a.createdAt.getTime() - b.createdAt.getTime()
-      : b.createdAt.getTime() - a.createdAt.getTime()
-  })
+      : b.createdAt.getTime() - a.createdAt.getTime();
+  });
 }
 
 function applyFilters(rows, { title, project }) {
   return rows.filter((item) => {
-    if (title && !item.title.toLowerCase().includes(title.toLowerCase())) return false
-    if (project && !item.project_id?.toLowerCase().includes(project.toLowerCase())) return false
-    return true
-  })
+    if (title && !item.title.toLowerCase().includes(title.toLowerCase()))
+      return false;
+    if (
+      project &&
+      !item.project_id?.toLowerCase().includes(project.toLowerCase())
+    )
+      return false;
+    return true;
+  });
 }

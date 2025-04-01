@@ -81,6 +81,7 @@ export const dashboardConfig = {
 					icon: "read-cv-logo",
 					items: [
 						{ key: "index:onboarding", title: "Onboarding Forms", href: "/dashboard/onboarding" },
+						{ key: "onboarding:create", title: "Create onboarding form", href: paths.dashboard.onboarding.create },
 					],
 				},
 				{
