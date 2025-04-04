@@ -51,7 +51,7 @@ export default async function Page({ params }) {
     .select(`
       *,
       company_contact (
-        company:companyId (
+        company:company_id (
           title
         )
       )

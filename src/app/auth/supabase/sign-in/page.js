@@ -12,11 +12,27 @@ export const metadata = { title: `Sign in | Supabase | Auth | ${appConfig.name}`
 
 export default async function Page() {
 	const supabaseClient = await createSupabaseClient();
-	const { data } = await supabaseClient.auth.getUser();
+	const { data: { user } } = await supabaseClient.auth.getUser();
 
-	if (data.user) {
-		logger.debug("[Sign in] User is authenticated, redirecting to dashboard");
-		redirect(paths.dashboard.overview);
+	if (user) {
+		// Fetch the user's role from the contact table
+		const { data: contact, error } = await supabaseClient
+			.from("contact")
+			.select("role")
+			.eq("supabase_user_id", user.id)
+			.single();
+
+		if (error || !contact) {
+			logger.error("[Sign in] Failed to fetch role from contact table", error);
+			redirect("/error"); // optional error page
+		}
+
+		// Redirect based on role
+		if (contact.role === "super-admin") {
+			redirect(paths.dashboard.superAdmin); // ← change to your super admin route
+		} else {
+			redirect(paths.dashboard.overview); // regular user route
+		}
 	}
 
 	return (

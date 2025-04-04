@@ -63,15 +63,17 @@ export function TaskCard({ onOpen, task }) {
 
 				<Stack direction="row" spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
 					{assignees.length > 0 && (
-						<AvatarGroup>
-							{assignees.map((assignee) => (
-								<Avatar
-									key={assignee.id}
-									src={assignee.avatar || undefined}
-									alt={assignee.name || "User"}
-								/>
-							))}
-						</AvatarGroup>
+						 <AvatarGroup>
+						 {assignees.map((contact) => (
+						   <Avatar
+							 key={contact.id}
+							 src={contact.thumbnail ?? undefined}
+							 alt={contact.title ?? "User"}
+						   >
+							 {contact.thumbnail ? null : contact.title?.[0] ?? "?"}
+						   </Avatar>
+						 ))}
+					   </AvatarGroup>
 					)}
 
 					<Stack direction="row" spacing={1}>

@@ -35,6 +35,7 @@ const schema = zod.object({
   description: zod.string().optional(),
   status: zod.string().min(1, "Status is required"),
   due_date: zod.string().optional(),
+  checklist_id: zod.string().optional(),
   urgency: zod.coerce.number().min(0).max(5).optional(),
   type: zod.enum(["Task", "Meeting", "Appointment", "Reminder"], {
     type: zod.enum(["Task", "Meeting", "Appointment", "Reminder"], {
@@ -50,6 +51,7 @@ const defaultValues = {
   due_date: "",
   urgency: 1,
   type: "Task",
+  checklist_id: null,
 };
 
 export function TaskCreateForm() {
@@ -67,6 +69,10 @@ export function TaskCreateForm() {
 
   const onSubmit = async (formData) => {
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+  
       const { data, error } = await supabase
         .from("task")
         .insert({
@@ -76,9 +82,12 @@ export function TaskCreateForm() {
           due_date: formData.due_date || null,
           urgency: formData.urgency,
           type: formData.type,
+          author_id: user?.id,
+          checklist_id: formData.checklist_id || null, // optional
         })
         .select()
         .single();
+  
 
       if (error || !data?.id) {
         throw new Error(error?.message || "Task creation failed");

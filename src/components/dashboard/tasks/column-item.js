@@ -22,7 +22,7 @@ export function ColumnItem({
 	onTaskCreate,
 	tasks = [],
 }) {
-	const { id, name } = column;
+	const { id, title } = column;
 
 	const morePopover = usePopover();
 
@@ -31,7 +31,7 @@ export function ColumnItem({
 			<Stack spacing={3} sx={{ flex: "0 0 auto", width: "360px" }}>
 				<Stack direction="row" spacing={2} sx={{ alignItems: "center", justifyContent: "space-between" }}>
 					<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-						<Typography variant="h6">{name}</Typography>
+						<Typography variant="h6">{title}</Typography>
 						<Chip label={tasks.length} size="small" variant="soft" />
 					</Stack>
 					<IconButton onClick={morePopover.handleOpen} ref={morePopover.anchorRef}>

@@ -21,11 +21,11 @@ import { useContactsSelection } from "./contact-selection-context";
 
 // Static tab values — can be dynamic later
 const tabs = [
-  { label: "All", value: "", count: 5 },
-  { label: "Client", value: "client", count: 2 },
-  { label: "Active", value: "active", count: 1 },
-  { label: "Team", value: "team", count: 1 },
-  { label: "Archived", value: "archived", count: 1 },
+  { label: "All", value: "" },
+  { label: "Client", value: "client" },
+  { label: "Active", value: "active" },
+  { label: "Team", value: "team",  },
+  { label: "Archived", value: "archived" },
 ];
 
 export function ContactsFilters({ filters = {}, sortDir = "desc" }) {
@@ -95,7 +95,7 @@ export function ContactsFilters({ filters = {}, sortDir = "desc" }) {
             key={tab.value}
             value={tab.value}
             label={tab.label}
-            icon={<Chip label={tab.count} size="small" variant="soft" />}
+
             iconPosition="end"
             sx={{ minHeight: "auto" }}
           />

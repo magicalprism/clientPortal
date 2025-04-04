@@ -3,7 +3,6 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import Button from "@mui/material/Button";
-import Chip from "@mui/material/Chip";
 import Divider from "@mui/material/Divider";
 import FormControl from "@mui/material/FormControl";
 import OutlinedInput from "@mui/material/OutlinedInput";
@@ -19,13 +18,12 @@ import { FilterButton, FilterPopover, useFilterContext } from "@/components/core
 import { Option } from "@/components/core/option";
 import { useTasksSelection } from "./task-selection-context";
 
-// These tab counts are static for now – consider passing dynamic counts as props
+// Static tab options
 const tabs = [
-  { label: "All", value: "", count: 5 },
-  { label: "Maintenance", value: "maintained", count: 2 },
-  { label: "Active", value: "active", count: 1 },
-  { label: "External", value: "external", count: 1 },
-  { label: "Archived", value: "archived", count: 1 },
+  { label: "Due Today", value: "today" },
+  { label: "Due Soon", value: "soon" },
+  { label: "All Upcoming", value: "all" },
+  { label: "Archived", value: "archived" },
 ];
 
 export function TasksFilters({ filters = {}, sortDir = "desc" }) {
@@ -33,6 +31,7 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
   const router = useRouter();
   const selection = useTasksSelection();
 
+  // Update URL query params
   const updateSearchParams = React.useCallback(
     (newFilters, newSortDir) => {
       const searchParams = new URLSearchParams();
@@ -54,51 +53,35 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
     [router]
   );
 
-  const handleSortChange = React.useCallback(
-    (event) => {
-      updateSearchParams(filters, event.target.value);
-    },
-    [updateSearchParams, filters]
-  );
+  const handleSortChange = (event) => {
+    updateSearchParams(filters, event.target.value);
+  };
 
-  const handleClearFilters = React.useCallback(() => {
+  const handleClearFilters = () => {
     updateSearchParams({}, sortDir);
-  }, [updateSearchParams, sortDir]);
+  };
 
-  const handleTitleChange = React.useCallback(
-    (value = "") => {
-      updateSearchParams(
-        {
-          title: value,
-          status: filters.status || "",
-        },
-        sortDir
-      );
-    },
-    [updateSearchParams, filters.status, sortDir]
-  );
-
-  const handleStatusChange = React.useCallback(
-    (value = "") => {
-      updateSearchParams(
-        {
-          title: filters.title || "",
-          status: value,
-        },
-        sortDir
-      );
-    },
-    [updateSearchParams, filters.title, sortDir]
-  );
+  const handleChange = (key, value = "") => {
+    updateSearchParams(
+      {
+        ...filters,
+        [key]: value,
+      },
+      sortDir
+    );
+  };
 
   const hasFilters = !!title || !!status;
+
+  // Ensure tab value is valid
+  const tabValue = tabs.some((tab) => tab.value === status) ? status : tabs[0].value;
 
   return (
     <div>
       <Tabs
         sx={{ px: 3 }}
-        value={status ?? ""}
-        onChange={(event, value) => handleStatusChange(value)}
+        value={tabValue}
+        onChange={(e, value) => handleChange("status", value)}
         variant="scrollable"
       >
         {tabs.map((tab) => (
@@ -106,7 +89,6 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
             key={tab.value}
             value={tab.value}
             label={tab.label}
-            icon={<Chip label={tab.count} size="small" variant="soft" />}
             iconPosition="end"
             sx={{ minHeight: "auto" }}
           />
@@ -115,29 +97,21 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
 
       <Divider />
 
-      <Stack
-        direction="row"
-        spacing={2}
-        sx={{ alignItems: "center", flexWrap: "wrap", px: 3, py: 2 }}
-      >
-        <Stack
-          direction="row"
-          spacing={2}
-          sx={{ alignItems: "center", flex: "1 1 auto", flexWrap: "wrap" }}
-        >
+      <Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap", px: 3, py: 2 }}>
+        <Stack direction="row" spacing={2} sx={{ alignItems: "center", flex: "1 1 auto", flexWrap: "wrap" }}>
           <FilterButton
             displayValue={title}
             label="Name"
-            onFilterApply={(value) => handleTitleChange(value)}
-            onFilterDelete={() => handleTitleChange()}
-            popover={<TitleFilterPopover />}
+            onFilterApply={(value) => handleChange("title", value)}
+            onFilterDelete={() => handleChange("title")}
+            popover={<TextFilterPopover label="Name" />}
             value={title}
           />
 
-          {hasFilters ? <Button onClick={handleClearFilters}>Clear filters</Button> : null}
+          {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
         </Stack>
 
-        {selection.selectedAny ? (
+        {selection.selectedAny && (
           <Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
             <Typography color="text.secondary" variant="body2">
               {selection.selected.size} selected
@@ -148,7 +122,7 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
               entityLabel="task"
             />
           </Stack>
-        ) : null}
+        )}
 
         <Select
           title="sort"
@@ -164,7 +138,8 @@ export function TasksFilters({ filters = {}, sortDir = "desc" }) {
   );
 }
 
-function TitleFilterPopover() {
+// Generic popover filter for text input
+function TextFilterPopover({ label }) {
   const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
   const [value, setValue] = React.useState("");
 
@@ -173,7 +148,7 @@ function TitleFilterPopover() {
   }, [initialValue]);
 
   return (
-    <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title="Filter by title">
+    <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title={`Filter by ${label}`}>
       <FormControl>
         <OutlinedInput
           onChange={(event) => setValue(event.target.value)}
