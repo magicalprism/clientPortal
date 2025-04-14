@@ -14,29 +14,32 @@ export default function ProjectPage() {
   const [filters, setFilters] = useState({});
   const [sortDir, setSortDir] = useState('desc');
   const [data, setData] = useState([]);
+  const [refreshFlag, setRefreshFlag] = useState(0); // ✅ trigger refresh
+
+  const refresh = () => setRefreshFlag((prev) => prev + 1); // ✅ called after delete
+
+  const fetchData = async () => {
+    let query = supabase.from(project.name).select('*');
+
+    if (filters.status) query = query.eq('status', filters.status);
+    if (filters.title) query = query.ilike('title', `%${filters.title}%`);
+
+    query = query.order('created', { ascending: sortDir === 'asc' });
+
+    const { data, error } = await query;
+
+    if (!error) {
+      const normalizedData = data.map((row) => ({
+        ...row,
+        id: row.id ?? row.uuid ?? row.project_id // ✅ normalize ID
+      }));
+      setData(normalizedData);
+    }
+  };
 
   useEffect(() => {
-    const fetchData = async () => {
-      let query = supabase.from(project.name).select('*');
-
-      if (filters.status) query = query.eq('status', filters.status);
-      if (filters.title) query = query.ilike('title', `%${filters.title}%`);
-
-      query = query.order('created', { ascending: sortDir === 'asc' });
-
-      const { data, error } = await query;
-
-      if (!error) {
-        const normalizedData = data.map((row) => ({
-          ...row,
-          id: row.id ?? row.uuid ?? row.project_id // ✅ normalize ID
-        }));
-        setData(normalizedData);
-      }
-    };
-
     fetchData();
-  }, [filters, sortDir]);
+  }, [filters, sortDir, refreshFlag]); // ✅ re-run after delete
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
@@ -51,6 +54,7 @@ export default function ProjectPage() {
           onChange={setFilters}
           sortDir={sortDir}
           onSortChange={setSortDir}
+          onDeleteSuccess={refresh} // ✅ pass to filters
         />
 
         <CollectionTable

@@ -31,7 +31,7 @@ function TextFilterPopover({ label }) {
   );
 }
 
-export function CollectionFilters({ config, filters, onChange, sortDir, onSortChange }) {
+export function CollectionFilters({ config, filters, onChange, sortDir, onSortChange, onDeleteSuccess }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const selection = useCollectionSelection();
@@ -89,7 +89,9 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
               selection={selection}
               tableName={config.name}
               entityLabel={config.label?.toLowerCase() || config.name}
+              onDeleteSuccess={onDeleteSuccess}
             />
+
           </Stack>
         )}
 

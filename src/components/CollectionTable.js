@@ -1,4 +1,3 @@
-// src/components/CollectionTable.js
 'use client';
 
 import * as React from 'react';
@@ -19,26 +18,20 @@ import {
   CheckCircle
 } from '@phosphor-icons/react';
 import dayjs from 'dayjs';
+import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 
-export const CollectionTable = ({ config, rows, selectionHook }) => {
+export const CollectionTable = ({ config, rows }) => {
   const router = useRouter();
   const supabase = createClient();
 
+  // ✅ Now using selection from context internally
   const {
     selectAll,
     selectOne,
     deselectOne,
     deselectAll,
     selected
-  } = selectionHook || {
-    selectAll: () => {},
-    selectOne: () => {},
-    deselectOne: () => {},
-    deselectAll: () => {},
-    selected: new Set()
-  };
-  
-  
+  } = useCollectionSelection();
 
   const formatCell = (row, field) => {
     const value = row[field.name];
@@ -129,11 +122,11 @@ export const CollectionTable = ({ config, rows, selectionHook }) => {
         rows={rows}
         selectable
         selected={selected}
-        onSelectAll={() => selectAll(rows.map((r) => r.id))} // ✅ fixed
+        onSelectAll={() => selectAll(rows.map((r) => r.id))}
         onDeselectAll={deselectAll}
         onSelectOne={(_, row) => selectOne(row.id)}
         onDeselectOne={(_, row) => deselectOne(row.id)}
-        />
+      />
 
       {rows.length === 0 && (
         <Box sx={{ p: 3 }}>
