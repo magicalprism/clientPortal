@@ -20,26 +20,27 @@ export default function ProjectPage() {
 
   const fetchData = async () => {
     let query = supabase.from(project.name).select('*');
-
+  
     if (filters.status) query = query.eq('status', filters.status);
     if (filters.title) query = query.ilike('title', `%${filters.title}%`);
-
+  
     query = query.order('created', { ascending: sortDir === 'asc' });
-
+  
     const { data, error } = await query;
-
+  
     if (!error) {
       const normalizedData = data.map((row) => ({
         ...row,
-        id: row.id ?? row.uuid ?? row.project_id // ✅ normalize ID
+        id: row.id ?? row.uuid ?? row.project_id
       }));
       setData(normalizedData);
     }
   };
-
+  
   useEffect(() => {
     fetchData();
-  }, [filters, sortDir, refreshFlag]); // ✅ re-run after delete
+  }, [filters, sortDir, refreshFlag]); // ✅ This now sees the correct fetchData
+  
 
   return (
     <Container maxWidth="xl" sx={{ mt: 4 }}>
