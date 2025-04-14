@@ -19,7 +19,7 @@ import {
 import { DataTable } from '@/components/core/data-table';
 import { createClient } from '@/lib/supabase/browser';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
-import { CollectionModal } from '@/components/CollectionModal'; // ✅ Import modal
+import { CollectionModal } from '@/components/CollectionModal';
 
 export const CollectionTable = ({ config, rows }) => {
   const router = useRouter();
@@ -55,7 +55,13 @@ export const CollectionTable = ({ config, rows }) => {
   }, [editId, modalType, rows]);
 
   const closeModal = () => {
-    router.push(pathname); // clears modal query
+    router.push(pathname);
+  };
+
+  const isIncludedInView = (field, view) => {
+    if (!field.includeInViews) return true;
+    if (field.includeInViews.length === 1 && field.includeInViews[0] === 'none') return false;
+    return field.includeInViews.includes(view);
   };
 
   const formatCell = (row, field) => {
@@ -153,13 +159,15 @@ export const CollectionTable = ({ config, rows }) => {
     }
   };
 
-  const columns = config.fields.map((field) => ({
-    title: field.label,
-    field: field.name,
-    width: field.width,
-    align: field.align,
-    formatter: (row) => formatCell(row, field)
-  }));
+  const columns = config.fields
+    .filter((field) => isIncludedInView(field, 'table')) // ✅ only include if allowed
+    .map((field) => ({
+      title: field.label,
+      field: field.name,
+      width: field.width,
+      align: field.align,
+      formatter: (row) => formatCell(row, field)
+    }));
 
   return (
     <>
@@ -195,10 +203,12 @@ export const CollectionTable = ({ config, rows }) => {
           onUpdate={async (id, data) => {
             await supabase.from(config.name).update(data).eq('id', id);
             closeModal();
+            window.location.reload(); // ✅ ensure refresh
           }}
           onDelete={async (id) => {
             await supabase.from(config.name).delete().eq('id', id);
             closeModal();
+            window.location.reload(); // ✅ ensure refresh
           }}
         />
       )}

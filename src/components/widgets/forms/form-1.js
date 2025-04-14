@@ -1,144 +1,177 @@
-import * as React from "react";
-import Button from "@mui/material/Button";
-import FormControl from "@mui/material/FormControl";
-import Grid from "@mui/material/Grid2";
-import InputLabel from "@mui/material/InputLabel";
-import OutlinedInput from "@mui/material/OutlinedInput";
-import Select from "@mui/material/Select";
-import Stack from "@mui/material/Stack";
-import Switch from "@mui/material/Switch";
-import Typography from "@mui/material/Typography";
+'use client';
 
-import { Option } from "@/components/core/option";
+import React from 'react';
+import {
+  Avatar,
+  Box,
+  Button,
+  Dialog,
+  DialogContent,
+  Divider,
+  IconButton,
+  Stack,
+  Tab,
+  Tabs,
+  Typography,
+  OutlinedInput
+} from '@mui/material';
+import { X as XIcon } from '@phosphor-icons/react/dist/ssr/X';
+import { Archive as ArchiveIcon } from '@phosphor-icons/react/dist/ssr/Archive';
+import { PencilSimple as PencilIcon } from '@phosphor-icons/react/dist/ssr/PencilSimple';
+import dayjs from 'dayjs';
 
-export function Form1() {
-	return (
-		<Stack spacing={2} sx={{ p: 3 }}>
-			<Grid container spacing={3}>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel required>Full name</InputLabel>
-						<OutlinedInput defaultValue="Miron Vitold" name="name" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel required>Email address</InputLabel>
-						<OutlinedInput defaultValue="miron.vitold@domain.com" name="email" type="email" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel>Phone number</InputLabel>
-						<OutlinedInput defaultValue="(425) 434-5535" name="phone" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel>Country</InputLabel>
-						<Select defaultValue="us" name="country">
-							<Option value="us">United States</Option>
-							<Option value="de">Germany</Option>
-							<Option value="es">Spain</Option>
-						</Select>
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel required>State</InputLabel>
-						<OutlinedInput defaultValue="Michigan" name="state" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel required>City</InputLabel>
-						<OutlinedInput defaultValue="Southfield" name="city" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel required>Street line 1</InputLabel>
-						<OutlinedInput defaultValue="1721 Bartlett Avenue" name="line1" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<FormControl fullWidth>
-						<InputLabel>Street line 2</InputLabel>
-						<OutlinedInput defaultValue="" name="line2" />
-					</FormControl>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<Stack spacing={1}>
-						<Typography variant="subtitle2">Email verified</Typography>
-						<Typography color="text.secondary" variant="body2">
-							Disabling this will automatically send the user a verification email
-						</Typography>
-						<Switch defaultChecked name="isVerified" />
-					</Stack>
-				</Grid>
-				<Grid
-					size={{
-						md: 6,
-						xs: 12,
-					}}
-				>
-					<Stack spacing={1}>
-						<Typography variant="subtitle2">Discounted prices</Typography>
-						<Typography color="text.secondary" variant="body2">
-							This will give the user discounted prices for all products
-						</Typography>
-						<Switch color="primary" name="hasDiscount" />
-					</Stack>
-				</Grid>
-			</Grid>
-			<div>
-				<Button variant="contained">Update contact</Button>
-			</div>
-		</Stack>
-	);
+export function CollectionModal({
+  open,
+  onClose,
+  onUpdate,
+  onDelete,
+  config,
+  record = {},
+  onRefresh
+}) {
+  const [tab, setTab] = React.useState('overview');
+  const [edit, setEdit] = React.useState(false);
+  const [values, setValues] = React.useState({});
+
+  // Update modal state on record change
+  React.useEffect(() => {
+    const initial = {};
+    config.fields.forEach((field) => {
+      initial[field.name] = record[field.name] ?? '';
+    });
+    setValues(initial);
+  }, [record, config.fields]);
+
+  const handleChange = (fieldName, value) => {
+    setValues((prev) => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleSave = async () => {
+    const updateData = {};
+
+    config.fields.forEach((field) => {
+      const { name, type, exclude } = field;
+      let value = values[name];
+
+      if (exclude || value === undefined || value === '') return;
+
+      if (type === 'date' && value) {
+        try {
+          value = dayjs(value).toISOString();
+        } catch (e) {
+          console.warn(`Invalid date for field ${name}:`, value);
+        }
+      }
+
+      if (["id", "created", "updated", "author_id"].includes(name)) return;
+
+      updateData[name] = value;
+    });
+
+    console.log('🛠 Final updateData payload:', updateData);
+    if (!Object.keys(updateData).length) return;
+
+    await onUpdate?.(record.id, updateData);
+    setEdit(false);
+
+    // Full reload fallback (temporary fix)
+    window.location.reload();
+  };
+
+  return (
+    <Dialog
+      maxWidth="sm"
+      onClose={onClose}
+      open={open}
+      sx={{
+        '& .MuiDialog-container': { justifyContent: 'flex-end' },
+        '& .MuiDialog-paper': { height: '100%', width: '100%' }
+      }}
+    >
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 0 }}>
+        <Box sx={{ flex: '0 0 auto', p: 3 }}>
+          <IconButton onClick={onClose}>
+            <XIcon />
+          </IconButton>
+        </Box>
+
+        <Divider />
+
+        <Tabs value={tab} onChange={(_, val) => setTab(val)} sx={{ px: 3 }}>
+          <Tab label="Overview" value="overview" />
+        </Tabs>
+
+        <Divider />
+
+        <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', overflowY: 'auto', p: 3 }}>
+          {tab === 'overview' && (
+            <Stack spacing={4}>
+              {edit ? (
+                <Stack spacing={2}>
+                  {config.fields.map((field) => {
+                    if (field.exclude) return null;
+
+                    return (
+                      <OutlinedInput
+                        key={field.name}
+                        value={values[field.name]}
+                        onChange={(e) => handleChange(field.name, e.target.value)}
+                        placeholder={field.label}
+                        multiline={field.type === 'textarea'}
+                        minRows={field.type === 'textarea' ? 3 : 1}
+                      />
+                    );
+                  })}
+                  <Stack direction="row" spacing={1} justifyContent="flex-end">
+                    <Button onClick={() => setEdit(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSave}>Save</Button>
+                  </Stack>
+                </Stack>
+              ) : (
+                <Stack direction="row" spacing={2} alignItems="flex-start">
+                  <Stack spacing={1} sx={{ flex: 1 }}>
+                    {config.fields.map((field) => {
+                      if (field.exclude) return null;
+                      return (
+                        <Box key={field.name}>
+                          <Typography variant="subtitle2">{field.label}</Typography>
+                          <Typography color="text.secondary" variant="body2">
+                            {values[field.name] || '—'}
+                          </Typography>
+                        </Box>
+                      );
+                    })}
+                  </Stack>
+                  <IconButton onClick={() => setEdit(true)}>
+                    <PencilIcon />
+                  </IconButton>
+                </Stack>
+              )}
+
+              {record.author && (
+                <Stack spacing={1}>
+                  <Typography variant="subtitle2">Created by</Typography>
+                  <Stack direction="row" spacing={2}>
+                    <Avatar src={record.author.avatar} />
+                    <div>
+                      <Typography variant="subtitle2">{record.author.name}</Typography>
+                      <Typography color="text.secondary" variant="body2">
+                        @{record.author.username}
+                      </Typography>
+                    </div>
+                  </Stack>
+                </Stack>
+              )}
+
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Button color="error" onClick={() => onDelete?.(record.id)} startIcon={<ArchiveIcon />}>
+                  Archive
+                </Button>
+              </Box>
+            </Stack>
+          )}
+        </Box>
+      </DialogContent>
+    </Dialog>
+  );
 }

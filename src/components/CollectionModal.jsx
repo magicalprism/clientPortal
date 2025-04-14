@@ -18,6 +18,7 @@ import {
 import { X as XIcon } from '@phosphor-icons/react/dist/ssr/X';
 import { Archive as ArchiveIcon } from '@phosphor-icons/react/dist/ssr/Archive';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react/dist/ssr/PencilSimple';
+import dayjs from 'dayjs';
 
 export function CollectionModal({
   open,
@@ -25,13 +26,19 @@ export function CollectionModal({
   onUpdate,
   onDelete,
   config,
-  record = {}
+  record = {},
+  onRefresh
 }) {
   const [tab, setTab] = React.useState('overview');
   const [edit, setEdit] = React.useState(false);
   const [values, setValues] = React.useState({});
 
-  // Update modal state on record change
+  const isIncludedInView = (field, view) => {
+    if (!field.includeInViews) return true;
+    if (field.includeInViews.length === 1 && field.includeInViews[0] === 'none') return false;
+    return field.includeInViews.includes(view);
+  };
+
   React.useEffect(() => {
     const initial = {};
     config.fields.forEach((field) => {
@@ -44,24 +51,36 @@ export function CollectionModal({
     setValues((prev) => ({ ...prev, [fieldName]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const updateData = {};
+
     config.fields.forEach((field) => {
-      const val = values[field.name];
-      if (
-        val !== undefined &&
-        field.type !== 'editButton' &&
-        field.type !== 'status' &&
-        field.type !== 'toggle'
-      ) {
-        updateData[field.name] = val;
+      const { name, type } = field;
+      let value = values[name];
+
+      if (!isIncludedInView(field, 'edit') || value === undefined || value === '') return;
+
+      if (type === 'date' && value) {
+        try {
+          value = dayjs(value).toISOString();
+        } catch (e) {
+          console.warn(`Invalid date for field ${name}:`, value);
+        }
       }
+
+      if (["id", "created", "updated", "author_id"].includes(name)) return;
+
+      updateData[name] = value;
     });
 
-    console.log('Sending updateData:', updateData);
-    if (!updateData.title) return;
-    onUpdate?.(record.id, updateData);
+    if (!Object.keys(updateData).length) return;
+
+    await onUpdate?.(record.id, updateData);
     setEdit(false);
+
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   return (
@@ -95,7 +114,7 @@ export function CollectionModal({
               {edit ? (
                 <Stack spacing={2}>
                   {config.fields.map((field) => {
-                    if (field.type === 'editButton' || field.type === 'status' || field.type === 'toggle') return null;
+                    if (!isIncludedInView(field, 'edit')) return null;
 
                     return (
                       <OutlinedInput
@@ -117,7 +136,7 @@ export function CollectionModal({
                 <Stack direction="row" spacing={2} alignItems="flex-start">
                   <Stack spacing={1} sx={{ flex: 1 }}>
                     {config.fields.map((field) => {
-                      if (field.type === 'editButton' || field.type === 'status' || field.type === 'toggle') return null;
+                      if (!isIncludedInView(field, 'modal')) return null;
                       return (
                         <Box key={field.name}>
                           <Typography variant="subtitle2">{field.label}</Typography>

@@ -15,7 +15,8 @@ export const project = {
       name: 'start_date',
       label: 'Start Date',
       width: '150px',
-      type: 'date'
+      type: 'date',
+      includeInViews: ['modal']
     },
     {
       name: 'status',
@@ -28,7 +29,8 @@ export const project = {
         label: 'Edit',
         width: '100px',
         align: 'right',
-        type: 'iconLink',
+        type: 'editButton',
+        exclude: true,
         openMode: 'page' // 👈 override, optional
       }
   ],
