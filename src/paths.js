@@ -83,6 +83,11 @@ export const paths = {
 			create: "/dashboard/companies/create",
 			details: (companiesId) => `/dashboard/companies/${companiesId}`,
 		},
+		projects: {
+			list: "/dashboard/projects",
+			create: "/dashboard/projects/create",
+			details: (projectsId) => `/dashboard/projects/${projectsId}`,
+		},
 		onboarding: {
 			list: "/dashboard/onboarding",
 			create: "/dashboard/onboarding/create",
