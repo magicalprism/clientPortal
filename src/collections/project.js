@@ -8,7 +8,8 @@ export const project = {
       name: 'title',
       label: 'Title',
       width: '250px',
-      clickable: true
+      clickable: true,
+      openMode: 'modal'
     },
     {
       name: 'start_date',
@@ -23,18 +24,13 @@ export const project = {
       type: 'status'
     },
     {
-      name: 'status_toggle',
-      label: 'Done',
-      width: '75px',
-      type: 'toggle'
-    },
-    {
-      name: 'edit',
-      label: 'Edit',
-      width: '100px',
-      align: 'right',
-      type: 'iconLink'
-    }
+        name: 'edit',
+        label: 'Edit',
+        width: '100px',
+        align: 'right',
+        type: 'iconLink',
+        openMode: 'page' // 👈 override, optional
+      }
   ],
   filters: [
     {

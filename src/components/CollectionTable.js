@@ -7,24 +7,26 @@ import {
   IconButton,
   Chip,
   Switch,
-  Link as MuiLink
 } from '@mui/material';
-import { DataTable } from '@/components/core/data-table';
-import { createClient } from '@/lib/supabase/browser';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import dayjs from 'dayjs';
 import {
   PencilSimple as PencilIcon,
   Clock,
-  CheckCircle
+  CheckCircle,
 } from '@phosphor-icons/react';
-import dayjs from 'dayjs';
+
+import { DataTable } from '@/components/core/data-table';
+import { createClient } from '@/lib/supabase/browser';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
+import { CollectionModal } from '@/components/CollectionModal'; // ✅ Import modal
 
 export const CollectionTable = ({ config, rows }) => {
   const router = useRouter();
-  const supabase = createClient();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
 
-  // ✅ Now using selection from context internally
+  const supabase = createClient();
   const {
     selectAll,
     selectOne,
@@ -33,8 +35,32 @@ export const CollectionTable = ({ config, rows }) => {
     selected
   } = useCollectionSelection();
 
+  const [selectedRecord, setSelectedRecord] = React.useState(null);
+  const [modalOpen, setModalOpen] = React.useState(false);
+
+  const editId = searchParams.get('id');
+  const modalType = searchParams.get('modal');
+
+  React.useEffect(() => {
+    if (modalType === 'edit' && editId) {
+      const row = rows.find((r) => r.id === parseInt(editId));
+      if (row) {
+        setSelectedRecord(row);
+        setModalOpen(true);
+      }
+    } else {
+      setModalOpen(false);
+      setSelectedRecord(null);
+    }
+  }, [editId, modalType, rows]);
+
+  const closeModal = () => {
+    router.push(pathname); // clears modal query
+  };
+
   const formatCell = (row, field) => {
     const value = row[field.name];
+    const mode = field.openMode || config.editMode;
 
     switch (field.type) {
       case 'date':
@@ -82,27 +108,47 @@ export const CollectionTable = ({ config, rows }) => {
       }
 
       case 'editButton':
+      case 'iconLink': {
+        const handleEditClick = () => {
+          if (mode === 'modal') {
+            router.push(`${pathname}?modal=edit&id=${row.id}`);
+          } else {
+            router.push(config.editRoute(row.id));
+          }
+        };
+
         return (
-          <IconButton
-            component={MuiLink}
-            href={config.editRoute(row.id)}
-          >
+          <IconButton onClick={handleEditClick}>
             <PencilIcon size={18} />
           </IconButton>
         );
+      }
 
       default:
         if (field.clickable) {
+          const handleClick = () => {
+            if (mode === 'modal') {
+              router.push(`${pathname}?modal=edit&id=${row.id}`);
+            } else {
+              router.push(config.editRoute(row.id));
+            }
+          };
+
           return (
-            <MuiLink
-              component="button"
-              onClick={() => router.push(config.editRoute(row.id))}
-              sx={{ cursor: 'pointer' }}
+            <Typography
+              variant="body2"
+              onClick={handleClick}
+              sx={{
+                cursor: 'pointer',
+                color: 'text.primary',
+                '&:hover': { textDecoration: 'underline' }
+              }}
             >
               {value}
-            </MuiLink>
+            </Typography>
           );
         }
+
         return value ?? '—';
     }
   };
@@ -138,6 +184,23 @@ export const CollectionTable = ({ config, rows }) => {
             No records found
           </Typography>
         </Box>
+      )}
+
+      {selectedRecord && (
+        <CollectionModal
+          open={modalOpen}
+          onClose={closeModal}
+          record={selectedRecord}
+          config={config}
+          onUpdate={async (id, data) => {
+            await supabase.from(config.name).update(data).eq('id', id);
+            closeModal();
+          }}
+          onDelete={async (id) => {
+            await supabase.from(config.name).delete().eq('id', id);
+            closeModal();
+          }}
+        />
       )}
     </>
   );
