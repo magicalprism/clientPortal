@@ -7,14 +7,12 @@ import { CollectionFilters } from '@/components/CollectionFilters';
 import { CollectionTable } from '@/components/CollectionTable';
 import { createClient } from '@/lib/supabase/browser';
 import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
-import { useCollectionSelection } from '@/components/CollectionSelectionContext';
-
 
 const supabase = createClient();
 
 export default function ProjectPage() {
   const [filters, setFilters] = useState({});
-  const [sortDir, setSortDir] = useState('desc'); // ✅ DECLARE THIS!
+  const [sortDir, setSortDir] = useState('desc');
   const [data, setData] = useState([]);
 
   useEffect(() => {
@@ -24,14 +22,17 @@ export default function ProjectPage() {
       if (filters.status) query = query.eq('status', filters.status);
       if (filters.title) query = query.ilike('title', `%${filters.title}%`);
 
-      if (sortDir === 'asc') {
-        query = query.order('created', { ascending: true });
-      } else {
-        query = query.order('created', { ascending: false });
-      }
+      query = query.order('created', { ascending: sortDir === 'asc' });
 
       const { data, error } = await query;
-      if (!error) setData(data);
+
+      if (!error) {
+        const normalizedData = data.map((row) => ({
+          ...row,
+          id: row.id ?? row.uuid ?? row.project_id // ✅ normalize ID
+        }));
+        setData(normalizedData);
+      }
     };
 
     fetchData();
@@ -55,9 +56,8 @@ export default function ProjectPage() {
         <CollectionTable
           config={project}
           rows={data}
-          selectionHook={useCollectionSelection()}
         />
-</CollectionSelectionProvider>
+      </CollectionSelectionProvider>
     </Container>
   );
 }
