@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { FieldRenderer } from '@/components/FieldRenderer';
 import {
   Typography,
   Box,
@@ -161,14 +162,23 @@ export const CollectionTable = ({ config, rows }) => {
   };
 
   const columns = config.fields
-    .filter((field) => isIncludedInView(field, 'table')) // ✅ only include if allowed
-    .map((field) => ({
-      title: field.label,
-      field: field.name,
-      width: field.width,
-      align: field.align,
-      formatter: (row) => formatCell(row, field)
-    }));
+  .filter((field) => field.showInTable === true)
+  .map((field) => ({
+    title: field.label,
+    field: field.name,
+    width: field.width,
+    align: field.align,
+    formatter: (row) =>
+      <FieldRenderer
+        value={row[field.name]}
+        field={field}
+        record={row}
+        config={config}
+        view="table"
+      />
+  }));
+
+
 
   return (
     <>

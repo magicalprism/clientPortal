@@ -2,11 +2,20 @@ export const project = {
   name: 'project',
   label: 'Projects',
   editPathPrefix: '/dashboard/project',
-  fields: [
+      //Quickview
+      quickView: {
+        enabled: true,
+        imageField: 'thumbnail',
+        titleField: 'title',
+        subtitleField: 'status',
+        descriptionField: 'site_tagline',
+        extraFields: ['url', 'cloudflare_url']
+      }, 
+  fields: [   
     // Project Info
-    { name: 'title', label: 'Title', group: 'Project Info', clickable: true, openMode: 'modal', tab: 'Overview' },
+    { name: 'title', label: 'Title', group: 'Project Info', clickable: true, openMode: 'modal', tab: 'Overview', showInTable: true },
     { name: 'slug', label: 'Slug', group: 'Project Info' },
-    { name: 'status', label: 'Status', group: 'Project Info', type: 'status' },
+    { name: 'status', label: 'Status', group: 'Project Info', type: 'status', showInTable: true },
     { name: 'start_date', label: 'Start Date', group: 'Project Info', type: 'date' },
     { name: 'created', label: 'Created', group: 'Project Info', type: 'date' },
     { name: 'updated_at', label: 'Updated At', group: 'Project Info', type: 'date' },
@@ -86,7 +95,17 @@ export const project = {
     { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean' },
 
     // Utility
-    { name: 'edit', label: 'Edit Link', group: 'Utility', type: 'text', exclude: true }
+    {
+      name: 'edit',
+      label: 'Edit',
+      width: '100px',
+      align: 'right',
+      type: 'editButton',
+      exclude: true,
+      openMode: 'page', // or 'modal'
+      showInTable: true
+    },
+    
   ],
   filters: [
     {

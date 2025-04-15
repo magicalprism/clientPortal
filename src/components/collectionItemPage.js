@@ -2,21 +2,28 @@
 
 import { useState } from 'react';
 import {
-  Box,
-  Container,
   Grid,
   Card,
   CardContent,
   Typography,
   Divider,
+  TextField,
   Tabs,
-  Tab
+  Tab,
+  CircularProgress,
+  Box
 } from '@mui/material';
+import { createClient } from '@/lib/supabase/browser';
+import { FieldRenderer } from '@/components/FieldRenderer'; // ✅ NEW: shared field renderer
 
 export const CollectionItemPage = ({ config, record }) => {
+  const supabase = createClient();
   const [activeTab, setActiveTab] = useState(0);
+  const [editingField, setEditingField] = useState(null);
+  const [tempValue, setTempValue] = useState('');
+  const [loadingField, setLoadingField] = useState(null);
+  const [localRecord, setLocalRecord] = useState(record);
 
-  // Organize fields by tab and group
   const tabsWithGroups = config.fields.reduce((acc, field) => {
     const tab = field.tab || 'General';
     const group = field.group || 'Info';
@@ -28,95 +35,98 @@ export const CollectionItemPage = ({ config, record }) => {
 
   const tabNames = Object.keys(tabsWithGroups);
 
-  return (
-    <Box sx={{ py: 4 }}>
-      <Container maxWidth="md">
-        <Tabs
-          value={activeTab}
-          onChange={(e, newValue) => setActiveTab(newValue)}
-          sx={{ mb: 3 }}
-          variant="scrollable"
-        >
-          {tabNames.map((tabName) => (
-            <Tab key={tabName} label={tabName} />
-          ))}
-        </Tabs>
+  const startEdit = (fieldName, currentValue) => {
+    setEditingField(fieldName);
+    setTempValue(currentValue ?? '');
+  };
 
-        <Grid container spacing={3}>
-          {Object.entries(tabsWithGroups[tabNames[activeTab]]).map(
-            ([groupName, fields]) => (
-              <Grid item xs={12} key={groupName}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>{groupName}</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Grid container spacing={2}>
-                      {fields.map((field) => (
+  const saveChange = async (field) => {
+    setLoadingField(field.name);
+    const { error } = await supabase
+      .from(config.name)
+      .update({ [field.name]: tempValue })
+      .eq('id', localRecord.id);
+
+    if (!error) {
+      setLocalRecord({ ...localRecord, [field.name]: tempValue });
+    }
+
+    setEditingField(null);
+    setLoadingField(null);
+  };
+
+  return (
+    <>
+      <Tabs
+        value={activeTab}
+        onChange={(e, newValue) => setActiveTab(newValue)}
+        sx={{ mb: 3 }}
+        variant="scrollable"
+      >
+        {tabNames.map((tabName) => (
+          <Tab key={tabName} label={tabName} />
+        ))}
+      </Tabs>
+
+      <Grid container spacing={3}>
+        {Object.entries(tabsWithGroups[tabNames[activeTab]]).map(
+          ([groupName, fields]) => (
+            <Grid item xs={12} key={groupName}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" gutterBottom>{groupName}</Typography>
+                  <Divider sx={{ mb: 2 }} />
+                  <Grid container spacing={2}>
+                    {fields.map((field) => {
+                      const value = localRecord[field.name];
+                      const editable = field.editable !== false;
+                      const isEditing = editingField === field.name;
+                      const isLoading = loadingField === field.name;
+
+                      return (
                         <Grid item xs={12} sm={6} key={field.name}>
                           <Typography variant="subtitle2">{field.label}</Typography>
-                          <Typography>
-                            {formatValue(record[field.name], field, record)}
-                          </Typography>
+
+                          {isEditing ? (
+                            <TextField
+                              fullWidth
+                              size="small"
+                              value={tempValue}
+                              autoFocus
+                              onChange={(e) => setTempValue(e.target.value)}
+                              onBlur={() => saveChange(field)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  saveChange(field);
+                                }
+                              }}
+                            />
+                          ) : (
+                            <Box
+                              sx={{
+                                cursor: editable ? 'pointer' : 'default',
+                                color: editable ? 'primary.main' : 'text.primary',
+                                display: 'flex',
+                                alignItems: 'center',
+                                minHeight: '32px'
+                              }}
+                              onClick={editable ? () => startEdit(field.name, value) : undefined}
+                            >
+                              {isLoading ? <CircularProgress size={16} /> : <FieldRenderer value={value} field={field} record={localRecord} />}
+                            </Box>
+
+                          )}
                         </Grid>
-                      ))}
-                    </Grid>
-                  </CardContent>
-                </Card>
-              </Grid>
-            )
-          )}
-        </Grid>
-      </Container>
-    </Box>
+                      );
+                    })}
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+          )
+        )}
+      </Grid>
+    </>
   );
-};
-
-const formatValue = (value, field, record) => {
-  if (value == null) return '—';
-
-  if (field.type === 'media') {
-    return <img src={value} alt="" style={{ maxWidth: '100%', borderRadius: 8 }} />;
-  }
-
-  if (field.type === 'link') {
-    const displayText = field.displayLabel || value;
-    return (
-      <a
-        href={value}
-        target="_blank"
-        rel="noopener noreferrer"
-        style={{ color: '#1976d2', wordBreak: 'break-word' }}
-      >
-        {displayText}
-      </a>
-    );
-  }
-  
-
-  if (typeof value === 'string' && /^https?:\/\//i.test(value)) {
-    return value;
-  }
-
-  switch (field.type) {
-    case 'relationship': {
-      const { relation } = field;
-      const label = record[`${field.name}_label`] || `ID: ${value}`;
-      const href = `${relation?.linkTo || '#'}${value ? `/${value}` : ''}`;
-      return (
-        <a href={href} style={{ textDecoration: 'none', color: '#1976d2' }}>
-          {label}
-        </a>
-      );
-    }
-    case 'date':
-      return new Date(value).toLocaleDateString();
-    case 'boolean':
-      return value ? 'Yes' : 'No';
-    case 'status':
-      return <span style={{ textTransform: 'capitalize' }}>{value}</span>;
-    case 'json':
-      return <pre style={{ fontSize: '0.85em', whiteSpace: 'pre-wrap' }}>{JSON.stringify(value, null, 2)}</pre>;
-    default:
-      return value.toString();
-  }
 };

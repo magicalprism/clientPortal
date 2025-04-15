@@ -19,6 +19,7 @@ import { X as XIcon } from '@phosphor-icons/react/dist/ssr/X';
 import { Archive as ArchiveIcon } from '@phosphor-icons/react/dist/ssr/Archive';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react/dist/ssr/PencilSimple';
 import dayjs from 'dayjs';
+import { FieldRenderer } from '@/components/FieldRenderer'; // ✅ use your shared component
 
 export function CollectionModal({
   open,
@@ -134,15 +135,17 @@ export function CollectionModal({
                 </Stack>
               ) : (
                 <Stack direction="row" spacing={2} alignItems="flex-start">
-                  <Stack spacing={1} sx={{ flex: 1 }}>
+                  <Stack spacing={2} sx={{ flex: 1 }}>
                     {config.fields.map((field) => {
                       if (!isIncludedInView(field, 'modal')) return null;
                       return (
                         <Box key={field.name}>
                           <Typography variant="subtitle2">{field.label}</Typography>
-                          <Typography color="text.secondary" variant="body2">
-                            {values[field.name] || '—'}
-                          </Typography>
+                          <FieldRenderer
+                            value={values[field.name]}
+                            field={field}
+                            record={record}
+                          />
                         </Box>
                       );
                     })}

@@ -1,10 +1,12 @@
 import * as collections from '@/collections';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
+import { QuickViewCard } from '@/components/QuickViewCard';
 import { createClient } from '@/lib/supabase/server';
+import { Box, Container, Grid } from '@mui/material';
 
 export default async function ProjectDetailPage({ params }) {
   const { projectId } = params;
-  const config = collections['project'];
+  const config = collections.project;
 
   const supabase = await createClient();
 
@@ -12,23 +14,27 @@ export default async function ProjectDetailPage({ params }) {
     .from('project')
     .select(`
       *,
-      company:company_id ( title ),
-      server:server_id ( title ),
-      domain_login:domain_login_id ( title ),
-      care_plan:care_plan_id ( title )
+      company:company_id ( title )
     `)
     .eq('id', Number(projectId))
     .single();
 
-  // ✅ Flatten relationship labels so formatValue can use them
-  if (data?.company) data.company_id_label = data.company.title;
-  if (data?.server) data.server_id_label = data.server.title;
-  if (data?.domain_login) data.domain_login_id_label = data.domain_login.title;
-  if (data?.care_plan) data.care_plan_id_label = data.care_plan.title;
-
-  if (error || !data) {
-    return <div>❌ Error loading project: {error?.message}</div>;
+  if (data?.company) {
+    data.company_id_label = data.company.title;
   }
 
-  return <CollectionItemPage config={config} record={data} />;
+  return (
+    <Box sx={{ py: 4 }}>
+      <Container maxWidth="xl">
+        <Grid container spacing={4}>
+          <Grid item xs={12} md={8}>
+            <CollectionItemPage config={config} record={data} />
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <QuickViewCard config={config} record={data} />
+          </Grid>
+        </Grid>
+      </Container>
+    </Box>
+  );
 }
