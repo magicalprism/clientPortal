@@ -1,10 +1,15 @@
-// src/app/dashboard/[collection]/[id]/page.js
+//src/app/dashboard/[collection]/[projectId]/page.js
 import * as collections from '@/collections';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
 import { createClient } from '@/lib/supabase/server';
 
 export default async function CollectionDetailPage({ params }) {
-  const { collection, projectId } = params;
+  // ❌ THIS IS THE PROBLEM:
+  // const { collection, projectId } = params;
+
+  // ✅ FIX: await params before accessing
+  const awaitedParams = await params;
+  const { collection, projectId } = awaitedParams;
 
   const config = collections[collection];
   if (!config) {
