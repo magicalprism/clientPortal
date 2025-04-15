@@ -11,7 +11,7 @@ export default async function CollectionDetailPage({ params }) {
   const awaitedParams = await params;
   const { collection, projectId } = awaitedParams;
 
-  const config = collections[collection];
+  const config = collections['project'];
   if (!config) {
     return <div>❌ Collection config not found for "{collection}"</div>;
   }

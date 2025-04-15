@@ -119,7 +119,8 @@ export const CollectionTable = ({ config, rows }) => {
           if (mode === 'modal') {
             router.push(`${pathname}?modal=edit&id=${row.id}`);
           } else {
-            router.push(config.editRoute(row.id));
+            router.push(`${config.editPathPrefix}/${row.id}`
+);
           }
         };
 

@@ -2,7 +2,7 @@
 export const project = {
   name: 'project',
   label: 'Projects',
-  editRoute: (projectId) => `/dashboard/project/${projectId}`,
+  editPathPrefix: '/dashboard/project',
   fields: [
     {
       name: 'title',
