@@ -26,12 +26,12 @@ export const dashboardConfig = {
 					matcher: { type: "startsWith", href: "/dashboard/settings" },
 				},
 				{
-					key: "projects",
+					key: "project",
 					title: "Projects",
 					icon: "folder",
 					items: [
-						{ key: "projects", title: "List projects", href: paths.dashboard.projects.list },
-						{ key: "projects:create", title: "Create Project", href: paths.dashboard.projects.create },
+						{ key: "project", title: "List projects", href: paths.dashboard.project.list },
+						{ key: "project:create", title: "Create Project", href: paths.dashboard.project.create },
 
 					],
 				},

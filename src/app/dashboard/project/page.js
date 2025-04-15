@@ -63,7 +63,7 @@ export default function ProjectPage() {
         <Button
           variant="contained"
           startIcon={<PlusIcon />}
-          onClick={() => router.push('/projects/create')}
+          onClick={() => router.push('/project/create')}
         >
           Add Project
         </Button>
