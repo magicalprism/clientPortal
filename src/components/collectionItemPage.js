@@ -1,151 +1,122 @@
 'use client';
 
-import React from 'react';
-import { createClient } from '@/lib/supabase/browser';
+import { useState } from 'react';
 import {
   Box,
-  Button,
-  IconButton,
-  Stack,
-  Typography,
-  OutlinedInput,
+  Container,
+  Grid,
   Card,
   CardContent,
-  Grid,
+  Typography,
+  Divider,
+  Tabs,
+  Tab
 } from '@mui/material';
-import { PencilSimple as PencilIcon } from '@phosphor-icons/react/dist/ssr/PencilSimple';
-import dayjs from 'dayjs';
 
-export function CollectionItemPage({ config, record = {} }) {
-  const supabase = createClient();
-  const [edit, setEdit] = React.useState(false);
-  const [values, setValues] = React.useState({});
+export const CollectionItemPage = ({ config, record }) => {
+  const [activeTab, setActiveTab] = useState(0);
 
-  const isIncludedInView = (field, view) => {
-    if (!field.includeInViews) return true;
-    if (field.includeInViews.length === 1 && field.includeInViews[0] === 'none') return false;
-    return field.includeInViews.includes(view);
-  };
+  // Organize fields by tab and group
+  const tabsWithGroups = config.fields.reduce((acc, field) => {
+    const tab = field.tab || 'General';
+    const group = field.group || 'Info';
+    if (!acc[tab]) acc[tab] = {};
+    if (!acc[tab][group]) acc[tab][group] = [];
+    acc[tab][group].push(field);
+    return acc;
+  }, {});
 
-  React.useEffect(() => {
-    const initial = {};
-    config.fields.forEach((field) => {
-      initial[field.name] = record[field.name] ?? '';
-    });
-    setValues(initial);
-  }, [record, config.fields]);
-
-  const handleChange = (fieldName, value) => {
-    setValues((prev) => ({ ...prev, [fieldName]: value }));
-  };
-
-  const handleSave = async () => {
-    const updateData = {};
-
-    config.fields.forEach((field) => {
-      const { name, type } = field;
-      let value = values[name];
-
-      if (!isIncludedInView(field, 'edit') || value === undefined || value === '') return;
-      if (type === 'date' && value) value = dayjs(value).toISOString();
-      if (["id", "created", "updated", "author_id"].includes(name)) return;
-
-      updateData[name] = value;
-    });
-
-    if (!Object.keys(updateData).length) return;
-
-    const { error } = await supabase
-      .from(config.name)
-      .update(updateData)
-      .eq('id', record.id);
-
-    if (error) {
-      console.error('Update failed:', error.message);
-    } else {
-      setEdit(false);
-      window.location.reload();
-    }
-  };
-
-  const handleDelete = async () => {
-    const { error } = await supabase
-      .from(config.name)
-      .delete()
-      .eq('id', record.id);
-
-    if (error) {
-      console.error('Delete failed:', error.message);
-    } else {
-      window.location.href = `/dashboard/${config.name}`;
-    }
-  };
-
-  const sections = config.sections || [
-    { id: 'default', title: 'Details' }
-  ];
-
-  const fieldsBySection = sections.map(section => {
-    const fields = config.fields.filter(
-      (field) => (field.section || 'default') === section.id && isIncludedInView(field, edit ? 'edit' : 'view')
-    );
-    return { ...section, fields };
-  });
+  const tabNames = Object.keys(tabsWithGroups);
 
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto', mt: 4, px: 3 }}>
-      <Stack spacing={3}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center">
-          <Typography variant="h4">{config.label} Details</Typography>
-          <IconButton onClick={() => setEdit(!edit)}>
-            <PencilIcon />
-          </IconButton>
-        </Stack>
+    <Box sx={{ py: 4 }}>
+      <Container maxWidth="md">
+        <Tabs
+          value={activeTab}
+          onChange={(e, newValue) => setActiveTab(newValue)}
+          sx={{ mb: 3 }}
+          variant="scrollable"
+        >
+          {tabNames.map((tabName) => (
+            <Tab key={tabName} label={tabName} />
+          ))}
+        </Tabs>
 
-        {fieldsBySection.map((section) => (
-          <Card key={section.id}>
-            <CardContent>
-              <Typography variant="h6" sx={{ mb: 2 }}>{section.title}</Typography>
-              <Grid container spacing={2}>
-                {section.fields.map((field) => (
-                  <Grid item xs={12} sm={6} key={field.name}>
-                    {edit ? (
-                      <OutlinedInput
-                        fullWidth
-                        value={values[field.name]}
-                        onChange={(e) => handleChange(field.name, e.target.value)}
-                        placeholder={field.label}
-                        multiline={field.type === 'textarea'}
-                        minRows={field.type === 'textarea' ? 3 : 1}
-                      />
-                    ) : (
-                      <Box>
-                        <Typography variant="subtitle2">{field.label}</Typography>
-                        <Typography color="text.secondary" variant="body2">
-                          {values[field.name] || '—'}
-                        </Typography>
-                      </Box>
-                    )}
-                  </Grid>
-                ))}
+        <Grid container spacing={3}>
+          {Object.entries(tabsWithGroups[tabNames[activeTab]]).map(
+            ([groupName, fields]) => (
+              <Grid item xs={12} key={groupName}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>{groupName}</Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    <Grid container spacing={2}>
+                      {fields.map((field) => (
+                        <Grid item xs={12} sm={6} key={field.name}>
+                          <Typography variant="subtitle2">{field.label}</Typography>
+                          <Typography>
+                            {formatValue(record[field.name], field, record)}
+                          </Typography>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  </CardContent>
+                </Card>
               </Grid>
-            </CardContent>
-          </Card>
-        ))}
-
-        {edit && (
-          <Stack direction="row" justifyContent="flex-end" spacing={2}>
-            <Button onClick={() => setEdit(false)}>Cancel</Button>
-            <Button variant="contained" onClick={handleSave}>Save</Button>
-          </Stack>
-        )}
-
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
-          <Button color="error" onClick={handleDelete}>
-            Archive
-          </Button>
-        </Box>
-      </Stack>
+            )
+          )}
+        </Grid>
+      </Container>
     </Box>
   );
-}
+};
+
+const formatValue = (value, field, record) => {
+  if (value == null) return '—';
+
+  if (field.type === 'media') {
+    return <img src={value} alt="" style={{ maxWidth: '100%', borderRadius: 8 }} />;
+  }
+
+  if (field.type === 'link') {
+    const displayText = field.displayLabel || value;
+    return (
+      <a
+        href={value}
+        target="_blank"
+        rel="noopener noreferrer"
+        style={{ color: '#1976d2', wordBreak: 'break-word' }}
+      >
+        {displayText}
+      </a>
+    );
+  }
+  
+
+  if (typeof value === 'string' && /^https?:\/\//i.test(value)) {
+    return value;
+  }
+
+  switch (field.type) {
+    case 'relationship': {
+      const { relation } = field;
+      const label = record[`${field.name}_label`] || `ID: ${value}`;
+      const href = `${relation?.linkTo || '#'}${value ? `/${value}` : ''}`;
+      return (
+        <a href={href} style={{ textDecoration: 'none', color: '#1976d2' }}>
+          {label}
+        </a>
+      );
+    }
+    case 'date':
+      return new Date(value).toLocaleDateString();
+    case 'boolean':
+      return value ? 'Yes' : 'No';
+    case 'status':
+      return <span style={{ textTransform: 'capitalize' }}>{value}</span>;
+    case 'json':
+      return <pre style={{ fontSize: '0.85em', whiteSpace: 'pre-wrap' }}>{JSON.stringify(value, null, 2)}</pre>;
+    default:
+      return value.toString();
+  }
+};
