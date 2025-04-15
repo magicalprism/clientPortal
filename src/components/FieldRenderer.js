@@ -14,6 +14,7 @@ const isIncludedInView = (field, view = 'table') => {
 };
 
 
+
 export const FieldRenderer = ({ value, field, record, config, view = 'default' }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -100,7 +101,42 @@ export const FieldRenderer = ({ value, field, record, config, view = 'default' }
       }
       
 
-    default:
-      return <Typography variant="body2">{value.toString()}</Typography>;
+      default: {
+        const isClickable = field.clickable;
+        const openMode = field.openMode || config?.openMode || 'modal';
+      
+        if (isClickable) {
+          const router = useRouter();
+          const pathname = usePathname();
+      
+          const handleClick = () => {
+            if (openMode === 'modal') {
+              router.push(`${pathname}?modal=edit&id=${record.id}`);
+            } else {
+              const href = config?.editPathPrefix
+                ? `${config.editPathPrefix}/${record.id}`
+                : `/${config?.name}/${record.id}`;
+              router.push(href);
+            }
+          };
+      
+          return (
+            <Typography
+              variant="body2"
+              onClick={handleClick}
+              sx={{
+                cursor: 'pointer',
+                color: 'primary.main',
+                '&:hover': { textDecoration: 'underline' }
+              }}
+            >
+              {value}
+            </Typography>
+          );
+        }
+      
+        return <Typography variant="body2">{value.toString()}</Typography>;
+      }
+      
   }
 };

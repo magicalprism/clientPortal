@@ -4,14 +4,14 @@ import { IconButton } from '@mui/material';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 
-export const EditButtonCell = ({ record, config, field }) => {
+export const EditButton = ({ record, config }) => {
   const router = useRouter();
   const pathname = usePathname();
 
-  const openMode = field.openMode || config?.openMode || 'page';
+  const openMode = config?.openMode || 'page';
   const href = config?.editPathPrefix
     ? `${config.editPathPrefix}/${record.id}`
-    : `/${config?.name}/${record.id}`;
+    : `/${config.name}/${record.id}`;
 
   const handleClick = () => {
     if (openMode === 'modal') {

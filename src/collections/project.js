@@ -2,6 +2,7 @@ export const project = {
   name: 'project',
   label: 'Projects',
   editPathPrefix: '/dashboard/project',
+  showEditButton: true, // ✅ just a UI toggle
       //Quickview
       quickView: {
         enabled: true,
@@ -12,38 +13,39 @@ export const project = {
         extraFields: ['url', 'cloudflare_url']
       }, 
   fields: [   
-    // Project Info
-    { name: 'title', label: 'Title', group: 'Project Info', clickable: true, openMode: 'modal', tab: 'Overview', showInTable: true },
-    { name: 'slug', label: 'Slug', group: 'Project Info' },
-    { name: 'status', label: 'Status', group: 'Project Info', type: 'status', showInTable: true },
-    { name: 'start_date', label: 'Start Date', group: 'Project Info', type: 'date' },
-    { name: 'created', label: 'Created', group: 'Project Info', type: 'date' },
-    { name: 'updated_at', label: 'Updated At', group: 'Project Info', type: 'date' },
-    { name: 'author_id', label: 'Author ID', group: 'Project Info' },
-    { name: 'parent_id', label: 'Parent ID', group: 'Project Info' },
+    // Overview
+    { 
+      name: 'title', 
+      label: 'Title', 
+      group: 'Project Info', 
+      clickable: true, 
+      openMode: 'modal', 
+      tab: 'Overview', 
+      showInTable: true 
+    },
+    { 
+      name: 'parent_id', 
+      label: 'Parent Project', 
+      group: 'Project Info' ,
+      tab: 'Overview', 
+    },
 
-    // Site Info
-    { name: 'url', label: 'URL', group: 'Site Info', type: 'url', type: 'link' },
-    { name: 'site_name', label: 'Site Name', group: 'Site Info' },
-    { name: 'site_tagline', label: 'Site Tagline', group: 'Site Info' },
-    { name: 'site_timezone', label: 'Site Timezone', group: 'Site Info' },
-    { name: 'show_on_front', label: 'Show on Front', group: 'Site Info' },
-    { name: 'admin_email', label: 'Admin Email', group: 'Site Info' },
+    
+    
+    { name: 'url', label: 'URL', group: 'Project Info', type: 'url', type: 'link', tab: 'Overview', },
 
-    // Media
-    { name: 'thumbnail', label: 'Thumbnail', group: 'Media', type: 'image', type: 'media' },
-    { name: 'screenshot', label: 'Screenshot', group: 'Media', type: 'image', type: 'media' },
+    //Site Info
+    { name: 'site_name', label: 'Site Name', group: 'Site Info', tab: 'Overview', },
+    { name: 'site_tagline', label: 'Site Tagline', group: 'Site Info', tab: 'Overview', },
+    { name: 'site_timezone', label: 'Site Timezone', group: 'Site Info', tab: 'Overview', },
+    { name: 'show_on_front', label: 'Show on Front', group: 'Site Info', tab: 'Overview', },
+    { name: 'admin_email', label: 'Admin Email', group: 'Site Info', tab: 'Overview', },
 
-    // Cloudflare
-    { name: 'cloudflare_url', label: 'Cloudflare URL', group: 'Cloudflare', type: 'link', displayLabel: 'Cloudflare Dashboard' },
-    { name: 'cloudflare_zone', label: 'Cloudflare Zone', group: 'Cloudflare' },
-    { name: 'cloudflare_account', label: 'Cloudflare Account', group: 'Cloudflare' },
-
-    // Relationships
     {
       name: 'company_id',
       label: 'Company',
-      group: 'Relationships',
+      group: 'Project Info',
+      tab: 'Overview', 
       type: 'relationship',
       relation: {
         table: 'company',
@@ -51,24 +53,66 @@ export const project = {
         linkTo: '/dashboard/company' // or dynamically derive from config
       }
     },
+  
+    
+    //TImeline
+    { 
+      name: 'start_date', 
+      label: 'Start Date', 
+      type: 'date',
+      group: 'Overview', 
+      tab: 'Timeline'
+    },
+
+    // Media
+    //Thumbnails
+    { name: 'thumbnail', label: 'Thumbnail', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
+    { name: 'screenshot', label: 'Screenshot', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
+
+    //media folders
+    //Brand board
+
+
+    //Backend
+    //Hosting
     {
       name: 'server_id',
       label: 'Server',
-      group: 'Relationships',
+      group: 'Hosting',
       type: 'relationship',
-      tab: 'Hosting',
+      tab: 'Backend',
       relation: {
         table: 'server',
         labelField: 'title',
         linkTo: '/dashboard/server'
       }
     },
+    { 
+      name: 'domain_login_id', 
+      label: 'Domain Login',
+      group: 'Hosting',
+      type: 'relationship',
+      tab: 'Backend',
+      relation: {
+        table: 'link',
+        labelField: 'title',
+        linkTo: '/dashboard/link'
+      }
+    },
+    // Cloudflare
+    { name: 'cloudflare_url', label: 'Cloudflare URL', group: 'Cloudflare', type: 'link', displayLabel: 'Cloudflare Dashboard', tab: 'Backend' },
+    { name: 'cloudflare_zone', label: 'Cloudflare Zone', group: 'Cloudflare', tab: 'Backend' },
+    { name: 'cloudflare_account', label: 'Cloudflare Account', group: 'Cloudflare', tab: 'Backend' },
+
     
+    //Deliverables
+
+    //Services
     { 
       name: 'care_plan_id', 
-      label: 'Care Plan ID', 
-      group: 'Relationships',
-      tab: 'Hosting',
+      label: 'Care Plan', 
+      group: 'Subscriptions',
+      tab: 'Deliverables',
       type: 'relationship',
       relation: {
         table: 'product',
@@ -76,36 +120,51 @@ export const project = {
         linkTo: '/dashboard/product'
       } 
     },
-    { 
-      name: 'domain_login_id', 
-      label: 'Domain Login ID',
-      group: 'Relationships',
-      type: 'relationship',
-      tab: 'Hosting',
-      relation: {
-        table: 'link',
-        labelField: 'title',
-        linkTo: '/dashboard/link'
-      }
-    },
+
+    //Proposals
+    //Contracts
+    
 
     // Content
-    { name: 'content', label: 'Content', group: 'Content' },
-    { name: 'categories', label: 'Categories', group: 'Content', type: 'json' },
-    { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean' },
+    { name: 'content', label: 'Content', group: 'Content', tab: 'Content' },
+    { name: 'categories', label: 'Categories', group: 'Content', type: 'json', tab: 'Content' },
+    { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean', tab: 'Content' },
 
-    // Utility
-    {
-      name: 'edit',
-      label: 'Edit',
-      width: '100px',
-      align: 'right',
-      type: 'editButton',
-      exclude: true,
-      openMode: 'page', // or 'modal'
-      showInTable: true
+    //Team
+    //Meta
+    { 
+      name: 'status', 
+      label: 'Status', 
+      group: 'Project Info', 
+      type: 'status', 
+      tab: 'Meta', 
+      showInTable: true 
     },
-    
+    { 
+      name: 'created', 
+      label: 'Created', 
+      type: 'date',
+      group: 'Dates', 
+      tab: 'Meta'
+    },
+    { 
+      name: 'updated_at', label: 'Updated At', type: 'date' , 
+      group: 'Dates', 
+      tab: 'Meta'
+    },
+    { 
+      name: 'author_id', 
+      label: 'Author', 
+      type: 'relationship',
+      group: 'People',
+      tab: 'Meta',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact' // or dynamically derive from config
+      }, 
+    },
+  
   ],
   filters: [
     {

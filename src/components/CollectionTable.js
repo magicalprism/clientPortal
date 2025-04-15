@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { FieldRenderer } from '@/components/FieldRenderer';
-import { EditButtonCell } from '@/components/EditButtonCell';
+import { EditButton } from '@/components/EditButton';
 import {
   Typography,
   Box,
@@ -162,28 +162,38 @@ export const CollectionTable = ({ config, rows }) => {
     }
   };
 
-  const columns = config.fields
-  .filter((field) => field.showInTable === true)
-  .map((field) => {
-    const isEditColumn = field.type === 'editButton';
-
-    return {
-      title: field.label,
-      field: field.name,
-      width: field.width,
-      align: field.align,
-      formatter: (row) =>
-        isEditColumn
-          ? <EditButtonCell record={row} config={config} field={field} />
-          : <FieldRenderer
-              value={row[field.name]}
-              field={field}
-              record={row}
-              config={config}
-              view="table"
-            />
-    };
-  });
+  const columns = [
+    ...config.fields
+      .filter(f => f.showInTable)
+      .map((field) => ({
+        title: field.label,
+        field: field.name,
+        align: field.align,
+        width: field.width,
+        formatter: (row) => (
+          <FieldRenderer
+            value={row[field.name]}
+            field={field}
+            record={row}
+            config={config}
+            view="table"
+          />
+        )
+      })),
+  
+    ...(config.showEditButton
+      ? [{
+          title: '',
+          field: 'edit',
+          align: 'right',
+          width: '50px',
+          formatter: (row) => (
+            <EditButton record={row} config={config} />
+          )
+        }]
+      : [])
+  ];
+  
 
   return (
     <>
