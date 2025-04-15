@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { FieldRenderer } from '@/components/FieldRenderer';
+import { EditButtonCell } from '@/components/EditButtonCell';
 import {
   Typography,
   Box,
@@ -163,22 +164,26 @@ export const CollectionTable = ({ config, rows }) => {
 
   const columns = config.fields
   .filter((field) => field.showInTable === true)
-  .map((field) => ({
-    title: field.label,
-    field: field.name,
-    width: field.width,
-    align: field.align,
-    formatter: (row) =>
-      <FieldRenderer
-        value={row[field.name]}
-        field={field}
-        record={row}
-        config={config}
-        view="table"
-      />
-  }));
+  .map((field) => {
+    const isEditColumn = field.type === 'editButton';
 
-
+    return {
+      title: field.label,
+      field: field.name,
+      width: field.width,
+      align: field.align,
+      formatter: (row) =>
+        isEditColumn
+          ? <EditButtonCell record={row} config={config} field={field} />
+          : <FieldRenderer
+              value={row[field.name]}
+              field={field}
+              record={row}
+              config={config}
+              view="table"
+            />
+    };
+  });
 
   return (
     <>

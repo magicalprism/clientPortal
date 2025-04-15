@@ -7,11 +7,12 @@ import { useRouter, usePathname } from 'next/navigation';
 /**
  * Helper to determine if a field should be shown in a specific view (table, modal, edit, etc.)
  */
-const isIncludedInView = (field, view) => {
+const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
   if (field.includeInViews.length === 1 && field.includeInViews[0] === 'none') return false;
   return field.includeInViews.includes(view);
 };
+
 
 export const FieldRenderer = ({ value, field, record, config, view = 'default' }) => {
   const router = useRouter();
