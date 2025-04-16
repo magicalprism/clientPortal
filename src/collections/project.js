@@ -21,7 +21,8 @@ export const project = {
       clickable: true, 
       openMode: 'modal', 
       tab: 'Overview', 
-      showInTable: true 
+      showInTable: true,
+      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
     { 
       name: 'parent_id', 
@@ -136,7 +137,7 @@ export const project = {
     { 
       name: 'status', 
       label: 'Status', 
-      group: 'Project Info', 
+      group: 'General', 
       type: 'status', 
       tab: 'Meta', 
       showInTable: true 
@@ -145,19 +146,19 @@ export const project = {
       name: 'created', 
       label: 'Created', 
       type: 'date',
-      group: 'Dates', 
+      group: 'General', 
       tab: 'Meta'
     },
     { 
       name: 'updated_at', label: 'Updated At', type: 'date' , 
-      group: 'Dates', 
+      group: 'General', 
       tab: 'Meta'
     },
     { 
       name: 'author_id', 
       label: 'Author', 
       type: 'relationship',
-      group: 'People',
+      group: 'General',
       tab: 'Meta',
       relation: {
         table: 'contact',
