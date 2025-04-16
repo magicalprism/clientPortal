@@ -15,9 +15,12 @@ import {
 } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
+import { useRouter } from 'next/navigation';
 
 export const CollectionItemPage = ({ config, record }) => {
   const supabase = createClient();
+  const router = useRouter();
+
   const [activeTab, setActiveTab] = useState(0);
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState('');
@@ -34,6 +37,7 @@ export const CollectionItemPage = ({ config, record }) => {
   }, {});
 
   const tabNames = Object.keys(tabsWithGroups);
+  const currentTabGroups = tabsWithGroups[tabNames[activeTab]];
 
   const startEdit = (fieldName, currentValue) => {
     setEditingField(fieldName);
@@ -59,9 +63,6 @@ export const CollectionItemPage = ({ config, record }) => {
     return <Typography>No fields available to display.</Typography>;
   }
 
-  const currentTabGroups = tabsWithGroups[tabNames[activeTab]];
-  if (!currentTabGroups) return null;
-
   return (
     <>
       <Tabs
@@ -80,8 +81,11 @@ export const CollectionItemPage = ({ config, record }) => {
           <Grid item xs={12} key={groupName}>
             <Card>
               <CardContent>
-                <Typography variant="h6" gutterBottom>{groupName}</Typography>
+                <Typography variant="h6" gutterBottom>
+                  {groupName}
+                </Typography>
                 <Divider sx={{ mb: 2 }} />
+
                 <Grid container spacing={2}>
                   {fields.map((field) => {
                     const value = localRecord[field.name];
@@ -89,11 +93,25 @@ export const CollectionItemPage = ({ config, record }) => {
                     const isEditing = editingField === field.name;
                     const isLoading = loadingField === field.name;
 
+                    const isBasicTextField = ![
+                      'relationship',
+                      'multiRelationship',
+                      'boolean',
+                      'status',
+                      'json',
+                      'editButton',
+                      'media',
+                      'link',
+                      'date'
+                    ].includes(field.type);
+
                     return (
                       <Grid item xs={12} sm={6} key={field.name}>
-                        <Typography variant="subtitle2">{field.label}</Typography>
+                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                          {field.label}
+                        </Typography>
 
-                        {isEditing ? (
+                        {isEditing && isBasicTextField ? (
                           <TextField
                             fullWidth
                             size="small"
@@ -111,29 +129,35 @@ export const CollectionItemPage = ({ config, record }) => {
                         ) : (
                           <Box
                             sx={{
-                              cursor: editable ? 'pointer' : 'default',
-                              color: editable ? 'primary.main' : 'text.primary',
+                              cursor: editable && isBasicTextField ? 'pointer' : 'default',
+                              color: editable && isBasicTextField ? 'primary.main' : 'text.primary',
                               display: 'flex',
                               alignItems: 'center',
-                              minHeight: '32px'
+                              minHeight: '32px',
+                              justifyContent: 'space-between'
                             }}
-                            onClick={editable ? () => startEdit(field.name, value) : undefined}
-                          >
-                            {isLoading
-                              ? <CircularProgress size={16} />
-                              : <FieldRenderer
-                              value={value}
-                              field={field}
-                              record={localRecord}
-                              config={config}
-                              view="detail"
-                              editable={editable}
-                              onChange={(fieldName, newValue) => {
-                                setTempValue(newValue);
-                                setEditingField(fieldName);
-                              }}
-                            />
+                            onClick={
+                              editable && isBasicTextField
+                                ? () => startEdit(field.name, value)
+                                : undefined
                             }
+                          >
+                            {isLoading ? (
+                              <CircularProgress size={16} />
+                            ) : (
+                              <FieldRenderer
+                                value={value}
+                                field={field}
+                                record={localRecord}
+                                config={config}
+                                view="detail"
+                                editable={!isBasicTextField && editable}
+                                onChange={(fieldName, newValue) => {
+                                  setTempValue(newValue);
+                                  setEditingField(fieldName);
+                                }}
+                              />
+                            )}
                           </Box>
                         )}
                       </Grid>

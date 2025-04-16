@@ -133,6 +133,19 @@ export const project = {
     { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean', tab: 'Content' },
 
     //Team
+    //Tasks
+    {
+      name: 'tasks',
+      label: 'Tasks',
+      type: 'multiRelationship',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task'
+      }
+    },
+    
+    
     //Meta
     { 
       name: 'status', 
