@@ -122,12 +122,18 @@ export const CollectionItemPage = ({ config, record }) => {
                             {isLoading
                               ? <CircularProgress size={16} />
                               : <FieldRenderer
-                                  value={value}
-                                  field={field}
-                                  record={localRecord}
-                                  config={config}
-                                  view="detail"
-                                />}
+                              value={value}
+                              field={field}
+                              record={localRecord}
+                              config={config}
+                              view="detail"
+                              editable={editable}
+                              onChange={(fieldName, newValue) => {
+                                setTempValue(newValue);
+                                setEditingField(fieldName);
+                              }}
+                            />
+                            }
                           </Box>
                         )}
                       </Grid>

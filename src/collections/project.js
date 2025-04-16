@@ -50,7 +50,8 @@ export const project = {
       relation: {
         table: 'company',
         labelField: 'title',
-        linkTo: '/dashboard/company' // or dynamically derive from config
+        linkTo: '/dashboard/company', // or dynamically derive from config
+        filter: { is_client: 'true' }
       }
     },
   
