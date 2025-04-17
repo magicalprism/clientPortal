@@ -138,6 +138,7 @@ export const project = {
       name: 'tasks',
       label: 'Tasks',
       type: 'multiRelationship',
+      displayMode: 'tags', 
       relation: {
         table: 'task',
         labelField: 'title',

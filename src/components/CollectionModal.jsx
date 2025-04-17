@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Avatar,
   Box,
@@ -13,13 +13,14 @@ import {
   Tab,
   Tabs,
   Typography,
-  OutlinedInput
+  TextField
 } from '@mui/material';
+import { useSearchParams } from 'next/navigation';
 import { X as XIcon } from '@phosphor-icons/react/dist/ssr/X';
 import { Archive as ArchiveIcon } from '@phosphor-icons/react/dist/ssr/Archive';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react/dist/ssr/PencilSimple';
 import dayjs from 'dayjs';
-import { FieldRenderer } from '@/components/FieldRenderer'; // ✅ use your shared component
+import { FieldRenderer } from '@/components/FieldRenderer';
 
 export function CollectionModal({
   open,
@@ -28,11 +29,16 @@ export function CollectionModal({
   onDelete,
   config,
   record = {},
-  onRefresh
+  onRefresh,
+  edit: forceEdit = false
 }) {
-  const [tab, setTab] = React.useState('overview');
-  const [edit, setEdit] = React.useState(false);
-  const [values, setValues] = React.useState({});
+  const searchParams = useSearchParams();
+  const [tab, setTab] = useState('overview');
+  const [edit, setEdit] = useState(!record?.id || forceEdit);
+  const [values, setValues] = useState({});
+
+  const refField = searchParams.get('refField');
+  const parentId = searchParams.get('id');
 
   const isIncludedInView = (field, view) => {
     if (!field.includeInViews) return true;
@@ -40,13 +46,19 @@ export function CollectionModal({
     return field.includeInViews.includes(view);
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const initial = {};
+
     config.fields.forEach((field) => {
-      initial[field.name] = record[field.name] ?? '';
+      if (field.name === refField && !record?.id) {
+        initial[field.name] = parentId;
+      } else {
+        initial[field.name] = record[field.name] ?? '';
+      }
     });
+
     setValues(initial);
-  }, [record, config.fields]);
+  }, [record, config.fields, refField, parentId]);
 
   const handleChange = (fieldName, value) => {
     setValues((prev) => ({ ...prev, [fieldName]: value }));
@@ -69,7 +81,7 @@ export function CollectionModal({
         }
       }
 
-      if (["id", "created", "updated", "author_id"].includes(name)) return;
+      if (['id', 'created', 'updated', 'author_id'].includes(name)) return;
 
       updateData[name] = value;
     });
@@ -78,10 +90,10 @@ export function CollectionModal({
 
     await onUpdate?.(record.id, updateData);
     setEdit(false);
-
+    onClose?.(); // ✅ close modal on save
     setTimeout(() => {
-      window.location.reload();
-    }, 100);
+      onRefresh?.();
+    }, 150);
   };
 
   return (
@@ -95,7 +107,12 @@ export function CollectionModal({
       }}
     >
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', minHeight: 0, p: 0 }}>
-        <Box sx={{ flex: '0 0 auto', p: 3 }}>
+        <Box sx={{ flex: '0 0 auto', p: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Typography variant="h6">
+            {edit && !record?.id
+              ? `Add New ${config?.label || config?.name}`
+              : `Edit ${config?.label || config?.name}`}
+          </Typography>
           <IconButton onClick={onClose}>
             <XIcon />
           </IconButton>
@@ -109,7 +126,7 @@ export function CollectionModal({
 
         <Divider />
 
-        <Box sx={{ display: 'flex', flex: '1 1 auto', flexDirection: 'column', overflowY: 'auto', p: 3 }}>
+        <Box sx={{ flex: '1 1 auto', overflowY: 'auto', p: 3 }}>
           {tab === 'overview' && (
             <Stack spacing={4}>
               {edit ? (
@@ -118,14 +135,18 @@ export function CollectionModal({
                     if (!isIncludedInView(field, 'edit')) return null;
 
                     return (
-                      <OutlinedInput
-                        key={field.name}
-                        value={values[field.name]}
-                        onChange={(e) => handleChange(field.name, e.target.value)}
-                        placeholder={field.label}
-                        multiline={field.type === 'textarea'}
-                        minRows={field.type === 'textarea' ? 3 : 1}
-                      />
+                      <Box key={field.name}>
+                        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{field.label}</Typography>
+                        <TextField
+                          fullWidth
+                          size="small"
+                          value={values[field.name]}
+                          onChange={(e) => handleChange(field.name, e.target.value)}
+                          placeholder={field.label}
+                          multiline={field.type === 'textarea'}
+                          minRows={field.type === 'textarea' ? 3 : 1}
+                        />
+                      </Box>
                     );
                   })}
                   <Stack direction="row" spacing={1} justifyContent="flex-end">
@@ -141,18 +162,16 @@ export function CollectionModal({
                       return (
                         <Box key={field.name}>
                           <Typography variant="subtitle2">{field.label}</Typography>
-                          <FieldRenderer
-                            value={values[field.name]}
-                            field={field}
-                            record={record}
-                          />
+                          <FieldRenderer value={values[field.name]} field={field} record={record} />
                         </Box>
                       );
                     })}
                   </Stack>
-                  <IconButton onClick={() => setEdit(true)}>
-                    <PencilIcon />
-                  </IconButton>
+                  {!edit && record.id && (
+                    <IconButton onClick={() => setEdit(true)}>
+                      <PencilIcon />
+                    </IconButton>
+                  )}
                 </Stack>
               )}
 
@@ -171,11 +190,17 @@ export function CollectionModal({
                 </Stack>
               )}
 
-              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
-                <Button color="error" onClick={() => onDelete?.(record.id)} startIcon={<ArchiveIcon />}>
-                  Archive
-                </Button>
-              </Box>
+              {record.id && (
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Button
+                    color="error"
+                    onClick={() => onDelete?.(record.id)}
+                    startIcon={<ArchiveIcon />}
+                  >
+                    Archive
+                  </Button>
+                </Box>
+              )}
             </Stack>
           )}
         </Box>

@@ -137,7 +137,13 @@ export const paths = {
 		tasks: {
 			list: "/dashboard/tasks",
 			create: "/dashboard/tasks/create",
-			details: (contactId) => `/dashboard/contacts/${contactId}`,
+			details: (taskId) => `/dashboard/tasks/${taskId}`,
+		},
+		
+		task: {
+			list: "/dashboard/task",
+			create: "/dashboard/task/create",
+			details: (taskId) => `/dashboard/task/${taskId}`,
 		},
 	},
 	pdf: { invoice: (invoiceId) => `/pdf/invoices/${invoiceId}` },

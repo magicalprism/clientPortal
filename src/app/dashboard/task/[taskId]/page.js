@@ -5,9 +5,9 @@ import { createClient } from '@/lib/supabase/server';
 import { hydrateRelationshipLabels } from '@/lib/utils/hydrateRelationshipLabels';
 import { Box, Container, Grid } from '@mui/material';
 
-export default async function ProjectDetailPage(props) {
-  const { projectId } = await props.params;
-  const config = collections.project;
+export default async function TaskDetailPage(props) {
+  const { taskId } = await props.params;
+  const config = collections.task;
   const supabase = await createClient();
 
   // 🧠 Step 1: Build dynamic relationship join string
@@ -16,33 +16,18 @@ export default async function ProjectDetailPage(props) {
     .map(field => `${field.relation.table}:${field.name} ( ${field.relation.labelField} )`)
     .join(', ');
 
-  // 🧠 Step 2: Build full select string (and add pivot relation)
-  const selectFields = relationshipJoins
-    ? `*, ${relationshipJoins}, project_task(task:task_id(id, title))`
-    : `*, project_task(task:task_id(id, title))`;
+  // 🧠 Step 2: Build full select string
+  const selectFields = relationshipJoins ? `*, ${relationshipJoins}` : '*';
 
   // ✅ Step 3: Fetch data from Supabase
   const { data, error } = await supabase
     .from(config.name)
     .select(selectFields)
-    .eq('id', Number(projectId))
+    .eq('id', Number(taskId))
     .single();
 
-  if (error || !data) {
-    console.error('❌ Error loading project:', error);
-    return <div>Error loading project.</div>;
-  }
-
-  // ✅ Step 4: Extract task IDs from pivot table
-  const taskIds = data.project_task?.map(pt => pt.task?.id).filter(Boolean) || [];
-
-  const enrichedData = {
-    ...data,
-    tasks: taskIds
-  };
-
-  // ✅ Step 5: Hydrate label fields
-  const hydrated = hydrateRelationshipLabels(enrichedData, config);
+  // ✅ Step 4: Hydrate label fields from config
+  const hydrated = hydrateRelationshipLabels(data, config);
 
   return (
     <Box sx={{ py: 4 }}>

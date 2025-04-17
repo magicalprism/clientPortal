@@ -1,24 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import {
-  Typography,
-  IconButton,
-  Select,
-  MenuItem,
-  CircularProgress,
-  FormControl,
-  Checkbox,
-  ListItemText
-} from '@mui/material';
-import {
-  PencilSimple as PencilIcon,
-  Eye,
-  Plus
-} from '@phosphor-icons/react';
+import { Typography, IconButton } from '@mui/material';
+import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/browser';
 import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
+import { RelationshipField } from '@/components/fields/RelationshipField';
 
 export const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
@@ -37,113 +24,49 @@ export const FieldRenderer = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-  const supabase = createClient();
-  const [options, setOptions] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [localValue, setLocalValue] = useState(value);
 
   useEffect(() => {
-    const loadOptions = async () => {
-      if (!['relationship', 'multiRelationship'].includes(field.type) || !editable) return;
-
-      const { table, labelField, filter = {} } = field.relation || {};
-      if (!table || !labelField) return;
-
-      setLoading(true);
-      let query = supabase.from(table).select(`id, ${labelField}`);
-      Object.entries(filter).forEach(([key, val]) => {
-        query = query.eq(key, val);
-      });
-
-      const { data } = await query;
-      if (data) {
-        setOptions(data.sort((a, b) =>
-          (a[labelField] || '').localeCompare(b[labelField] || '')
-        ));
-      }
-
-      setLoading(false);
-    };
-
-    loadOptions();
-  }, [field, editable]);
+    setLocalValue(value);
+  }, [value]);
 
   if (!isIncludedInView(field, view)) return null;
-  if (field.format) return field.format(value, field, record);
+  if (field.format) return field.format(localValue, field, record);
 
-  const createButton = !!field.relation?.linkTo && (
-    <IconButton
-      size="small"
-      sx={{ ml: 1 }}
-      onClick={() => {
-        const params = new URLSearchParams({ modal: 'create', refField: field.name });
-        router.push(`${field.relation.linkTo}?${params.toString()}`);
-      }}
-      title={`Create new ${field.label}`}
-    >
-      <Plus size={16} />
-    </IconButton>
-  );
+  const handleUpdate = (fieldName, newValue) => {
+    setLocalValue(newValue);
+    onChange(fieldName, newValue);
+  };
 
-  // === Single relationship
+  // === Relationship (single)
   if (editable && field.type === 'relationship') {
-    return loading ? (
-      <CircularProgress size={16} />
-    ) : (
-      <FormControl fullWidth size="small" sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
-        <Select
-          value={value || ''}
-          onChange={(e) => onChange(field.name, e.target.value)}
-          displayEmpty
-          sx={{ flex: 1 }}
-          renderValue={(selected) => {
-            if (!selected) return `Select ${field.label}`;
-            const selectedOption = options.find(opt => opt.id === selected);
-            return selectedOption?.[field.relation.labelField] || `ID: ${selected}`;
-          }}
-        >
-          <MenuItem value="">
-            <em>Select {field.label}</em>
-          </MenuItem>
-          {options.map((opt) => (
-            <MenuItem key={opt.id} value={opt.id}>
-              {opt[field.relation.labelField] || `ID: ${opt.id}`}
-            </MenuItem>
-          ))}
-        </Select>
-
-        {!!value && field.relation?.linkTo && (
-          <IconButton
-            size="small"
-            sx={{ ml: 1 }}
-            onClick={() => router.push(`${field.relation.linkTo}/${value}`)}
-            title={`View ${field.label}`}
-          >
-            <Eye size={16} />
-          </IconButton>
-        )}
-
-        {createButton}
-      </FormControl>
-    );
-  }
-
-  // === Multi relationship
-  if (editable && field.type === 'multiRelationship') {
     return (
-      <MultiRelationshipField
+      <RelationshipField
         field={field}
-        value={value}
-        onChange={onChange}
+        value={localValue}
+        editable={editable}
+        onChange={handleUpdate}
       />
     );
   }
 
-  // === Static views
+  // === Multi relationship (pivot table)
+  if (editable && field.type === 'multiRelationship') {
+    return (
+      <MultiRelationshipField
+        field={{ ...field, parentId: record.id }} // ✅ Pass parent project ID
+        value={localValue}
+        onChange={handleUpdate}
+      />
+    );
+  }
+
+  // === Media
   if (field.type === 'media') {
-    if (!value || value === '') return '—';
+    if (!localValue) return '—';
     return (
       <img
-        src={value || undefined}
+        src={localValue}
         alt={field.label}
         style={{ maxWidth: '100%', borderRadius: 8 }}
         onError={(e) => (e.currentTarget.style.display = 'none')}
@@ -153,16 +76,16 @@ export const FieldRenderer = ({
 
   if (field.type === 'link') {
     return (
-      <a href={value} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>
-        {field.displayLabel || value}
+      <a href={localValue} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>
+        {field.displayLabel || localValue}
       </a>
     );
   }
 
-  if (field.type === 'date') return value ? new Date(value).toLocaleDateString() : '—';
-  if (field.type === 'boolean') return value ? 'Yes' : 'No';
-  if (field.type === 'status') return <span style={{ textTransform: 'capitalize' }}>{value}</span>;
-  if (field.type === 'json') return <pre>{JSON.stringify(value, null, 2)}</pre>;
+  if (field.type === 'date') return localValue ? new Date(localValue).toLocaleDateString() : '—';
+  if (field.type === 'boolean') return localValue ? 'Yes' : 'No';
+  if (field.type === 'status') return <span style={{ textTransform: 'capitalize' }}>{localValue}</span>;
+  if (field.type === 'json') return <pre>{JSON.stringify(localValue, null, 2)}</pre>;
 
   if (field.type === 'editButton') {
     const href = config?.editPathPrefix
@@ -197,10 +120,10 @@ export const FieldRenderer = ({
         onClick={handleClick}
         sx={{ cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
       >
-        {value}
+        {localValue}
       </Typography>
     );
   }
 
-  return <Typography variant="body2">{value ?? '—'}</Typography>;
+  return <Typography variant="body2">{localValue ?? '—'}</Typography>;
 };

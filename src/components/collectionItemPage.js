@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Grid,
   Card,
@@ -15,11 +16,13 @@ import {
 } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
-import { useRouter } from 'next/navigation';
+import { CollectionModal } from '@/components/CollectionModal';
+import * as collections from '@/collections'; // ✅ for dynamic modal config
 
 export const CollectionItemPage = ({ config, record }) => {
   const supabase = createClient();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [activeTab, setActiveTab] = useState(0);
   const [editingField, setEditingField] = useState(null);
@@ -52,11 +55,33 @@ export const CollectionItemPage = ({ config, record }) => {
       .eq('id', localRecord.id);
 
     if (!error) {
-      setLocalRecord({ ...localRecord, [field.name]: tempValue });
+      setLocalRecord((prev) => ({ ...prev, [field.name]: tempValue }));
     }
 
     setEditingField(null);
     setLoadingField(null);
+  };
+
+  // ============================
+  // ✅ Modal Handling
+  // ============================
+
+  const modal = searchParams.get('modal');
+  const refField = searchParams.get('refField');
+  const isCreateModal = modal === 'create' && !!refField;
+
+  const relatedField = config.fields.find(f => f.name === refField);
+  const relatedCollectionName = relatedField?.relation?.table;
+  const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
+
+  const handleCloseModal = () => {
+    router.replace(window.location.pathname); // 👈 remove modal params
+  };
+
+  const handleRefreshAfterCreate = () => {
+    // ⚠️ Optional: Refresh the page or reload relationships
+    // You might want to re-fetch the parent `record` if needed
+    window.location.reload();
   };
 
   if (!tabNames.length) {
@@ -169,6 +194,21 @@ export const CollectionItemPage = ({ config, record }) => {
           </Grid>
         ))}
       </Grid>
+
+      {/* =================== */}
+      {/* ✅ Render Modal     */}
+      {/* =================== */}
+      {isCreateModal && relatedConfig && (
+        <CollectionModal
+          open={true}
+          onClose={handleCloseModal}
+          onRefresh={handleRefreshAfterCreate}
+          config={relatedConfig}
+          record={{}} // create mode
+          edit // 👈 force edit mode on mount
+        />
+      )}
+
     </>
   );
 };
