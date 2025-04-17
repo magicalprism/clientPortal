@@ -138,11 +138,14 @@ export const project = {
       name: 'tasks',
       label: 'Tasks',
       type: 'multiRelationship',
-      displayMode: 'tags', 
+      displayMode: 'tags',
       relation: {
         table: 'task',
         labelField: 'title',
-        linkTo: '/dashboard/task'
+        linkTo: '/dashboard/task',
+        junctionTable: 'project_task',
+        sourceKey: 'project_id',
+        targetKey: 'task_id'
       }
     },
     

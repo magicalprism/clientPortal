@@ -90,10 +90,12 @@ export function CollectionModal({
 
     await onUpdate?.(record.id, updateData);
     setEdit(false);
-    onClose?.(); // ✅ close modal on save
+
+    // ✅ Let router update first, then reload
+    onClose?.();
     setTimeout(() => {
       onRefresh?.();
-    }, 150);
+    }, 100);
   };
 
   return (
@@ -136,13 +138,12 @@ export function CollectionModal({
 
                     return (
                       <Box key={field.name}>
-                        <Typography variant="subtitle2" sx={{ mb: 0.5 }}>{field.label}</Typography>
                         <TextField
                           fullWidth
                           size="small"
+                          label={field.label}
                           value={values[field.name]}
                           onChange={(e) => handleChange(field.name, e.target.value)}
-                          placeholder={field.label}
                           multiline={field.type === 'textarea'}
                           minRows={field.type === 'textarea' ? 3 : 1}
                         />

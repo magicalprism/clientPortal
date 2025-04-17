@@ -17,18 +17,33 @@ import {
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { CollectionModal } from '@/components/CollectionModal';
-import * as collections from '@/collections'; // ✅ for dynamic modal config
+import * as collections from '@/collections';
 
 export const CollectionItemPage = ({ config, record }) => {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const modal = searchParams.get('modal');
+  const refField = searchParams.get('refField');
+  const parentId = searchParams.get('id');
+
+  const [modalOpen, setModalOpen] = useState(false);
+
+  useEffect(() => {
+    const shouldOpen = modal === 'create' && !!refField;
+    setModalOpen(shouldOpen);
+  }, [modal, refField]);
+
   const [activeTab, setActiveTab] = useState(0);
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState('');
   const [loadingField, setLoadingField] = useState(null);
   const [localRecord, setLocalRecord] = useState(record);
+
+  const relatedField = config.fields.find(f => f.name === refField);
+  const relatedCollectionName = relatedField?.relation?.table;
+  const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
 
   const tabsWithGroups = config.fields.reduce((acc, field) => {
     const tab = field.tab || 'General';
@@ -62,26 +77,60 @@ export const CollectionItemPage = ({ config, record }) => {
     setLoadingField(null);
   };
 
-  // ============================
-  // ✅ Modal Handling
-  // ============================
-
-  const modal = searchParams.get('modal');
-  const refField = searchParams.get('refField');
-  const isCreateModal = modal === 'create' && !!refField;
-
-  const relatedField = config.fields.find(f => f.name === refField);
-  const relatedCollectionName = relatedField?.relation?.table;
-  const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
-
   const handleCloseModal = () => {
-    router.replace(window.location.pathname); // 👈 remove modal params
+    setModalOpen(false);
+    const url = new URL(window.location.href);
+    url.searchParams.delete('modal');
+    url.searchParams.delete('refField');
+    url.searchParams.delete('id');
+    router.replace(url.pathname + url.search);
   };
 
-  const handleRefreshAfterCreate = () => {
-    // ⚠️ Optional: Refresh the page or reload relationships
-    // You might want to re-fetch the parent `record` if needed
-    window.location.reload();
+  const handleCreateRelated = async (_id, values) => {
+    const { data: created, error } = await supabase
+      .from(relatedConfig.name)
+      .insert(values)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('❌ Error inserting new record:', error);
+      return;
+    }
+
+    if (relatedField?.type === 'multiRelationship') {
+      const relation = relatedField.relation;
+      const junctionTable = relation?.junctionTable;
+      const sourceKey = relation?.sourceKey || `${config.name}_id`;
+      const targetKey = relation?.targetKey || `${relatedConfig.name}_id`;
+
+      if (junctionTable && sourceKey && targetKey) {
+        const pivotPayload = {
+          [sourceKey]: record?.id || Number(parentId),
+          [targetKey]: created.id
+        };
+
+        const { error: pivotError } = await supabase
+          .from(junctionTable)
+          .insert(pivotPayload);
+
+        if (pivotError) {
+          console.error('❌ Error linking pivot:', pivotError);
+          return;
+        }
+      }
+    }
+
+    // Dynamically update state instead of reloading
+    if (relatedField?.type === 'multiRelationship') {
+      const updatedList = [...(localRecord[refField] || []), created.id];
+      setLocalRecord((prev) => ({
+        ...prev,
+        [refField]: updatedList
+      }));
+    }
+
+    handleCloseModal();
   };
 
   if (!tabNames.length) {
@@ -195,20 +244,17 @@ export const CollectionItemPage = ({ config, record }) => {
         ))}
       </Grid>
 
-      {/* =================== */}
-      {/* ✅ Render Modal     */}
-      {/* =================== */}
-      {isCreateModal && relatedConfig && (
+      {modalOpen && relatedConfig && (
         <CollectionModal
-          open={true}
+          open={modalOpen}
           onClose={handleCloseModal}
-          onRefresh={handleRefreshAfterCreate}
+          onUpdate={handleCreateRelated}
+          onRefresh={() => {}}
           config={relatedConfig}
-          record={{}} // create mode
-          edit // 👈 force edit mode on mount
+          record={{}}
+          edit
         />
       )}
-
     </>
   );
 };
