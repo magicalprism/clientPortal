@@ -18,6 +18,7 @@ import {
 } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
+import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
 
 export const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
@@ -128,39 +129,12 @@ export const FieldRenderer = ({
 
   // === Multi relationship
   if (editable && field.type === 'multiRelationship') {
-  const selectedIds = Array.isArray(value) ? value : [];
-
-  return loading ? (
-    <CircularProgress size={16} />
-  ) : (
-    <FormControl fullWidth size="small">
-      <Select
-        multiple
-        value={selectedIds}
-        onChange={(e) => onChange(field.name, e.target.value)}
-        renderValue={(selected) =>
-          selected
-            .map((id) => {
-              const item = options.find((opt) => opt.id === id);
-              return item?.[field.relation.labelField] || `ID: ${id}`;
-            })
-            .join(', ')
-        }
-        MenuProps={{
-          PaperProps: { style: { maxHeight: 300 } },
-          disableAutoFocusItem: true,
-        }}
-      >
-        {options.map((opt) => (
-          <MenuItem key={opt.id} value={opt.id}>
-            <Checkbox checked={selectedIds.includes(opt.id)} />
-            <ListItemText primary={opt[field.relation.labelField] || `ID: ${opt.id}`} />
-          </MenuItem>
-        ))}
-      </Select>
-      {createButton}
-    </FormControl>
-    
+    return (
+      <MultiRelationshipField
+        field={field}
+        value={value}
+        onChange={onChange}
+      />
     );
   }
 
