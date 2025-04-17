@@ -12,11 +12,14 @@ import {
   Tabs,
   Tab,
   CircularProgress,
-  Box
+  Box,
+  IconButton
 } from '@mui/material';
+import { Plus } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { CollectionModal } from '@/components/CollectionModal';
+import { CollectionTable } from '@/components/CollectionTable';
 import * as collections from '@/collections';
 
 export const CollectionItemPage = ({ config, record }) => {
@@ -121,12 +124,17 @@ export const CollectionItemPage = ({ config, record }) => {
       }
     }
 
-    // Dynamically update state instead of reloading
     if (relatedField?.type === 'multiRelationship') {
       const updatedList = [...(localRecord[refField] || []), created.id];
+      const updatedDetails = [
+        ...(record[refField + '_details'] || []),
+        created
+      ];
+
       setLocalRecord((prev) => ({
         ...prev,
-        [refField]: updatedList
+        [refField]: updatedList,
+        [refField + '_details']: updatedDetails
       }));
     }
 
@@ -163,6 +171,44 @@ export const CollectionItemPage = ({ config, record }) => {
                 <Grid container spacing={2}>
                   {fields.map((field) => {
                     const value = localRecord[field.name];
+
+                    if (field.type === 'multiRelationship' && field.displayMode === 'table') {
+                      const relatedCfg = collections[field.relation.table];
+                      const relatedRows = (localRecord[field.name + '_details'] || []).length
+                        ? localRecord[field.name + '_details']
+                        : (localRecord[field.name] || []).map((id) => ({ id }));
+
+                      const displayConfig = field.relation.tableFields
+                        ? {
+                            ...relatedCfg,
+                            fields: relatedCfg.fields.filter(f => field.relation.tableFields.includes(f.name))
+                          }
+                        : relatedCfg;
+
+                      return (
+                        <Grid item xs={12} key={field.name}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                            <Typography variant="subtitle2">{field.label}</Typography>
+                            <IconButton
+                              onClick={() => {
+                                router.push(
+                                  `${window.location.pathname}?modal=create&refField=${field.name}&id=${record.id}`
+                                );
+                              }}
+                            >
+                              <Plus />
+                            </IconButton>
+                          </Box>
+                          <CollectionTable
+                            config={collections.task}
+                            rows={record.tasks_details} // hydrated data
+                            fieldContext={field} // passes the relationship config
+                          />
+
+                        </Grid>
+                      );
+                    }
+
                     const editable = field.editable !== false;
                     const isEditing = editingField === field.name;
                     const isLoading = loadingField === field.name;

@@ -138,16 +138,18 @@ export const project = {
       name: 'tasks',
       label: 'Tasks',
       type: 'multiRelationship',
-      displayMode: 'tags',
+      displayMode: 'table',
       relation: {
         table: 'task',
         labelField: 'title',
         linkTo: '/dashboard/task',
         junctionTable: 'project_task',
         sourceKey: 'project_id',
-        targetKey: 'task_id'
-      }
-    },
+        targetKey: 'task_id',
+        tableFields: ['title', 'status', 'assigned_id'] // 👈 control which fields show in columns
+      },
+      
+},
     
     
     //Meta
@@ -182,6 +184,21 @@ export const project = {
         labelField: 'title',
         linkTo: '/dashboard/contact' // or dynamically derive from config
       }, 
+    },
+
+    {
+      name: 'tags',
+      label: 'Tags',
+      type: 'multiRelationship',
+      displayMode: 'tags',
+      relation: {
+        table: 'category',
+        labelField: 'title',
+        linkTo: '/dashboard/category',
+        junctionTable: 'project_category',
+        sourceKey: 'project_id',
+        targetKey: 'category_id'
+      }
     },
   
   ],
