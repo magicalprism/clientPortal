@@ -54,11 +54,9 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     router.push(pathname);
   };
 
-  // ✅ DEBUG: Log collection name and all field names
   console.log('🧠 [CollectionTable] Using config for:', config.name);
   console.log('🧠 Available fields:', config.fields.map(f => f.name));
 
-  // ✅ Choose table fields: from relation config or default `showInTable`
   const tableFieldNames = fieldContext?.relation?.tableFields;
 
   let collectionFields = [];
@@ -67,13 +65,11 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     collectionFields = config.fields.filter((f) => tableFieldNames.includes(f.name));
     console.log('✅ Using tableFields from fieldContext:', tableFieldNames);
   } else {
-    // fallback to fields with showInTable, or default to title/status/id
     collectionFields = config.fields.filter((f) =>
       f.showInTable || ['title', 'status', 'id'].includes(f.name)
     );
 
     if (!collectionFields.length && config.fields.length) {
-      // if still nothing, pick the first 3 fields as last-resort fallback
       collectionFields = config.fields.slice(0, 3);
     }
 
@@ -87,7 +83,6 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     width: field.width,
     formatter: (row) => {
       const value = row[field.name];
-      console.log(`🧩 Row[${field.name}] =`, value);
       return (
         <FieldRenderer
           value={value}

@@ -13,32 +13,29 @@ import {
   Tab,
   CircularProgress,
   Box,
-  IconButton
+  IconButton,
+  useMediaQuery
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import { Plus } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { CollectionModal } from '@/components/CollectionModal';
-import { CollectionTable } from '@/components/CollectionTable';
+import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import * as collections from '@/collections';
 
-
-export const CollectionItemPage = ({ config, record }) => {
+export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const supabase = createClient();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const theme = useTheme();
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   const modal = searchParams.get('modal');
   const refField = searchParams.get('refField');
   const parentId = searchParams.get('id');
 
   const [modalOpen, setModalOpen] = useState(false);
-
-  useEffect(() => {
-    const shouldOpen = modal === 'create' && !!refField;
-    setModalOpen(shouldOpen);
-  }, [modal, refField]);
-
   const [activeTab, setActiveTab] = useState(0);
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState('');
@@ -48,6 +45,11 @@ export const CollectionItemPage = ({ config, record }) => {
   const relatedField = config.fields.find(f => f.name === refField);
   const relatedCollectionName = relatedField?.relation?.table;
   const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
+
+  useEffect(() => {
+    const shouldOpen = modal === 'create' && !!refField;
+    setModalOpen(shouldOpen);
+  }, [modal, refField]);
 
   const tabsWithGroups = config.fields.reduce((acc, field) => {
     const tab = field.tab || 'General';
@@ -102,42 +104,38 @@ export const CollectionItemPage = ({ config, record }) => {
       return;
     }
 
-    if (relatedField?.type === 'multiRelationship') {
-      const relation = relatedField.relation;
-      const junctionTable = relation?.junctionTable;
-      const sourceKey = relation?.sourceKey || `${config.name}_id`;
-      const targetKey = relation?.targetKey || `${relatedConfig.name}_id`;
+    const relation = relatedField?.relation;
+    const junctionTable = relation?.junctionTable;
+    const sourceKey = relation?.sourceKey || `${config.name}_id`;
+    const targetKey = relation?.targetKey || `${relatedConfig.name}_id`;
 
-      if (junctionTable && sourceKey && targetKey) {
-        const pivotPayload = {
-          [sourceKey]: record?.id || Number(parentId),
-          [targetKey]: created.id
-        };
+    if (junctionTable && sourceKey && targetKey) {
+      const pivotPayload = {
+        [sourceKey]: record?.id || Number(parentId),
+        [targetKey]: created.id
+      };
 
-        const { error: pivotError } = await supabase
-          .from(junctionTable)
-          .insert(pivotPayload);
+      const { error: pivotError } = await supabase
+        .from(junctionTable)
+        .insert(pivotPayload);
 
-        if (pivotError) {
-          console.error('❌ Error linking pivot:', pivotError);
-          return;
-        }
+      if (pivotError) {
+        console.error('❌ Error linking pivot:', pivotError);
+        return;
       }
     }
 
-    if (relatedField?.type === 'multiRelationship') {
-      const updatedList = [...(localRecord[refField] || []), created.id];
-      const updatedDetails = [
-        ...(record[refField + '_details'] || []),
-        created
-      ];
+    const updatedList = [...(localRecord[refField] || []), created.id];
+    const updatedDetails = [
+      ...(record[refField + '_details'] || []),
+      created
+    ];
 
-      setLocalRecord((prev) => ({
-        ...prev,
-        [refField]: updatedList,
-        [refField + '_details']: updatedDetails
-      }));
-    }
+    setLocalRecord((prev) => ({
+      ...prev,
+      [refField]: updatedList,
+      [refField + '_details']: updatedDetails
+    }));
 
     handleCloseModal();
   };
@@ -164,7 +162,7 @@ export const CollectionItemPage = ({ config, record }) => {
           <Grid item xs={12} key={groupName}>
             <Card>
               <CardContent>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" fontWeight="bold" gutterBottom>
                   {groupName}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
@@ -174,17 +172,10 @@ export const CollectionItemPage = ({ config, record }) => {
                     const value = localRecord[field.name];
 
                     if (field.type === 'multiRelationship' && field.displayMode === 'table') {
-                      const relatedCfg = collections[field.relation.table];
-                      const relatedRows = (localRecord[field.name + '_details'] || []).length
-                        ? localRecord[field.name + '_details']
-                        : (localRecord[field.name] || []).map((id) => ({ id }));
-
-                      const displayConfig = field.relation.tableFields
-                        ? {
-                            ...relatedCfg,
-                            fields: relatedCfg.fields.filter(f => field.relation.tableFields.includes(f.name))
-                          }
-                        : relatedCfg;
+                      const relatedRows = (localRecord?.[field.name + '_details'] ??
+                        (Array.isArray(localRecord?.[field.name])
+                          ? localRecord[field.name].map((id) => ({ id }))
+                          : []));
 
                       return (
                         <Grid item xs={12} key={field.name}>
@@ -200,20 +191,12 @@ export const CollectionItemPage = ({ config, record }) => {
                               <Plus />
                             </IconButton>
                           </Box>
-                          <CollectionTable
-                            config={{
-                              ...collections[field.relation.table],
-                              showEditButton: false // ✅ disable pencil icon for mini tables
-                            }}
-                            rows={
-                              localRecord[field.name + '_details'] ||
-                              (localRecord[field.name] || []).map((id) => ({ id }))
-                            }
-                            fieldContext={field}
-                            />
-
-
-
+                          <MiniCollectionTable
+                            field={field}
+                            config={collections[field.relation.table]}
+                            rows={relatedRows}
+                            parentId={record.id}
+                          />
                         </Grid>
                       );
                     }
@@ -234,8 +217,10 @@ export const CollectionItemPage = ({ config, record }) => {
                       'date'
                     ].includes(field.type);
 
+                    const isTwoColumn = !isModal && !isSmallScreen;
+
                     return (
-                      <Grid item xs={12} sm={6} key={field.name}>
+                      <Grid item xs={12} sm={isTwoColumn ? 6 : 12} key={field.name}>
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
                           {field.label}
                         </Typography>

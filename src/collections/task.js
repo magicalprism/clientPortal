@@ -2,6 +2,7 @@ export const task = {
   name: 'task',
   label: 'Tasks',
   editPathPrefix: '/dashboard/task',
+  subtitleField: 'title',
   showEditButton: true, // ✅ just a UI toggle
       //Quickview
       quickView: {
@@ -14,15 +15,20 @@ export const task = {
     // Overview
     { 
       name: 'title', 
-      label: 'Title', 
-      group: 'Project Info', 
+      label: 'Task Name', 
+      group: 'Primary', 
+      tab: 'Details',
       clickable: true, 
-      openMode: 'modal', 
-      tab: 'Overview', 
+      openMode: 'modal',  
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
-    { name: 'assigned_id', label: 'Assigned To', type: 'relationship', relation: {
+    { name: 'assigned_id', 
+      label: 'Assigned To', 
+      type: 'relationship', 
+      group: 'Primary', 
+      tab: 'Details',
+      relation: {
       table: 'contact',
       labelField: 'title',
       linkTo: '/dashboard/contact'
@@ -33,6 +39,8 @@ export const task = {
     //Meta
     { 
       name: 'status', 
+      group: 'Primary', 
+      tab: 'Details',
       label: 'Status', 
       group: 'General', 
       type: 'status', 

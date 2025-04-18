@@ -6,6 +6,8 @@ import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
 import { RelationshipField } from '@/components/fields/RelationshipField';
+import { LinkField } from '@/components/fields/LinkField';
+
 
 export const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
@@ -74,13 +76,11 @@ export const FieldRenderer = ({
     );
   }
 
+  // Link
   if (field.type === 'link') {
-    return (
-      <a href={localValue} target="_blank" rel="noopener noreferrer" style={{ color: '#1976d2' }}>
-        {field.displayLabel || localValue}
-      </a>
-    );
+    return <LinkField value={localValue} field={field} record={record} />;
   }
+  
 
   if (field.type === 'date') return localValue ? new Date(localValue).toLocaleDateString() : '—';
   if (field.type === 'boolean') return localValue ? 'Yes' : 'No';

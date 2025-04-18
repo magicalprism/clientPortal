@@ -3,6 +3,7 @@ export const project = {
   label: 'Projects',
   editPathPrefix: '/dashboard/project',
   showEditButton: true, // ✅ just a UI toggle
+  subtitleField: 'title',
       //Quickview
       quickView: {
         enabled: true,
@@ -146,10 +147,27 @@ export const project = {
         junctionTable: 'project_task',
         sourceKey: 'project_id',
         targetKey: 'task_id',
-        tableFields: ['title', 'status', 'assigned_id'] // 👈 control which fields show in columns
-      },
-      
-},
+        tableFields: ['title', 'status', 'assigned_id'],
+        filters: [
+          {
+            name: 'status',
+            type: 'select',
+            label: 'Status',
+            options: ['todo', 'in-progress', 'done']
+          },
+          {
+            name: 'assigned_id',
+            type: 'relationship',
+            label: 'Assigned To',
+            relation: {
+              table: 'contact',
+              labelField: 'title'
+            }
+          }
+        ]
+      }
+    },
+    
     
     
     //Meta
@@ -211,8 +229,14 @@ export const project = {
     },
     {
       name: 'company_id',
-      type: 'number',
-      label: 'Company ID'
+      type: 'relationship',
+      label: 'Company',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        filter: { is_client: true } // optional: filters options
+      }
     }
+    
   ]
 };

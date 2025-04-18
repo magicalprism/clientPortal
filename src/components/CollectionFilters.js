@@ -1,32 +1,101 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Tabs, Tab, Divider, Stack, Button, Typography, Select, MenuItem
+  Tabs, Tab, Divider, Stack, Button, Typography, Select, MenuItem, TextField
 } from '@mui/material';
 import { FilterButton, FilterPopover, useFilterContext } from '@/components/core/filter-button';
 import { Option } from '@/components/core/option';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { DeleteSelectedButton } from '@/components/core/delete-selected-button';
+import { createClient } from '@/lib/supabase/browser';
 
+const supabase = createClient();
 
-function TextFilterPopover({ label }) {
+function FilterPopoverContent({ filter, value, setValue }) {
+  const [options, setOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      if (filter.type === 'relationship' && filter.relation?.table && filter.relation?.labelField) {
+        let query = supabase.from(filter.relation.table).select(`id, ${filter.relation.labelField}`);
+        const relationFilter = filter.relation.filter || {};
+        Object.entries(relationFilter).forEach(([key, val]) => {
+          query = query.eq(key, val);
+        });
+
+        const { data, error } = await query;
+        if (!error && data) {
+          setOptions(data);
+        }
+      }
+    };
+
+    fetchOptions();
+  }, [filter]);
+
+  if (filter.type === 'relationship' && options.length) {
+    return (
+      <Select
+        fullWidth
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        displayEmpty
+        size="small"
+      >
+        <MenuItem value="">All</MenuItem>
+        {options.map((opt) => (
+          <MenuItem key={opt.id} value={opt.id}>
+            {opt[filter.relation.labelField] || `Untitled (${opt.id})`}
+          </MenuItem>
+        ))}
+      </Select>
+    );
+  }
+
+  if (filter.options) {
+    return (
+      <Select
+        fullWidth
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        displayEmpty
+        size="small"
+      >
+        <MenuItem key="all" value="">All</MenuItem>
+        {filter.options.map(opt => (
+          <MenuItem key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</MenuItem>
+        ))}
+      </Select>
+    );
+  }
+
+  return (
+    <TextField
+      fullWidth
+      size="small"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      placeholder={`Filter by ${filter.label}`}
+    />
+  );
+}
+
+function TextFilterPopover({ label, filter }) {
   const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
-  const [value, setValue] = React.useState('');
+  const [value, setValue] = useState('');
 
-  React.useEffect(() => {
+  useEffect(() => {
     setValue(initialValue ?? '');
   }, [initialValue]);
 
   return (
     <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title={`Filter by ${label}`}>
-      <input
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyUp={(e) => e.key === 'Enter' && onApply(value)}
-      />
-      <Button onClick={() => onApply(value)} variant="contained">Apply</Button>
+      <Stack spacing={2}>
+        <FilterPopoverContent filter={filter} value={value} setValue={setValue} />
+        <Button variant="contained" onClick={() => onApply(value)}>Apply</Button>
+      </Stack>
     </FilterPopover>
   );
 }
@@ -40,8 +109,8 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
     onChange({});
   };
 
-  const tabFilter = config.filters.find((f) => f.type === 'tab');
-  const otherFilters = config.filters.filter((f) => f.type !== 'tab');
+  const tabFilter = config.filters?.find((f) => f.type === 'tab');
+  const otherFilters = (config.filters || []).filter((f) => f.type !== 'tab');
   const hasFilters = Object.values(filters).some(Boolean);
   const tabValue = filters[tabFilter?.name] ?? tabFilter?.options?.[0]?.value ?? '';
 
@@ -73,7 +142,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
               value={filters[filter.name]}
               onFilterApply={(value) => onChange({ ...filters, [filter.name]: value })}
               onFilterDelete={() => onChange({ ...filters, [filter.name]: '' })}
-              popover={<TextFilterPopover label={filter.label} />}
+              popover={<TextFilterPopover label={filter.label} filter={filter} />}
             />
           ))}
 
@@ -91,7 +160,6 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
               entityLabel={config.label?.toLowerCase() || config.name}
               onDeleteSuccess={onDeleteSuccess}
             />
-
           </Stack>
         )}
 
@@ -110,7 +178,6 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
           </Select>
         )}
       </Stack>
-
     </div>
   );
 }
