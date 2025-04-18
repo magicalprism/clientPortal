@@ -34,15 +34,18 @@ export default async function ProjectDetailPage(props) {
   }
 
   // ✅ Step 4: Extract task IDs from pivot table
-  const taskIds = data.project_task?.map(pt => pt.task?.id).filter(Boolean) || [];
+  const taskObjects = data.project_task?.map(pt => pt.task).filter(Boolean) || [];
 
-  const enrichedData = {
-    ...data,
-    tasks: taskIds
-  };
+      const enrichedData = {
+        ...data,
+        tasks: taskObjects
+      };
 
-  // ✅ Step 5: Hydrate label fields
+        // ✅ Step 5: Hydrate label fields
   const hydrated = hydrateRelationshipLabels(enrichedData, config);
+
+      console.log('✅ enrichedData.tasks:', enrichedData.tasks);
+console.log('✅ hydrated.tasks_details:', hydrated.tasks_details);
 
   return (
     <Box sx={{ py: 4 }}>

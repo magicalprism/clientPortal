@@ -104,26 +104,26 @@ export const FieldRenderer = ({
     );
   }
 
-  if (field.clickable) {
-    const href = config?.editPathPrefix
-      ? `${config.editPathPrefix}/${record.id}`
-      : `/${config?.name}/${record.id}`;
+  if ((field.clickable || field.name === 'title') && view === 'table') {
     const handleClick = () => {
-      router.push(config?.openMode === 'modal'
-        ? `${pathname}?modal=edit&id=${record.id}`
-        : href
-      );
+      router.push(`${pathname}?modal=edit&id=${record.id}`);
     };
+  
     return (
       <Typography
         variant="body2"
         onClick={handleClick}
-        sx={{ cursor: 'pointer', color: 'primary.main', '&:hover': { textDecoration: 'underline' } }}
+        sx={{
+          cursor: 'pointer',
+          color: 'primary.main',
+          '&:hover': { textDecoration: 'underline' }
+        }}
       >
-        {localValue}
+        {localValue || '—'}
       </Typography>
     );
   }
+  
 
   return <Typography variant="body2">{localValue ?? '—'}</Typography>;
 };

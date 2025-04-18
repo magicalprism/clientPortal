@@ -22,6 +22,7 @@ import { CollectionModal } from '@/components/CollectionModal';
 import { CollectionTable } from '@/components/CollectionTable';
 import * as collections from '@/collections';
 
+
 export const CollectionItemPage = ({ config, record }) => {
   const supabase = createClient();
   const router = useRouter();
@@ -200,10 +201,18 @@ export const CollectionItemPage = ({ config, record }) => {
                             </IconButton>
                           </Box>
                           <CollectionTable
-                            config={collections.task}
-                            rows={record.tasks_details} // hydrated data
-                            fieldContext={field} // passes the relationship config
-                          />
+                            config={{
+                              ...collections[field.relation.table],
+                              showEditButton: false // ✅ disable pencil icon for mini tables
+                            }}
+                            rows={
+                              localRecord[field.name + '_details'] ||
+                              (localRecord[field.name] || []).map((id) => ({ id }))
+                            }
+                            fieldContext={field}
+                            />
+
+
 
                         </Grid>
                       );

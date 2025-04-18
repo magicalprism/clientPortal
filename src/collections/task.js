@@ -22,6 +22,11 @@ export const task = {
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
+    { name: 'assigned_id', label: 'Assigned To', type: 'relationship', relation: {
+      table: 'contact',
+      labelField: 'title',
+      linkTo: '/dashboard/contact'
+    }},
   
     
     

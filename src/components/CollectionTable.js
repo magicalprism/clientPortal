@@ -7,16 +7,8 @@ import {
   Typography,
   Box,
   IconButton,
-  Chip,
-  Switch,
 } from '@mui/material';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import dayjs from 'dayjs';
-import {
-  PencilSimple as PencilIcon,
-  Clock,
-  CheckCircle,
-} from '@phosphor-icons/react';
 
 import { DataTable } from '@/components/core/data-table';
 import { createClient } from '@/lib/supabase/browser';
@@ -62,26 +54,50 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     router.push(pathname);
   };
 
+  // ✅ DEBUG: Log collection name and all field names
+  console.log('🧠 [CollectionTable] Using config for:', config.name);
+  console.log('🧠 Available fields:', config.fields.map(f => f.name));
+
   // ✅ Choose table fields: from relation config or default `showInTable`
   const tableFieldNames = fieldContext?.relation?.tableFields;
-  const collectionFields = tableFieldNames
-    ? config.fields.filter((f) => tableFieldNames.includes(f.name))
-    : config.fields.filter((f) => f.showInTable);
+
+  let collectionFields = [];
+
+  if (tableFieldNames?.length) {
+    collectionFields = config.fields.filter((f) => tableFieldNames.includes(f.name));
+    console.log('✅ Using tableFields from fieldContext:', tableFieldNames);
+  } else {
+    // fallback to fields with showInTable, or default to title/status/id
+    collectionFields = config.fields.filter((f) =>
+      f.showInTable || ['title', 'status', 'id'].includes(f.name)
+    );
+
+    if (!collectionFields.length && config.fields.length) {
+      // if still nothing, pick the first 3 fields as last-resort fallback
+      collectionFields = config.fields.slice(0, 3);
+    }
+
+    console.log('⚠️ No tableFields found – fallback fields used:', collectionFields.map(f => f.name));
+  }
 
   const columns = collectionFields.map((field) => ({
-    title: field.label,
+    title: field.label || field.name,
     field: field.name,
     align: field.align,
     width: field.width,
-    formatter: (row) => (
-      <FieldRenderer
-        value={row[field.name]}
-        field={field}
-        record={row}
-        config={config}
-        view="table"
-      />
-    )
+    formatter: (row) => {
+      const value = row[field.name];
+      console.log(`🧩 Row[${field.name}] =`, value);
+      return (
+        <FieldRenderer
+          value={value}
+          field={field}
+          record={row}
+          config={config}
+          view="table"
+        />
+      );
+    }
   }));
 
   if (config.showEditButton) {
