@@ -20,7 +20,7 @@ export const project = {
       label: 'Title', 
       group: 'Project Info', 
       clickable: true, 
-      openMode: 'modal', 
+      openMode: 'full', 
       tab: 'Overview', 
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
@@ -39,7 +39,13 @@ export const project = {
     //Site Info
     { name: 'site_name', label: 'Site Name', group: 'Site Info', tab: 'Overview', },
     { name: 'site_tagline', label: 'Site Tagline', group: 'Site Info', tab: 'Overview', },
-    { name: 'site_timezone', label: 'Site Timezone', group: 'Site Info', tab: 'Overview', },
+    { 
+      name: 'site_timezone', 
+      label: 'Site Timezone', 
+      group: 'Site Info', 
+      tab: 'Overview', 
+      type: 'timezone',
+    },
     { name: 'show_on_front', label: 'Show on Front', group: 'Site Info', tab: 'Overview', },
     { name: 'admin_email', label: 'Admin Email', group: 'Site Info', tab: 'Overview', },
 
@@ -103,7 +109,7 @@ export const project = {
       }
     },
     // Cloudflare
-    { name: 'cloudflare_url', label: 'Cloudflare URL', group: 'Cloudflare', type: 'link', displayLabel: 'Cloudflare Dashboard', tab: 'Backend' },
+    { name: 'cloudflare_url', label: 'Cloudflare URL', group: 'Cloudflare', type: 'link', displayLabel: 'https://dash.cloudflare.com...', tab: 'Backend' },
     { name: 'cloudflare_zone', label: 'Cloudflare Zone', group: 'Cloudflare', tab: 'Backend' },
     { name: 'cloudflare_account', label: 'Cloudflare Account', group: 'Cloudflare', tab: 'Backend' },
 

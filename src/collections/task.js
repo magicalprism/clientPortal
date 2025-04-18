@@ -34,7 +34,14 @@ export const task = {
       linkTo: '/dashboard/contact'
     }},
   
-    
+    {
+      name: 'content',
+      label: 'Description',
+      type: 'richText',
+      group: 'Primary', 
+      tab: 'Details',
+
+    },
     
     //Meta
     { 

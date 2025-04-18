@@ -1,29 +1,28 @@
 'use client';
 
 import { ArrowSquareOut } from '@phosphor-icons/react';
+import { Typography, IconButton, Tooltip } from '@mui/material';
 
 export const LinkField = ({ value, field }) => {
   if (!value) return '—';
 
-  // If displayLabel is a string, use it; otherwise fallback to the actual URL
   const label = typeof field.displayLabel === 'string' ? field.displayLabel : value;
 
   return (
-    <a
-      href={value}
-      target="_blank"
-      rel="noopener noreferrer"
-      style={{
-        color: '#1976d2',
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: '4px',
-        wordBreak: 'break-word',
-        textDecoration: 'none',
-      }}
-    >
-      {label}
-      <ArrowSquareOut size={14} />
-    </a>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+      <Typography variant="body2" color="text.primary" noWrap>
+        {label}
+      </Typography>
+      <Tooltip title="Open link" arrow>
+        <IconButton
+          href={value}
+          target="_blank"
+          rel="noopener noreferrer"
+          size="small"
+        >
+          <ArrowSquareOut size={16} />
+        </IconButton>
+      </Tooltip>
+    </div>
   );
 };

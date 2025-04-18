@@ -78,10 +78,10 @@ export const paths = {
 			create: "/dashboard/contacts/create",
 			details: (contactId) => `/dashboard/contacts/${contactId}`,
 		},
-		companies: {
-			list: "/dashboard/companies",
-			create: "/dashboard/companies/create",
-			details: (companiesId) => `/dashboard/companies/${companiesId}`,
+		company: {
+			list: "/dashboard/company",
+			create: "/dashboard/company/create",
+			details: (companyId) => `/dashboard/company/${companyId}`,
 		},
 		project: {
 			list: "/dashboard/project",

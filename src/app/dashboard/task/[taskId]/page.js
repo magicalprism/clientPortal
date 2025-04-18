@@ -7,26 +7,35 @@ import { Box, Container, Grid } from '@mui/material';
 
 export default async function TaskDetailPage(props) {
   const { taskId } = await props.params;
-  const config = collections.task;
-  const supabase = await createClient();
+    const config = collections.task;
+    const supabase = await createClient();
 
-  // 🧠 Step 1: Build dynamic relationship join string
+  // Build dynamic relationship join string
   const relationshipJoins = config.fields
-    .filter(field => field.type === 'relationship' && field.relation?.table && field.relation?.labelField)
-    .map(field => `${field.relation.table}:${field.name} ( ${field.relation.labelField} )`)
-    .join(', ');
+  .filter(field => field.type === 'relationship' && field.relation?.table && field.relation?.labelField)
+  .map(field => {
+    // Supabase expects: fieldName ( labelField )
+    return `${field.name} ( ${field.relation.labelField} )`;
+  })
+  .join(', ');
 
-  // 🧠 Step 2: Build full select string
+
+  // Build full select string
   const selectFields = relationshipJoins ? `*, ${relationshipJoins}` : '*';
 
-  // ✅ Step 3: Fetch data from Supabase
+  // Fetch data from Supabase
   const { data, error } = await supabase
     .from(config.name)
     .select(selectFields)
     .eq('id', Number(taskId))
     .single();
 
-  // ✅ Step 4: Hydrate label fields from config
+  if (error || !data) {
+    console.error('❌ Error loading task:', error);
+    return <div>Error loading task.</div>;
+  }
+
+  // Hydrate label fields
   const hydrated = hydrateRelationshipLabels(data, config);
 
   return (

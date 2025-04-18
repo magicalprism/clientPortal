@@ -1,19 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { FieldRenderer } from '@/components/FieldRenderer';
-import { EditButton } from '@/components/EditButton';
 import {
   Typography,
   Box,
-  IconButton,
+  IconButton
 } from '@mui/material';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { Eye, CornersOut } from '@phosphor-icons/react'; // ✅ Phosphor icons here
 
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { FieldRenderer } from '@/components/FieldRenderer';
 import { DataTable } from '@/components/core/data-table';
-import { createClient } from '@/lib/supabase/browser';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { CollectionModal } from '@/components/CollectionModal';
+import { createClient } from '@/lib/supabase/browser';
 
 export const CollectionTable = ({ config, rows, fieldContext = null }) => {
   const router = useRouter();
@@ -21,6 +21,7 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
   const searchParams = useSearchParams();
 
   const supabase = createClient();
+
   const {
     selectAll,
     selectOne,
@@ -54,16 +55,14 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     router.push(pathname);
   };
 
-  console.log('🧠 [CollectionTable] Using config for:', config.name);
-  console.log('🧠 Available fields:', config.fields.map(f => f.name));
-
   const tableFieldNames = fieldContext?.relation?.tableFields;
 
   let collectionFields = [];
 
   if (tableFieldNames?.length) {
-    collectionFields = config.fields.filter((f) => tableFieldNames.includes(f.name));
-    console.log('✅ Using tableFields from fieldContext:', tableFieldNames);
+    collectionFields = config.fields.filter((f) =>
+      tableFieldNames.includes(f.name)
+    );
   } else {
     collectionFields = config.fields.filter((f) =>
       f.showInTable || ['title', 'status', 'id'].includes(f.name)
@@ -72,8 +71,6 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     if (!collectionFields.length && config.fields.length) {
       collectionFields = config.fields.slice(0, 3);
     }
-
-    console.log('⚠️ No tableFields found – fallback fields used:', collectionFields.map(f => f.name));
   }
 
   const columns = collectionFields.map((field) => ({
@@ -83,6 +80,29 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     width: field.width,
     formatter: (row) => {
       const value = row[field.name];
+    
+      // Handle dynamic clickable logic
+      if (field.clickable) {
+        const handleClick = () => {
+          if (field.openMode === 'modal') {
+            router.push(`${pathname}?id=${row.id}&modal=edit`);
+          } else if (field.openMode === 'full') {
+            router.push(`/dashboard/${config.name}/${row.id}`);
+          }
+        };
+    
+        return (
+          <Typography
+            variant="body2"
+            color="primary"
+            sx={{ cursor: 'pointer', textDecoration: 'underline' }}
+            onClick={handleClick}
+          >
+            {value}
+          </Typography>
+        );
+      }
+    
       return (
         <FieldRenderer
           value={value}
@@ -93,15 +113,36 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
         />
       );
     }
+    
   }));
 
+  // Add action buttons (modal + full view)
   if (config.showEditButton) {
     columns.push({
       title: '',
-      field: 'edit',
+      field: 'actions',
       align: 'right',
-      width: '50px',
-      formatter: (row) => <EditButton record={row} config={config} />
+      width: '80px',
+      formatter: (row) => (
+        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+          <IconButton
+            size="small"
+            onClick={() => {
+              router.push(`${pathname}?id=${row.id}&modal=edit`);
+            }}
+          >
+            <Eye size={18} weight="regular" />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => {
+              window.open(`/dashboard/${config.name}/${row.id}`, '_blank');
+            }}
+          >
+            <CornersOut size={18} weight="regular" />
+          </IconButton>
+        </Box>
+      )
     });
   }
 

@@ -18,8 +18,10 @@ import {
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Plus } from '@phosphor-icons/react';
+
 import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
+import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/simple/simple-editor';
 import { CollectionModal } from '@/components/CollectionModal';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import * as collections from '@/collections';
@@ -42,7 +44,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const [loadingField, setLoadingField] = useState(null);
   const [localRecord, setLocalRecord] = useState(record);
 
-  const relatedField = config.fields.find(f => f.name === refField);
+  const relatedField = config.fields.find((f) => f.name === refField);
   const relatedCollectionName = relatedField?.relation?.table;
   const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
 
@@ -50,6 +52,12 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     const shouldOpen = modal === 'create' && !!refField;
     setModalOpen(shouldOpen);
   }, [modal, refField]);
+
+  useEffect(() => {
+    if (record?.id !== localRecord?.id) {
+      setLocalRecord(record);
+    }
+  }, [record?.id]);
 
   const tabsWithGroups = config.fields.reduce((acc, field) => {
     const tab = field.tab || 'General';
@@ -68,15 +76,17 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     setTempValue(currentValue ?? '');
   };
 
-  const saveChange = async (field) => {
+  const saveChange = async (field, overrideValue = null) => {
+    const newValue = overrideValue ?? tempValue;
     setLoadingField(field.name);
+
     const { error } = await supabase
       .from(config.name)
-      .update({ [field.name]: tempValue })
+      .update({ [field.name]: newValue })
       .eq('id', localRecord.id);
 
     if (!error) {
-      setLocalRecord((prev) => ({ ...prev, [field.name]: tempValue }));
+      setLocalRecord((prev) => ({ ...prev, [field.name]: newValue }));
     }
 
     setEditingField(null);
@@ -112,7 +122,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     if (junctionTable && sourceKey && targetKey) {
       const pivotPayload = {
         [sourceKey]: record?.id || Number(parentId),
-        [targetKey]: created.id
+        [targetKey]: created.id,
       };
 
       const { error: pivotError } = await supabase
@@ -128,13 +138,13 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     const updatedList = [...(localRecord[refField] || []), created.id];
     const updatedDetails = [
       ...(record[refField + '_details'] || []),
-      created
+      created,
     ];
 
     setLocalRecord((prev) => ({
       ...prev,
       [refField]: updatedList,
-      [refField + '_details']: updatedDetails
+      [refField + '_details']: updatedDetails,
     }));
 
     handleCloseModal();
@@ -170,23 +180,38 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                 <Grid container spacing={2}>
                   {fields.map((field) => {
                     const value = localRecord[field.name];
+                    const editable = field.editable !== false;
+                    const isEditing = editingField === field.name;
+                    const isLoading = loadingField === field.name;
+
+                    const isBasicTextField = ![
+                      'relationship',
+                      'multiRelationship',
+                      'boolean',
+                      'status',
+                      'json',
+                      'editButton',
+                      'media',
+                      'link',
+                      'date',
+                      'richText',
+                      'timezone',
+                    ].includes(field.type);
+
+                    const isTwoColumn = !isModal && !isSmallScreen;
 
                     if (field.type === 'multiRelationship' && field.displayMode === 'table') {
-                      const relatedRows = (localRecord?.[field.name + '_details'] ??
-                        (Array.isArray(localRecord?.[field.name])
-                          ? localRecord[field.name].map((id) => ({ id }))
-                          : []));
-
+                      const relatedRows = localRecord?.[field.name + '_details'] ?? [];
                       return (
                         <Grid item xs={12} key={field.name}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                             <Typography variant="subtitle2">{field.label}</Typography>
                             <IconButton
-                              onClick={() => {
+                              onClick={() =>
                                 router.push(
                                   `${window.location.pathname}?modal=create&refField=${field.name}&id=${record.id}`
-                                );
-                              }}
+                                )
+                              }
                             >
                               <Plus />
                             </IconButton>
@@ -201,26 +226,13 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       );
                     }
 
-                    const editable = field.editable !== false;
-                    const isEditing = editingField === field.name;
-                    const isLoading = loadingField === field.name;
-
-                    const isBasicTextField = ![
-                      'relationship',
-                      'multiRelationship',
-                      'boolean',
-                      'status',
-                      'json',
-                      'editButton',
-                      'media',
-                      'link',
-                      'date'
-                    ].includes(field.type);
-
-                    const isTwoColumn = !isModal && !isSmallScreen;
-
                     return (
-                      <Grid item xs={12} sm={isTwoColumn ? 6 : 12} key={field.name}>
+                      <Grid
+                        item
+                        xs={12}
+                        sm={field.type === 'richText' ? 12 : isTwoColumn ? 6 : 12}
+                        key={field.name}
+                      >
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
                           {field.label}
                         </Typography>
@@ -248,7 +260,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                               display: 'flex',
                               alignItems: 'center',
                               minHeight: '32px',
-                              justifyContent: 'space-between'
+                              justifyContent: 'space-between',
                             }}
                             onClick={
                               editable && isBasicTextField
@@ -258,17 +270,36 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                           >
                             {isLoading ? (
                               <CircularProgress size={16} />
+                            ) : field.type === 'richText' ? (
+                              <SimpleEditor
+                                content={value}
+                                editable
+                                onChange={(html) => saveChange(field, html)}
+                              />
                             ) : (
                               <FieldRenderer
-                                value={value}
+                                value={localRecord[field.name]}
                                 field={field}
                                 record={localRecord}
                                 config={config}
                                 view="detail"
-                                editable={!isBasicTextField && editable}
-                                onChange={(fieldName, newValue) => {
-                                  setTempValue(newValue);
-                                  setEditingField(fieldName);
+                                editable={editable}
+                                isEditing={isEditing}
+                                onChange={async (fieldName, newValue) => {
+                                  setLocalRecord((prev) => ({
+                                    ...prev,
+                                    [fieldName]: newValue,
+                                  }));
+
+                                  try {
+                                    const { error } = await supabase
+                                      .from(config.name)
+                                      .update({ [fieldName]: newValue })
+                                      .eq('id', localRecord.id);
+                                    if (error) console.error('❌ Supabase update error', error);
+                                  } catch (err) {
+                                    console.error('❌ Update failed', err);
+                                  }
                                 }}
                               />
                             )}

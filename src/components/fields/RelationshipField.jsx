@@ -31,9 +31,10 @@ export const RelationshipField = ({ field, value, editable, onChange }) => {
 
       const { data } = await query;
       if (data) {
-        setOptions(data.sort((a, b) =>
+        const sorted = data.sort((a, b) =>
           (a[field.relation.labelField] || '').localeCompare(b[field.relation.labelField] || '')
-        ));
+        );
+        setOptions(sorted);
       }
 
       setLoading(false);
@@ -43,6 +44,25 @@ export const RelationshipField = ({ field, value, editable, onChange }) => {
   }, [editable, field]);
 
   const selectedOption = options.find(opt => opt.id === value);
+
+  const handleChange = async (e) => {
+    const newValue = e.target.value;
+    onChange(newValue); // update local state via FieldRenderer
+
+    const parentId = field.parentId;
+    const parentTable = field.parentTable;
+
+    if (parentId && parentTable) {
+      try {
+        await supabase
+          .from(parentTable)
+          .update({ [field.name]: newValue })
+          .eq('id', parentId);
+      } catch (err) {
+        console.error(`[RelationshipField] Failed to auto-save ${field.name}:`, err);
+      }
+    }
+  };
 
   const createButton = !!field.relation?.linkTo && (
     <IconButton
@@ -61,10 +81,14 @@ export const RelationshipField = ({ field, value, editable, onChange }) => {
   if (loading) return <CircularProgress size={16} />;
 
   return (
-    <FormControl fullWidth size="small" sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}>
+    <FormControl
+      fullWidth
+      size="small"
+      sx={{ display: 'flex', flexDirection: 'row', alignItems: 'center' }}
+    >
       <Select
         value={selectedOption?.id ?? ''}
-        onChange={(e) => onChange(field.name, e.target.value)}
+        onChange={handleChange}
         displayEmpty
         sx={{ flex: 1 }}
         renderValue={(selected) => {

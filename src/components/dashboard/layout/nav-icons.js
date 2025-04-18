@@ -28,9 +28,11 @@ import { Truck as TruckIcon } from "@phosphor-icons/react/dist/ssr/Truck";
 import { Upload as UploadIcon } from "@phosphor-icons/react/dist/ssr/Upload";
 import { Users as UsersIcon } from "@phosphor-icons/react/dist/ssr/Users";
 import { WarningDiamond as WarningDiamondIcon } from "@phosphor-icons/react/dist/ssr/WarningDiamond";
+import { Briefcase as BriefcaseIcon } from "@phosphor-icons/react/dist/ssr/Briefcase";
 
 export const icons = {
 	"address-book": AddressBookIcon,
+	"briefcase": BriefcaseIcon,
 	"align-left": AlignLeftIcon,
 	"calendar-check": CalendarCheckIcon,
 	"chart-pie": ChartPieIcon,
