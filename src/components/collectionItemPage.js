@@ -79,19 +79,38 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const saveChange = async (field, overrideValue = null) => {
     const newValue = overrideValue ?? tempValue;
     setLoadingField(field.name);
-
-    const { error } = await supabase
-      .from(config.name)
-      .update({ [field.name]: newValue })
-      .eq('id', localRecord.id);
-
-    if (!error) {
-      setLocalRecord((prev) => ({ ...prev, [field.name]: newValue }));
+  
+    try {
+      if (field.type !== 'multiRelationship') {
+        const { error } = await supabase
+          .from(config.name)
+          .update({ [field.name]: newValue })
+          .eq('id', localRecord.id);
+  
+        if (!error) {
+          setLocalRecord((prev) => ({
+            ...prev,
+            [field.name]: newValue,
+          }));
+        } else {
+          console.error('❌ Supabase update error', error);
+        }
+      } else {
+        // 🧠 MultiRelationships don't update main table! Update local state only.
+        setLocalRecord((prev) => ({
+          ...prev,
+          [field.name]: newValue,
+        }));
+      }
+    } catch (err) {
+      console.error('❌ Unexpected saveChange error:', err);
     }
-
+  
     setEditingField(null);
     setLoadingField(null);
   };
+  
+  
 
   const handleCloseModal = () => {
     setModalOpen(false);
@@ -244,7 +263,12 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                             value={tempValue}
                             autoFocus
                             onChange={(e) => setTempValue(e.target.value)}
-                            onBlur={() => saveChange(field)}
+                            onBlur={() => {
+                              if (!['relationship', 'multiRelationship', 'boolean', 'status', 'json', 'editButton', 'media', 'link', 'date', 'richText', 'timezone'].includes(field.type)) {
+                                saveChange(field);
+                              }
+                            }}
+                            
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
@@ -285,20 +309,31 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 view="detail"
                                 editable={editable}
                                 isEditing={isEditing}
-                                onChange={async (fieldName, newValue) => {
-                                  setLocalRecord((prev) => ({
-                                    ...prev,
-                                    [fieldName]: newValue,
-                                  }));
-
-                                  try {
-                                    const { error } = await supabase
-                                      .from(config.name)
-                                      .update({ [fieldName]: newValue })
-                                      .eq('id', localRecord.id);
-                                    if (error) console.error('❌ Supabase update error', error);
-                                  } catch (err) {
-                                    console.error('❌ Update failed', err);
+                                onChange={async (field, newValue) => {
+                                  if (field.type === 'multiRelationship') {
+                                    setLocalRecord((prev) => ({
+                                      ...prev,
+                                      [field.name]: newValue.ids, // tags
+                                      [`${field.name}_details`]: newValue.details, // tags_details
+                                    }));
+                                  } else {
+                                    try {
+                                      const { error } = await supabase
+                                        .from(config.name)
+                                        .update({ [field.name]: newValue })
+                                        .eq('id', localRecord.id);
+                              
+                                      if (!error) {
+                                        setLocalRecord((prev) => ({
+                                          ...prev,
+                                          [field.name]: newValue,
+                                        }));
+                                      } else {
+                                        console.error('❌ Supabase update error', error);
+                                      }
+                                    } catch (err) {
+                                      console.error('❌ Unexpected error saving field:', err);
+                                    }
                                   }
                                 }}
                               />

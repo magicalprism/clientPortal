@@ -6,37 +6,91 @@ import { hydrateRelationshipLabels } from '@/lib/utils/hydrateRelationshipLabels
 import { Box, Container, Grid } from '@mui/material';
 
 export default async function TaskDetailPage(props) {
-  const { taskId } = await props.params;
-    const config = collections.task;
-    const supabase = await createClient();
+  const params = await props.params; // 🧠 await params properly
+  const collectionKey = 'task';
+  const config = collections[collectionKey];
+  const supabase = await createClient();
+  const recordId = params?.[`${collectionKey}Id`];
 
-  // Build dynamic relationship join string
+
+  // Step 1: Basic relationship joins (single-table)
   const relationshipJoins = config.fields
-  .filter(field => field.type === 'relationship' && field.relation?.table && field.relation?.labelField)
-  .map(field => {
-    // Supabase expects: fieldName ( labelField )
-    return `${field.name} ( ${field.relation.labelField} )`;
-  })
-  .join(', ');
+  .filter(
+    (field) =>
+      field.type === 'relationship' &&
+      field.relation?.table &&
+      field.relation?.labelField &&
+      !field.relation.labelField.includes('(')
+  )
+  .map(
+    (field) =>
+      `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`
+  );
 
 
-  // Build full select string
-  const selectFields = relationshipJoins ? `*, ${relationshipJoins}` : '*';
+  const selectFields = ['*', ...relationshipJoins].join(', ');
 
-  // Fetch data from Supabase
-  const { data, error } = await supabase
+  console.log('🧠 Basic SELECT:', selectFields);
+
+  // Step 2: Load base record
+  const { data: record, error } = await supabase
     .from(config.name)
     .select(selectFields)
-    .eq('id', Number(taskId))
+    .eq('id', Number(recordId))
     .single();
 
-  if (error || !data) {
-    console.error('❌ Error loading task:', error);
-    return <div>Error loading task.</div>;
+  if (error || !record) {
+    console.error('❌ Error loading record:', error);
+    return <div>Error loading {collectionKey}.</div>;
   }
 
-  // Hydrate label fields
-  const hydrated = hydrateRelationshipLabels(data, config);
+  // Step 3: Load multi-relationship data
+  const multiRelations = await Promise.all(
+    config.fields
+      .filter(
+        (field) =>
+          field.type === 'multiRelationship' &&
+          field.relation?.junctionTable &&
+          field.relation?.table &&
+          field.relation?.sourceKey &&
+          field.relation?.targetKey &&
+          field.relation?.labelField
+      )
+      .map(async (field) => {
+        const { data: joined, error: relError } = await supabase
+          .from(field.relation.junctionTable)
+          .select(
+            `${field.relation.targetKey}, ${field.relation.table}(id, ${field.relation.labelField})`
+          )
+          .eq(field.relation.sourceKey, record.id);
+
+        if (relError) {
+          console.error(`❌ Failed to load ${field.name}:`, relError);
+          return [field.name, { ids: [], details: [] }];
+        }
+
+        const ids = joined.map((row) => row[field.relation.targetKey]);
+        const details = joined.map((row) => row[field.relation.table]);
+
+        return [field.name, { ids, details }];
+      })
+  );
+
+  // Step 4: Merge multi-relationship data
+  const multiRelationshipData = Object.fromEntries(
+    multiRelations.flatMap(([name, { ids, details }]) => [
+      [name, ids],
+      [`${name}_details`, details]
+    ])
+  );
+
+  const enriched = {
+    ...record,
+    ...multiRelationshipData,
+  };
+
+  // Step 5: Hydrate label/lookup fields
+  const hydrated = hydrateRelationshipLabels(enriched, config);
 
   return (
     <Box sx={{ py: 4 }}>

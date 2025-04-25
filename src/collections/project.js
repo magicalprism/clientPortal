@@ -25,11 +25,18 @@ export const project = {
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
-    { 
-      name: 'parent_id', 
-      label: 'Parent Project', 
-      group: 'Project Info' ,
+    {
+      name: 'parent_id',
+      label: 'Parent Project',
+      group: 'Project Info',
       tab: 'Overview', 
+      type: 'relationship',
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project', // or dynamically derive from config
+        filter: { company_id: '{{record.company_id}}' }
+      }
     },
 
     
@@ -105,7 +112,8 @@ export const project = {
       relation: {
         table: 'link',
         labelField: 'title',
-        linkTo: '/dashboard/link'
+        linkTo: '/dashboard/link',
+        filter: { type: 'domain' }
       }
     },
     // Cloudflare
@@ -219,7 +227,7 @@ export const project = {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'project_category',
+        junctionTable: 'category_project',
         sourceKey: 'project_id',
         targetKey: 'category_id'
       }

@@ -6,46 +6,90 @@ import { hydrateRelationshipLabels } from '@/lib/utils/hydrateRelationshipLabels
 import { Box, Container, Grid } from '@mui/material';
 
 export default async function ProjectDetailPage(props) {
-  const { projectId } = await props.params;
-  const config = collections.project;
+  const params = await props.params; // 🧠 await params properly
+  const collectionKey = 'project';
+  const config = collections[collectionKey];
   const supabase = await createClient();
+  const recordId = params?.[`${collectionKey}Id`];
 
-  // 🧠 Step 1: Build dynamic relationship join string
+
+  // Step 1: Basic relationship joins (single-table)
   const relationshipJoins = config.fields
-    .filter(field => field.type === 'relationship' && field.relation?.table && field.relation?.labelField)
-    .map(field => `${field.relation.table}:${field.name} ( ${field.relation.labelField} )`)
-    .join(', ');
+    .filter(
+      (field) =>
+        field.type === 'relationship' &&
+        field.relation?.table &&
+        field.relation?.labelField &&
+        !field.relation.labelField.includes('(')
+    )
+    .map(
+      (field) =>
+        `${field.relation.table}:${field.name}(${field.relation.labelField})`
+    );
 
-  // 🧠 Step 2: Build full select string (and add pivot relation)
-  const selectFields = relationshipJoins
-    ? `*, ${relationshipJoins}, project_task(task:task_id(id, title))`
-    : `*, project_task(task:task_id(id, title))`;
+  const selectFields = ['*', ...relationshipJoins].join(', ');
 
-  // ✅ Step 3: Fetch data from Supabase
-  const { data, error } = await supabase
+  console.log('🧠 Basic SELECT:', selectFields);
+
+  // Step 2: Load base record
+  const { data: record, error } = await supabase
     .from(config.name)
     .select(selectFields)
-    .eq('id', Number(projectId))
+    .eq('id', Number(recordId))
     .single();
 
-  if (error || !data) {
-    console.error('❌ Error loading project:', error);
-    return <div>Error loading project.</div>;
+  if (error || !record) {
+    console.error('❌ Error loading record:', error);
+    return <div>Error loading {collectionKey}.</div>;
   }
 
-  // ✅ Step 4: Extract task IDs from pivot table
-  const taskObjects = data.project_task?.map(pt => pt.task).filter(Boolean) || [];
+  // Step 3: Load multi-relationship data
+  const multiRelations = await Promise.all(
+    config.fields
+      .filter(
+        (field) =>
+          field.type === 'multiRelationship' &&
+          field.relation?.junctionTable &&
+          field.relation?.table &&
+          field.relation?.sourceKey &&
+          field.relation?.targetKey &&
+          field.relation?.labelField
+      )
+      .map(async (field) => {
+        const { data: joined, error: relError } = await supabase
+          .from(field.relation.junctionTable)
+          .select(
+            `${field.relation.targetKey}, ${field.relation.table}(id, ${field.relation.labelField})`
+          )
+          .eq(field.relation.sourceKey, record.id);
 
-      const enrichedData = {
-        ...data,
-        tasks: taskObjects
-      };
+        if (relError) {
+          console.error(`❌ Failed to load ${field.name}:`, relError);
+          return [field.name, { ids: [], details: [] }];
+        }
 
-        // ✅ Step 5: Hydrate label fields
-  const hydrated = hydrateRelationshipLabels(enrichedData, config);
+        const ids = joined.map((row) => row[field.relation.targetKey]);
+        const details = joined.map((row) => row[field.relation.table]);
 
-      console.log('✅ enrichedData.tasks:', enrichedData.tasks);
-console.log('✅ hydrated.tasks_details:', hydrated.tasks_details);
+        return [field.name, { ids, details }];
+      })
+  );
+
+  // Step 4: Merge multi-relationship data
+  const multiRelationshipData = Object.fromEntries(
+    multiRelations.flatMap(([name, { ids, details }]) => [
+      [name, ids],
+      [`${name}_details`, details]
+    ])
+  );
+
+  const enriched = {
+    ...record,
+    ...multiRelationshipData,
+  };
+
+  // Step 5: Hydrate label/lookup fields
+  const hydrated = hydrateRelationshipLabels(enriched, config);
 
   return (
     <Box sx={{ py: 4 }}>

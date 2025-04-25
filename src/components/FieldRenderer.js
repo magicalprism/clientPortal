@@ -40,7 +40,7 @@ export const FieldRenderer = ({
 
   const handleUpdate = (newValue) => {
     setLocalValue(newValue);
-    onChange(field.name, newValue);
+    onChange(field, newValue);
   };
 
   let content = null;
@@ -53,7 +53,9 @@ export const FieldRenderer = ({
           value={localValue}
           editable
           onChange={handleUpdate}
+          record={record} // 🔥 ADD THIS
         />
+
       ) : null;
       break;
 

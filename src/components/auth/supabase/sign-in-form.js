@@ -69,16 +69,15 @@ export function SignInForm() {
 
 		globalThis.location.href = data.url;
 	};
-
 	const onSubmit = async (values) => {
 		console.log("🟡 Form values:", values);
 		setIsPending(true);
-
+	
 		const { data, error } = await supabaseClient.auth.signInWithPassword({
 			email: values.email,
 			password: values.password,
 		});
-
+	
 		if (error) {
 			console.error("❌ Sign-in error:", error.message);
 			if (error.message.toLowerCase().includes("email not confirmed")) {
@@ -90,10 +89,13 @@ export function SignInForm() {
 			setIsPending(false);
 			return;
 		}
-
+	
 		console.log("✅ Sign-in success:", data);
-		router.refresh();
+	
+		// 👇 Instead of just refreshing, redirect the user
+		router.push(paths.dashboard.overview);
 	};
+	
 
 	return (
 		<Stack spacing={4}>

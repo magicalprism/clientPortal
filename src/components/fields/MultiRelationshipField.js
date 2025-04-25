@@ -60,44 +60,64 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
   }, [options, normalizedValue]);
 
   const handleChange = async (event, selectedOptionObjects) => {
-    const taskIds = selectedOptionObjects.map(opt => parseInt(opt.id, 10));
-    const projectId = field.parentId; // Pass this in from FieldRenderer or CollectionItemPage
-
-    onChange(field.name, taskIds.map(String)); // update UI state
-
-    if (!projectId || isNaN(projectId)) {
-      console.warn('Missing or invalid project ID. Cannot update pivot table.');
+    const selectedIds = selectedOptionObjects.map(opt => opt.id);
+    const parentId = field.parentId;
+    const junctionTable = field.relation?.junctionTable;
+    const sourceKey = field.relation?.sourceKey || `${field.parentTable}_id`;
+    const targetKey = field.relation?.targetKey || `${field.relation.table}_id`;
+  
+    if (!parentId || !junctionTable) {
+      console.warn('Missing parentId or junctionTable. Cannot update pivot table.');
       return;
     }
-
+  
     try {
-      // 1. Delete existing pivot records
+      // Delete old pivot rows
       const { error: deleteError } = await supabase
-        .from('project_task')
+        .from(junctionTable)
         .delete()
-        .eq('project_id', projectId);
-
+        .eq(sourceKey, parentId);
+  
       if (deleteError) {
-        console.error('Failed to clear old project_task:', deleteError);
+        console.error(`[MultiRelationshipField] ❌ Failed to delete old relations:`, deleteError);
       }
-
-      // 2. Insert new pivot records
-      const newLinks = taskIds.map(taskId => ({
-        project_id: projectId,
-        task_id: taskId
-      }));
-
-      const { error: insertError } = await supabase
-        .from('project_task')
-        .insert(newLinks);
-
-      if (insertError) {
-        console.error('Failed to insert new project_tasks:', insertError);
+  
+      // Insert new pivot rows
+      if (selectedIds.length > 0) {
+        const newLinks = selectedIds.map(id => ({
+          [sourceKey]: parentId,
+          [targetKey]: id
+        }));
+  
+        const { error: insertError } = await supabase
+          .from(junctionTable)
+          .insert(newLinks);
+  
+        if (insertError) {
+          console.error(`[MultiRelationshipField] ❌ Failed to insert new relations:`, insertError);
+        }
+      }
+  
+      // Fetch updated details
+      const { data: linkedData, error: fetchError } = await supabase
+        .from(field.relation.table)
+        .select(`id, ${field.relation.labelField}`)
+        .in('id', selectedIds);
+  
+      if (fetchError) {
+        console.error('[MultiRelationshipField] ❌ Failed to fetch updated linked data:', fetchError);
+      } else {
+        // Update local UI state
+        onChange(field, {
+          ids: selectedIds.map(String),
+          details: linkedData || [],
+        });
       }
     } catch (err) {
-      console.error('Unexpected pivot save error:', err);
+      console.error('[MultiRelationshipField] ❌ Unexpected pivot update error:', err);
     }
   };
+  
 
   return (
     <FormControl
