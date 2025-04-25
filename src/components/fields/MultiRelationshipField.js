@@ -67,22 +67,22 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     const targetKey = field.relation?.targetKey || `${field.relation.table}_id`;
   
     if (!parentId || !junctionTable) {
-      console.warn('Missing parentId or junctionTable. Cannot update pivot table.');
+      console.warn('Missing parentId or junctionTable.');
       return;
     }
   
     try {
-      // Delete old pivot rows
+      // Always clear old pivots
       const { error: deleteError } = await supabase
         .from(junctionTable)
         .delete()
         .eq(sourceKey, parentId);
   
       if (deleteError) {
-        console.error(`[MultiRelationshipField] ❌ Failed to delete old relations:`, deleteError);
+        console.error('[MultiRelationshipField] Failed deleting old relations:', deleteError);
       }
   
-      // Insert new pivot rows
+      // Insert new pivots
       if (selectedIds.length > 0) {
         const newLinks = selectedIds.map(id => ({
           [sourceKey]: parentId,
@@ -94,29 +94,41 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
           .insert(newLinks);
   
         if (insertError) {
-          console.error(`[MultiRelationshipField] ❌ Failed to insert new relations:`, insertError);
+          console.error('[MultiRelationshipField] Failed inserting new relations:', insertError);
         }
       }
   
-      // Fetch updated details
+      // Fetch updated tag/category linked data
       const { data: linkedData, error: fetchError } = await supabase
         .from(field.relation.table)
         .select(`id, ${field.relation.labelField}`)
         .in('id', selectedIds);
   
       if (fetchError) {
-        console.error('[MultiRelationshipField] ❌ Failed to fetch updated linked data:', fetchError);
-      } else {
-        // Update local UI state
-        onChange(field, {
-          ids: selectedIds.map(String),
-          details: linkedData || [],
-        });
+        console.error('[MultiRelationshipField] Failed fetching new data:', fetchError);
       }
+  
+      // Update local UI
+      onChange(field, {
+        ids: selectedIds.map(String),
+        details: linkedData || [],
+      });
+  
+      // 🧠 Also immediately fix the Autocomplete options to reflect
+      if (linkedData) {
+        const newOptions = Array.from(
+          new Map([...options, ...linkedData].map(item => [item.id, item])).values()
+        );
+        setOptions(newOptions);
+      }
+  
     } catch (err) {
       console.error('[MultiRelationshipField] ❌ Unexpected pivot update error:', err);
     }
   };
+  
+  
+  
   
 
   return (

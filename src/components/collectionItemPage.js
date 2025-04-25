@@ -313,8 +313,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                   if (field.type === 'multiRelationship') {
                                     setLocalRecord((prev) => ({
                                       ...prev,
-                                      [field.name]: newValue.ids, // tags
-                                      [`${field.name}_details`]: newValue.details, // tags_details
+                                      [field.name]: newValue.ids,
+                                      [`${field.name}_details`]: newValue.details,
                                     }));
                                   } else {
                                     try {
@@ -322,20 +322,19 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                         .from(config.name)
                                         .update({ [field.name]: newValue })
                                         .eq('id', localRecord.id);
-                              
+                                
                                       if (!error) {
                                         setLocalRecord((prev) => ({
                                           ...prev,
                                           [field.name]: newValue,
                                         }));
-                                      } else {
-                                        console.error('❌ Supabase update error', error);
                                       }
                                     } catch (err) {
-                                      console.error('❌ Unexpected error saving field:', err);
+                                      console.error('Update error:', err);
                                     }
                                   }
                                 }}
+                                
                               />
                             )}
                           </Box>
