@@ -2,8 +2,23 @@ export const task = {
   name: 'task',
   label: 'Tasks',
   editPathPrefix: '/dashboard/task',
-  subtitleField: 'title',
   showEditButton: true, // ✅ just a UI toggle
+  subtitleField: 'title',
+  defaultView: 'table',
+  views: {
+    table: {
+      label: 'Table View',
+      component: 'PrimaryTableView'
+    },
+      page: { 
+        label: 'Page View', 
+        component: 'PageView' 
+      },
+      kanban: {
+         label: 'Kanban View', 
+         component: 'KanbanView' 
+        }
+  },
       //Quickview
       quickView: {
         enabled: true,
@@ -11,11 +26,7 @@ export const task = {
         titleField: 'title',
         subtitleField: 'status',
       }, 
-      // Add default filters to apply when the table loads
-   // Add default filters - this will be applied when the table is loaded
-   defaultFilters: {
-    status: 'todo'  // Set initial status filter to 'todo'
-  },
+
   fields: [   
     // Overview
     { 
@@ -103,7 +114,12 @@ export const task = {
       name: 'status',
       type: 'select',
       label: 'Status',
-      options: ['todo', 'complete', 'in_progress']
+      defaultValue: 'todo',
+      options: [
+        { value: 'todo', label: 'To do' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'in_progress', label: 'In Progress' },
+      ]
     },
     {
       name: 'sort',

@@ -99,7 +99,42 @@ function TextFilterPopover({ label, filter }) {
   );
 }
 
+function SortFilterPopover() {
+  const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
+  const [value, setValue] = useState('');
+  
+  // Get the current context
+  const context = React.useContext(React.createContext({}));
+  
+  // Get the sortOptions from context if they exist
+  const sortOptions = context?.config?.sortOptions || [];
 
+  useEffect(() => {
+    setValue(initialValue ?? '');
+  }, [initialValue]);
+
+  return (
+    <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title="Sort by">
+      <Stack spacing={2}>
+        <Select
+          fullWidth
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          displayEmpty
+          size="small"
+        >
+          <MenuItem value="">Sort by</MenuItem>
+          {sortOptions.map((opt) => (
+            <MenuItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </MenuItem>
+          ))}
+        </Select>
+        <Button variant="contained" onClick={() => onApply(value)}>Apply</Button>
+      </Stack>
+    </FilterPopover>
+  );
+}
 
 export function CollectionFilters({ config, filters, onChange, sortDir, onSortChange, onDeleteSuccess }) {
   const router = useRouter();
@@ -114,6 +149,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
   const otherFilters = (config.filters || []).filter((f) => f.type !== 'tab');
   const hasFilters = Object.values(filters).some(Boolean);
   const tabValue = filters[tabFilter?.name] ?? tabFilter?.options?.[0]?.value ?? '';
+
 
 
   return (
@@ -136,17 +172,32 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
 
       <Stack direction="row" spacing={2} sx={{ px: 3, py: 2, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
-          {otherFilters.map((filter) => (
-            <FilterButton
-              key={filter.name}
-              displayValue={filters[filter.name]}
-              label={filter.label}
-              value={filters[filter.name]}
-              onFilterApply={(value) => onChange({ ...filters, [filter.name]: value })}
-              onFilterDelete={() => onChange({ ...filters, [filter.name]: '' })}
-              popover={<TextFilterPopover label={filter.label} filter={filter} />}
-            />
-          ))}
+        {otherFilters.map((filter) => {
+  const value = filters[filter.name] || '';
+  let displayValue = value;
+
+  if (filter.type === 'select' && filter.options) {
+    const selectedOption = filter.options.find(opt => opt.value === value);
+    displayValue = selectedOption?.label || '';
+  }
+
+  return (
+    <FilterButton
+      key={filter.name}
+      displayValue={displayValue}
+      label={filter.label}
+      value={value}
+      onFilterApply={(newValue) => {
+        onChange({ ...filters, [filter.name]: newValue }); // <- ALWAYS pass full string like 'due_date:desc'
+      }}
+      onFilterDelete={() => onChange({ ...filters, [filter.name]: '' })}
+      popover={<TextFilterPopover label={filter.label} filter={filter} />}
+    />
+  );
+})}
+
+
+
           
 
           {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}

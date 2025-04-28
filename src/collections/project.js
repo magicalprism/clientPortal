@@ -82,8 +82,18 @@ export const project = {
 
     // Media
     //Thumbnails
-    { name: 'thumbnail', label: 'Thumbnail', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
-    { name: 'screenshot', label: 'Screenshot', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
+    {
+      name: 'thumbnail_id',
+      label: 'Thumbnail',
+      type: 'media',
+      relation: {
+        table: 'media',
+        labelField: 'url'  // or 'alt' if you want something different
+      },
+      group: 'Media',
+      tab: 'Brand'
+    },
+    { name: 'screenshot_id', label: 'Screenshot', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
 
     //media folders
     //Brand board

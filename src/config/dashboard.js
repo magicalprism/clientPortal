@@ -39,7 +39,7 @@ export const dashboardConfig = {
 					icon: "kanban",
 					items: [
 						{ key: "task", title: "List tasks", href: paths.dashboard.task.list },
-						{ key: "task:create", title: "Create contact", href: paths.dashboard.task.create },
+						{ key: "task:create", title: "Create task", href: paths.dashboard.task.create },
 
 					],
 				},

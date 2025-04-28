@@ -17,7 +17,7 @@ export default async function ProjectDetailPage(props) {
   const relationshipJoins = config.fields
     .filter(
       (field) =>
-        field.type === 'relationship' &&
+        (field.type === 'relationship' || field.type === 'media') &&
         field.relation?.table &&
         field.relation?.labelField &&
         !field.relation.labelField.includes('(')

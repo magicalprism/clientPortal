@@ -1,0 +1,67 @@
+'use client';
+
+import { createClient } from '@/lib/supabase/browser';
+import { uploadToSupabase } from './supabaseUpload';
+
+export const uploadAndCreateMediaRecord = async ({
+  file,
+  bucket = 'media',
+  record = {},
+  field = {},
+  baseFolder = '',
+  altText = '',
+  copyright = ''
+}) => {
+  if (!(file instanceof File)) {
+    console.error('❌ Invalid file provided to upload:', file);
+    throw new Error('Invalid file input');
+  }
+
+  const supabase = createClient();
+
+  // Step 1: Upload file to Supabase Storage
+  const { publicUrl, filePath, error: uploadError } = await uploadToSupabase({
+    file,
+    bucket,
+    record,
+    field,
+    baseFolder,
+  });
+
+  if (uploadError) {
+    console.error('❌ Upload to Supabase Storage failed:', uploadError.message);
+    throw uploadError;
+  }
+
+  if (!publicUrl || !filePath) {
+    throw new Error('Upload failed, missing URL or filePath');
+  }
+
+  // Step 2: Insert uploaded file info into 'media' table
+  const mediaPayload = {
+    url: publicUrl,
+    file_path: filePath,
+    size: file.size || null,
+    mime_type: file.type || null,
+    alt_text: altText || '',
+    copyright: copyright || '',
+    width: null,
+    height: null,
+    created: new Date().toISOString(), // 🧠 optional, if your media table has created_at
+  };
+
+  const { data: insertedMedia, error: insertError } = await supabase
+    .from('media')
+    .insert([mediaPayload])
+    .select()
+    .single();
+
+  if (insertError) {
+    console.error('❌ Failed to create media database record:', insertError.message);
+    throw insertError;
+  }
+
+  console.log('✅ Media record created:', insertedMedia);
+
+  return insertedMedia; // { id, url, alt_text, copyright, etc. }
+};

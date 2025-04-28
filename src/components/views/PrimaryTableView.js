@@ -20,7 +20,16 @@ export default function PrimaryTableView({ config }) {
   const supabase = createClient();
   const router = useRouter();
 
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState(() => {
+    const initial = {};
+    for (const filter of config.filters || []) {
+      if (filter.defaultValue !== undefined) {
+        initial[filter.name] = filter.defaultValue;
+      }
+    }
+    return initial;
+  });
+  
   const [sortDir, setSortDir] = useState('desc');
   const [data, setData] = useState([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
@@ -30,22 +39,31 @@ export default function PrimaryTableView({ config }) {
 
   const fetchData = async () => {
     let query = supabase.from(config.name).select('*');
-
+  
     for (const filter of config.filters || []) {
       const val = filters[filter.name];
       if (!val) continue;
-
+  
       if (filter.type === 'select') {
-        query = query.eq(filter.name, val);
+        if (filter.name === 'sort') {
+          // Handle sort separately
+          const [sortField, sortDirection] = val.split(':');
+          query = query.order(sortField, { ascending: sortDirection === 'asc' });
+        } else {
+          query = query.eq(filter.name, val);
+        }
       } else if (filter.type === 'text') {
         query = query.ilike(filter.name, `%${val}%`);
       } else if (filter.type === 'relationship') {
         query = query.eq(filter.name, val);
       }
     }
-
-    query = query.order('created', { ascending: sortDir === 'asc' });
-
+  
+    // Default sort if no sort selected
+    if (!filters.sort) {
+      query = query.order('created', { ascending: sortDir === 'asc' });
+    }
+  
     const { data, error } = await query;
     if (!error) {
       setData(
@@ -56,6 +74,7 @@ export default function PrimaryTableView({ config }) {
       );
     }
   };
+  
 
   useEffect(() => {
     fetchData();

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Typography, IconButton, TextField, Box } from '@mui/material';
+import { Typography, IconButton, TextField, Box, Checkbox, FormControlLabel, Select, MenuItem } from '@mui/material';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -10,6 +10,7 @@ import { RelationshipField } from '@/components/fields/RelationshipField';
 import { LinkField } from '@/components/fields/LinkField';
 import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/simple/simple-editor';
 import { TimezoneSelect } from '@/components/fields/TimezoneSelect';
+import { MediaField } from '@/components/fields/MediaField';
 
 export const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
@@ -23,6 +24,7 @@ export const FieldRenderer = ({
   record,
   config,
   view = 'default',
+  mode = 'view',
   editable = false,
   isEditing = false,
   onChange = () => {},
@@ -30,6 +32,8 @@ export const FieldRenderer = ({
   const router = useRouter();
   const pathname = usePathname();
   const [localValue, setLocalValue] = useState(value);
+
+  const isEditMode = editable || mode === 'create';
 
   useEffect(() => {
     setLocalValue(value);
@@ -47,9 +51,9 @@ export const FieldRenderer = ({
 
   switch (field.type) {
     case 'relationship':
-      content = editable ? (
+      content = isEditMode ? (
         <RelationshipField
-          field={{ ...field, parentId: record.id, parentTable: config.name }}
+          field={{ ...field, parentId: record?.id, parentTable: config?.name }}
           value={localValue}
           editable
           onChange={handleUpdate}
@@ -59,68 +63,93 @@ export const FieldRenderer = ({
       break;
 
     case 'multiRelationship':
-      content = editable ? (
+      content = isEditMode ? (
         <MultiRelationshipField
-          field={{ ...field, parentId: record.id }}
+          field={{ ...field, parentId: record?.id }}
           value={localValue}
           onChange={handleUpdate}
         />
       ) : null;
       break;
 
-    case 'richText':
-      // Display the rich text content even if not editable
-      if (!editable) {
-        content = !localValue ? (
-          <Typography variant="body2">—</Typography>
+      case 'richText':
+        content = isEditMode ? (
+          <SimpleEditor
+            content={localValue || ''}
+            editable={true}
+            onChange={debounce((html) => {
+              setLocalValue(html);
+              onChange(field, html); // ✅ This now not only updates local but properly calls parent save
+            }, 800)} // 800ms debounce
+          />
         ) : (
-          <div dangerouslySetInnerHTML={{ __html: localValue }} />
+          localValue ? (
+            <div dangerouslySetInnerHTML={{ __html: localValue }} />
+          ) : (
+            <Typography variant="body2">—</Typography>
+          )
         );
-      } else {
-        // Editable mode for rich text
-        content = (
-          <>
-            <SimpleEditor
-              content={localValue || ''}
-              editable={true}
-              onChange={(html) => {
-                setLocalValue(html);
-                // Immediately update when the editor changes
-                handleUpdate(html);
-              }}
-            />
-          </>
-        );
-      }
-      break;
+        break;
 
-    case 'media':
-      content = localValue ? (
-        <img
-          src={localValue}
-          alt={field.label}
-          style={{ maxWidth: '100%', borderRadius: 8 }}
-          onError={(e) => (e.currentTarget.style.display = 'none')}
-        />
-      ) : (
-        '—'
-      );
-      break;
+
+        case 'media':
+          console.log('🔍 [FieldRenderer] media field debug:', {
+            localValue,
+            recordFieldDetails: record?.[field.name + '_details'],
+            fieldName: field.name,
+          });
+        
+          content = isEditMode ? (
+            <MediaField
+              field={field}
+              record={record}
+              config={config}
+              value={localValue}
+              onChange={(newId) => handleUpdate(newId)}
+            />
+          ) : (
+            localValue?.url ? (
+              <Box sx={{ width: 150, height: 150, position: 'relative' }}>
+                <img
+                  src={localValue.url}
+                  alt={localValue.alt_text || field.label}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              </Box>
+            ) : record?.[field.name + '_details']?.url ? (
+              <Box sx={{ width: 150, height: 150, position: 'relative' }}>
+                <img
+                  src={record[field.name + '_details'].url}
+                  alt={record[field.name + '_details'].alt_text || field.label}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
+                  onError={(e) => (e.currentTarget.style.display = 'none')}
+                />
+              </Box>
+            ) : (
+              <Typography variant="body2">No media uploaded</Typography>
+            )
+          );
+          break;
+        
+        
 
     case 'timezone':
-      content = (
+      content = isEditMode ? (
         <TimezoneSelect
           value={typeof localValue === 'string' ? localValue : ''}
-          onChange={onChange}
+          onChange={handleUpdate}
           name={field.name}
           parentId={record?.id}
           parentTable={config?.name}
         />
+      ) : (
+        <Typography variant="body2">{localValue ?? '—'}</Typography>
       );
       break;
 
     case 'link':
-      content = isEditing ? (
+      content = isEditMode ? (
         <TextField
           fullWidth
           variant="outlined"
@@ -135,15 +164,60 @@ export const FieldRenderer = ({
       break;
 
     case 'date':
-      content = localValue ? new Date(localValue).toLocaleDateString() : '—';
+      content = isEditMode ? (
+        <TextField
+          fullWidth
+          type="date"
+          size="small"
+          value={localValue || ''}
+          onChange={(e) => handleUpdate(e.target.value)}
+          InputLabelProps={{ shrink: true }}
+        />
+      ) : (
+        <Typography variant="body2">{localValue ? new Date(localValue).toLocaleDateString() : '—'}</Typography>
+      );
       break;
 
     case 'boolean':
-      content = localValue ? 'Yes' : 'No';
+      content = isEditMode ? (
+        <FormControlLabel
+          control={
+            <Checkbox
+              checked={!!localValue}
+              onChange={(e) => handleUpdate(e.target.checked)}
+            />
+          }
+          label={field.label || ''}
+        />
+      ) : (
+        <Typography variant="body2">{localValue ? 'Yes' : 'No'}</Typography>
+      );
       break;
 
     case 'status':
       content = <span style={{ textTransform: 'capitalize' }}>{localValue}</span>;
+      break;
+
+    case 'select':
+      content = isEditMode ? (
+        <Select
+          fullWidth
+          size="small"
+          value={localValue || ''}
+          onChange={(e) => handleUpdate(e.target.value)}
+          displayEmpty
+        >
+          {(field.options || []).map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+      ) : (
+        <Typography variant="body2">
+          {(field.options || []).find((opt) => opt.value === localValue)?.label || '—'}
+        </Typography>
+      );
       break;
 
     case 'json':
@@ -172,26 +246,17 @@ export const FieldRenderer = ({
     }
 
     default:
-      if ((field.clickable || field.name === 'title') && view === 'table') {
-        const handleClick = () => {
-          router.push(`${pathname}?modal=edit&id=${record.id}`);
-        };
-        content = (
-          <Typography
-            variant="body2"
-            onClick={handleClick}
-            sx={{
-              cursor: 'pointer',
-              color: 'primary.main',
-              '&:hover': { textDecoration: 'underline' },
-            }}
-          >
-            {localValue || '—'}
-          </Typography>
-        );
-      } else {
-        content = <Typography variant="body2">{localValue ?? '—'}</Typography>;
-      }
+      content = isEditMode ? (
+        <TextField
+          fullWidth
+          size="small"
+          value={localValue || ''}
+          onChange={(e) => handleUpdate(e.target.value)}
+          placeholder={field.label || ''}
+        />
+      ) : (
+        <Typography variant="body2">{localValue ?? '—'}</Typography>
+      );
   }
 
   return content;
