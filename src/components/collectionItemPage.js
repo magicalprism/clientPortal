@@ -82,6 +82,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   
     try {
       if (field.type !== 'multiRelationship') {
+        console.log('Saving field:', field.name, 'with value:', newValue);
+        
         const { error } = await supabase
           .from(config.name)
           .update({ [field.name]: newValue })
@@ -92,6 +94,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
             ...prev,
             [field.name]: newValue,
           }));
+          console.log('Successfully saved field:', field.name);
         } else {
           console.error('❌ Supabase update error', error);
         }
@@ -110,7 +113,31 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     setLoadingField(null);
   };
   
-  
+  // Handle rich text changes specifically
+  const handleRichTextChange = async (field, content) => {
+    try {
+      console.log('Saving rich text field:', field.name, 'with content length:', content?.length);
+      
+      // Update in Supabase
+      const { error } = await supabase
+        .from(config.name)
+        .update({ [field.name]: content })
+        .eq('id', localRecord.id);
+
+      if (!error) {
+        // Update local state
+        setLocalRecord((prev) => ({
+          ...prev,
+          [field.name]: content,
+        }));
+        console.log('Successfully saved rich text field:', field.name);
+      } else {
+        console.error('❌ Error saving rich text:', error);
+      }
+    } catch (err) {
+      console.error('❌ Unexpected error saving rich text:', err);
+    }
+  };
 
   const handleCloseModal = () => {
     setModalOpen(false);
@@ -245,11 +272,35 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       );
                     }
 
+                    // Special handling for richText fields
+                    if (field.type === 'richText') {
+                      return (
+                        <Grid item xs={12} key={field.name}>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+                            {field.label}
+                          </Typography>
+                          {isLoading ? (
+                            <CircularProgress size={16} />
+                          ) : (
+                            <Box sx={{ border: '1px solid #e0e0e0', borderRadius: 1, p: 1 }}>
+                              <SimpleEditor
+                                content={value || ''}
+                                editable={editable}
+                                onChange={(html) => {
+                                  handleRichTextChange(field, html);
+                                }}
+                              />
+                            </Box>
+                          )}
+                        </Grid>
+                      );
+                    }
+
                     return (
                       <Grid
                         item
                         xs={12}
-                        sm={field.type === 'richText' ? 12 : isTwoColumn ? 6 : 12}
+                        sm={isTwoColumn ? 6 : 12}
                         key={field.name}
                       >
                         <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -294,12 +345,6 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                           >
                             {isLoading ? (
                               <CircularProgress size={16} />
-                            ) : field.type === 'richText' ? (
-                              <SimpleEditor
-                                content={value}
-                                editable
-                                onChange={(html) => saveChange(field, html)}
-                              />
                             ) : (
                               <FieldRenderer
                                 value={localRecord[field.name]}
@@ -314,9 +359,10 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                     setLocalRecord((prev) => ({
                                       ...prev,
                                       [field.name]: newValue.ids,
-                                      [`${field.name}_details`]: newValue.details,
+                                      [`${field.name}_details`]: newValue.details
                                     }));
-                                  } else {
+                                  }
+                                   else {
                                     try {
                                       const { error } = await supabase
                                         .from(config.name)
@@ -334,7 +380,6 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                     }
                                   }
                                 }}
-                                
                               />
                             )}
                           </Box>

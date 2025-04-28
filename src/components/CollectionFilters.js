@@ -6,7 +6,6 @@ import {
   Tabs, Tab, Divider, Stack, Button, Typography, Select, MenuItem, TextField
 } from '@mui/material';
 import { FilterButton, FilterPopover, useFilterContext } from '@/components/core/filter-button';
-import { Option } from '@/components/core/option';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { DeleteSelectedButton } from '@/components/core/delete-selected-button';
 import { createClient } from '@/lib/supabase/browser';
@@ -100,6 +99,8 @@ function TextFilterPopover({ label, filter }) {
   );
 }
 
+
+
 export function CollectionFilters({ config, filters, onChange, sortDir, onSortChange, onDeleteSuccess }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -113,6 +114,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
   const otherFilters = (config.filters || []).filter((f) => f.type !== 'tab');
   const hasFilters = Object.values(filters).some(Boolean);
   const tabValue = filters[tabFilter?.name] ?? tabFilter?.options?.[0]?.value ?? '';
+
 
   return (
     <div>
@@ -145,6 +147,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
               popover={<TextFilterPopover label={filter.label} filter={filter} />}
             />
           ))}
+          
 
           {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
         </Stack>
@@ -161,21 +164,6 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
               onDeleteSuccess={onDeleteSuccess}
             />
           </Stack>
-        )}
-
-        {config.sortOptions?.length > 0 && (
-          <Select
-            value={sortDir}
-            onChange={(e) => onSortChange?.(e.target.value)}
-            size="small"
-            sx={{ width: 140 }}
-          >
-            {config.sortOptions.map((opt) => (
-              <Option key={opt.value} value={opt.value}>
-                {opt.label}
-              </Option>
-            ))}
-          </Select>
         )}
       </Stack>
     </div>

@@ -11,6 +11,11 @@ export const task = {
         titleField: 'title',
         subtitleField: 'status',
       }, 
+      // Add default filters to apply when the table loads
+   // Add default filters - this will be applied when the table is loaded
+   defaultFilters: {
+    status: 'todo'  // Set initial status filter to 'todo'
+  },
   fields: [   
     // Overview
     { 
@@ -58,6 +63,16 @@ export const task = {
       showInTable: true 
     },
     { 
+      name: 'due_date', 
+      group: 'Primary', 
+      tab: 'Details',
+      label: 'Due Date', 
+      group: 'General', 
+      type: 'date', 
+      tab: 'Meta', 
+      showInTable: true 
+    },
+    { 
       name: 'created', 
       label: 'Created', 
       type: 'date',
@@ -88,7 +103,16 @@ export const task = {
       name: 'status',
       type: 'select',
       label: 'Status',
-      options: ['draft', 'published', 'archived']
+      options: ['todo', 'complete', 'in_progress']
     },
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      options: [
+        { value: 'due_date:asc', label: 'Due date (oldest first)' },
+        { value: 'due_date:desc', label: 'Due date (newest first)' },
+      ]
+    }
   ]
 };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Typography, IconButton, TextField } from '@mui/material';
+import { Typography, IconButton, TextField, Box } from '@mui/material';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 
@@ -53,9 +53,8 @@ export const FieldRenderer = ({
           value={localValue}
           editable
           onChange={handleUpdate}
-          record={record} // 🔥 ADD THIS
+          record={record}
         />
-
       ) : null;
       break;
 
@@ -70,36 +69,29 @@ export const FieldRenderer = ({
       break;
 
     case 'richText':
-      content =
-        !editable && !localValue ? (
-          '—'
+      // Display the rich text content even if not editable
+      if (!editable) {
+        content = !localValue ? (
+          <Typography variant="body2">—</Typography>
         ) : (
-          <>
-    <SimpleEditor
-        content={localValue}
-        editable={editable}
-        onChange={(html) => setLocalValue(html)}
-      />
-      {editable && (
-        <Box mt={2} display="flex" justifyContent="flex-end">
-          <button
-            style={{
-              padding: '6px 12px',
-              backgroundColor: '#1976d2',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-            }}
-            onClick={() => handleUpdate(localValue)}
-          >
-            Save
-          </button>
-        </Box>
-      )}
-    </>
-
+          <div dangerouslySetInnerHTML={{ __html: localValue }} />
         );
+      } else {
+        // Editable mode for rich text
+        content = (
+          <>
+            <SimpleEditor
+              content={localValue || ''}
+              editable={true}
+              onChange={(html) => {
+                setLocalValue(html);
+                // Immediately update when the editor changes
+                handleUpdate(html);
+              }}
+            />
+          </>
+        );
+      }
       break;
 
     case 'media':
