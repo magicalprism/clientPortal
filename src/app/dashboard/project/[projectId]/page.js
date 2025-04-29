@@ -32,7 +32,8 @@ export default async function ProjectDetailPage(props) {
       return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
     }
     return null;
-  });
+  })
+  
 
 
   const selectFields = ['*', ...relationshipJoins].join(', ');
@@ -61,23 +62,21 @@ export default async function ProjectDetailPage(props) {
 
   for (const field of config.fields) {
     if (field.type === 'media' && field.relation?.table) {
-      if (record[field.name]) {
-        relationshipDetails[`${field.name}_details`] = record[field.name];
-        delete record[field.name];
-      } else if (record[field.relation.table]) {
-        relationshipDetails[`${field.name}_details`] = record[field.relation.table];
-        delete record[field.relation.table];
+      const alias = `${field.relation.table}_${field.name}`; // ✅ match the new alias
+      const value = record[alias];
+      if (value) {
+        relationshipDetails[`${field.name}_details`] = value;
+        delete record[alias];
       }
-    
     } else if (field.type === 'relationship' && field.relation?.table) {
-      const relData = record[field.relation.table];
-      if (relData !== undefined) {
-        relationshipDetails[`${field.name}_details`] = relData;
-        delete record[field.relation.table];
+      const alias = `${field.relation.table}_${field.name}`; // ✅ match the new alias
+      const value = record[alias];
+      if (value) {
+        relationshipDetails[`${field.name}_details`] = value;
+        delete record[alias];
       }
     }
-  } // ✅ <-- This brace was missing
-  
+  }
   
 
   // Step 3: Load multi-relationship data
