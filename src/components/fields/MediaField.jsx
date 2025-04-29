@@ -16,6 +16,7 @@ export const MediaField = ({
   const [modalOpen, setModalOpen] = useState(false);
   const [localMedia, setLocalMedia] = useState(value || null);
 
+
   const handleUploadComplete = (media) => {
     if (media?.url) {
       setPreviewUrl(media.url);

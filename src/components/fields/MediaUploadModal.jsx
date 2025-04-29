@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { X as XIcon } from '@phosphor-icons/react';
 import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
+import { MediaLibraryPicker } from '@/components/fields/MediaLibraryPicker';
 
 export const MediaUploadModal = ({
   open,
@@ -30,20 +31,30 @@ export const MediaUploadModal = ({
   const [copyright, setCopyright] = useState('');
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
+  const [manualUrl, setManualUrl] = useState('');
+  const [chooseFromLibraryOpen, setChooseFromLibraryOpen] = useState(false);
+  const [companyId, setCompanyId] = useState('');
+  const [projectId, setProjectId] = useState('');
+  const [companies, setCompanies] = useState([]);
+  const [projects, setProjects] = useState([]);
+
 
   // 🧠 When opening, preload existing media if any
   useEffect(() => {
     if (existingMedia) {
       setPreviewUrl(existingMedia.url || '');
-      setAltText(existingMedia.alt || '');
+      setManualUrl(existingMedia.url || '');
+      setAltText(existingMedia.alt_text || '');
       setCopyright(existingMedia.copyright || '');
     } else {
       setPreviewUrl('');
+      setManualUrl('');
       setAltText('');
       setCopyright('');
     }
-    setSelectedFile(null); // always clear selected file initially
+    setSelectedFile(null);
   }, [open, existingMedia]);
+  
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -56,12 +67,33 @@ export const MediaUploadModal = ({
   const handleUpload = async () => {
     setUploading(true);
     setError(null);
-
+  
     try {
       let mediaData;
-
-      if (selectedFile) {
-        // New file selected → upload it
+  
+      if (manualUrl) {
+        // 🧠 If user entered a manual URL
+        const supabase = createClient();
+  
+        const { data, error: insertError } = await supabase
+          .from('media')
+          .insert({
+            url: manualUrl,
+            alt_text: altText,
+            copyright: copyright,
+            created: new Date().toISOString(),
+          })
+          .select()
+          .single();
+  
+        if (insertError) {
+          console.error('❌ Failed to save URL-only media:', insertError);
+          throw insertError;
+        }
+  
+        mediaData = data;
+      } else if (selectedFile) {
+        // 🧠 If user selected a file, upload normally
         mediaData = await uploadAndCreateMediaRecord({
           file: selectedFile,
           record,
@@ -71,14 +103,14 @@ export const MediaUploadModal = ({
           copyright,
         });
       } else {
-        // No file picked → only update alt/copyright based on existing media
+        // 🧠 Nothing selected — just update alt/copyright if existing media
         mediaData = {
           ...existingMedia,
           alt: altText,
           copyright,
         };
       }
-
+  
       onUploadComplete(mediaData);
       onClose();
     } catch (err) {
@@ -88,6 +120,7 @@ export const MediaUploadModal = ({
       setUploading(false);
     }
   };
+  
 
   const handleClear = () => {
     setPreviewUrl('');
@@ -127,7 +160,8 @@ export const MediaUploadModal = ({
               No file selected
             </Typography>
           )}
-
+  
+          {/* Always show these buttons */}
           <Button
             variant="outlined"
             component="label"
@@ -143,9 +177,29 @@ export const MediaUploadModal = ({
               accept="image/*"
             />
           </Button>
+  
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={() => setChooseFromLibraryOpen(true)}
+            disabled={uploading}
+            sx={{ mt: 1 }}
+          >
+            Explore Library
+          </Button>
         </Box>
+  
 
         <Box flexGrow={1} display="flex" flexDirection="column" gap={2}>
+        <TextField
+              fullWidth
+              label="Image URL (optional)"
+              placeholder="https://example.com/image.png"
+              value={manualUrl}
+              onChange={(e) => setManualUrl(e.target.value)}
+              sx={{ mt: 2 }}
+            />
+
           <TextField
             label="Alt Text"
             fullWidth
@@ -168,6 +222,22 @@ export const MediaUploadModal = ({
           )}
         </Box>
       </DialogContent>
+
+      <MediaLibraryPicker
+  open={chooseFromLibraryOpen}
+  onClose={() => setChooseFromLibraryOpen(false)}
+  onSelect={(media) => {
+    setPreviewUrl(media.url);
+    setManualUrl(media.url);
+    setAltText(media.alt_text || '');
+    setCopyright(media.copyright || '');
+    setSelectedFile(null); // Clear any upload
+    onUploadComplete(media); // Select immediately
+    setChooseFromLibraryOpen(false);
+    onClose(); // Optional: close upload modal too
+  }}
+/>
+
 
       <DialogActions>
         <Button onClick={onClose} disabled={uploading}>

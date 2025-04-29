@@ -5,27 +5,35 @@ import { createClient } from '@/lib/supabase/server';
 import { hydrateRelationshipLabels } from '@/lib/utils/hydrateRelationshipLabels';
 import { Box, Container, Grid } from '@mui/material';
 
+
+
+
 export default async function TaskDetailPage(props) {
-  const params = await props.params; // 🧠 await params properly
+  const params = await props.params;
   const collectionKey = 'task';
   const config = collections[collectionKey];
   const supabase = await createClient();
   const recordId = params?.[`${collectionKey}Id`];
 
 
+  console.log('🧠 Debugging recordId:', recordId);
+
   // Step 1: Basic relationship joins (single-table)
   const relationshipJoins = config.fields
   .filter(
     (field) =>
-      field.type === 'relationship' &&
-      field.relation?.table &&
-      field.relation?.labelField &&
-      !field.relation.labelField.includes('(')
+      (field.type === 'relationship' || field.type === 'media') &&
+      field.relation?.table
   )
-  .map(
-    (field) =>
-      `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`
-  );
+  .map((field) => {
+    if (field.type === 'media') {
+      return `${field.relation.table}_${field.name}:${field.name}(id, url, alt_text, copyright, file_path)`;
+    } else if (field.type === 'relationship' && field.relation.labelField) {
+      return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
+    }
+    return null;
+  })
+  
 
 
   const selectFields = ['*', ...relationshipJoins].join(', ');
@@ -34,15 +42,42 @@ export default async function TaskDetailPage(props) {
 
   // Step 2: Load base record
   const { data: record, error } = await supabase
-    .from(config.name)
-    .select(selectFields)
-    .eq('id', Number(recordId))
-    .single();
+  .from(config.name)
+  .select(selectFields, { head: false, count: 'exact' })
+  .limit(1)
+  .eq('id', Number(recordId))
+  .single();
+
 
   if (error || !record) {
     console.error('❌ Error loading record:', error);
     return <div>Error loading {collectionKey}.</div>;
   }
+
+
+
+  // 🧠 Step 2.5: Map media or relationships correctly onto _details fields
+  // 🧠 Map media properly for media fields
+  const relationshipDetails = {};
+
+  for (const field of config.fields) {
+    if (field.type === 'media' && field.relation?.table) {
+      const alias = `${field.relation.table}_${field.name}`; // ✅ match the new alias
+      const value = record[alias];
+      if (value) {
+        relationshipDetails[`${field.name}_details`] = value;
+        delete record[alias];
+      }
+    } else if (field.type === 'relationship' && field.relation?.table) {
+      const alias = `${field.relation.table}_${field.name}`; // ✅ match the new alias
+      const value = record[alias];
+      if (value) {
+        relationshipDetails[`${field.name}_details`] = value;
+        delete record[alias];
+      }
+    }
+  }
+  
 
   // Step 3: Load multi-relationship data
   const multiRelations = await Promise.all(
@@ -80,12 +115,13 @@ export default async function TaskDetailPage(props) {
   const multiRelationshipData = Object.fromEntries(
     multiRelations.flatMap(([name, { ids, details }]) => [
       [name, ids],
-      [`${name}_details`, details]
+      [`${name}_details`, details],
     ])
   );
 
   const enriched = {
     ...record,
+    ...relationshipDetails,
     ...multiRelationshipData,
   };
 
