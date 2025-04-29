@@ -92,13 +92,16 @@ export const FieldRenderer = ({
         break;
 
 
-        case 'media':
+        case 'media': {
+          const fieldName = field.name;
+          const recordFieldDetails = record?.[`${fieldName}_details`];
+          
           console.log('🔍 [FieldRenderer] media field debug:', {
+            fieldName,
             localValue,
-            recordFieldDetails: record?.[field.name + '_details'],
-            fieldName: field.name,
+            recordFieldDetails,
           });
-        
+          
           content = isEditMode ? (
             <MediaField
               field={field}
@@ -108,29 +111,47 @@ export const FieldRenderer = ({
               onChange={(newId) => handleUpdate(newId)}
             />
           ) : (
-            localValue?.url ? (
-              <Box sx={{ width: 150, height: 150, position: 'relative' }}>
-                <img
-                  src={localValue.url}
-                  alt={localValue.alt_text || field.label}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
-                />
-              </Box>
-            ) : record?.[field.name + '_details']?.url ? (
-              <Box sx={{ width: 150, height: 150, position: 'relative' }}>
-                <img
-                  src={record[field.name + '_details'].url}
-                  alt={record[field.name + '_details'].alt_text || field.label}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 8 }}
-                  onError={(e) => (e.currentTarget.style.display = 'none')}
-                />
-              </Box>
-            ) : (
-              <Typography variant="body2">No media uploaded</Typography>
-            )
+            <Box>
+              <Typography variant="caption" sx={{ mb: 1 }}>
+                Media ID: {localValue} | URL: {recordFieldDetails?.url || 'No URL found'}
+              </Typography>
+        
+              {recordFieldDetails?.url ? (
+                <Box
+                  sx={{
+                    width: 150,
+                    height: 150,
+                    position: 'relative',
+                    border: '1px solid #ccc',
+                    mt: 1,
+                  }}
+                >
+                  <img
+                    src={recordFieldDetails.url}
+                    alt={recordFieldDetails.alt_text || field.label}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      borderRadius: 8,
+                    }}
+                    onError={(e) => {
+                      console.warn('❌ Image failed to load:', recordFieldDetails.url);
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </Box>
+              ) : (
+                <Typography variant="body2">No media uploaded</Typography>
+              )}
+            </Box>
           );
           break;
+        }
+        
+        
+        
+        
         
         
 

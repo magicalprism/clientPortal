@@ -93,7 +93,17 @@ export const project = {
       group: 'Media',
       tab: 'Brand'
     },
-    { name: 'screenshot_id', label: 'Screenshot', group: 'Media', type: 'image', type: 'media', tab: 'Brand' },
+    {
+      name: 'screenshot_id',
+      label: 'Screenshot',
+      type: 'media',
+      relation: {
+        table: 'media',
+        labelField: 'url'  // or 'alt' if you want something different
+      },
+      group: 'Media',
+      tab: 'Brand'
+    },
 
     //media folders
     //Brand board
