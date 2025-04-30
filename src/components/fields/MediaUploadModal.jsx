@@ -147,7 +147,7 @@ export const MediaUploadModal = ({
           .from('media')
           .insert({
             url: manualUrl,
-            created: new Date().toISOString(),
+            created_at: new Date().toISOString(),
             ...metadata,
           })
           .select()

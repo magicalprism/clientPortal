@@ -22,7 +22,16 @@ export const QuickViewCard = ({ config, record }) => {
     extraFields = []
   } = config.quickView;
 
-  const image = record[imageField];
+  // --- Smart fallback image handling ---
+  const directImage =
+    record?.[`${imageField}_details`]?.url || record?.[imageField];
+
+  const companyThumbnail =
+    record?.company_id_details?.thumbnail_id_details?.url;
+
+  const fallbackImage = '/assets/placeholder.png';
+
+  const image = directImage || companyThumbnail || fallbackImage;
   const title = record[titleField];
   const subtitle = record[subtitleField];
   const description = record[descriptionField];
@@ -31,28 +40,36 @@ export const QuickViewCard = ({ config, record }) => {
     <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
         {image && (
+          <Box sx={{ p: 1, mb: 2 }}>
           <Box
             component="img"
             src={image}
             alt={title || 'Preview image'}
-            sx={{ width: '100%', borderRadius: 2, mb: 2 }}
-            onError={(e) => (e.target.style.display = 'none')}
+            sx={{ width: '100%', borderRadius: 2 }}
+            onError={(e) => {
+              const fallback = fallbackImage;
+              e.currentTarget.onerror = null;
+        
+              if (!e.currentTarget.src.includes(fallback)) {
+                e.currentTarget.src = fallback;
+              } else {
+                e.currentTarget.src =
+                  'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+              }
+            }}
           />
+        </Box>
+        
         )}
 
         {title && (
-          <Typography variant="h6" gutterBottom>
+          <Typography variant="h5" gutterBottom>
             {title}
           </Typography>
         )}
 
         {subtitle && (
-          <Chip
-            label={subtitle}
-            size="small"
-            sx={{ mb: 2 }}
-            color="primary"
-          />
+          <Chip label={subtitle} size="small" sx={{ mb: 2 }} color="primary" />
         )}
 
         {description && (
@@ -70,7 +87,7 @@ export const QuickViewCard = ({ config, record }) => {
             <Divider sx={{ my: 2 }} />
             <Stack spacing={2}>
               {extraFields.map((fieldName) => {
-                const field = config.fields.find(f => f.name === fieldName);
+                const field = config.fields.find((f) => f.name === fieldName);
                 const value = record[fieldName];
 
                 return (

@@ -22,7 +22,7 @@ export const company = {
         //Quickview
         quickView: {
           enabled: true,
-          imageField: 'thumbnail',
+          imageField: 'thumbnail_id',
           titleField: 'title',
           subtitleField: 'status',
           descriptionField: 'site_tagline',

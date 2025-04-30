@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Typography, IconButton, TextField, Box, Checkbox, FormControlLabel, Select, MenuItem } from '@mui/material';
+import { Typography, IconButton, TextField, Box, Checkbox, FormControlLabel, Select, MenuItem, Tooltip } from '@mui/material';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
+import { ArrowSquareOut } from '@phosphor-icons/react';
+
+
 
 import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
 import { RelationshipField } from '@/components/fields/RelationshipField';
@@ -71,6 +74,16 @@ export const FieldRenderer = ({
       );
       break;
     }
+
+    case 'multiRelationship':
+       content = editable ? (
+         <MultiRelationshipField
+           field={{ ...field, parentId: record.id }}
+           value={localValue}
+           onChange={handleUpdate}
+         />
+       ) : null;
+       break;
     
 
     case 'richText':
@@ -91,6 +104,7 @@ export const FieldRenderer = ({
         )
       );
       break;
+    
 
     case 'media': {
       const fieldName = field.name;
@@ -159,20 +173,52 @@ export const FieldRenderer = ({
       );
       break;
 
-    case 'link':
-      content = isEditMode ? (
-        <TextField
-          fullWidth
-          variant="outlined"
-          size="small"
-          value={localValue || ''}
-          onChange={(e) => handleUpdate(e.target.value)}
-          placeholder={field.label || 'Enter link'}
-        />
-      ) : (
-        <LinkField value={localValue} field={field} record={record} />
-      );
-      break;
+      case 'link':
+        content = isEditMode ? (
+          <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+            <TextField
+              variant="outlined"
+              size="small"
+              value={localValue || ''}
+              onChange={(e) => handleUpdate(e.target.value)}
+              placeholder={field.label || 'Enter link'}
+              sx={{
+                flexGrow: 1,
+                minWidth: 0, // 🚨 Crucial: allows shrinking
+                '& .MuiInputBase-root': {
+                  pr: '8px' // ensure padding isn't interfering
+                }
+              }}
+              InputProps={{
+                sx: {
+                  height: '100%',
+                },
+              }}
+            />
+            {!!localValue && (
+              <Tooltip title="Open link" arrow>
+                <IconButton
+                  component="a"
+                  href={localValue}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  size="small"
+                  sx={{ ml: 1, flexShrink: 0 }}
+                >
+                  <ArrowSquareOut size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+          </Box>
+        ) : (
+          <LinkField value={localValue} field={field} />
+        );
+        break;
+
+
+
+
+      
 
     case 'date':
       content = isEditMode ? (
@@ -305,12 +351,20 @@ export const FieldRenderer = ({
           fullWidth
           size="small"
           value={localValue || ''}
-          onChange={(e) => handleUpdate(e.target.value)}
+          onChange={(e) => setLocalValue(e.target.value)}
+          onBlur={() => onChange(field, localValue)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              onChange(field, localValue);
+            }
+          }}
           placeholder={field.label || ''}
         />
       ) : (
         <Typography variant="body2">{localValue ?? '—'}</Typography>
       );
+      break; // ✅ THIS LINE WAS MISSING
   }
 
   return content;

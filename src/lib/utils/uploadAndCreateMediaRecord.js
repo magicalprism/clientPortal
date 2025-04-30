@@ -47,7 +47,7 @@ export const uploadAndCreateMediaRecord = async ({
     copyright: copyright || '',
     width: null,
     height: null,
-    created: new Date().toISOString(), // 🧠 optional, if your media table has created_at
+    created_at: new Date().toISOString(), // 🧠 optional, if your media table has created_at_at
   };
 
   const { data: insertedMedia, error: insertError } = await supabase
@@ -61,7 +61,7 @@ export const uploadAndCreateMediaRecord = async ({
     throw insertError;
   }
 
-  console.log('✅ Media record created:', insertedMedia);
+  console.log('✅ Media record created_at:', insertedMedia);
 
   return insertedMedia; // { id, url, alt_text, copyright, etc. }
 };

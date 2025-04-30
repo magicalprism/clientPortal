@@ -99,16 +99,12 @@ export const projectpage = {
     },
 
     {
-      name: 'content_id',
+      name: 'page_folder_url',
       label: 'Page Folder',
       group: 'Page Info',
       tab: 'Overview', 
-      type: 'relationship',
-      relation: {
-        table: 'link',
-        labelField: 'title',
-        linkTo: '/dashboard/link', // or dynamically derive from config
-      }
+      type: 'link',
+      description: 'Google drive folder containing copy, graphics, images & offer doc',
     },
 
     
@@ -122,12 +118,7 @@ export const projectpage = {
       showInTable: true,
       options: [
         { label: 'Custom', value: 'custom' },
-        { label: 'Single Template', value: 'single' },
-        { label: 'Archive Template', value: 'archive' },
-        { label: 'Legal', value: 'legal' },
-        { label: 'Header Template', value: 'header' },
-        { label: 'Footer Template', value: 'footer' },
-        { label: 'Loop Template', value: 'loop' }
+        { label: 'Template', value: 'single' }
       ]
     },  
     
@@ -142,9 +133,8 @@ export const projectpage = {
       
       options:  [
         { label: 'Planning', value: 'planning' },
-        { label: 'In Progress', value: 'in_progress' },
         { label: 'Copywriting', value: 'copywriting' },
-        { label: 'Design', value: 'design' },
+        { label: 'Development', value: 'development' },
         { label: 'Edits', value: 'edits' },
         { label: 'Done', value: 'done' },
         { label: 'Archived', value: 'archived' },
@@ -152,14 +142,14 @@ export const projectpage = {
     },
     
     { 
-      name: 'created_on', 
+      name: 'created_at', 
       label: 'Created', 
       type: 'timestamp',
       group: 'General', 
       tab: 'Meta'
     },
     { 
-      name: 'updated_on', 
+      name: 'updated_at', 
       label: 'Updated At', 
       type: 'timestamp' , 
       group: 'General', 
@@ -199,12 +189,10 @@ export const projectpage = {
       name: 'status',
       type: 'select',
       label: 'Stage',
-      defaultValue: 'in_progress',
       options: [
         { label: 'Planning', value: 'planning' },
-        { label: 'In Progress', value: 'in_progress' },
         { label: 'Copywriting', value: 'copywriting' },
-        { label: 'Design', value: 'design' },
+        { label: 'Development', value: 'development' },
         { label: 'Edits', value: 'edits' },
         { label: 'Done', value: 'done' },
         { label: 'Archived', value: 'archived' },

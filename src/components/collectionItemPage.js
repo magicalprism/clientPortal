@@ -110,7 +110,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
         const payload = {
           [field.name]: newValue,
-          updated_on: now,
+          updated_at: now,
         };
 
   
@@ -127,7 +127,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
           setLocalRecord((prev) => ({
             ...prev,
             [field.name]: newValue,
-            updated_on: getPostgresTimestamp(),
+            updated_at: getPostgresTimestamp(),
           }));
         }
       } else {
@@ -211,6 +211,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
   return (
     <>
+    <Card>
+    <CardContent>
       <Tabs
         value={activeTab}
         onChange={(e, newValue) => setActiveTab(newValue)}
@@ -225,8 +227,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
       <Grid container spacing={3}>
         {Object.entries(currentTabGroups).map(([groupName, fields]) => (
           <Grid item xs={12} key={groupName}>
-            <Card>
-              <CardContent>
+
                 <Typography variant="h6" fontWeight="bold" gutterBottom>
                   {groupName}
                 </Typography>
@@ -321,7 +322,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                               color: editable && isBasicTextField ? 'primary.main' : 'text.primary',
                               display: 'flex',
                               alignItems: 'center',
-                              minHeight: '32px',
+                              minHeight: '35px',
                               justifyContent: 'space-between',
                             }}
                             onClick={
@@ -412,11 +413,12 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                     );
                   })}
                 </Grid>
-              </CardContent>
-            </Card>
+
           </Grid>
         ))}
       </Grid>
+      </CardContent>
+      </Card>
 
       {modalOpen && relatedConfig && (
         <CollectionModal

@@ -19,11 +19,20 @@ export default function PrimaryTableView({ config }) {
   const supabase = createClient();
   const router = useRouter();
 
-  const [filters, setFilters] = useState({});
+  const defaultFilters = (config.filters || []).reduce((acc, filter) => {
+    if (filter.defaultValue !== undefined) {
+      acc[filter.name] = filter.defaultValue;
+    }
+    return acc;
+  }, {});
+  
+
+  const [filters, setFilters] = useState(defaultFilters);
   const [sortDir, setSortDir] = useState('desc');
   const [data, setData] = useState([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [currentView, setCurrentView] = useState(config.defaultView);
+  
 
   const refresh = () => setRefreshFlag((prev) => prev + 1);
 
@@ -51,7 +60,7 @@ export default function PrimaryTableView({ config }) {
       }
     }
 
-    query = query.order('created_on', { ascending: sortDir === 'asc' });
+    query = query.order('created_at', { ascending: sortDir === 'asc' });
 
     const { data, error } = await query;
 

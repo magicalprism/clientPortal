@@ -24,8 +24,8 @@ export const TimestampField = ({ field, mode, editable, onChange, value }) => {
     const now = getPostgresTimestamp();
 
     if (
-      (field.name === 'created_on' && mode === 'create' && !value) ||
-      (field.name === 'updated_on' && value !== now)
+      (field.name === 'created_at' && mode === 'create' && !value) ||
+      (field.name === 'updated_at' && value !== now)
     ) {
       console.log(`🕒 Setting ${field.name} to ${now}`);
       triggeredRef.current = true;

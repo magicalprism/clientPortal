@@ -7,7 +7,7 @@ export const project = {
       //Quickview
       quickView: {
         enabled: true,
-        imageField: 'thumbnail',
+        imageField: 'thumbnail_id',
         titleField: 'title',
         subtitleField: 'status',
         descriptionField: 'site_tagline',
@@ -41,7 +41,7 @@ export const project = {
 
     
     
-    { name: 'url', label: 'URL', group: 'Project Info', type: 'url', type: 'link', tab: 'Overview', },
+    { name: 'url', label: 'URL', group: 'Project Info', type: 'link',  tab: 'Overview', },
 
     //Site Info
     { name: 'site_name', label: 'Site Name', group: 'Site Info', tab: 'Overview', },
@@ -222,14 +222,14 @@ export const project = {
     },
     
     { 
-      name: 'created_on', 
+      name: 'created_at', 
       label: 'Created', 
       type: 'timestamp',
       group: 'General', 
       tab: 'Meta'
     },
     { 
-      name: 'updated_on', 
+      name: 'updated_at', 
       label: 'Updated At', 
       type: 'timestamp' , 
       group: 'General', 

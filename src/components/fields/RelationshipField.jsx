@@ -88,7 +88,7 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
     };
 
     if (editable) loadOptions();
-  }, [editable, field, record]);
+  }, [editable, field.name, record?.id]);
 
   const selectedOption = options.find(opt => String(opt.id) === String(value));
 
