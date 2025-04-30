@@ -14,6 +14,8 @@ import { CollectionFilters } from '@/components/CollectionFilters';
 import { CollectionTable } from '@/components/CollectionTable';
 import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
 import { ViewSwitcher } from '@/components/ViewSwitcher';
+import { hasChildRows } from '@/lib/utils/hasChildRows'; // if you extracted it
+
 
 export default function PrimaryTableView({ config }) {
   const supabase = createClient();
@@ -162,7 +164,26 @@ export default function PrimaryTableView({ config }) {
           </Box>
         )}
 
-        <CollectionTable config={config} rows={data} />
+              <CollectionTable
+                config={config}
+                rows={data}
+                childRenderer={(row) => {
+                  const children = data.filter((r) => r.parent_id === row.id);
+
+                  if (children.length === 0) return null; // 👈 prevents blank space
+
+                  return (
+                    <Box sx={{ pl: 4, py: 1 }}>
+                      <CollectionTable
+                        config={config}
+                        rows={children}
+                        fieldContext={{ relation: { tableFields: ['title', 'status'] } }}
+                      />
+                    </Box>
+                  );
+                }}
+              />
+
       </CollectionSelectionProvider>
     </Container>
   );

@@ -263,7 +263,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       return (
                         <Grid item xs={12} key={field.name}>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="subtitle2">{field.label}</Typography>
+                          <Typography variant="subtitle2" sx={{ mb: 1 }}>{field.label}</Typography>
                             <IconButton
                               onClick={() =>
                                 router.push(
@@ -298,7 +298,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                         {isEditing && isBasicTextField ? (
                           <TextField
                             fullWidth
-                            size="small"
+                            size="medium"
+                            sx={{ mb: 2 }}
                             value={tempValue}
                             autoFocus
                             onChange={(e) => setTempValue(e.target.value)}
@@ -314,6 +315,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 saveChange(field);
                               }
                             }}
+                            
                           />
                         ) : (
                           <Box

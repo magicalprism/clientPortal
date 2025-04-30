@@ -21,6 +21,7 @@ export function DataTable({
   selectable,
   selected,
   uniqueRowId,
+  childRenderer,
   ...props
 }) {
   const selectedSome = (selected?.size ?? 0) > 0 && (selected?.size ?? 0) < rows.length;
@@ -68,42 +69,63 @@ export function DataTable({
         </TableRow>
       </TableHead>
       <TableBody>
-        {rows.map((row, rowIndex) => {
-          const rowId = row.id ?? uniqueRowId?.(row) ?? `row-${rowIndex}`;
-          const isSelected = rowId && selected?.has(rowId);
+  {rows.map((row, rowIndex) => {
+    const rowId = row.id ?? uniqueRowId?.(row) ?? `row-${rowIndex}`;
+    const isSelected = rowId && selected?.has(rowId);
 
-          return (
-            <TableRow
-              hover={hover}
-              key={rowId}
-              selected={isSelected}
-              onClick={onClick ? (event) => onClick(event, row) : undefined}
-              sx={onClick && { cursor: "pointer" }}
+    return (
+      <React.Fragment key={rowId}>
+        <TableRow
+          hover={hover}
+          selected={isSelected}
+          onClick={onClick ? (event) => onClick(event, row) : undefined}
+          sx={onClick && { cursor: "pointer" }}
+        >
+          {selectable && (
+            <TableCell padding="checkbox">
+              <Checkbox
+                checked={!!isSelected}
+                onChange={(event) => {
+                  if (isSelected) {
+                    onDeselectOne?.(event, row);
+                  } else {
+                    onSelectOne?.(event, row);
+                  }
+                }}
+                onClick={(event) => event.stopPropagation()}
+              />
+            </TableCell>
+          )}
+          {columns.map((column, colIndex) => (
+            <TableCell
+              key={`${rowId}-${column.name || column.field || colIndex}`}
+              sx={column.align ? { textAlign: column.align } : {}}
             >
-              {selectable && (
-                <TableCell padding="checkbox">
-                  <Checkbox
-                    checked={!!isSelected}
-                    onChange={(event) => {
-                      if (isSelected) {
-                        onDeselectOne?.(event, row);
-                      } else {
-                        onSelectOne?.(event, row);
-                      }
-                    }}
-                    onClick={(event) => event.stopPropagation()}
-                  />
-                </TableCell>
-              )}
-              {columns.map((column, colIndex) => (
-                <TableCell key={`${rowId}-${column.name || column.field || colIndex}`} sx={column.align ? { textAlign: column.align } : {}}>
-                  {column.formatter ? column.formatter(row, rowIndex) : column.field ? row[column.field] : null}
-                </TableCell>
-              ))}
-            </TableRow>
-          );
-        })}
-      </TableBody>
+              {column.formatter
+                ? column.formatter(row, rowIndex)
+                : column.field
+                ? row[column.field]
+                : null}
+            </TableCell>
+          ))}
+        </TableRow>
+
+        {typeof childRenderer === 'function' && childRenderer(row, rowIndex) && (
+          <TableRow>
+            <TableCell
+              colSpan={columns.length + (selectable ? 1 : 0)}
+              sx={{ bgcolor: 'background.default', px: 3, py: 2 }}
+            >
+              {childRenderer(row, rowIndex)}
+            </TableCell>
+          </TableRow>
+        )}
+
+      </React.Fragment>
+    );
+  })}
+</TableBody>
+
     </Table>
   );
 }

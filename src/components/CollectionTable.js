@@ -7,13 +7,15 @@ import {
   IconButton
 } from '@mui/material';
 import { Eye, CornersOut } from '@phosphor-icons/react'; // ✅ Phosphor icons here
-
+import * as collections from '@/collections';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { DataTable } from '@/components/core/data-table';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { CollectionModal } from '@/components/CollectionModal';
 import { createClient } from '@/lib/supabase/browser';
+import { hasChildRows } from '@/lib/utils/hasChildRows'; // adjust path as needed
+
 
 export const CollectionTable = ({ config, rows, fieldContext = null }) => {
   const router = useRouter();
@@ -157,7 +159,30 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
         onDeselectAll={deselectAll}
         onSelectOne={(_, row) => selectOne(row.id)}
         onDeselectOne={(_, row) => deselectOne(row.id)}
+        childRenderer={(row) => {
+          if (!hasChildRows(config, row)) return null;
+        
+          const childField = config.fields.find(f => f.type === 'multiRelationship');
+          const childRows = row[`${childField.name}_details`] || [];
+          const childConfig = collections[childField.relation.table];
+        
+          return (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" gutterBottom>
+                {childField.label}
+              </Typography>
+              <CollectionTable
+                config={childConfig}
+                rows={childRows}
+                fieldContext={childField}
+              />
+            </Box>
+          );
+        }}
+        
+        
       />
+
 
       {safeRows.length === 0 && (
         <Box sx={{ p: 3 }}>
