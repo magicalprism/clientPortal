@@ -27,12 +27,12 @@ export const TimezoneSelectIsolated = ({ recordId, tableName, initialValue }) =>
         .eq('id', recordId);
 
       if (error) {
-        console.error('[TimezoneSelectIsolated] ❌ Failed to update:', error);
+
       } else {
-        console.log('[TimezoneSelectIsolated] ✅ Saved:', newValue);
+
       }
     } catch (err) {
-      console.error('[TimezoneSelectIsolated] ❌ Exception:', err);
+
     }
 
     setLoading(false);

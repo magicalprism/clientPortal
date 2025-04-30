@@ -28,8 +28,9 @@ export const dashboardConfig = {
 					title: "Projects",
 					icon: "briefcase",
 					items: [
-						{ key: "project", title: "List projects", href: paths.dashboard.project.list },
+						{ key: "project", title: "All Projects", href: paths.dashboard.project.list },
 						{ key: "project:create", title: "Create Project", href: paths.dashboard.project.create },
+						{ key: "projectpage", title: "All Pages", href: paths.dashboard.projectpage.list },
 
 					],
 				},

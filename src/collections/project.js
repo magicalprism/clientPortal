@@ -62,6 +62,7 @@ export const project = {
       group: 'Project Info',
       tab: 'Overview', 
       type: 'relationship',
+      showInTable: true,
       relation: {
         table: 'company',
         labelField: 'title',
@@ -205,23 +206,32 @@ export const project = {
     
     
     //Meta
-    { 
-      name: 'status', 
-      label: 'Status', 
-      group: 'General', 
-      type: 'status', 
-      tab: 'Meta', 
-      showInTable: true 
+    {
+      name: 'status',
+      label: 'Status',
+      group: 'General',
+      type: 'select',
+      tab: 'Meta',
+      showInTable: true,
+      options: [
+        { label: 'Pending', value: 'pending' },
+        { label: 'In Progress', value: 'in_progress' },
+        { label: 'Maintained', value: 'maintained' },
+        { label: 'Archived', value: 'archived' }
+      ]
     },
+    
     { 
-      name: 'created', 
+      name: 'created_on', 
       label: 'Created', 
-      type: 'date',
+      type: 'timestamp',
       group: 'General', 
       tab: 'Meta'
     },
     { 
-      name: 'updated_at', label: 'Updated At', type: 'date' , 
+      name: 'updated_on', 
+      label: 'Updated At', 
+      type: 'timestamp' , 
       group: 'General', 
       tab: 'Meta'
     },
@@ -259,7 +269,12 @@ export const project = {
       name: 'status',
       type: 'select',
       label: 'Status',
-      options: ['draft', 'published', 'archived']
+      options: [
+        { label: 'Pending', value: 'pending' },
+        { label: 'In Progress', value: 'in_progress' },
+        { label: 'Maintained', value: 'maintained' },
+        { label: 'Archived', value: 'archived' }
+      ]
     },
     {
       name: 'company_id',

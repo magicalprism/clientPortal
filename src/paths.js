@@ -88,6 +88,11 @@ export const paths = {
 			create: "/dashboard/project/create",
 			details: (projectId) => `/dashboard/project/${projectId}`,
 		},
+		projectpage: {
+			list: "/dashboard/projectpage",
+			create: "/dashboard/projectpage/create",
+			details: (projectpageId) => `/dashboard/projectpage/${projectpageId}`,
+		},
 		onboarding: {
 			list: "/dashboard/onboarding",
 			create: "/dashboard/onboarding/create",

@@ -229,7 +229,7 @@ export const MediaUploadModal = ({
 
           <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }} disabled={uploading}>
             {selectedFile || previewUrl ? 'Change File' : 'Select File'}
-            <input type="file" hidden onChange={handleFileChange} accept="image/*" />
+            <input type="file" hidden onChange={handleFileChange} />
           </Button>
 
           <Button

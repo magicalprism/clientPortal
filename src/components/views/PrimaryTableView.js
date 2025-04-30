@@ -6,7 +6,6 @@ import {
   Box,
   Button,
   Container,
-  Stack,
 } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 
@@ -20,16 +19,7 @@ export default function PrimaryTableView({ config }) {
   const supabase = createClient();
   const router = useRouter();
 
-  const [filters, setFilters] = useState(() => {
-    const initial = {};
-    for (const filter of config.filters || []) {
-      if (filter.defaultValue !== undefined) {
-        initial[filter.name] = filter.defaultValue;
-      }
-    }
-    return initial;
-  });
-  
+  const [filters, setFilters] = useState({});
   const [sortDir, setSortDir] = useState('desc');
   const [data, setData] = useState([]);
   const [refreshFlag, setRefreshFlag] = useState(0);
@@ -38,33 +28,33 @@ export default function PrimaryTableView({ config }) {
   const refresh = () => setRefreshFlag((prev) => prev + 1);
 
   const fetchData = async () => {
-    let query = supabase.from(config.name).select('*');
-  
+    // Dynamically build select clause including relationships
+    const relatedFields = config.fields
+      .filter(f => f.type === 'relationship' && f.relation?.labelField)
+      .map(f => {
+        const relationTableAlias = f.name.replace('_id', '');
+        return `${relationTableAlias}:${f.name}(${f.relation.labelField})`;
+      });
+
+    const selectClause = ['*', ...relatedFields].join(', ');
+
+    let query = supabase.from(config.name).select(selectClause);
+
     for (const filter of config.filters || []) {
       const val = filters[filter.name];
       if (!val) continue;
-  
-      if (filter.type === 'select') {
-        if (filter.name === 'sort') {
-          // Handle sort separately
-          const [sortField, sortDirection] = val.split(':');
-          query = query.order(sortField, { ascending: sortDirection === 'asc' });
-        } else {
-          query = query.eq(filter.name, val);
-        }
+
+      if (['select', 'relationship'].includes(filter.type)) {
+        query = query.eq(filter.name, val);
       } else if (filter.type === 'text') {
         query = query.ilike(filter.name, `%${val}%`);
-      } else if (filter.type === 'relationship') {
-        query = query.eq(filter.name, val);
       }
     }
-  
-    // Default sort if no sort selected
-    if (!filters.sort) {
-      query = query.order('created', { ascending: sortDir === 'asc' });
-    }
-  
+
+    query = query.order('created_on', { ascending: sortDir === 'asc' });
+
     const { data, error } = await query;
+
     if (!error) {
       setData(
         data.map((row) => ({
@@ -72,9 +62,10 @@ export default function PrimaryTableView({ config }) {
           id: row.id ?? row[`${config.name}_id`],
         }))
       );
+    } else {
+      console.error('Supabase fetch error:', error);
     }
   };
-  
 
   useEffect(() => {
     fetchData();
@@ -84,7 +75,6 @@ export default function PrimaryTableView({ config }) {
     <Container maxWidth="xl" sx={{ mt: 4 }}>
       <CollectionSelectionProvider ids={data.map((d) => d.id)}>
         {config.views && Object.keys(config.views).length > 1 ? (
-          // ✅ With ViewSwitcher
           <Box
             sx={{
               display: 'flex',
@@ -111,7 +101,7 @@ export default function PrimaryTableView({ config }) {
                 views={config.views}
                 noLabel
               />
-  
+
               <CollectionFilters
                 config={config}
                 filters={filters}
@@ -121,7 +111,7 @@ export default function PrimaryTableView({ config }) {
                 onDeleteSuccess={refresh}
               />
             </Box>
-  
+
             <Button
               variant="contained"
               startIcon={<PlusIcon />}
@@ -132,7 +122,6 @@ export default function PrimaryTableView({ config }) {
             </Button>
           </Box>
         ) : (
-          // ✅ Without ViewSwitcher
           <Box
             sx={{
               display: 'flex',
@@ -152,7 +141,7 @@ export default function PrimaryTableView({ config }) {
               onSortChange={setSortDir}
               onDeleteSuccess={refresh}
             />
-  
+
             <Button
               variant="contained"
               startIcon={<PlusIcon />}
@@ -163,18 +152,9 @@ export default function PrimaryTableView({ config }) {
             </Button>
           </Box>
         )}
-  
-        {/* ✅ Table inside provider */}
+
         <CollectionTable config={config} rows={data} />
       </CollectionSelectionProvider>
     </Container>
   );
-  
-  
-  
-  
-  
-  
-  
-  
 }

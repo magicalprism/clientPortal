@@ -25,6 +25,9 @@ import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/si
 import { CollectionModal } from '@/components/CollectionModal';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import * as collections from '@/collections';
+import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
+
+
 
 export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const supabase = createClient();
@@ -47,6 +50,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const relatedField = config.fields.find((f) => f.name === refField);
   const relatedCollectionName = relatedField?.relation?.table;
   const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
+  
 
   useEffect(() => {
     const shouldOpen = modal === 'create' && !!refField;
@@ -77,38 +81,70 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   };
 
   const saveChange = async (field, overrideValue = null) => {
-    const newValue = overrideValue ?? tempValue;
+    let newValue = overrideValue ?? tempValue;
+  
+    // 🛡 Normalize value if it’s a select-style object
+    if (
+      ['select', 'status', 'timezone'].includes(field.type) &&
+      typeof newValue === 'object' &&
+      newValue !== null &&
+      'value' in newValue
+    ) {
+    
+      console.warn(`⚠️ Overriding object value for field "${field.name}" with`, newValue.value);
+      newValue = newValue.value;
+    }
+  
+    console.log('🟢 saveChange: sending update', {
+      table: config.name,
+      id: localRecord.id,
+      field: field.name,
+      value: newValue,
+    });
+  
     setLoadingField(field.name);
   
     try {
       if (field.type !== 'multiRelationship') {
+        const now = getPostgresTimestamp(); // ✅ Correct timestamp format
+
+        const payload = {
+          [field.name]: newValue,
+          updated_on: now,
+        };
+
+  
         const { error } = await supabase
           .from(config.name)
-          .update({ [field.name]: newValue })
+          .update(payload)
           .eq('id', localRecord.id);
   
-        if (!error) {
+        if (error) {
+          console.error('❌ Supabase update error:', error);
+        } else {
+          console.log('✅ Supabase updated:', payload);
+  
           setLocalRecord((prev) => ({
             ...prev,
             [field.name]: newValue,
+            updated_on: getPostgresTimestamp(),
           }));
-        } else {
-          console.error('❌ Supabase update error', error);
         }
       } else {
-        // 🧠 MultiRelationships don't update main table! Update local state only.
+        // multiRelationship doesn't update Supabase
         setLocalRecord((prev) => ({
           ...prev,
           [field.name]: newValue,
         }));
       }
     } catch (err) {
-      console.error('❌ Unexpected saveChange error:', err);
+      console.error('❌ saveChange unexpected error:', err);
     }
   
     setEditingField(null);
     setLoadingField(null);
   };
+  
   
   
 
@@ -215,6 +251,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       'date',
                       'richText',
                       'timezone',
+                      'select',
+
                     ].includes(field.type);
 
                     const isTwoColumn = !isModal && !isSmallScreen;
@@ -314,31 +352,57 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 editable={editable}
                                 isEditing={isEditing}
                                 onChange={async (field, newValue) => {
+                                  let safeValue = newValue;
+                                
+                                  // 🛡 Normalize select-style or object-based values
+                                  if (
+                                    typeof newValue === 'object' &&
+                                    newValue !== null &&
+                                    'value' in newValue &&
+                                    typeof newValue.value !== 'object'
+                                  ) {
+                                    console.warn(`⚠️ Normalizing object value for "${field.name}":`, newValue);
+                                    safeValue = newValue.value;
+                                  }
+                                
+                                  // 🚨 Guard against timestamp errors (e.g. entire field object mistakenly passed)
+                                  if (field.type === 'timestamp' && typeof safeValue !== 'string') {
+                                    console.error(`❌ Invalid timestamp value for "${field.name}":`, safeValue);
+                                    return;
+                                  }
+                                
+                                  console.log(`📤 Sending update to Supabase for "${field.name}":`, safeValue);
+                                
                                   if (field.type === 'multiRelationship') {
                                     setLocalRecord((prev) => ({
                                       ...prev,
-                                      [field.name]: newValue.ids,
-                                      [`${field.name}_details`]: newValue.details
+                                      [field.name]: safeValue.ids,
+                                      [`${field.name}_details`]: safeValue.details
                                     }));
-                                  }
-                                   else {
+                                  } else {
                                     try {
                                       const { error } = await supabase
                                         .from(config.name)
-                                        .update({ [field.name]: newValue })
+                                        .update({ [field.name]: safeValue })
                                         .eq('id', localRecord.id);
                                 
-                                      if (!error) {
+                                      if (error) {
+                                        console.error('❌ Supabase update error:', error);
+                                      } else {
                                         setLocalRecord((prev) => ({
                                           ...prev,
-                                          [field.name]: newValue,
+                                          [field.name]: safeValue,
                                         }));
+                                        console.log(`✅ Field "${field.name}" updated successfully.`);
                                       }
                                     } catch (err) {
-                                      console.error('Update error:', err);
+                                      console.error(`❌ Unexpected error updating "${field.name}":`, err);
                                     }
                                   }
                                 }}
+                                
+                                
+                                
                                 
                               />
                             )}
