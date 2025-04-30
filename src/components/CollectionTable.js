@@ -4,7 +4,8 @@ import * as React from 'react';
 import {
   Typography,
   Box,
-  IconButton
+  IconButton,
+  hideHead
 } from '@mui/material';
 import { Eye, CornersOut } from '@phosphor-icons/react'; // ✅ Phosphor icons here
 import * as collections from '@/collections';
@@ -155,30 +156,25 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
         rows={safeRows}
         selectable
         selected={selected}
+        hideHead={hideHead}
         onSelectAll={() => selectAll(safeRows.map((r) => r.id))}
         onDeselectAll={deselectAll}
         onSelectOne={(_, row) => selectOne(row.id)}
         onDeselectOne={(_, row) => deselectOne(row.id)}
         childRenderer={(row) => {
-          if (!hasChildRows(config, row)) return null;
-        
-          const childField = config.fields.find(f => f.type === 'multiRelationship');
-          const childRows = row[`${childField.name}_details`] || [];
-          const childConfig = collections[childField.relation.table];
+          if (!row.children || row.children.length === 0) return null;
         
           return (
             <Box sx={{ mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom>
-                {childField.label}
-              </Typography>
               <CollectionTable
-                config={childConfig}
-                rows={childRows}
-                fieldContext={childField}
+                config={config}
+                rows={row.children}
+                fieldContext={fieldContext}
               />
             </Box>
           );
         }}
+        
         
         
       />

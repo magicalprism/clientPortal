@@ -6,6 +6,7 @@ import {
   Box,
   Button,
   Container,
+  hideHead
 } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 
@@ -39,44 +40,69 @@ export default function PrimaryTableView({ config }) {
   const refresh = () => setRefreshFlag((prev) => prev + 1);
 
   const fetchData = async () => {
-    // Dynamically build select clause including relationships
     const relatedFields = config.fields
       .filter(f => f.type === 'relationship' && f.relation?.labelField)
       .map(f => {
         const relationTableAlias = f.name.replace('_id', '');
         return `${relationTableAlias}:${f.name}(${f.relation.labelField})`;
       });
-
+  
     const selectClause = ['*', ...relatedFields].join(', ');
-
+  
     let query = supabase.from(config.name).select(selectClause);
-
+  
     for (const filter of config.filters || []) {
       const val = filters[filter.name];
       if (!val) continue;
-
+  
       if (['select', 'relationship'].includes(filter.type)) {
         query = query.eq(filter.name, val);
       } else if (filter.type === 'text') {
         query = query.ilike(filter.name, `%${val}%`);
       }
     }
-
+  
     query = query.order('created_at', { ascending: sortDir === 'asc' });
-
+  
     const { data, error } = await query;
-
-    if (!error) {
-      setData(
-        data.map((row) => ({
-          ...row,
-          id: row.id ?? row[`${config.name}_id`],
-        }))
-      );
-    } else {
-      console.error('Supabase fetch error:', error);
+  
+    if (error) {
+      console.error('❌ Supabase fetch error:', error);
+      return;
     }
+  
+    // ✅ Proper grouping of children under parents
+    const parents = [];
+    const childrenMap = {};
+  
+    // Step 1: Separate into parents and children
+    data.forEach((row) => {
+      const id = row.id ?? row[`${config.name}_id`];
+      const isChild = !!row.parent_id;
+  
+      if (isChild) {
+        if (!childrenMap[row.parent_id]) {
+          childrenMap[row.parent_id] = [];
+        }
+        childrenMap[row.parent_id].push({ ...row, id });
+      } else {
+        parents.push({ ...row, id });
+      }
+    });
+  
+    // Step 2: Attach children to parents
+    const structured = parents.map((parent) => ({
+      ...parent,
+      children: childrenMap[parent.id] || [],
+    }));
+  
+    console.log('🧱 Structured parent/child data:', structured);
+    setData(structured);
   };
+  
+  
+
+
 
   useEffect(() => {
     fetchData();
@@ -164,25 +190,37 @@ export default function PrimaryTableView({ config }) {
           </Box>
         )}
 
-              <CollectionTable
-                config={config}
-                rows={data}
-                childRenderer={(row) => {
-                  const children = data.filter((r) => r.parent_id === row.id);
+<CollectionTable
+  config={config}
+  rows={data} 
+  childRenderer={(row) => {
+    if (!row.children || !row.children.length) return null;
 
-                  if (children.length === 0) return null; // 👈 prevents blank space
+    const [expandedRows, setExpandedRows] = React.useState(new Set());
 
-                  return (
-                    <Box sx={{ pl: 4, py: 1 }}>
-                      <CollectionTable
-                        config={config}
-                        rows={children}
-                        fieldContext={{ relation: { tableFields: ['title', 'status'] } }}
-                      />
-                    </Box>
-                  );
-                }}
-              />
+const toggleRow = (id) => {
+  setExpandedRows((prev) => {
+    const next = new Set(prev);
+    next.has(id) ? next.delete(id) : next.add(id);
+    return next;
+  });
+};
+
+
+    return (
+      <Box sx={{ pl: 4, py: 1 }}>
+        <CollectionTable
+          config={config}
+          rows={row.children}
+          hideHead
+          fieldContext={{ relation: { tableFields: ['title', 'status'] } }}
+        />
+      </Box>
+    );
+  }}
+/>
+
+
 
       </CollectionSelectionProvider>
     </Container>
