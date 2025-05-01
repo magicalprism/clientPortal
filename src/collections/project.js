@@ -23,6 +23,7 @@ export const project = {
       openMode: 'full', 
       tab: 'Overview', 
       showInTable: true,
+      width: 'auto',
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
     {
@@ -63,6 +64,7 @@ export const project = {
       tab: 'Overview', 
       type: 'relationship',
       showInTable: true,
+  
       relation: {
         table: 'company',
         labelField: 'title',
@@ -213,6 +215,7 @@ export const project = {
       type: 'select',
       tab: 'Meta',
       showInTable: true,
+      width: 'auto',
       options: [
         { label: 'Pending', value: 'pending' },
         { label: 'In Progress', value: 'in_progress' },

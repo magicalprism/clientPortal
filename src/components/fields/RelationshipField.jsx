@@ -93,7 +93,7 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
   const selectedOption = options.find(opt => String(opt.id) === String(value));
 
   const handleChange = async (e) => {
-    const newValue = e.target.value;
+    const newValue = e.target.value === '' ? null : e.target.value;
     onChange(newValue); // update UI immediately via FieldRenderer
 
     const parentId = field.parentId;

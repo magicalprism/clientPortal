@@ -15,3 +15,5 @@ export function hasChildRows(config, row, allRows = []) {
     return hasMultiRelChildren || hasFlatChildren;
   }
   
+
+  

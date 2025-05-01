@@ -16,11 +16,14 @@ import { CollectionTable } from '@/components/CollectionTable';
 import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
 import { ViewSwitcher } from '@/components/ViewSwitcher';
 import { hasChildRows } from '@/lib/utils/hasChildRows'; // if you extracted it
+import { buildNestedRows } from '@/lib/utils/buildNestedRows';
+
 
 
 export default function PrimaryTableView({ config }) {
   const supabase = createClient();
   const router = useRouter();
+  const [expandedRowIds, setExpandedRowIds] = useState(new Set());
 
   const defaultFilters = (config.filters || []).reduce((acc, filter) => {
     if (filter.defaultValue !== undefined) {
@@ -51,16 +54,6 @@ export default function PrimaryTableView({ config }) {
   
     let query = supabase.from(config.name).select(selectClause);
   
-    for (const filter of config.filters || []) {
-      const val = filters[filter.name];
-      if (!val) continue;
-  
-      if (['select', 'relationship'].includes(filter.type)) {
-        query = query.eq(filter.name, val);
-      } else if (filter.type === 'text') {
-        query = query.ilike(filter.name, `%${val}%`);
-      }
-    }
   
     query = query.order('created_at', { ascending: sortDir === 'asc' });
   
@@ -71,35 +64,74 @@ export default function PrimaryTableView({ config }) {
       return;
     }
   
-    // ✅ Proper grouping of children under parents
-    const parents = [];
-    const childrenMap = {};
-  
-    // Step 1: Separate into parents and children
-    data.forEach((row) => {
-      const id = row.id ?? row[`${config.name}_id`];
-      const isChild = !!row.parent_id;
-  
-      if (isChild) {
-        if (!childrenMap[row.parent_id]) {
-          childrenMap[row.parent_id] = [];
-        }
-        childrenMap[row.parent_id].push({ ...row, id });
-      } else {
-        parents.push({ ...row, id });
-      }
-    });
-  
-    // Step 2: Attach children to parents
-    const structured = parents.map((parent) => ({
-      ...parent,
-      children: childrenMap[parent.id] || [],
+    const flatRows = data.map((row) => ({
+      ...row,
+      id: row.id ?? row[`${config.name}_id`],
     }));
+    
+    // ✅ New logic: include parents of matching children
+    const matchedSet = new Set(flatRows.map(row => row.id));
+    
+    // Function to find all ancestors of a given row
+    const collectAncestors = (row, allRows, keepSet) => {
+      let current = row;
+      while (current?.parent_id) {
+        const parent = allRows.find(r => r.id === current.parent_id);
+        if (parent && !keepSet.has(parent.id)) {
+          keepSet.add(parent.id);
+          current = parent;
+        } else {
+          break;
+        }
+      }
+    };
+    
+    // Step 1: Filter rows based on search filters
+    let matchingRows = flatRows.filter(row => {
+      return (config.filters || []).every(filter => {
+        const val = filters[filter.name];
+        if (!val) return true;
+    
+        if (['select', 'relationship'].includes(filter.type)) {
+          return row[filter.name] === val;
+        } else if (filter.type === 'text') {
+          return row[filter.name]?.toLowerCase().includes(val.toLowerCase());
+        }
+        return true;
+      });
+    });
+    
+    // Step 2: Collect ancestors for each match
+    const keepIds = new Set();
+    matchingRows.forEach(row => {
+      keepIds.add(row.id);
+      collectAncestors(row, flatRows, keepIds);
+    });
+
+    // Expand all parents of matching children
+const autoExpanded = new Set();
+matchingRows.forEach(row => {
+  let current = row;
+  while (current?.parent_id) {
+    autoExpanded.add(current.parent_id);
+    current = flatRows.find(r => r.id === current.parent_id);
+  }
+});
+setExpandedRowIds(autoExpanded);
+
+    
+    // Step 3: Only keep matching rows and their ancestors
+    const filteredRows = flatRows.filter(row => keepIds.has(row.id));
+    
   
-    console.log('🧱 Structured parent/child data:', structured);
-    setData(structured);
+    const nestedRows = buildNestedRows(filteredRows);
+  
+    console.log('🧱 Fully nested data:', nestedRows);
+    setData(nestedRows);
   };
   
+  
+   
   
 
 
@@ -190,9 +222,25 @@ export default function PrimaryTableView({ config }) {
           </Box>
         )}
 
+
+
+
 <CollectionTable
   config={config}
   rows={data} 
+  expandedRowIds={expandedRowIds}
+  rowSx={{
+    '& .MuiTableCell-root': {
+      pl: '0 !important',
+      pr: '0 !important',
+      py: 1,
+      borderBottom: '1px solid #e0e0e0',
+    },
+    '& .MuiTableCell-root > .MuiBox-root': {
+      p: '0 !important',
+      m: 0,
+    }
+  }}
   childRenderer={(row) => {
     if (!row.children || !row.children.length) return null;
 
@@ -208,7 +256,7 @@ const toggleRow = (id) => {
 
 
     return (
-      <Box sx={{ pl: 4, py: 1 }}>
+      <Box sx={{ pl: 4 }}>
         <CollectionTable
           config={config}
           rows={row.children}

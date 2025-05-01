@@ -10,7 +10,8 @@ import {
   Checkbox,
   IconButton,
   Collapse,
-  Box
+  Box,
+  rowSx
 } from '@mui/material';
 import { CaretRight, CaretDown } from '@phosphor-icons/react';
 
@@ -24,10 +25,13 @@ export function DataTable({
   onSelectOne,
   onSelectAll,
   rows,
+  rowSx,
   selectable,
   selected,
   uniqueRowId,
   childRenderer,
+  indentLevel = 0,
+  
   ...props
 }) {
   const [expandedRows, setExpandedRows] = React.useState(new Set());
@@ -48,40 +52,59 @@ export function DataTable({
   const selectedAll = rows.length > 0 && selected?.size === rows.length;
 
   return (
-    <Table {...props}>
+    <Table
+  {...props}
+  sx={{
+    tableLayout: 'fixed',
+    width: '100%',
+    ...props.sx
+  }}
+>
+
       {!hideHead && (
         <TableHead>
-          <TableRow>
-            {/* Expand/collapse icon header spacer */}
-            <TableCell padding="checkbox"  sx={{ width: "40px" }} />
-            {selectable && (
-              <TableCell padding="checkbox" sx={{ pl: 0, pr: 1, width: '40px', minWidth: '40px', maxWidth: '40px' }}>
-                <Checkbox
-                  checked={selectedAll}
-                  indeterminate={selectedSome}
-                  onChange={(event) => {
-                    if (selectedAll) {
-                      onDeselectAll?.(event);
-                    } else {
-                      onSelectAll?.(event);
-                    }
-                  }}
-                />
-              </TableCell>
-            )}
-            {columns.map((column, idx) => (
-              <TableCell
-                key={column.name || column.field || `column-${idx}`}
-                sx={{
-                  width: column.width,
-                  ...(column.align && { textAlign: column.align }),
+        <TableRow>
+          {/* Caret spacer cell — aligns with toggle icon in body */}
+          <TableCell
+            padding="checkbox"
+            sx={{ width: '32px', minWidth: '32px', maxWidth: '32px', p: 0 }}
+          />
+      
+          {selectable && (
+            <TableCell
+              padding="checkbox"
+              sx={{ width: '40px', minWidth: '40px', maxWidth: '40px', p: 0 }}
+            >
+              <Checkbox
+                checked={selectedAll}
+                indeterminate={selectedSome}
+                onChange={(event) => {
+                  if (selectedAll) {
+                    onDeselectAll?.(event);
+                  } else {
+                    onSelectAll?.(event);
+                  }
                 }}
-              >
-                {column.hideName ? null : column.title}
-              </TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
+              />
+            </TableCell>
+          )}
+      
+          {columns.map((column, idx) => (
+            <TableCell
+              key={column.name || column.field || `column-${idx}`}
+              sx={{
+                width: column.width,
+                minWidth: column.width,
+                maxWidth: column.width,
+                ...(column.align && { textAlign: column.align }),
+              }}
+            >
+              {column.hideName ? null : column.title}
+            </TableCell>
+          ))}
+        </TableRow>
+      </TableHead>
+      
       )}
 
       <TableBody>
@@ -97,26 +120,31 @@ export function DataTable({
                 hover={hover}
                 selected={isSelected}
                 onClick={onClick ? (event) => onClick(event, row) : undefined}
-                sx={{ cursor: onClick ? 'pointer' : 'default' }}
+                sx={{
+                  cursor: onClick ? 'pointer' : 'default',
+                  ...(rowSx || {}) // ← add this line
+                }}
               >
                 {/* Expand/collapse toggle button */}
                 <TableCell
-  padding="checkbox"
-  sx={{ width: '32px', minWidth: '32px', maxWidth: '32px', p: 0 }}
->
-  {isExpandable && (
-    <IconButton
-      size="small"
-      onClick={(e) => {
-        e.stopPropagation();
-        toggleRow(rowId);
-      }}
-      sx={{ p: 0 }}
-    >
-      {isExpanded ? <CaretDown size={16} /> : <CaretRight size={16} />}
-    </IconButton>
-  )}
-</TableCell>
+                  padding="checkbox"
+                  sx={{ width: '32px', minWidth: '32px', maxWidth: '32px', p: 0 }}
+                >
+                  
+                {isExpandable && (
+                  <IconButton
+                    size="small"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleRow(rowId);
+                    }}
+                    sx={{ p: 0 }}
+                  >
+                    {isExpanded ? <CaretDown size={16} /> : <CaretRight size={16} />}
+                  </IconButton>
+                )}
+               
+              </TableCell>
 
 
 
@@ -149,14 +177,19 @@ export function DataTable({
                   return (
                     <TableCell
                       key={`${rowId}-${column.name || column.field || colIndex}`}
-                      sx={column.align ? { textAlign: column.align } : {}}
+                      sx={{
+                        width: column.width,
+                        minWidth: column.width,
+                        maxWidth: column.width,
+                        ...(column.align && { textAlign: column.align }),
+                      }}
                     >
                       {value}
                     </TableCell>
                   );
                 })}
               </TableRow>
-
+              
               {isExpandable && (
                 <TableRow>
                   <TableCell
@@ -164,12 +197,14 @@ export function DataTable({
                     sx={{ p: 0, border: 0 }}
                   >
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                      <Box sx={{ px: 3, py: 2, bgcolor: 'background.default' }}>
+                    <Box sx={{ pl: 0, pt: 0, pb: 0, pr: 0, bgcolor: 'background.default',  }}>
+
                         {childRenderer(row, rowIndex)}
                       </Box>
                     </Collapse>
                   </TableCell>
                 </TableRow>
+                
               )}
             </React.Fragment>
           );

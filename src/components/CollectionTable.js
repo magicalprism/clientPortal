@@ -5,7 +5,9 @@ import {
   Typography,
   Box,
   IconButton,
-  hideHead
+  hideHead,
+  incomingColumns,
+  index
 } from '@mui/material';
 import { Eye, CornersOut } from '@phosphor-icons/react'; // ✅ Phosphor icons here
 import * as collections from '@/collections';
@@ -15,10 +17,11 @@ import { DataTable } from '@/components/core/data-table';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { CollectionModal } from '@/components/CollectionModal';
 import { createClient } from '@/lib/supabase/browser';
-import { hasChildRows } from '@/lib/utils/hasChildRows'; // adjust path as needed
 
 
-export const CollectionTable = ({ config, rows, fieldContext = null }) => {
+
+export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = false, parentColumns, columns: incomingColumns, expandedRowIds = new Set() }) => {
+
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -58,7 +61,7 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     router.push(pathname);
   };
 
-  const tableFieldNames = fieldContext?.relation?.tableFields;
+  const tableFieldNames = null;
 
   let collectionFields = [];
 
@@ -76,48 +79,51 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
     }
   }
 
-  const columns = collectionFields.map((field) => ({
-    title: field.label || field.name,
-    field: field.name,
-    align: field.align,
-    width: field.width,
-    formatter: (row) => {
-      const value = row[field.name];
-    
-      // Handle dynamic clickable logic
-      if (field.clickable) {
-        const handleClick = () => {
-          if (field.openMode === 'modal') {
-            router.push(`${pathname}?id=${row.id}&modal=edit`);
-          } else if (field.openMode === 'full') {
-            router.push(`/dashboard/${config.name}/${row.id}`);
-          }
-        };
-    
-        return (
+  const columns = incomingColumns ?? collectionFields.map((field, index) => {
+    return {
+      title: field.label || field.name,
+      field: field.name,
+      align: field.align,
+      width: field.width,
+      formatter: (row) => {
+        const value = row[field.name];
+  
+        const content = field.clickable ? (
           <Typography
             variant="body2"
             color="primary"
-            sx={{ cursor: 'pointer', textDecoration: 'underline' }}
-            onClick={handleClick}
+            sx={{
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              ...(index === 0 ? { pl: 4 } : {}),
+            }}
+            onClick={() => {
+              if (field.openMode === 'modal') {
+                router.push(`${pathname}?id=${row.id}&modal=edit`);
+              } else {
+                router.push(`/dashboard/${config.name}/${row.id}`);
+              }
+            }}
           >
             {value}
           </Typography>
+        ) : (
+          <FieldRenderer
+            value={value}
+            field={field}
+            record={row}
+            config={config}
+            view="table"
+          />
         );
+  
+        return content;
       }
-    
-      return (
-        <FieldRenderer
-          value={value}
-          field={field}
-          record={row}
-          config={config}
-          view="table"
-        />
-      );
-    }
-    
-  }));
+    };
+  });
+  
+
+
 
   // Add action buttons (modal + full view)
   if (config.showEditButton) {
@@ -152,32 +158,47 @@ export const CollectionTable = ({ config, rows, fieldContext = null }) => {
   return (
     <>
       <DataTable
-        columns={columns}
-        rows={safeRows}
-        selectable
-        selected={selected}
-        hideHead={hideHead}
-        onSelectAll={() => selectAll(safeRows.map((r) => r.id))}
-        onDeselectAll={deselectAll}
-        onSelectOne={(_, row) => selectOne(row.id)}
-        onDeselectOne={(_, row) => deselectOne(row.id)}
-        childRenderer={(row) => {
-          if (!row.children || row.children.length === 0) return null;
+  columns={columns}
+  rows={safeRows}
+  selectable
+  selected={selected}
+  onSelectAll={() => selectAll(safeRows.map((r) => r.id))}
+  onDeselectAll={deselectAll}
+  onSelectOne={(_, row) => selectOne(row.id)}
+  onDeselectOne={(_, row) => deselectOne(row.id)}
+  childRenderer={(row) => {
+    const children = row.children || [];
+    const isExpanded = expandedRowIds?.has?.(row.id); // safe check in case prop is missing
+  
+    if (!isExpanded || !children.length) return null;
         
-          return (
-            <Box sx={{ mt: 2 }}>
-              <CollectionTable
-                config={config}
-                rows={row.children}
-                fieldContext={fieldContext}
-              />
-            </Box>
-          );
-        }}
-        
-        
-        
-      />
+    return (
+      <Box
+          sx={{
+            pl: 0,
+            py: 0,
+            m: 0,
+            borderBottom: '1px solid',
+            borderColor: 'divider'
+          }}
+>
+
+          <CollectionTable
+            config={config}
+            rows={children}
+            fieldContext={fieldContext}
+            hideHead
+            indentLevel={5}
+            expandedRowIds={expandedRowIds}
+          />
+
+
+      </Box>
+    );
+  }}
+  hideHead={hideHead}
+// 👈 or just `hideHead={hideHead}` if you passed it in
+/>
 
 
       {safeRows.length === 0 && (
