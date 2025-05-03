@@ -66,6 +66,11 @@ export const paths = {
 			details: (postId) => `/dashboard/resource/${postId}`,
 			create: "/dashboard/resource/create",
 		},
+		brand: {
+			list: "/dashboard/brand",
+			create: "/dashboard/brand/create",
+			details: (brandId) => `/dashboard/brand/${brandId}`,
+		},
 		calendar: "/dashboard/calendar",
 		chat: {
 			base: "/dashboard/chat",

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/browser';
 import { uploadToSupabase } from './supabaseUpload';
+import { getMimeTypeFromUrl } from '@/data/fileTypes';
 
 export const uploadAndCreateMediaRecord = async ({
   file,
@@ -37,13 +38,21 @@ export const uploadAndCreateMediaRecord = async ({
     throw new Error('Upload failed, missing URL or filePath');
   }
 
+  const mimeType = file.type || getMimeTypeFromUrl(file.name);
+
+// Use provided alt text, or fallback for non-images
+let effectiveAltText = altText?.trim();
+if (!effectiveAltText && !mimeType.startsWith('image/')) {
+  effectiveAltText = `Uploaded file: ${file.name}`;
+}
+
   // Step 2: Insert uploaded file info into 'media' table
   const mediaPayload = {
     url: publicUrl,
     file_path: filePath,
     size: file.size || null,
-    mime_type: file.type || null,
-    alt_text: altText || '',
+    mime_type: file.type || getMimeTypeFromUrl(file.name),
+    alt_text: effectiveAltText || '',
     copyright: copyright || '',
     width: null,
     height: null,

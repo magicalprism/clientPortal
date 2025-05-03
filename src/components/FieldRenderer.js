@@ -15,6 +15,8 @@ import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/si
 import { TimezoneSelect } from '@/components/fields/TimezoneSelect';
 import { MediaField } from '@/components/fields/MediaField';
 import { TimestampField } from '@/components/fields/TimestampField';
+import { ColorField } from '@/components/fields/ColorField';
+
 
 export const isIncludedInView = (field, view = 'table') => {
   if (!field.includeInViews) return true;
@@ -127,33 +129,57 @@ export const FieldRenderer = ({
           </Typography>
 
           {recordFieldDetails?.url ? (
-            <Box
-              sx={{
-                width: 150,
-                height: 150,
-                position: 'relative',
-                border: '1px solid #ccc',
-                mt: 1,
-              }}
-            >
-              <img
-                src={recordFieldDetails.url}
-                alt={recordFieldDetails.alt_text || field.label}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  objectFit: 'cover',
-                  borderRadius: 8,
+            recordFieldDetails.mime_type?.startsWith('image') ? (
+              <Box
+                sx={{
+                  width: 150,
+                  height: 150,
+                  position: 'relative',
+                  border: '1px solid #ccc',
+                  mt: 1,
+                  borderRadius: 2,
+                  overflow: 'hidden',
+                  backgroundColor: '#f0f0f0',
                 }}
-                onError={(e) => {
-                  console.warn('❌ Image failed to load:', recordFieldDetails.url);
-                  e.currentTarget.style.display = 'none';
+              >
+                <img
+                  src={recordFieldDetails.url}
+                  alt={recordFieldDetails.alt_text || field.label}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    objectFit: 'cover',
+                  }}
+                  onError={(e) => {
+                    console.warn('❌ Image failed to load:', recordFieldDetails.url);
+                    e.currentTarget.style.display = 'none';
+                  }}
+                />
+              </Box>
+            ) : (
+              <Box
+                sx={{
+                  width: 150,
+                  height: 150,
+                  border: '1px solid #ccc',
+                  mt: 1,
+                  borderRadius: 2,
+                  backgroundColor: '#eee',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  fontSize: 12,
+                  p: 1,
                 }}
-              />
-            </Box>
+              >
+                {recordFieldDetails.mime_type || 'File'}
+              </Box>
+            )
           ) : (
             <Typography variant="body2">No media uploaded</Typography>
           )}
+
         </Box>
       );
       break;
@@ -300,7 +326,36 @@ export const FieldRenderer = ({
       }
       
       
-      
+      case 'color':
+        content = isEditMode ? (
+          <ColorField
+            type='color'
+            field={field}
+            value={localValue || ''}
+            onChange={(field, newColor) =>
+              handleUpdate({
+                name: field.name,
+                type: field.type,
+                value: newColor,
+              })
+            }
+          />
+        ) : (
+          <Box
+            sx={{
+              width: 24,
+              height: 24,
+              borderRadius: '50%',
+              backgroundColor: localValue || '#000000',
+              border: '1px solid #ccc',
+              display: 'inline-block',
+            }}
+            title={localValue}
+          />
+        );
+        break;
+
+
       
 
       
@@ -317,8 +372,7 @@ export const FieldRenderer = ({
           editable={isEditMode}
           mode={mode}
           onChange={(f, val) => {
-            console.log('🧪 TimestampField triggered with', f, val);
-            onChange(f, val); // ✅ field first, value second
+            onChange(f, val); 
           }}
         />
       );

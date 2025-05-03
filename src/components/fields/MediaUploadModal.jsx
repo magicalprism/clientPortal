@@ -20,6 +20,7 @@ import { X as XIcon } from '@phosphor-icons/react';
 import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
 import { MediaLibraryPicker } from '@/components/fields/MediaLibraryPicker';
 import { createClient } from '@/lib/supabase/browser';
+import { getMimeTypeFromUrl } from '@/data/fileTypes';
 
 export const MediaUploadModal = ({
   open,
@@ -28,9 +29,11 @@ export const MediaUploadModal = ({
   record,
   field,
   config,
+  file,
   existingMedia = null
 }) => {
   const supabase = createClient();
+
 
   const [selectedFile, setSelectedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
@@ -134,6 +137,8 @@ export const MediaUploadModal = ({
       } else if (config?.name === 'project') {
         resolvedProjectId = record?.id || null;
       }
+
+      
   
       const metadata = {
         alt_text: altText,
@@ -147,6 +152,7 @@ export const MediaUploadModal = ({
           .from('media')
           .insert({
             url: manualUrl,
+            mime_type: getMimeTypeFromUrl(manualUrl),
             created_at: new Date().toISOString(),
             ...metadata,
           })
@@ -247,7 +253,7 @@ export const MediaUploadModal = ({
           <TextField
             fullWidth
             label="Image URL (optional)"
-            placeholder="https://example.com/image.png"
+            placeholder="/assets/placeholder.png"
             value={manualUrl}
             onChange={(e) => setManualUrl(e.target.value)}
           />

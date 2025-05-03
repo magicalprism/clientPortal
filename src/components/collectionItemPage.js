@@ -85,7 +85,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   
     // 🛡 Normalize value if it’s a select-style object
     if (
-      ['select', 'status', 'timezone'].includes(field.type) &&
+      ['select', 'status', 'timezone', 'color'].includes(field.type) &&
       typeof newValue === 'object' &&
       newValue !== null &&
       'value' in newValue
@@ -253,6 +253,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       'richText',
                       'timezone',
                       'select',
+                      'color',
 
                     ].includes(field.type);
 
@@ -288,12 +289,39 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       <Grid
                         item
                         xs={12}
-                        sm={field.type === 'richText' ? 12 : isTwoColumn ? 6 : 12}
+                        sm={
+                          field.type === 'richText'
+                            ? 12
+                            : field.type === 'color'
+                            ? 4 // ← 3 across for color fields
+                            : isTwoColumn
+                            ? 6 // ← 2 across for everything else
+                            : 12
+                        }
+                        
                         key={field.name}
                       >
-                        <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                          {field.label}
-                        </Typography>
+                        <Box
+                          sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between',
+                            gap: 1,
+                            height: '100%', // ensure full height for alignment
+                          }}
+                        >
+                          {/* Title + Description Block */}
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight={500}>
+                              {field.label}
+                            </Typography>
+                            {field.description && (
+                              <Typography variant="caption" color="text.secondary">
+                                {field.description}
+                              </Typography>
+                            )}
+                          </Box>
+
 
                         {isEditing && isBasicTextField ? (
                           <TextField
@@ -304,7 +332,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                             autoFocus
                             onChange={(e) => setTempValue(e.target.value)}
                             onBlur={() => {
-                              if (!['relationship', 'multiRelationship', 'boolean', 'status', 'json', 'editButton', 'media', 'link', 'date', 'richText', 'timezone'].includes(field.type)) {
+                              if (!['relationship', 'multiRelationship', 'boolean', 'status', 'json', 'editButton', 'media', 'link', 'date', 'richText', 'timezone', 'color'].includes(field.type)) {
                                 saveChange(field);
                               }
                             }}
@@ -362,6 +390,10 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                     typeof newValue === 'object' &&
                                     newValue !== null &&
                                     'value' in newValue &&
+                                    'name' in newValue &&
+                                    'type' in newValue &&
+                                    newValue.name === field.name &&
+                                    newValue.type === field.type &&
                                     typeof newValue.value !== 'object'
                                   ) {
                                     console.warn(`⚠️ Normalizing object value for "${field.name}":`, newValue);
@@ -411,6 +443,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                             )}
                           </Box>
                         )}
+                        </Box>
                       </Grid>
                     );
                   })}

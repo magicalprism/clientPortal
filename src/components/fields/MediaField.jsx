@@ -5,31 +5,23 @@ import { Box, Button, IconButton, Typography } from '@mui/material';
 import { X as XIcon } from '@phosphor-icons/react';
 import { MediaUploadModal } from '@/components/fields/MediaUploadModal';
 
-export const MediaField = ({
-  value,
-  onChange,
-  field,
-  record,
-  config,
-}) => {
-  const [previewUrl, setPreviewUrl] = useState(value?.url || '');
+export const MediaField = ({ value, onChange, field, record, config }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [localMedia, setLocalMedia] = useState(value || null);
-
+  const previewUrl = localMedia?.url || '';
+  const isImage = localMedia?.mime_type?.startsWith('image');
 
   const handleUploadComplete = (media) => {
     if (media?.url) {
-      setPreviewUrl(media.url);
       setLocalMedia(media);
-      onChange(media.id); // ✅ IMPORTANT: pass only the id to parent
+      onChange(media.id); // Send only ID back to parent
     }
     setModalOpen(false);
   };
 
-  const handleRemoveImage = () => {
-    setPreviewUrl('');
+  const handleRemove = () => {
     setLocalMedia(null);
-    onChange(null); // Clear relationship
+    onChange(null);
   };
 
   return (
@@ -43,17 +35,36 @@ export const MediaField = ({
               height: 150,
               borderRadius: 2,
               overflow: 'hidden',
-              backgroundColor: '#f0f0f0',
+              border: '1px solid #ccc',
+              backgroundColor: '#f9f9f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              p: 1,
             }}
           >
-            <img
-              src={previewUrl}
-              alt="Uploaded Media"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
+            {isImage ? (
+              <img
+                src={previewUrl}
+                alt={localMedia?.alt_text || field.label || 'Media preview'}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <Box textAlign="center">
+                <Typography variant="body2" fontWeight={500}>
+                  {localMedia.alt_text || 'Unnamed file'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {localMedia.mime_type || 'File'}
+                </Typography>
+          </Box>
+
+            )}
+
             <IconButton
               size="small"
-              onClick={handleRemoveImage}
+              onClick={handleRemove}
               sx={{
                 position: 'absolute',
                 top: 4,
@@ -70,10 +81,7 @@ export const MediaField = ({
           </Typography>
         )}
 
-        <Button
-          variant="outlined"
-          onClick={() => setModalOpen(true)}
-        >
+        <Button variant="outlined" onClick={() => setModalOpen(true)}>
           {previewUrl ? 'Change Media' : 'Upload Media'}
         </Button>
       </Box>
