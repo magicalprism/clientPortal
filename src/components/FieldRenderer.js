@@ -5,6 +5,8 @@ import { Typography, IconButton, TextField, Box, Checkbox, FormControlLabel, Sel
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ArrowSquareOut } from '@phosphor-icons/react';
+import { BrandBoardPreview } from '@/components/BrandBoardPreview';
+
 
 
 
@@ -356,8 +358,20 @@ export const FieldRenderer = ({
         break;
 
 
-      
-
+        case 'custom': {
+          if (field.component === 'BrandBoardPreview') {
+            content = <BrandBoardPreview brand={record} />;
+          } else {
+            console.warn(`Unknown custom component "${field.component}"`);
+            content = (
+              <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
+                Unknown custom component: {field.component}
+              </Typography>
+            );
+          }
+          break;
+        }
+        
       
 
     case 'json':

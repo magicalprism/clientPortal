@@ -10,7 +10,10 @@ import {
   ToggleButton,
   Switch,
 } from '@mui/material';
-import { DownloadSimple } from '@phosphor-icons/react';
+import { 
+    DownloadSimple,
+    ClipboardText
+ } from '@phosphor-icons/react';
 import { getBrandColors, getBrandFonts, getBrandLogos } from '@/data/brandBoardFields';
 
 export const BrandBoardPreview = ({ brand }) => {
@@ -25,6 +28,8 @@ export const BrandBoardPreview = ({ brand }) => {
 
   const altColors = colors.filter(c => c.label.toLowerCase().includes('alt'));
   const mainColors = colors.filter(c => !c.label.toLowerCase().includes('alt'));
+
+  
 
   if (!brand) return null;
 
@@ -42,7 +47,7 @@ export const BrandBoardPreview = ({ brand }) => {
   return (
     <Box sx={{ px: 2 }}>
       {/* Header Row with Switch + Print */}
-      <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} px={2}>
+      <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} px={1}>
       <Switch
             checked={mode === 'primary'}
             onChange={() => setMode(mode === 'secondary' ? 'primary' : 'secondary')}
@@ -88,9 +93,8 @@ export const BrandBoardPreview = ({ brand }) => {
         </IconButton>
       </Box>
   
-
-
-      <Box
+<Box className="print-area">
+      <Box 
         sx={{
           p: 6,
           borderRadius: 2,
@@ -133,7 +137,7 @@ export const BrandBoardPreview = ({ brand }) => {
 
             {/* Color Palette - Single Row, Flex, Fixed Size */}
             {mainColors.length > 0 && (
-            <>
+  <>
     <Typography variant="h6" align="center" mb={5} gutterBottom>
       Color Palette
     </Typography>
@@ -143,9 +147,9 @@ export const BrandBoardPreview = ({ brand }) => {
       alignItems="flex-start"
       flexWrap="nowrap"
       overflow="auto"
-      gap={2} // smaller gap to fit more
+      gap={2}
       mb={6}
-      px={2}
+      px={1}
     >
       {mainColors.map(({ label, value }) => (
         <Box
@@ -164,28 +168,33 @@ export const BrandBoardPreview = ({ brand }) => {
               backgroundColor: value,
               border: `1px solid ${value === bgColor ? textColor : bgColor}`,
               marginBottom: 1,
-              scrollbarColor: `${secondaryColor} ${primaryColor}`,
-            scrollbarWidth: 'thin',
-            '&::-webkit-scrollbar': {
-                height: 8
-              },
-              '&::-webkit-scrollbar-track': {
-                background: primaryColor
-              },
-              '&::-webkit-scrollbar-thumb': {
-                background: secondaryColor,
-                borderRadius: 4
-              }
             }}
           />
           <Typography variant="caption" display="block">
             {label}
           </Typography>
+          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+            <IconButton
+              size="small"
+              onClick={() => navigator.clipboard.writeText(value)}
+              title={`Copy ${value}`}
+              sx={{
+                p: 0.5,
+                color: textColor
+              }}
+            >
+              <ClipboardText size={14} color={textColor} />
+            </IconButton>
+            <Typography variant="caption" sx={{ color: textColor }}>
+              {value}
+            </Typography>
+          </Box>
         </Box>
       ))}
     </Box>
   </>
 )}
+
 
 <Divider sx={{ my: 6 }} />
 
@@ -340,7 +349,7 @@ export const BrandBoardPreview = ({ brand }) => {
     </Box>
   </>
 )}
-
+</Box>
 
       </Box>
     </Box>

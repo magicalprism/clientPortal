@@ -215,11 +215,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
   return (
     <>
-     {config.brandBoard?.enabled && config.name === 'brand' && (
-      <Box sx={{ mb: 3 }}>
-        <BrandBoardPreview brand={localRecord} />
-      </Box>
-  )}
+    
     <Card>
     <CardContent>
       <Tabs
@@ -244,6 +240,14 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
                 <Grid container spacing={4}>
                   {fields.map((field) => {
+                    if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
+                      return (
+                        <Grid item xs={12} key={field.name}>
+                          <BrandBoardPreview brand={localRecord} />
+                        </Grid>
+                      );
+                    }
+                    
                     const value = localRecord[field.name];
                     const editable = field.editable !== false;
                     const isEditing = editingField === field.name;
@@ -402,6 +406,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 onChange={(html) => saveChange(field, html)}
                               />
                             ) : (
+                              
                               <FieldRenderer
                                 value={
                                   field.type === 'media'

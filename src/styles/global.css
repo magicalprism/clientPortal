@@ -130,3 +130,58 @@
 html {
     scrollbar-gutter: stable;
   }
+
+  @media print {
+	@page {
+	  size: A4 portrait;
+	  margin: 0.25in;
+	}
+  
+	body * {
+	  visibility: hidden !important;
+	}
+  
+	.print-area,
+	.print-area * {
+	  visibility: visible !important;
+	}
+  
+	.print-area {
+	  position: absolute !important;
+	  top: 0 !important;
+	  left: 0 !important;
+	  width: 100% !important;
+	  margin: 0 !important;
+	  padding: 0.25in !important;
+	  background-color: #ffffff !important;
+	  box-shadow: none !important;
+	  color: #000 !important;
+	  font-size: 85% !important;
+	  overflow: visible !important;
+	}
+  
+	/* Hide controls */
+	.MuiSwitch-root,
+	.MuiIconButton-root {
+	  display: none !important;
+	}
+  
+	/* Force background color rendering */
+	.print-area div,
+	.print-area span,
+	.print-area svg {
+	  -webkit-print-color-adjust: exact !important;
+	  print-color-adjust: exact !important;
+	}
+  
+	/* Shrink typography slightly */
+	.print-area .MuiTypography-root {
+	  font-size: 0.9rem !important;
+	}
+  
+	/* Avoid scrollbars */
+	.print-area [style*='overflow'] {
+	  overflow: visible !important;
+	}
+  }
+  

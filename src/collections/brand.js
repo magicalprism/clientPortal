@@ -41,6 +41,15 @@ export const brand = {
       }
     },
     {
+      name: 'brand_board_preview',
+      label: 'Brand Board Preview',
+      type: 'custom',
+      component: 'BrandBoardPreview',
+      tab: 'Details', // You can place this in any tab or group you like
+      group: 'Brand Details'
+    },
+    
+    {
       name: 'brand_board',
       label: 'Brand Board',
       type: 'media',
