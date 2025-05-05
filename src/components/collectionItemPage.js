@@ -24,6 +24,7 @@ import { FieldRenderer } from '@/components/FieldRenderer';
 import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/simple/simple-editor';
 import { CollectionModal } from '@/components/CollectionModal';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
+import { BrandBoardPreview } from '@/components/BrandBoardPreview';
 import * as collections from '@/collections';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 
@@ -209,8 +210,16 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     return <Typography>No fields available to display.</Typography>;
   }
 
+  
+  
+
   return (
     <>
+     {config.brandBoard?.enabled && config.name === 'brand' && (
+      <Box sx={{ mb: 3 }}>
+        <BrandBoardPreview brand={localRecord} />
+      </Box>
+  )}
     <Card>
     <CardContent>
       <Tabs
@@ -224,16 +233,16 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
         ))}
       </Tabs>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={5}>
         {Object.entries(currentTabGroups).map(([groupName, fields]) => (
-          <Grid item xs={12} key={groupName}>
+          <Grid item xs={12} key={groupName} spacing={5} >
 
-                <Typography variant="h6" fontWeight="bold" gutterBottom>
+                <Typography variant="h6" fontWeight="bold" gutterBottom pb={1}>
                   {groupName}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
 
-                <Grid container spacing={2}>
+                <Grid container spacing={4}>
                   {fields.map((field) => {
                     const value = localRecord[field.name];
                     const editable = field.editable !== false;
@@ -263,7 +272,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       const relatedRows = localRecord?.[field.name + '_details'] ?? [];
                       return (
                         <Grid item xs={12} key={field.name}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, }}>
                           <Typography variant="subtitle2" sx={{ mb: 1 }}>{field.label}</Typography>
                             <IconButton
                               onClick={() =>
@@ -292,12 +301,34 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                         sm={
                           field.type === 'richText'
                             ? 12
-                            : field.type === 'color'
-                            ? 4 // ← 3 across for color fields
-                            : isTwoColumn
+                            : field.type === 'color' 
+                            ? 6 // 3 across
+                 
+                            : isTwoColumn || field.type === 'media'
                             ? 6 // ← 2 across for everything else
                             : 12
                         }
+                        md={
+                          field.type === 'color'
+                            ? 6 // 3 across
+                            : field.type === 'media'
+                            ? 6 // also 4 across for media
+                            : 6 // default 1 across
+                        }
+                        lg={
+                          field.type === 'color'
+                            ? 3 // 3 across
+                            : field.type === 'media'
+                            ? 4 // also 4 across for media
+                            : 6 // default 1 across
+                        } 
+                        xl={
+                          field.type === 'color'
+                            ? 3 // 3 across
+                            : field.type === 'media'
+                            ? 3 // also 4 across for media
+                            : 6 // default 1 across
+                        }                              
                         
                         key={field.name}
                       >
@@ -308,6 +339,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                             justifyContent: 'space-between',
                             gap: 1,
                             height: '100%', // ensure full height for alignment
+                            
                           }}
                         >
                           {/* Title + Description Block */}

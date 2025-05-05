@@ -132,8 +132,8 @@ export const FieldRenderer = ({
             recordFieldDetails.mime_type?.startsWith('image') ? (
               <Box
                 sx={{
-                  width: 150,
-                  height: 150,
+                  width: '100%',
+                  height: '100%',
                   position: 'relative',
                   border: '1px solid #ccc',
                   mt: 1,
@@ -159,8 +159,8 @@ export const FieldRenderer = ({
             ) : (
               <Box
                 sx={{
-                  width: 150,
-                  height: 150,
+                  width: '100%',
+                  height: '100%',
                   border: '1px solid #ccc',
                   mt: 1,
                   borderRadius: 2,

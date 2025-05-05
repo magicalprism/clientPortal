@@ -7,9 +7,11 @@ import {
   Typography,
   Divider,
   Stack,
-  Chip
+  Chip,
+  IconButton
 } from '@mui/material';
 import { FieldRenderer } from '@/components/FieldRenderer';
+import { ArrowSquareOut } from '@phosphor-icons/react';
 
 export const QuickViewCard = ({ config, record }) => {
   if (!config?.quickView?.enabled) return null;
@@ -82,37 +84,120 @@ export const QuickViewCard = ({ config, record }) => {
           </Typography>
         )}
 
-        {extraFields.length > 0 && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Stack spacing={2}>
-              {extraFields.map((fieldName) => {
-                const field = config.fields.find((f) => f.name === fieldName);
-                const value = record[fieldName];
+{extraFields.length > 0 && (
+  <>
+    <Divider sx={{ my: 2 }} />
+    <Stack spacing={2}>
+      {extraFields.map((fieldName) => {
+        const field = config.fields.find((f) => f.name === fieldName);
+        if (!field) return null;
 
-                return (
-                  <Box key={fieldName}>
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ display: 'block', mb: 0.5 }}
-                    >
-                      {field?.label || fieldName}
-                    </Typography>
+        const label = field.label || fieldName;
 
-                    <Box sx={{ display: 'block' }}>
-                      <FieldRenderer
-                        value={value}
-                        field={field || { name: fieldName }}
-                        record={record}
-                      />
-                    </Box>
-                  </Box>
-                );
-              })}
-            </Stack>
-          </>
-        )}
+        if (field.type === 'media') {
+          const media = record[`${field.name}_details`] || {};
+          const hasUrl = !!media.url;
+          const hasAlt = !!media.alt_text?.trim();
+        
+          return (
+            <Box key={fieldName}>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.5 }}>
+                <Typography variant="caption" color="text.secondary">
+                  {label}
+                </Typography>
+                {hasUrl && (
+                  <IconButton
+                    component="a"
+                    href={media.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    size="small"
+                    sx={{ ml: 1 }}
+                  >
+                    <ArrowSquareOut size={14} />
+                  </IconButton>
+                )}
+              </Box>
+        
+              {hasAlt && (
+                <Typography variant="body2" color="text.secondary">
+                  {media.alt_text}
+                </Typography>
+              )}
+        
+              {!hasUrl && (
+                <Typography variant="body2" color="text.secondary">
+                  N/A
+                </Typography>
+              )}
+            </Box>
+          );
+        }
+        
+        
+
+        if (field.type === 'relationship') {
+          const related = record[`${field.name}_details`] || {};
+          const relatedId = record[field.name];
+          const labelText = related?.[field.relation?.labelField] || `ID: ${relatedId}`;
+          const href = `/${field.relation?.table}/${relatedId}`;
+          return (
+            <Box key={fieldName}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                {label}
+              </Typography>
+              <Typography
+                component="a"
+                href={href}
+                variant="body2"
+                color="primary"
+              >
+                {labelText}
+              </Typography>
+            </Box>
+          );
+        }
+
+        if (field.type === 'multiRelationship') {
+          const relatedList = record[`${field.name}_details`] || [];
+          return (
+            <Box key={fieldName}>
+              <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+                {label}
+              </Typography>
+              <Stack spacing={0.5}>
+                {relatedList.map((item) => (
+                  <Typography
+                    key={item.id}
+                    component="a"
+                    href={`/${field.relation?.table}/${item.id}`}
+                    variant="body2"
+                    color="primary"
+                  >
+                    {item[field.relation?.labelField] || `ID: ${item.id}`}
+                  </Typography>
+                ))}
+              </Stack>
+            </Box>
+          );
+        }
+
+        // Default fallback
+        return (
+          <Box key={fieldName}>
+            <Typography variant="caption" color="text.secondary" sx={{ mb: 0.5 }}>
+              {label}
+            </Typography>
+            <Typography variant="body2">
+              {record[field.name] ?? '—'}
+            </Typography>
+          </Box>
+        );
+      })}
+    </Stack>
+  </>
+)}
+
       </CardContent>
     </Card>
   );

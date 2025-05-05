@@ -71,8 +71,8 @@ export const MediaUploadModal = ({
       setManualUrl(existingMedia.url || '');
       setAltText(existingMedia.alt_text || '');
       setCopyright(existingMedia.copyright || '');
-      setCompanyId(existingMedia.company_id || '');
-      setProjectId(existingMedia.project_id || '');
+      setCompanyId(existingMedia.company_id || record?.company_id || '');
+      setProjectId(existingMedia.project_id || record?.project_id || '');
     } else {
       setPreviewUrl('');
       setManualUrl('');
@@ -208,11 +208,37 @@ export const MediaUploadModal = ({
         <Box sx={{ width: 150, flexShrink: 0, position: 'relative' }}>
           {previewUrl ? (
             <>
-              <img
-                src={previewUrl}
-                alt="Media Preview"
-                style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }}
-              />
+              {selectedFile?.type?.startsWith('image') || getMimeTypeFromUrl(previewUrl).startsWith('image') ? (
+  <img
+    src={previewUrl}
+    alt={altText || 'Media Preview'}
+    style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }}
+  />
+) : (
+              <Box
+                sx={{
+                  width: '100%',
+                  height: 150,
+                  borderRadius: 2,
+                  border: '1px solid #ccc',
+                  backgroundColor: '#f9f9f9',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  p: 1,
+                }}
+              >
+                <Typography variant="body2" fontWeight={500}>
+                  {altText || selectedFile?.name || 'Unnamed file'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {selectedFile?.type || getMimeTypeFromUrl(previewUrl) || 'Unknown type'}
+                </Typography>
+              </Box>
+            )}
+
               <IconButton
                 size="small"
                 onClick={handleClear}
