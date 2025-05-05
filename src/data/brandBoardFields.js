@@ -16,21 +16,81 @@ export const getBrandColors = (brand) => [
   ].filter(c => !!c.value);
   
   export const getBrandFonts = (brand) => [
-    { label: 'Primary Font', url: brand.primary_font_details?.url },
-    { label: 'Secondary Font', url: brand.secondary_font_details?.url },
-    { label: 'Accent Font', url: brand.accent_font_details?.url },
-    { label: 'Body Font', url: brand.body_font_details?.url },
-    { label: 'Italic Primary', url: brand.italic_primary_font_details?.url },
-    { label: 'Italic Secondary', url: brand.italic_secondary_font_details?.url },
-    { label: 'Italic Body', url: brand.italic_body_font_details?.url },
-    { label: 'Italic Accent', url: brand.italic_accent_font_details?.url },
+    {
+      label: 'Primary Font',
+      url: brand.primary_font_details?.url,
+      name: brand.primary_font_details?.alt_text,
+      alt_text: brand.primary_font_details?.alt_text
+    },
+    {
+      label: 'Secondary Font',
+      url: brand.secondary_font_details?.url,
+      name: brand.secondary_font_details?.alt_text,
+      alt_text: brand.secondary_font_details?.alt_text
+    },
+    {
+      label: 'Accent Font',
+      url: brand.accent_font_details?.url,
+      name: brand.accent_font_details?.alt_text,
+      alt_text: brand.accent_font_details?.alt_text
+    },
+    {
+      label: 'Body Font',
+      url: brand.body_font_details?.url,
+      name: brand.body_font_details?.alt_text,
+      alt_text: brand.body_font_details?.alt_text
+    },
+    {
+      label: 'Italic Primary',
+      url: brand.italic_primary_font_details?.url,
+      name: brand.italic_primary_font_details?.alt_text,
+      alt_text: brand.italic_primary_font_details?.alt_text
+    },
+    {
+      label: 'Italic Secondary',
+      url: brand.italic_secondary_font_details?.url,
+      name: brand.italic_secondary_font_details?.alt_text,
+      alt_text: brand.italic_secondary_font_details?.alt_text
+    },
+    {
+      label: 'Italic Body',
+      url: brand.italic_body_font_details?.url,
+      name: brand.italic_body_font_details?.alt_text,
+      alt_text: brand.italic_body_font_details?.alt_text
+    },
+    {
+      label: 'Italic Accent',
+      url: brand.italic_accent_font_details?.url,
+      name: brand.italic_accent_font_details?.alt_text,
+      alt_text: brand.italic_accent_font_details?.alt_text
+    },
   ].filter(f => !!f.url);
   
-  export const getBrandLogos = (brand) => [
-    { label: 'Primary Square Logo', url: brand.primary_square_logo_details?.url },
-    { label: 'Secondary Square Logo', url: brand.secondary_square_logo_details?.url },
-    { label: 'Primary Horizontal Logo', url: brand.primary_horizontal_logo_details?.url },
-    { label: 'Secondary Horizontal Logo', url: brand.secondary_horizontal_logo_details?.url },
-    { label: 'Favicon', url: brand.favicon_details?.url },
-  ].filter(l => !!l.url);
   
+  export const getBrandLogos = (brand) => [
+    {
+      label: 'Primary Square Logo',
+      url: brand.primary_square_logo_details?.url,
+      alt_text: brand.primary_square_logo_details?.alt_text
+    },
+    {
+      label: 'Secondary Square Logo',
+      url: brand.secondary_square_logo_details?.url,
+      alt_text: brand.secondary_square_logo_details?.alt_text
+    },
+    {
+      label: 'Primary Horizontal Logo',
+      url: brand.primary_horizontal_logo_details?.url,
+      alt_text: brand.primary_horizontal_logo_details?.alt_text
+    },
+    {
+      label: 'Secondary Horizontal Logo',
+      url: brand.secondary_horizontal_logo_details?.url,
+      alt_text: brand.secondary_horizontal_logo_details?.alt_text
+    },
+    {
+      label: 'Favicon',
+      url: brand.favicon_details?.url,
+      alt_text: brand.favicon_details?.alt_text
+    },
+  ].filter(l => !!l.url);

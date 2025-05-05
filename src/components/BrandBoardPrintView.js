@@ -22,6 +22,7 @@ export const BrandBoardPrintView = ({ brand }) => {
         width: '100%',
         maxWidth: '1000px',
         margin: '0 auto',
+        
       }}
     >
       {primaryLogo && (

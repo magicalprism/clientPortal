@@ -28,6 +28,7 @@ export const BrandBoardPreview = ({ brand }) => {
 
   const altColors = colors.filter(c => c.label.toLowerCase().includes('alt'));
   const mainColors = colors.filter(c => !c.label.toLowerCase().includes('alt'));
+  const [copiedColor, setCopiedColor] = useState(null);
 
   
 
@@ -66,7 +67,8 @@ export const BrandBoardPreview = ({ brand }) => {
                     backgroundColor: bgColor, // ✅ track color matches background
                     opacity: 1
                     }
-                }
+                },
+                
                 },
                 '& .MuiSwitch-thumb': {
                 width: 24,
@@ -93,7 +95,17 @@ export const BrandBoardPreview = ({ brand }) => {
         </IconButton>
       </Box>
   
-<Box className="print-area">
+<Box className="print-area"
+sx={{
+    '@media print': {
+      overflow: 'visible',
+      flexWrap: 'wrap',
+      backgroundColor: '#fff !important',
+      color: '#000 !important',
+      boxShadow: 'none',
+      padding: '0 !important',
+    }
+  }}>
       <Box 
         sx={{
           p: 6,
@@ -104,7 +116,12 @@ export const BrandBoardPreview = ({ brand }) => {
           maxWidth: 1000,
           margin: '0 auto',
           fontFamily: 'sans-serif',
-          minHeight: '100vh'
+          minHeight: '100vh',
+           '@media print': {
+      backgroundColor: '#ffffff !important',
+      color: '#000000 !important',
+      boxShadow: 'none',
+    }
         }}
       >
         
@@ -125,10 +142,15 @@ export const BrandBoardPreview = ({ brand }) => {
             variant="h2"
             align="center"
             sx={{
-            maxWidth: '500px',
-            color: `${textColor} !important`
-            }}
-        >
+                maxWidth: '500px',
+                color: textColor,
+                fontSize: '3rem', // normal screen size
+                '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                }
+              }}
+            >
             {brand.title || 'Brand Board'}
         </Typography>
         </Box>
@@ -147,6 +169,14 @@ export const BrandBoardPreview = ({ brand }) => {
       alignItems="flex-start"
       flexWrap="nowrap"
       overflow="auto"
+      sx={{
+        '@media print': {
+          overflowX: 'visible',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 1
+        }
+      }}
       gap={2}
       mb={6}
       px={1}
@@ -170,13 +200,28 @@ export const BrandBoardPreview = ({ brand }) => {
               marginBottom: 1,
             }}
           />
-          <Typography variant="caption" display="block">
+          <Typography 
+            variant="caption" 
+            display="block" sx={{
+             whiteSpace: 'nowrap', // prevents wrap
+                '@media print': {
+                    fontSize: '0.7rem', // optional: fine-tune for print
+                    '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                }
+      }
+    }}>
             {label}
           </Typography>
-          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5} >
             <IconButton
               size="small"
-              onClick={() => navigator.clipboard.writeText(value)}
+              onClick={() => {
+                navigator.clipboard.writeText(value);
+                setCopiedColor(label);
+                setTimeout(() => setCopiedColor(null), 1500);
+              }}
               title={`Copy ${value}`}
               sx={{
                 p: 0.5,
@@ -185,9 +230,28 @@ export const BrandBoardPreview = ({ brand }) => {
             >
               <ClipboardText size={14} color={textColor} />
             </IconButton>
-            <Typography variant="caption" sx={{ color: textColor }}>
+            {copiedColor === label ? (
+  <Typography variant="caption" sx={{ color: textColor, '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                }  }}>
+    Copied!
+  </Typography>
+) : (
+            <Typography variant="caption" 
+            sx={{ 
+                color: textColor, 
+                whiteSpace: 'nowrap', // prevents wrap
+                '@media print': {
+                    fontSize: '0.7rem',
+                    '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                }
+      } }}>
               {value}
             </Typography>
+)}
           </Box>
         </Box>
       ))}
@@ -224,6 +288,12 @@ export const BrandBoardPreview = ({ brand }) => {
         '&::-webkit-scrollbar-thumb': {
           background: secondaryColor,
           borderRadius: 4
+        },
+        '@media print': {
+          overflowX: 'visible',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          gap: 1
         }
       }}
     >
@@ -246,6 +316,43 @@ export const BrandBoardPreview = ({ brand }) => {
           <Typography variant="caption" display="block">
             {label}
           </Typography>
+          <Box display="flex" alignItems="center" justifyContent="center" gap={0.5}>
+            <IconButton
+              size="small"
+              onClick={() => {
+                navigator.clipboard.writeText(value);
+                setCopiedColor(label);
+                setTimeout(() => setCopiedColor(null), 1500);
+              }}
+              title={`Copy ${value}`}
+              sx={{
+                p: 0.5,
+                color: textColor,
+                
+              }}
+            >
+              <ClipboardText size={14} color={textColor} />
+            </IconButton>
+                {copiedColor === label ? (
+                <Typography variant="caption" sx={{ color: textColor }}>
+                    Copied!
+                </Typography>
+                ) : (
+            <Typography
+              variant="caption"
+              sx={{
+                color: textColor,
+                whiteSpace: 'nowrap',
+                '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                }
+              }}
+            >
+              {value}
+            </Typography>
+                )}
+          </Box>
         </Box>
       ))}
     </Box>
@@ -253,33 +360,51 @@ export const BrandBoardPreview = ({ brand }) => {
 )}
 
 
+
 <Divider sx={{ my: 6 }} />
 
 {/* Typography */}
-<Typography variant="h6" align="center" mb={5} gutterBottom sx={{ color: textColor }}>
+<Typography variant="h6" align="center" mb={5}  gutterBottom sx={{ color: textColor, breakBefore: 'page', pt: 8, '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                } }}>
   Typography
 </Typography>
-<Grid container spacing={4} justifyContent="center" mb={6}>
-  {fonts.map(({ label, url }) => {
-    const fontFamily = `'${label.replace(/\s+/g, '-')}'`;
-    return (
-      <Grid item xs={12} sm={6} md={3} key={label} textAlign="center">
-        <style>
-          {`
-            @font-face {
-              font-family: ${fontFamily};
-              src: url(${url}) format('truetype');
-              font-display: swap;
-            }
-          `}
-        </style>
-        <Typography variant="subtitle2" sx={{ color: textColor }}>
-          {label}
+<Grid container spacing={4} justifyContent="center" mb={6} >
+{fonts.map(({ label, url, name }) => {
+  const fontFamily = `'${(name || label).replace(/\s+/g, '-')}'`;
+  return (
+    <Grid item xs={12} sm={6} md={3} key={label} textAlign="center">
+      <style>
+        {`
+          @font-face {
+            font-family: ${fontFamily};
+            src: url(${url}) format('truetype');
+            font-display: swap;
+          }
+        `}
+      </style>
+      <Typography variant="subtitle2" sx={{ color: textColor, '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                } }}>
+        {label}
+      </Typography>
+      <Box sx={{ fontFamily, fontSize: 28, mb: 1 }}>
+        Aa Bb Cc 1234
+      </Box>
+      {name && (
+        <Typography variant="caption" sx={{ color: textColor, '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                } }}>
+          {name}
         </Typography>
-        <Box sx={{ fontFamily, fontSize: 28 }}>Aa Bb Cc 1234</Box>
-      </Grid>
-    );
-  })}
+      )}
+    </Grid>
+  );
+})}
+
 </Grid>
 
 <Divider sx={{ my: 6 }} />
@@ -287,7 +412,10 @@ export const BrandBoardPreview = ({ brand }) => {
  {/* Logos */}
 {logos.length > 0 && (
   <>
-    <Typography variant="h6" align="center" gutterBottom sx={{ color: textColor }}>
+    <Typography variant="h6" align="center" gutterBottom sx={{ color: textColor, pb:3, '@media print': {
+                  color: '#000 !important',
+                  WebkitPrintColorAdjust: 'exact'
+                } }}>
       Logos
     </Typography>
     <Box
@@ -310,7 +438,13 @@ export const BrandBoardPreview = ({ brand }) => {
         '&::-webkit-scrollbar-thumb': {
           background: secondaryColor,
           borderRadius: 4
-        }
+        },
+        '@media print': {
+      overflowX: 'visible',
+      flexWrap: 'no-wrap',
+      justifyContent: 'center',
+      gap: 1
+    }
       }}
     >
       {[primaryLogo, secondaryLogo, ...otherLogos].filter(Boolean).map(({ label, url }) => {
