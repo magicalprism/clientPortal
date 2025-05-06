@@ -15,6 +15,10 @@ import {
     FileXls,
     FileSvg,
     FolderSimple,
+    Stack,
+    Browser,
+    Article,
+    Link
   } from '@phosphor-icons/react';
   
   export const fileTypeIcons = {
@@ -40,4 +44,19 @@ import {
     folder: FolderSimple,
     default: File,
   };
+
+  const resourceTypeIcons = {
+    default: File,
+    file: FileText,
+    layout: FolderSimple,
+    page: FileHtml,
+    article: FileText,
+    image: FileImage,
+    code: FileCode,
+    video: FileVideo,
+    pdf: FilePdf,
+    zip: FileZip,
+    link: File,
+  };
+  
   

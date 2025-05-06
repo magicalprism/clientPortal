@@ -164,7 +164,16 @@ export const project = {
     //Proposals
     //Contracts
     
-
+    //Project Pages
+    {
+      name: 'project_page_map',
+      label: 'Project Page Map',
+      type: 'custom',
+      component: 'ProjectPageMap',
+      tab: 'Pages',
+      group: 'Site Structure'
+    },
+    
     // Content
     { name: 'content', label: 'Content', group: 'Content', tab: 'Content' },
     { name: 'categories', label: 'Categories', group: 'Content', type: 'json', tab: 'Content' },

@@ -26,6 +26,7 @@ import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/si
 import { CollectionModal } from '@/components/CollectionModal';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
+import { ProjectPageMap } from '@/components/ProjectPageMap';
 import * as collections from '@/collections';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 
@@ -300,10 +301,47 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                      if (field.name === 'id') return null;
                      const isSystemReadOnly = ['updated_at', 'created_at'].includes(field.name);
                     
-                     if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
+                     if (field.type === 'custom' && ['BrandBoardPreview', 'ProjectPageMap'].includes(field.component)) {
                       return (
-                        <Grid item xs={12} key={field.name}>
-                          <BrandBoardPreview brand={localRecord} />
+                        <Grid
+                          item
+                          xs={12}
+                          sm={12}
+                          md={12}
+                          lg={12}
+                          xl={12}
+                          key={field.name}
+                        >
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              gap: 1,
+                              height: '100%',
+                            }}
+                          >
+                            <Box>
+                              <Typography variant="subtitle2" fontWeight={500}>
+                                {field.label}
+                              </Typography>
+                              {field.description && (
+                                <Typography variant="caption" color="text.secondary">
+                                  {field.description}
+                                </Typography>
+                              )}
+                            </Box>
+                    
+                            <Box>
+                              {field.component === 'BrandBoardPreview' && (
+                                <BrandBoardPreview brand={localRecord} />
+                              )}
+                    
+                              {field.component === 'ProjectPageMap' && (
+                                <ProjectPageMap projectId={localRecord.id} />
+                              )}
+                            </Box>
+                          </Box>
                         </Grid>
                       );
                     }

@@ -18,6 +18,7 @@ import { TimezoneSelect } from '@/components/fields/TimezoneSelect';
 import { MediaField } from '@/components/fields/MediaField';
 import { TimestampField } from '@/components/fields/TimestampField';
 import { ColorField } from '@/components/fields/ColorField';
+import { ProjectPageMap } from '@/components/ProjectPageMap';
 
 
 export const isIncludedInView = (field, view = 'table') => {
@@ -297,13 +298,15 @@ export const FieldRenderer = ({
         case 'custom': {
           if (field.component === 'BrandBoardPreview') {
             content = <BrandBoardPreview brand={record} />;
+          } else if (field.component === 'ProjectPageMap') {
+            content = <ProjectPageMap projectId={record.id} />;
           } else {
-            // 🔒 Prevent accidental fallback into default renderer
             console.warn(`❌ Unsupported custom component: ${field.component}`);
             return null;
           }
           break;
         }
+        
         
       
 
