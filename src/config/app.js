@@ -7,7 +7,7 @@ export const appConfig = {
 	direction: "ltr",
 	language: "en",
 	theme: "light",
-	themeColor: "#090a0b",
+	themeColor: "#2d2b30",
 	primaryColor: "neonBlue",
 	logLevel: process.env.NEXT_PUBLIC_LOG_LEVEL || LogLevel.ALL,
 	authStrategy: process.env.NEXT_PUBLIC_AUTH_STRATEGY || AuthStrategy.SUPABASE,

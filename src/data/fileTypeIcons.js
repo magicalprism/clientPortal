@@ -36,6 +36,7 @@ import {
     'text/html': FileHtml,
     'application/javascript': FileJs,
     'application/typescript': FileTs,
+    'folder': FolderSimple,
     folder: FolderSimple,
     default: File,
   };

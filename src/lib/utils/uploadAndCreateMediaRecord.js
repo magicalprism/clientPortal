@@ -38,7 +38,11 @@ export const uploadAndCreateMediaRecord = async ({
     throw new Error('Upload failed, missing URL or filePath');
   }
 
-  const mimeType = file.type || getMimeTypeFromUrl(file.name);
+  const mimeType =
+  field?.is_folder === true
+    ? 'folder'
+    : file?.type || getMimeTypeFromUrl(file?.name);
+
 
 // Use provided alt text, or fallback for non-images
 let effectiveAltText = altText?.trim();
@@ -51,15 +55,19 @@ if (!effectiveAltText && !mimeType.startsWith('image/')) {
     url: publicUrl,
     file_path: filePath,
     size: file.size || null,
-    mime_type: file.type || getMimeTypeFromUrl(file.name),
+    mime_type: field?.is_folder === true ? 'folder' : (file.type || getMimeTypeFromUrl(file.name)),
     alt_text: effectiveAltText || '',
     copyright: copyright || '',
     width: null,
     height: null,
     created_at: new Date().toISOString(),
+    is_folder: field?.is_folder === true,
     
   };
-  mediaPayload.is_folder = field?.is_folder === true;
+  mediaPayload.mime_type = field?.is_folder === true
+  ? 'folder'
+  : (file.type || getMimeTypeFromUrl(file.name));
+
 
   const { data: insertedMedia, error: insertError } = await supabase
     .from('media')

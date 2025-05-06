@@ -154,7 +154,7 @@ export const MediaUploadModal = ({
           .from('media')
           .insert({
             url: manualUrl,
-            mime_type: getMimeTypeFromUrl(manualUrl),
+            mime_type: field?.is_folder === true ? 'folder' : getMimeTypeFromUrl(manualUrl),
             created_at: new Date().toISOString(),
             ...metadata,
             is_folder: field?.is_folder === true,
@@ -243,7 +243,9 @@ export const MediaUploadModal = ({
                   {altText || selectedFile?.name || 'Unnamed file'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                {selectedFile?.type || getMimeTypeFromUrl(finalPreview) || 'Unknown type'}
+                  {field?.is_folder === true
+                    ? 'Folder'
+                    : selectedFile?.type || getMimeTypeFromUrl(finalPreview) || 'Unknown type'}
                 </Typography>
               </Box>
             )}

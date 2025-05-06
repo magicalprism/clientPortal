@@ -32,6 +32,7 @@ export const brand = {
       label: 'Company',
       group: 'Brand Details',
       tab: 'Details', 
+      showInTable: true,
       type: 'relationship',
       relation: {
         table: 'company',
@@ -46,7 +47,6 @@ export const brand = {
       group: 'Brand Details',
       tab: 'Details', 
       type: 'multiRelationship',
-      showInTable: true,
       relation: {
         table: 'project',
         labelField: 'title',
@@ -414,7 +414,8 @@ export const brand = {
       label: 'Created', 
       type: 'timestamp',
       group: 'General', 
-      tab: 'Meta'
+      tab: 'Meta',
+      showInTable: true,
     },
     { 
       name: 'updated_at', 

@@ -15,6 +15,7 @@ import {
 } from '@mui/material';
 import { CaretRight, CaretDown } from '@phosphor-icons/react';
 
+
 export function DataTable({
   columns,
   hideHead,
@@ -194,10 +195,10 @@ export function DataTable({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + (selectable ? 2 : 1)}
-                    sx={{ p: 0, border: 0 }}
+                    sx={{ p: 0, border: 0, }}
                   >
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                    <Box sx={{ pl: 0, pt: 0, pb: 0, pr: 0, bgcolor: 'background.default',  }}>
+                    <Box sx={{ pl: 2, pt: 0, pb: 0, pr: 0, bgcolor: 'var(--mui-palette-background-level1)' }}>
 
                         {childRenderer(row, rowIndex)}
                       </Box>

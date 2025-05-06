@@ -51,7 +51,8 @@ export const MediaLibraryPicker = ({ open, onClose, onSelect, record }) => {
   }, [open, filters]);
 
   const loadMedia = async () => {
-    let query = supabase.from('media').select('id, url, alt_text, mime_type, copyright, company_id, project_id');
+    let query = supabase.from('media').select('id, url, alt_text, mime_type, copyright, company_id, project_id, is_folder');
+
 
     if (filters.alt_text) {
       query = query.ilike('alt_text', `%${filters.alt_text}%`);
@@ -176,6 +177,9 @@ export const MediaLibraryPicker = ({ open, onClose, onSelect, record }) => {
                   <Grid container spacing={2}>
                   {items.map((media) => {
   const isImage = media.mime_type?.startsWith('image');
+  const isFolder = media.is_folder === true || media.mime_type === 'folder';
+
+  
 
   return (
     <Grid item xs={4} sm={3} md={2} key={media.id}>

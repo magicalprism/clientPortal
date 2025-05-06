@@ -361,12 +361,13 @@ sx={{
 
 
 
-<Divider sx={{ my: 6 }} />
+<Divider sx={{ my: 6, breakAfter: 'page',}} />
 
 {/* Typography */}
-<Typography variant="h6" align="center" mb={5}  gutterBottom sx={{ color: textColor, breakBefore: 'page',  '@media print': {
+<Typography variant="h6" align="center" mb={5}  gutterBottom sx={{ color: textColor,   '@media print': {
                   color: '#000 !important',
-                  WebkitPrintColorAdjust: 'exact'
+                  WebkitPrintColorAdjust: 'exact',
+                  marginTop: 8,
                 } }}>
   Typography
 </Typography>

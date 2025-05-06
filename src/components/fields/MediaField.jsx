@@ -73,7 +73,10 @@ export const MediaField = ({ value, onChange, field, record, config }) => {
   };
 
 const mime = localMedia?.mime_type || '';
-const FileIcon = isFolder ? fileTypeIcons.folder : (fileTypeIcons[mime] || fileTypeIcons.default);
+const FileIcon = localMedia?.is_folder === true || mime === 'folder'
+  ? fileTypeIcons.folder
+  : fileTypeIcons[mime] || fileTypeIcons.default;
+
 
 
   return (

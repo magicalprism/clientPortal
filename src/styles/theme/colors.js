@@ -143,4 +143,36 @@ export const taskTypeColors = {
 	task: chateauGreen[500],
 	reminder: tomatoOrange[500],
   };
+
+
+  export const blueGrey = {
+	50:  "#f8f8fc",
+	100: "#f1f5f9",
+	200: "#e2e8f0",
+	300: "#cbd5e1",
+	400: "#94a3b8",
+	500: "#64748b",
+	600: "#475569",
+	700: "#393355",
+	800: "#180f2a",
+	900: "#0f172a",
+	950: "#0f0a1a",
+  };
+
+
+  export const paleIndigo = {
+	50:  "#f7f8fc",  // softest off-white indigo tint
+	100: "#eceffe",  // pale, elegant
+	200: "#e0e7ff",  // same as Tailwind's indigo[100], still quite pale
+	300: "#d5ddff",  // slightly more color
+	400: "#c6d1ff",  // gentle but visible indigo tone
+	500: "#b1bfff",  // baseline pastel
+	600: "#9aaaf2",
+	700: "#8793d6",
+	800: "#727bb4",
+	900: "#5c6591",
+  };
+  
+  
+  
   

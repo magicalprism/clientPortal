@@ -11,6 +11,7 @@ import {
 	shakespeare,
 	stormGrey,
 	tomatoOrange,
+	paleIndigo
 } from "./colors";
 
 const primarySchemes = {
@@ -203,9 +204,9 @@ export function colorSchemes(config) {
 					defaultChannel: "255 255 255",
 					paper: "var(--mui-palette-common-white)",
 					paperChannel: "255 255 255",
-					level1: "var(--mui-palette-neutral-50)",
-					level2: "var(--mui-palette-neutral-100)",
-					level3: "var(--mui-palette-neutral-200)",
+					level1: paleIndigo[50], // ultra-soft background
+					level2: paleIndigo[100],
+					level3: paleIndigo[200],
 				},
 				common: { black: "#000000", white: "#ffffff" },
 				divider: "var(--mui-palette-neutral-200)",
@@ -230,7 +231,7 @@ export function colorSchemes(config) {
 					hovered: "rgba(var(--mui-palette-info-mainChannel) / var(--mui-palette-action-hoverOpacity))",
 					selected: "rgba(var(--mui-palette-info-mainChannel) / var(--mui-palette-action-selectedOpacity))",
 				},
-				neutral: { ...stormGrey },
+				neutral: { ...nevada },
 				primary: primary.light,
 				secondary: {
 					...nevada,
