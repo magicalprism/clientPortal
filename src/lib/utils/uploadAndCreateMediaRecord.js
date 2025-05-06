@@ -56,12 +56,14 @@ if (!effectiveAltText && !mimeType.startsWith('image/')) {
     copyright: copyright || '',
     width: null,
     height: null,
-    created_at: new Date().toISOString(), // 🧠 optional, if your media table has created_at_at
+    created_at: new Date().toISOString(),
+    
   };
+  mediaPayload.is_folder = field?.is_folder === true;
 
   const { data: insertedMedia, error: insertError } = await supabase
     .from('media')
-    .insert([mediaPayload])
+    .insert(mediaPayload)
     .select()
     .single();
 

@@ -113,6 +113,7 @@ export const MediaUploadModal = ({
     setSelectedFile(null);
     setAltText('');
     setCopyright('');
+    setManualUrl('');
   };
 
   const handleUpload = async () => {
@@ -143,9 +144,10 @@ export const MediaUploadModal = ({
       const metadata = {
         alt_text: altText,
         copyright,
-        company_id: resolvedCompanyId,
-        project_id: resolvedProjectId,
+        company_id: Array.isArray(resolvedCompanyId) ? resolvedCompanyId[0] : resolvedCompanyId,
+        project_id: Array.isArray(resolvedProjectId) ? resolvedProjectId[0] : resolvedProjectId,
       };
+      
   
       if (manualUrl) {
         const { data, error: insertError } = await supabase
@@ -155,6 +157,8 @@ export const MediaUploadModal = ({
             mime_type: getMimeTypeFromUrl(manualUrl),
             created_at: new Date().toISOString(),
             ...metadata,
+            is_folder: field?.is_folder === true,
+
           })
           .select()
           .single();
@@ -199,21 +203,26 @@ export const MediaUploadModal = ({
     }
   };
   
-  
+  const finalPreview = selectedFile ? previewUrl : manualUrl || previewUrl; 
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
       <DialogTitle>Upload Media</DialogTitle>
+      
       <DialogContent sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
         <Box sx={{ width: 150, flexShrink: 0, position: 'relative' }}>
-          {previewUrl ? (
+        
+
+        {manualUrl || previewUrl ? (
+          
             <>
-              {selectedFile?.type?.startsWith('image') || getMimeTypeFromUrl(previewUrl).startsWith('image') ? (
-  <img
-    src={previewUrl}
-    alt={altText || 'Media Preview'}
-    style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }}
-  />
+              {selectedFile?.type?.startsWith('image') || getMimeTypeFromUrl(finalPreview).startsWith('image') ? (
+              <img
+                src={finalPreview}
+                alt={altText || 'Media Preview'}
+                style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }}
+              />
+
 ) : (
               <Box
                 sx={{
@@ -234,7 +243,7 @@ export const MediaUploadModal = ({
                   {altText || selectedFile?.name || 'Unnamed file'}
                 </Typography>
                 <Typography variant="caption" color="text.secondary">
-                  {selectedFile?.type || getMimeTypeFromUrl(previewUrl) || 'Unknown type'}
+                {selectedFile?.type || getMimeTypeFromUrl(finalPreview) || 'Unknown type'}
                 </Typography>
               </Box>
             )}
@@ -353,6 +362,7 @@ export const MediaUploadModal = ({
           setChooseFromLibraryOpen(false);
           onClose();
         }}
+        record={record}
       />
 
       <DialogActions>

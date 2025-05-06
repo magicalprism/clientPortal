@@ -26,7 +26,7 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
       const { table, filter = {} } = field.relation || {};
       if (!table || !labelField) return;
 
-      let query = supabase.from(table).select(`id, ${labelField}`);
+      let query = supabase.from(table).select(`id, ${labelField}, parent_id`);
       Object.entries(filter).forEach(([key, val]) => {
         query = query.eq(key, val);
       });
@@ -36,10 +36,9 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
       if (error) {
         console.error('[MultiRelationshipField] Failed to load options:', error);
       } else {
-        const uniqueOptions = Array.from(
-          new Map(data.map(item => [item.id, item])).values()
-        );
-        setOptions(uniqueOptions);
+        const tree = buildTree(data);
+        const flat = flattenTreeWithIndent(tree, 0);
+        setOptions(flat);
       }
 
       setLoading(false);
@@ -48,9 +47,48 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     loadOptions();
   }, [field]);
 
+  const buildTree = (items) => {
+    const map = new Map();
+    const roots = [];
+
+    // Create map of id to item
+    items.forEach(item => {
+      map.set(item.id, { ...item, children: [] });
+    });
+
+    // Assign children to parents
+    map.forEach(item => {
+      if (item.parent_id && map.has(item.parent_id)) {
+        map.get(item.parent_id).children.push(item);
+      } else {
+        roots.push(item);
+      }
+    });
+
+    return roots;
+  };
+
+  const flattenTreeWithIndent = (nodes, depth = 0) => {
+    // Alphabetically sort each level by labelField
+    const sortedNodes = [...nodes].sort((a, b) => {
+      const aLabel = (a[labelField] || '').toLowerCase();
+      const bLabel = (b[labelField] || '').toLowerCase();
+      return aLabel.localeCompare(bLabel);
+    });
+
+    return sortedNodes.flatMap(node => {
+      const prefix = '—'.repeat(depth);
+      const label = node[labelField]?.trim() || 'Untitled';
+      const formatted = {
+        ...node,
+        indentedLabel: `${prefix} ${label}`.trim()
+      };
+      return [formatted, ...flattenTreeWithIndent(node.children || [], depth + 1)];
+    });
+  };
+
   const normalizedValue = useMemo(() => {
-    const val = Array.isArray(value) ? value.map(String) : [];
-    return val;
+    return Array.isArray(value) ? value.map(String) : [];
   }, [value]);
 
   const selectedObjects = useMemo(() => {
@@ -65,71 +103,62 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     const junctionTable = field.relation?.junctionTable;
     const sourceKey = field.relation?.sourceKey || `${field.parentTable}_id`;
     const targetKey = field.relation?.targetKey || `${field.relation.table}_id`;
-  
+
     if (!parentId || !junctionTable) {
       console.warn('Missing parentId or junctionTable.');
       return;
     }
-  
+
     try {
-      // Always clear old pivots
       const { error: deleteError } = await supabase
         .from(junctionTable)
         .delete()
         .eq(sourceKey, parentId);
-  
+
       if (deleteError) {
         console.error('[MultiRelationshipField] Failed deleting old relations:', deleteError);
       }
-  
-      // Insert new pivots
+
       if (selectedIds.length > 0) {
         const newLinks = selectedIds.map(id => ({
           [sourceKey]: parentId,
           [targetKey]: id
         }));
-  
+
         const { error: insertError } = await supabase
           .from(junctionTable)
           .insert(newLinks);
-  
+
         if (insertError) {
           console.error('[MultiRelationshipField] Failed inserting new relations:', insertError);
         }
       }
-  
-      // Fetch updated tag/category linked data
+
       const { data: linkedData, error: fetchError } = await supabase
         .from(field.relation.table)
         .select(`id, ${field.relation.labelField}`)
         .in('id', selectedIds);
-  
+
       if (fetchError) {
         console.error('[MultiRelationshipField] Failed fetching new data:', fetchError);
       }
-  
-      // Update local UI
+
       onChange(field, {
         ids: selectedIds.map(String),
         details: linkedData || [],
       });
-  
-      // 🧠 Also immediately fix the Autocomplete options to reflect
+
       if (linkedData) {
         const newOptions = Array.from(
           new Map([...options, ...linkedData].map(item => [item.id, item])).values()
         );
         setOptions(newOptions);
       }
-  
+
     } catch (err) {
       console.error('[MultiRelationshipField] ❌ Unexpected pivot update error:', err);
     }
   };
-  
-  
-  
-  
 
   return (
     <FormControl
@@ -149,7 +178,7 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
         value={selectedObjects}
         onChange={handleChange}
         getOptionLabel={(option) => {
-          const label = option?.[labelField]?.trim();
+          const label = option?.indentedLabel || option?.[labelField]?.trim();
           return label ? `${label} (${option.id})` : `Untitled (${option.id})`;
         }}
         isOptionEqualToValue={(option, value) =>
@@ -193,14 +222,6 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
           size="small"
           sx={{ alignSelf: 'center' }}
           onClick={() => {
-            const params = new URLSearchParams({
-              modal: 'create',
-              refField: field.name
-            });
-
-            const fallbackUrl = `/dashboard/${field.relation?.table}`;
-            const linkTo = field.relation?.linkTo || fallbackUrl;
-
             router.push(`?modal=create&refField=${field.name}`, { scroll: false });
           }}
           title={`Create new ${field.label}`}

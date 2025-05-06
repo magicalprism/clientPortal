@@ -14,6 +14,7 @@ import {
     FileDoc,
     FileXls,
     FileSvg,
+    FolderSimple,
   } from '@phosphor-icons/react';
   
   export const fileTypeIcons = {
@@ -35,6 +36,7 @@ import {
     'text/html': FileHtml,
     'application/javascript': FileJs,
     'application/typescript': FileTs,
+    folder: FolderSimple,
     default: File,
   };
   

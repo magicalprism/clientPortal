@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Grid,
@@ -14,7 +14,8 @@ import {
   CircularProgress,
   Box,
   IconButton,
-  useMediaQuery
+  useMediaQuery,
+
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { Plus } from '@phosphor-icons/react';
@@ -83,17 +84,32 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
   const saveChange = async (field, overrideValue = null) => {
     let newValue = overrideValue ?? tempValue;
+
+    console.log('📥 saveChange called for field:', field.name);
+    console.log('    └ overrideValue:', overrideValue);
+    console.log('    └ tempValue:', tempValue);
+    console.log('    └ newValue:', newValue);
   
-    // 🛡 Normalize value if it’s a select-style object
-    if (
-      ['select', 'status', 'timezone', 'color'].includes(field.type) &&
-      typeof newValue === 'object' &&
-      newValue !== null &&
-      'value' in newValue
-    ) {
-    
-      console.warn(`⚠️ Overriding object value for field "${field.name}" with`, newValue.value);
-      newValue = newValue.value;
+    // ✅ Normalize object-type values with `.value`
+    const objectTypes = ['select', 'status', 'timezone', 'color'];
+    if (objectTypes.includes(field.type) && typeof newValue === 'object' && newValue !== null) {
+      if ('value' in newValue) {
+        newValue = newValue.value;
+      } else {
+        console.warn(`🟠 Object value for field "${field.name}" missing 'value' key`, newValue);
+      }
+    }
+  
+    if (newValue === undefined || newValue === null) {
+      console.warn(`⚠️ Skipping save for "${field.name}" because value is undefined or null`, newValue);
+      return;
+    }
+  
+    if (localRecord[field.name] === newValue) {
+      console.log(`⏭ No change in "${field.name}", skipping save.`);
+      setEditingField(null);
+      setLoadingField(null);
+      return;
     }
   
     console.log('🟢 saveChange: sending update', {
@@ -106,33 +122,71 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     setLoadingField(field.name);
   
     try {
-      if (field.type !== 'multiRelationship') {
-        const now = getPostgresTimestamp(); // ✅ Correct timestamp format
+      const now = getPostgresTimestamp();
 
-        const payload = {
+      //media
+      if (field.type === 'media') {
+        const { data: updatedMedia, error: mediaFetchError } = await supabase
+          .from('media')
+          .select('*')
+          .eq('id', newValue)
+          .single();
+      
+        if (mediaFetchError) {
+          console.error('❌ Failed to fetch media after upload:', mediaFetchError);
+        }
+      
+        setLocalRecord((prev) => ({
+          ...prev,
+          [field.name]: newValue,
+          [`${field.name}_details`]: updatedMedia,
+          updated_at: now,
+        }));
+      } else {
+        setLocalRecord((prev) => ({
+          ...prev,
           [field.name]: newValue,
           updated_at: now,
+        }));
+      }
+      
+
+  //multirelationship
+      if (field.type !== 'multiRelationship') {
+        const now = getPostgresTimestamp();
+        const payload = {
+          [field.name]: newValue,
+          ...(localRecord.hasOwnProperty('updated_at') ? { updated_at: now } : {}),
         };
 
+        console.log('🧾 Final payload about to send to Supabase:', {
+          table: config.name,
+          id: localRecord.id,
+          payload
+        });
   
         const { error } = await supabase
           .from(config.name)
           .update(payload)
           .eq('id', localRecord.id);
   
-        if (error) {
-          console.error('❌ Supabase update error:', error);
+          if (error) {
+            console.error('❌ Supabase update error:', {
+              message: error.message,
+              details: error.details,
+              hint: error.hint
+            });
+          
+          
         } else {
           console.log('✅ Supabase updated:', payload);
-  
           setLocalRecord((prev) => ({
             ...prev,
             [field.name]: newValue,
-            updated_at: getPostgresTimestamp(),
+            updated_at: now,
           }));
         }
       } else {
-        // multiRelationship doesn't update Supabase
         setLocalRecord((prev) => ({
           ...prev,
           [field.name]: newValue,
@@ -145,6 +199,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     setEditingField(null);
     setLoadingField(null);
   };
+  
+  
   
   
   
@@ -240,7 +296,11 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
                 <Grid container spacing={4}>
                   {fields.map((field) => {
-                    if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
+                     const excludedSystemFields = ['updated_at', 'created_at', 'id'];
+                     if (field.name === 'id') return null;
+                     const isSystemReadOnly = ['updated_at', 'created_at'].includes(field.name);
+                    
+                     if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
                       return (
                         <Grid item xs={12} key={field.name}>
                           <BrandBoardPreview brand={localRecord} />
@@ -248,8 +308,9 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                       );
                     }
                     
+                    
                     const value = localRecord[field.name];
-                    const editable = field.editable !== false;
+                    const editable = isSystemReadOnly ? false : field.editable !== false;
                     const isEditing = editingField === field.name;
                     const isLoading = loadingField === field.name;
 
@@ -272,6 +333,9 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
                     const isTwoColumn = !isModal && !isSmallScreen;
 
+                     
+
+                     // 🔧 Handle multiRelationship with table view
                     if (field.type === 'multiRelationship' && field.displayMode === 'table') {
                       const relatedRows = localRecord?.[field.name + '_details'] ?? [];
                       return (
@@ -367,16 +431,11 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                             value={tempValue}
                             autoFocus
                             onChange={(e) => setTempValue(e.target.value)}
-                            onBlur={() => {
-                              if (!['relationship', 'multiRelationship', 'boolean', 'status', 'json', 'editButton', 'media', 'link', 'date', 'richText', 'timezone', 'color'].includes(field.type)) {
-                                saveChange(field);
-                              }
-                            }}
-                            
+                            onBlur={() => !isSystemReadOnly && saveChange(field)}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') {
                                 e.preventDefault();
-                                saveChange(field);
+                                saveChange(field); // <-- confirm this is still being called
                               }
                             }}
                             
@@ -419,63 +478,12 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 view="detail"
                                 editable={editable}
                                 isEditing={isEditing}
-                                onChange={async (field, newValue) => {
-                                  let safeValue = newValue;
-                                
-                                  // 🛡 Normalize select-style or object-based values
-                                  if (
-                                    typeof newValue === 'object' &&
-                                    newValue !== null &&
-                                    'value' in newValue &&
-                                    'name' in newValue &&
-                                    'type' in newValue &&
-                                    newValue.name === field.name &&
-                                    newValue.type === field.type &&
-                                    typeof newValue.value !== 'object'
-                                  ) {
-                                    console.warn(`⚠️ Normalizing object value for "${field.name}":`, newValue);
-                                    safeValue = newValue.value;
-                                  }
-                                
-                                  // 🚨 Guard against timestamp errors (e.g. entire field object mistakenly passed)
-                                  if (field.type === 'timestamp' && typeof safeValue !== 'string') {
-                                    console.error(`❌ Invalid timestamp value for "${field.name}":`, safeValue);
-                                    return;
-                                  }
-                                
-                                  console.log(`📤 Sending update to Supabase for "${field.name}":`, safeValue);
-                                
-                                  if (field.type === 'multiRelationship') {
-                                    setLocalRecord((prev) => ({
-                                      ...prev,
-                                      [field.name]: safeValue.ids,
-                                      [`${field.name}_details`]: safeValue.details
-                                    }));
-                                  } else {
-                                    try {
-                                      const { error } = await supabase
-                                        .from(config.name)
-                                        .update({ [field.name]: safeValue })
-                                        .eq('id', localRecord.id);
-                                
-                                      if (error) {
-                                        console.error('❌ Supabase update error:', error);
-                                      } else {
-                                        setLocalRecord((prev) => ({
-                                          ...prev,
-                                          [field.name]: safeValue,
-                                        }));
-                                        console.log(`✅ Field "${field.name}" updated successfully.`);
-                                      }
-                                    } catch (err) {
-                                      console.error(`❌ Unexpected error updating "${field.name}":`, err);
-                                    }
+                                onChange={(val) => {
+                                  if (!isSystemReadOnly) {
+                                    saveChange(field, val); // ✅ pass `field` from scope
                                   }
                                 }}
-                                
-                                
-                                
-                                
+
                               />
                             )}
                           </Box>

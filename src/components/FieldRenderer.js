@@ -52,8 +52,9 @@ export const FieldRenderer = ({
 
   const handleUpdate = (newValue) => {
     setLocalValue(newValue);
-    onChange(field, newValue);
+    onChange(newValue); // ✅ just send value, not field
   };
+  
 
   let content = null;
 
@@ -110,81 +111,22 @@ export const FieldRenderer = ({
       break;
     
 
-    case 'media': {
-      const fieldName = field.name;
-      const recordFieldDetails = record?.[`${fieldName}_details`];
+   
 
+      case 'media': {
+        const fieldName = field.name;
+        const recordFieldDetails = record?.[`${fieldName}_details`];
       
-
-      content = isEditMode ? (
-        <MediaField
-          field={field}
-          record={record}
-          config={config}
-          value={localValue}
-          onChange={(newId) => handleUpdate(newId)}
-        />
-      ) : (
-        <Box>
-          <Typography variant="caption" sx={{ mb: 1 }}>
-            Media ID: {localValue} | URL: {recordFieldDetails?.url || 'No URL found'}
-          </Typography>
-
-          {recordFieldDetails?.url ? (
-            recordFieldDetails.mime_type?.startsWith('image') ? (
-              <Box
-                sx={{
-                  width: '100%',
-                  height: '100%',
-                  position: 'relative',
-                  border: '1px solid #ccc',
-                  mt: 1,
-                  borderRadius: 2,
-                  overflow: 'hidden',
-                  backgroundColor: '#f0f0f0',
-                }}
-              >
-                <img
-                  src={recordFieldDetails.url}
-                  alt={recordFieldDetails.alt_text || field.label}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                  }}
-                  onError={(e) => {
-                    console.warn('❌ Image failed to load:', recordFieldDetails.url);
-                    e.currentTarget.style.display = 'none';
-                  }}
-                />
-              </Box>
-            ) : (
-              <Box
-                sx={{
-                  width: '100%',
-                  height: '100%',
-                  border: '1px solid #ccc',
-                  mt: 1,
-                  borderRadius: 2,
-                  backgroundColor: '#eee',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  fontSize: 12,
-                  p: 1,
-                }}
-              >
-                {recordFieldDetails.mime_type || 'File'}
-              </Box>
-            )
-          ) : (
-            <Typography variant="body2">No media uploaded</Typography>
-          )}
-
-        </Box>
-      );
-      break;
+        content = (
+          <MediaField
+            field={field}
+            record={record}
+            config={config}
+            value={localValue}
+            onChange={(newId) => handleUpdate(newId)}
+          />
+        );
+        break;      
     }
 
     case 'timezone':
@@ -331,16 +273,8 @@ export const FieldRenderer = ({
       case 'color':
         content = isEditMode ? (
           <ColorField
-            type='color'
-            field={field}
-            value={localValue || ''}
-            onChange={(field, newColor) =>
-              handleUpdate({
-                name: field.name,
-                type: field.type,
-                value: newColor,
-              })
-            }
+            value={localValue || '#000000'}
+            onChange={handleUpdate}
           />
         ) : (
           <Box
@@ -358,16 +292,15 @@ export const FieldRenderer = ({
         break;
 
 
+
+
         case 'custom': {
           if (field.component === 'BrandBoardPreview') {
             content = <BrandBoardPreview brand={record} />;
           } else {
-            console.warn(`Unknown custom component "${field.component}"`);
-            content = (
-              <Typography variant="body2" sx={{ fontStyle: 'italic', color: 'text.disabled' }}>
-                Unknown custom component: {field.component}
-              </Typography>
-            );
+            // 🔒 Prevent accidental fallback into default renderer
+            console.warn(`❌ Unsupported custom component: ${field.component}`);
+            return null;
           }
           break;
         }
@@ -414,25 +347,36 @@ export const FieldRenderer = ({
     }
 
     default:
+      console.log(`🧪 Rendering default text field for "${field.name}"`);
       content = isEditMode ? (
         <TextField
           fullWidth
           size="small"
           value={localValue || ''}
-          onChange={(e) => setLocalValue(e.target.value)}
-          onBlur={() => onChange(field, localValue)}
+          onChange={(e) => {
+            const next = e.target.value;
+            console.log(`✏️ ${field.name} changed to:`, next);
+            setLocalValue(next);
+          }}
+          onBlur={() => {
+            console.log(`🖱️ ${field.name} blur - saving with:`, localValue);
+            onChange(localValue);
+          }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') {
               e.preventDefault();
-              onChange(field, localValue);
+              console.log(`⏎ Saving on Enter for field "${field.name}" with value:`, localValue);
+              onChange(localValue);
             }
           }}
+          
           placeholder={field.label || ''}
         />
       ) : (
         <Typography variant="body2">{localValue ?? '—'}</Typography>
       );
-      break; // ✅ THIS LINE WAS MISSING
+      break;
+    
   }
 
   return content;

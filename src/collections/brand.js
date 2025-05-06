@@ -25,7 +25,7 @@ export const brand = {
       openMode: 'full', 
       showInTable: true,
       width: 'auto',
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+      description: 'Use the pattern [Company/Project] [Branding Type] [Status]'
     },
     {
       name: 'company_id',
@@ -40,6 +40,34 @@ export const brand = {
         filter: { is_client: 'true' }
       }
     },
+    {
+      name: 'project_id',
+      label: 'Project',
+      group: 'Brand Details',
+      tab: 'Details', 
+      type: 'multiRelationship',
+      showInTable: true,
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project',
+        junctionTable: 'brand_project',
+        sourceKey: 'brand_id',
+        targetKey: 'project_id'
+      },
+        filters: [
+          {
+            name: 'company_id',
+            type: 'relationship',
+            label: 'Company',
+            relation: {
+              table: 'company',
+              labelField: 'title'
+            }
+          }
+        ]
+      },
+
     {
       name: 'brand_board_preview',
       label: 'Brand Board Preview',
@@ -63,6 +91,7 @@ export const brand = {
     },
     {
       name: 'brand_folder',
+      is_folder: true,
       label: 'Brand Folder',
       type: 'media',
       relation: {
@@ -74,7 +103,20 @@ export const brand = {
     },
     {
       name: 'images_folder',
+      is_folder: true,
       label: 'Images Folder',
+      type: 'media',
+      relation: {
+        table: 'media',
+        labelField: 'url'  // or 'alt' if you want something different
+      },
+      group: 'Primary Folders',
+      tab: 'Folders'
+    },
+    {
+      name: 'canva_folder',
+      is_folder: true,
+      label: 'Canva Folder',
       type: 'media',
       relation: {
         table: 'media',
@@ -364,6 +406,51 @@ export const brand = {
       },
       group: 'All Logos',
       tab: 'Logos'
+    },
+
+    //meta
+    { 
+      name: 'created_at', 
+      label: 'Created', 
+      type: 'timestamp',
+      group: 'General', 
+      tab: 'Meta'
+    },
+    { 
+      name: 'updated_at', 
+      label: 'Updated At', 
+      type: 'timestamp' , 
+      group: 'General', 
+      tab: 'Meta'
+    },
+    { 
+      name: 'author_id', 
+      label: 'Author', 
+      type: 'relationship',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact' // or dynamically derive from config
+      }, 
+    },
+
+    {
+      name: 'tags',
+      label: 'Tags',
+      group: 'General',
+      tab: 'Meta',
+      type: 'multiRelationship',
+      displayMode: 'tags',
+      relation: {
+        table: 'category',
+        labelField: 'title',
+        linkTo: '/dashboard/category',
+        junctionTable: 'brand_category',
+        sourceKey: 'brand_id',
+        targetKey: 'category_id'
+      }
     },
     /*
 
