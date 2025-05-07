@@ -20,6 +20,8 @@ import HeaderNode from '@/components/nodes/HeaderNode';
 import EmailNode from '@/components/nodes/EmailNode';
 import PopupNode from '@/components/nodes/PopupNode';
 import { STATUS_COLORS } from '@/data/statusColors';
+import NodeWrapper from '@/components/nodes/NodeWrapper';
+
 
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
@@ -122,12 +124,21 @@ export const ElementMap = ({ projectId }) => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const nodeTypes = useMemo(() => ({
-    page: (props) => <PageNode {...props} mode={mode} />,
+    page: (props) => (
+      <NodeWrapper
+        {...props}
+        mode={mode}
+        collectionName="element" // 👈 make sure this matches your actual route
+        refField="element_map"   // 👈 this should match your schema config
+      />
+    ),
     footer: (props) => <FooterNode {...props} mode={mode} />,
     header: (props) => <HeaderNode {...props} mode={mode} />,
     email: (props) => <EmailNode {...props} mode={mode} />,
     popup: (props) => <PopupNode {...props} mode={mode} />,
   }), [mode]);
+  
+  
 
   const layoutIfNeeded = (nodes, edges) => {
     const hasLayout = nodes.every((n) => typeof n.position?.x === 'number' && typeof n.position?.y === 'number');

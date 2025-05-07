@@ -11,6 +11,8 @@ const NodeWrapper = ({
   mode,
   data = {},
   isConnectable,
+  collectionName,   // <-- NEW
+  refField,          // <-- NEW
   backgroundColor = 'background.paper',
   label,
   textColor = "#201e1e",
@@ -20,23 +22,28 @@ const NodeWrapper = ({
   centerContentVertically = false
 }) => {
 
-    const router = useRouter(); 
+    const router = useRouter();
 
     const handleClick = (e) => {
-        if (mode === 'edit') {
-          e.stopPropagation();
-          const url = new URL(window.location.href);
-          url.searchParams.set('modal', 'edit');
-          url.searchParams.set('id', id);
-          url.searchParams.set('refField', 'elements'); // <-- Use your actual field name here
-          router.push(url.toString());
-        }
-      };
+      if (mode === 'edit') {
+        e.stopPropagation();
+        const searchParams = new URLSearchParams({
+          modal: 'edit',
+          id: id.toString(),
+          refField: refField || ''
+        });
+        router.push(`/dashboard/${collectionName}/${id}?${searchParams.toString()}`);
+
+    }
+  };
+  console.log('[NodeWrapper] id:', id, 'collectionName:', collectionName, 'refField:', refField);
+    
+      
       
 
   return (
     <Box
-      onClick={handleClick}
+    onClick={handleClick}
       sx={{
         width,
         height,

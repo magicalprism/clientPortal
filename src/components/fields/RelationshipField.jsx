@@ -120,9 +120,19 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
       size="small"
       sx={{ ml: 1 }}
       onClick={() => {
-        const params = new URLSearchParams({ modal: 'create', refField: field.name });
-        router.push(`${field.relation.linkTo}?${params.toString()}`);
+        const params = new URLSearchParams({
+          modal: 'create',
+          refField: field.name,
+          id: record?.id // ✅ the parent record ID
+        });
+        const url = new URL(window.location.href);
+        url.searchParams.set('modal', 'create');
+        url.searchParams.set('refField', field.name);
+        url.searchParams.set('id', record?.id);
+        router.push(url.toString());
+
       }}
+      
       title={`Create new ${field.label}`}
     >
       <Plus size={16} />

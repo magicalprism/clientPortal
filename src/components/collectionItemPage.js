@@ -39,9 +39,27 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // Track modal query params centrally
+  const [query, setQuery] = useState({ modal: null, refField: null, id: null });
+
+  // Pull them from URL on mount/update
+ useEffect(() => {
   const modal = searchParams.get('modal');
   const refField = searchParams.get('refField');
-  const parentId = searchParams.get('id');
+  const id = searchParams.get('id');
+
+  setQuery({ modal, refField, id });
+
+  const isCreating = modal === 'create' && !!refField;
+  const isEditing = modal === 'edit' && !!id;
+  setModalOpen(isCreating || isEditing);
+}, [searchParams]); // ✅ not .toString()
+
+
+  // Now safe to use `query`
+  const relatedField = config.fields.find((f) => f.name === query.refField);
+  const relatedCollectionName = relatedField?.relation?.table;
+  const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
 
   const [modalOpen, setModalOpen] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
@@ -50,22 +68,16 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const [loadingField, setLoadingField] = useState(null);
   const [localRecord, setLocalRecord] = useState(record);
 
-  const relatedField = config.fields.find((f) => f.name === refField);
-  const relatedCollectionName = relatedField?.relation?.table;
-  const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
-  
+
   
 
-  useEffect(() => {
-    const isCreating = modal === 'create' && !!refField;
-    const isEditing = modal === 'edit' && !!parentId;
+useEffect(() => {
+  const isCreating = query.modal === 'create' && !!query.refField;
+  const isEditing = query.modal === 'edit' && !!query.id;
+  setModalOpen(isCreating || isEditing);
+}, [query]);
+
   
-    if (isCreating || isEditing) {
-      setModalOpen(true);
-    } else {
-      setModalOpen(false);
-    }
-  }, [modal, refField, parentId]);
   
   
 
@@ -171,14 +183,14 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
         console.log('🧾 Final payload about to send to Supabase:', {
           table: config.name,
-          id: localRecord.id,
+          id: localRecord.id || query.id,
           payload
         });
   
         const { error } = await supabase
           .from(config.name)
           .update(payload)
-          .eq('id', localRecord.id);
+          .eq('id', localRecord.id || query.id);
   
           if (error) {
             console.error('❌ Supabase update error:', {
@@ -223,60 +235,56 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
     url.searchParams.delete('id');
     router.replace(url.pathname + url.search);
   };
-
+  
   const handleCreateRelated = async (_id, values) => {
     const { data: created, error } = await supabase
       .from(relatedConfig.name)
       .insert(values)
       .select()
       .single();
-
+  
     if (error) {
       console.error('❌ Error inserting new record:', error);
       return;
     }
-
+  
     const relation = relatedField?.relation;
     const junctionTable = relation?.junctionTable;
     const sourceKey = relation?.sourceKey || `${config.name}_id`;
     const targetKey = relation?.targetKey || `${relatedConfig.name}_id`;
-
+  
     if (junctionTable && sourceKey && targetKey) {
       const pivotPayload = {
-        [sourceKey]: record?.id || Number(parentId),
+        [sourceKey]: record?.id || Number(query.id),
         [targetKey]: created.id,
       };
-
+  
       const { error: pivotError } = await supabase
         .from(junctionTable)
         .insert(pivotPayload);
-
+  
       if (pivotError) {
         console.error('❌ Error linking pivot:', pivotError);
         return;
       }
     }
-
-    const updatedList = [...(localRecord[refField] || []), created.id];
+  
+    const updatedList = [...(localRecord[query.refField] || []), created.id];
     const updatedDetails = [
-      ...(record[refField + '_details'] || []),
+      ...(record[query.refField + '_details'] || []),
       created,
     ];
-
+  
     setLocalRecord((prev) => ({
       ...prev,
-      [refField]: updatedList,
-      [refField + '_details']: updatedDetails,
+      [query.refField]: updatedList,
+      [query.refField + '_details']: updatedDetails,
     }));
-
+  
     handleCloseModal();
   };
-
-  if (!tabNames.length) {
-    return <Typography>No fields available to display.</Typography>;
-  }
-
   
+
   
 
   return (

@@ -2,23 +2,19 @@
 import React from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import { Handle, Position } from 'reactflow';
-import NodeWrapper from './NodeWrapper';
 
-const PageNode = React.memo(({ data, id, isConnectable, mode }) => {
-  const handleClick = (e) => {
-    if (mode === 'edit') {
-      e.stopPropagation();
-      const url = new URL(window.location.href);
-      url.searchParams.set('modal', 'edit');
-      url.searchParams.set('id', id);
-      window.history.pushState({}, '', url);
-    }
-  };
+const PageNode = React.memo(({ data, id, isConnectable, mode, onClick }) => {
+  
 
   return (
     
     <Box
-      onClick={handleClick}
+    onClick={(e) => {
+        if (mode === 'edit') {
+          e.stopPropagation();
+          onClick?.(id);
+        }
+      }}
       
       sx={{
         width: '100%',

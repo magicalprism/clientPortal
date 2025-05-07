@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -13,6 +13,7 @@ import {
 import { useSearchParams } from 'next/navigation';
 import { X as XIcon } from '@phosphor-icons/react';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
+import { createClient } from '@/lib/supabase/browser';
 
 export function CollectionModal({
   open,
@@ -24,14 +25,37 @@ export function CollectionModal({
   onRefresh,
   edit: forceEdit = false
 }) {
+  const supabase = createClient();
   const searchParams = useSearchParams();
   const refField = searchParams.get('refField');
-  const parentId = searchParams.get('id');
+  const recordId = searchParams.get('id');
+
+  const isCreating = !recordId;
+  const [loadedRecord, setLoadedRecord] = useState(null);
+
+  useEffect(() => {
+    const fetchRecord = async () => {
+      if (!isCreating && !record?.id && recordId) {
+        const { data, error } = await supabase
+          .from(config.name)
+          .select('*')
+          .eq('id', recordId)
+          .single();
+
+        if (error) {
+          console.error(`[CollectionModal] ❌ Failed to load record ID ${recordId}:`, error);
+        } else {
+          setLoadedRecord(data);
+        }
+      }
+    };
+
+    fetchRecord();
+  }, [isCreating, record?.id, recordId, config.name]);
 
   const extendedRecord = {
-    ...record,
-    id: record.id || parentId,
-    [refField]: parentId
+    ...(loadedRecord || record || {}),
+    ...(isCreating && recordId && refField ? { [refField]: recordId } : {})
   };
 
   const theme = useTheme();
@@ -54,9 +78,9 @@ export function CollectionModal({
             <Typography variant="h6">
               {config.label || config.name}
             </Typography>
-            {config.subtitleField && record[config.subtitleField] && (
+            {config.subtitleField && extendedRecord?.[config.subtitleField] && (
               <Typography variant="body2" color="text.secondary">
-                {record[config.subtitleField]}
+                {extendedRecord[config.subtitleField]}
               </Typography>
             )}
           </Box>
