@@ -18,7 +18,7 @@ import { TimezoneSelect } from '@/components/fields/TimezoneSelect';
 import { MediaField } from '@/components/fields/MediaField';
 import { TimestampField } from '@/components/fields/TimestampField';
 import { ColorField } from '@/components/fields/ColorField';
-import { ProjectPageMap } from '@/components/ProjectPageMap';
+import { ElementMap } from '@/components/ElementMap';
 
 
 export const isIncludedInView = (field, view = 'table') => {
@@ -298,8 +298,8 @@ export const FieldRenderer = ({
         case 'custom': {
           if (field.component === 'BrandBoardPreview') {
             content = <BrandBoardPreview brand={record} />;
-          } else if (field.component === 'ProjectPageMap') {
-            content = <ProjectPageMap projectId={record.id} />;
+          } else if (field.component === 'ElementMap') {
+            content = <ElementMap projectId={record.id} />;
           } else {
             console.warn(`❌ Unsupported custom component: ${field.component}`);
             return null;

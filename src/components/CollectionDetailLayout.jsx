@@ -1,27 +1,28 @@
 import * as collections from '@/collections';
-import { CollectionItemPage } from '@/components/CollectionItemPage';
-import { QuickViewCard } from '@/components/QuickViewCard';
 import { createClient } from '@/lib/supabase/server';
 import { hydrateRelationshipLabels } from '@/lib/utils/hydrateRelationshipLabels';
-import { Box, Container, Grid, Typography } from '@mui/material';
+import CollectionDetailClient from '@/components/CollectionDetailClient'; // ⬅️ you'll create this
 
-export async function CollectionDetailLayout({ collectionKey, params }) {
+export async function CollectionDetailLayout({ collectionKey, recordId }) {
   const config = collections[collectionKey];
   const supabase = await createClient();
-  const recordId = params?.[`${collectionKey}Id`];
+
+  if (!recordId) {
+    return <div>No record ID provided.</div>;
+  }
 
   const relationshipJoins = config.fields
-    .filter((field) =>
-      (field.type === 'relationship' || field.type === 'media') &&
-      field.relation?.table
+    .filter(
+      (field) =>
+        (field.type === 'relationship' || field.type === 'media') &&
+        field.relation?.table
     )
     .map((field) => {
       if (field.type === 'media') {
         return `${field.relation.table}_${field.name}:${field.name}(id, url, alt_text, copyright, file_path, mime_type, is_folder)`;
-      } else if (field.type === 'relationship' && field.relation.labelField) {
+      } else {
         return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
       }
-      return null;
     });
 
   const selectFields = ['*', ...relationshipJoins].join(', ');
@@ -33,7 +34,7 @@ export async function CollectionDetailLayout({ collectionKey, params }) {
     .single();
 
   if (error || !record) {
-    return <Typography color="error">Error loading {collectionKey}.</Typography>;
+    return <div>Error loading data</div>;
   }
 
   const relationshipDetails = {};
@@ -49,23 +50,22 @@ export async function CollectionDetailLayout({ collectionKey, params }) {
 
   const multiRelations = await Promise.all(
     config.fields
-      .filter((field) =>
-        field.type === 'multiRelationship' &&
-        field.relation?.junctionTable &&
-        field.relation?.table &&
-        field.relation?.sourceKey &&
-        field.relation?.targetKey &&
-        field.relation?.labelField
+      .filter(
+        (field) =>
+          field.type === 'multiRelationship' &&
+          field.relation?.junctionTable &&
+          field.relation?.table &&
+          field.relation?.sourceKey &&
+          field.relation?.targetKey &&
+          field.relation?.labelField
       )
       .map(async (field) => {
-        const { data: joined, error: relError } = await supabase
+        const { data: joined } = await supabase
           .from(field.relation.junctionTable)
           .select(
             `${field.relation.targetKey}, ${field.relation.table}(id, ${field.relation.labelField})`
           )
           .eq(field.relation.sourceKey, record.id);
-
-        if (relError) return [field.name, { ids: [], details: [] }];
 
         const ids = joined.map((row) => row[field.relation.targetKey]);
         const details = joined.map((row) => row[field.relation.table]);
@@ -77,30 +77,20 @@ export async function CollectionDetailLayout({ collectionKey, params }) {
   const multiRelationshipData = Object.fromEntries(
     multiRelations.flatMap(([name, { ids, details }]) => [
       [name, ids],
-      [`${name}_details`, details],
+      [`${name}_details`, details]
     ])
   );
 
-  const enriched = {
-    ...record,
-    ...relationshipDetails,
-    ...multiRelationshipData,
-  };
-
-  const hydrated = hydrateRelationshipLabels(enriched, config);
+  const hydrated = hydrateRelationshipLabels(
+    {
+      ...record,
+      ...relationshipDetails,
+      ...multiRelationshipData
+    },
+    config
+  );
 
   return (
-    <Box sx={{ py: 4 }}>
-      <Container maxWidth="xl">
-        <Grid container spacing={4}>
-          <Grid item xs={12} md={9}>
-            <CollectionItemPage config={config} record={hydrated} />
-          </Grid>
-          <Grid item xs={12} md={3}>
-            <QuickViewCard config={config} record={hydrated} />
-          </Grid>
-        </Grid>
-      </Container>
-    </Box>
+    <CollectionDetailClient config={config} record={hydrated} />
   );
 }

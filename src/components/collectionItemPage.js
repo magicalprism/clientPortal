@@ -26,7 +26,7 @@ import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/si
 import { CollectionModal } from '@/components/CollectionModal';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
-import { ProjectPageMap } from '@/components/ProjectPageMap';
+import { ElementMap } from '@/components/ElementMap';
 import * as collections from '@/collections';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 
@@ -54,11 +54,20 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const relatedCollectionName = relatedField?.relation?.table;
   const relatedConfig = relatedCollectionName ? collections[relatedCollectionName] : null;
   
+  
 
   useEffect(() => {
-    const shouldOpen = modal === 'create' && !!refField;
-    setModalOpen(shouldOpen);
-  }, [modal, refField]);
+    const isCreating = modal === 'create' && !!refField;
+    const isEditing = modal === 'edit' && !!parentId;
+  
+    if (isCreating || isEditing) {
+      setModalOpen(true);
+    } else {
+      setModalOpen(false);
+    }
+  }, [modal, refField, parentId]);
+  
+  
 
   useEffect(() => {
     if (record?.id !== localRecord?.id) {
@@ -301,7 +310,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                      if (field.name === 'id') return null;
                      const isSystemReadOnly = ['updated_at', 'created_at'].includes(field.name);
                     
-                     if (field.type === 'custom' && ['BrandBoardPreview', 'ProjectPageMap'].includes(field.component)) {
+                     if (field.type === 'custom' && ['BrandBoardPreview', 'ElementMap'].includes(field.component)) {
                       return (
                         <Grid
                           item
@@ -337,9 +346,14 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 <BrandBoardPreview brand={localRecord} />
                               )}
                     
-                              {field.component === 'ProjectPageMap' && (
-                                <ProjectPageMap projectId={localRecord.id} />
-                              )}
+                    {field.component === 'ElementMap' && localRecord?.id ? (
+                      <ElementMap projectId={localRecord.id} />
+                    ) : (
+                      <Typography variant="body2" color="text.secondary">
+                        Loading map...
+                      </Typography>
+                    )}
+
                             </Box>
                           </Box>
                         </Grid>

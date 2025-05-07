@@ -1,5 +1,11 @@
 import { CollectionDetailLayout } from '@/components/CollectionDetailLayout';
 
-export default function ProjectDetailPage(props) {
-  return <CollectionDetailLayout collectionKey="project" params={props.params} />;
+export default async function ProjectDetailPage({ params }) {
+  const { projectId } = await params;
+  return (
+    <CollectionDetailLayout
+      collectionKey="project"
+      recordId={projectId}
+    />
+  );
 }

@@ -1,5 +1,11 @@
 import { CollectionDetailLayout } from '@/components/CollectionDetailLayout';
 
-export default function BrandDetailPage(props) {
-  return <CollectionDetailLayout collectionKey="brand" params={props.params} />;
+export default async function BrandDetailPage({ params }) {
+  const { brandId } = await params;
+  return (
+    <CollectionDetailLayout
+      collectionKey="brand"
+      recordId={brandId}
+    />
+  );
 }

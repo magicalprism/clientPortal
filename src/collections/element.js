@@ -1,7 +1,7 @@
-export const projectpage = {
-  name: 'projectpage',
-  label: 'Project Pages',
-  editPathPrefix: '/dashboard/projectpage',
+export const element = {
+  name: 'element',
+  label: 'Elements',
+  editPathPrefix: '/dashboard/element',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
       //Quickview
@@ -31,9 +31,9 @@ export const projectpage = {
       tab: 'Overview', 
       type: 'relationship',
       relation: {
-        table: 'projectpage',
+        table: 'element',
         labelField: 'title',
-        linkTo: '/dashboard/projectpage', // or dynamically derive from config
+        linkTo: '/dashboard/element', // or dynamically derive from config
         filter: { project_id: '{{record.project_id}}' }
       }
     },

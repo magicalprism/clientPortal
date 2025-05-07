@@ -164,14 +164,14 @@ export const project = {
     //Proposals
     //Contracts
     
-    //Project Pages
+    //Site Elements
     {
-      name: 'project_page_map',
-      label: 'Project Page Map',
+      name: 'element_map',
+      label: 'Site Element Map',
       type: 'custom',
-      component: 'ProjectPageMap',
-      tab: 'Pages',
-      group: 'Site Structure'
+      component: 'ElementMap',
+      tab: 'Site Structure',
+      group: 'Elements'
     },
     
     // Content

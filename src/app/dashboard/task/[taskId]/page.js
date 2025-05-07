@@ -1,5 +1,11 @@
 import { CollectionDetailLayout } from '@/components/CollectionDetailLayout';
 
-export default function TaskDetailPage(props) {
-  return <CollectionDetailLayout collectionKey="task" params={props.params} />;
+export default async function TaskDetailPage({ params }) {
+  const { taskId } = await params;
+  return (
+    <CollectionDetailLayout
+      collectionKey="task"
+      recordId={taskId}
+    />
+  );
 }
