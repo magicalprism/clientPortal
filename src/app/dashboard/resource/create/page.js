@@ -1,8 +1,16 @@
 'use client';
 
-import { project } from '@/collections/project';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import React from 'react';
+import CreateForm from '@/components/CreateForm';
+import { resource } from '@/collections/resource';
 
-export default function ProjectPage() {
-  return <PrimaryTableView config={project} />;
-}
+const CreateResourcePage = () => {
+  return (
+	<div style={{ padding: '2rem' }}>
+	  <h1>Create Resource</h1>
+	  <CreateForm config={resource} />
+	</div>
+  );
+};
+
+export default CreateResourcePage;

@@ -95,7 +95,7 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
             sx={{
               cursor: 'pointer',
               textDecoration: 'underline',
-              ...(index === 0 ? { pl: 4 } : {}),
+              ...(index === 0 ),
             }}
             onClick={() => {
               if (field.openMode === 'modal') {

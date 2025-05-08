@@ -1,8 +1,8 @@
 'use client';
 
 import { task } from '@/collections/task';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import CollectionView from '@/components/views/CollectionView';
 
 export default function TaskPage() {
-  return <PrimaryTableView config={task} />;
+  return <CollectionView config={task} />;
 }

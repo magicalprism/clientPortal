@@ -1,29 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, onIdsChange } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
-  Button,
   Container,
-  hideHead
+  Typography
 } from '@mui/material';
-import { Plus as PlusIcon } from '@phosphor-icons/react';
 
 import { createClient } from '@/lib/supabase/browser';
-import { CollectionFilters } from '@/components/CollectionFilters';
 import { CollectionTable } from '@/components/CollectionTable';
-import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
-import { ViewSwitcher } from '@/components/ViewSwitcher';
-import { hasChildRows } from '@/lib/utils/hasChildRows'; // if you extracted it
 import { buildNestedRows } from '@/lib/utils/buildNestedRows';
+import { CollectionLayout } from '@/components/views/CollectionLayout';
 
 
 
-export default function PrimaryTableView({ config }) {
+
+export default function PrimaryTableView({ config, onIdsChange }) {
   const supabase = createClient();
   const router = useRouter();
   const [expandedRowIds, setExpandedRowIds] = useState(new Set());
+
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+ 
+
 
   const defaultFilters = (config.filters || []).reduce((acc, filter) => {
     if (filter.defaultValue !== undefined) {
@@ -140,90 +140,21 @@ setExpandedRowIds(autoExpanded);
     fetchData();
   }, [filters, sortDir, refreshFlag]);
 
+
+  useEffect(() => {
+    if (onIdsChange) {
+      onIdsChange(data.map((d) => d.id));
+    }
+  }, [data]);
+
+  const memoizedIds = useMemo(() => data.map((d) => d.id), [data]);
+
   return (
-    <Container maxWidth="xl" sx={{ mt: 4 }}>
-      <CollectionSelectionProvider ids={data.map((d) => d.id)}>
-        {config.views && Object.keys(config.views).length > 1 ? (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              px: 3,
-              py: 2,
-              mb: 2,
-              flexWrap: 'wrap',
-            }}
-          >
-            <Box
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: 0,
-                flexGrow: 1,
-              }}
-            >
-              <ViewSwitcher
-                currentView={currentView}
-                onChange={setCurrentView}
-                views={config.views}
-                noLabel
-              />
+    <Box sx={{ px: 3, }}>
 
-              <CollectionFilters
-                config={config}
-                filters={filters}
-                onChange={setFilters}
-                sortDir={sortDir}
-                onSortChange={setSortDir}
-                onDeleteSuccess={refresh}
-              />
-            </Box>
-
-            <Button
-              variant="contained"
-              startIcon={<PlusIcon />}
-              onClick={() => router.push(`/dashboard/${config.name}/create`)}
-              sx={{ height: 40 }}
-            >
-              Add {config.label?.slice(0, -1)}
-            </Button>
-          </Box>
-        ) : (
-          <Box
-            sx={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              px: 0,
-              py: 2,
-              mb: 2,
-              flexWrap: 'wrap',
-            }}
-          >
-            <CollectionFilters
-              config={config}
-              filters={filters}
-              onChange={setFilters}
-              sortDir={sortDir}
-              onSortChange={setSortDir}
-              onDeleteSuccess={refresh}
-            />
-
-            <Button
-              variant="contained"
-              startIcon={<PlusIcon />}
-              onClick={() => router.push(`/dashboard/${config.name}/create`)}
-              sx={{ height: 40 }}
-            >
-              Add {config.label?.slice(0, -1)}
-            </Button>
-          </Box>
-        )}
-
-
-
+<Typography sx={{ py:3, }} variant="h5" gutterBottom>
+        {(config?.singularLabel || config?.label || 'Untitled') + ' Lists'}
+      </Typography>
 
 <CollectionTable
   config={config}
@@ -231,9 +162,6 @@ setExpandedRowIds(autoExpanded);
   expandedRowIds={expandedRowIds}
   rowSx={{
     '& .MuiTableCell-root': {
-      pl: '0 !important',
-      pr: '0 !important',
-      py: 1,
       borderBottom: '1px solid #e0e0e0',
     },
     '& .MuiTableCell-root > .MuiBox-root': {
@@ -257,6 +185,22 @@ const toggleRow = (id) => {
 
     return (
       <Box sx={{ pl: 4 }}>
+        
+        <CollectionLayout
+            config={config}
+            currentView={currentView}
+            onViewChange={(v) => {
+              setCurrentView(v);
+              router.push(`?view=${v}`);
+            }}
+            filters={filters}
+            onFilterChange={setFilters}
+            sortDir={sortDir}
+            onSortChange={setSortDir}
+            onDeleteSuccess={refresh}
+          />
+       
+      
         <CollectionTable
           config={config}
           rows={row.children}
@@ -270,7 +214,6 @@ const toggleRow = (id) => {
 
 
 
-      </CollectionSelectionProvider>
-    </Container>
+    </Box>
   );
 }

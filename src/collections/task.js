@@ -1,6 +1,7 @@
 export const task = {
   name: 'task',
   label: 'Tasks',
+  singularLabel: 'Task',
   editPathPrefix: '/dashboard/task',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
@@ -17,7 +18,12 @@ export const task = {
       kanban: {
          label: 'Kanban View', 
          component: 'KanbanView' 
+        },
+        checklist: {
+          label: 'Checklist View',
+          component: 'ChecklistView'
         }
+        
   },
       //Quickview
       quickView: {
