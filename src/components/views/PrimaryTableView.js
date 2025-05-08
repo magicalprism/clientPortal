@@ -55,7 +55,9 @@ export default function PrimaryTableView({ config, onIdsChange }) {
     let query = supabase.from(config.name).select(selectClause);
   
   
-    query = query.order('created_at', { ascending: sortDir === 'asc' });
+    const sortField = config.sortField || 'created_at';
+query = query.order(sortField, { ascending: sortDir === 'asc' });
+
   
     const { data, error } = await query;
   

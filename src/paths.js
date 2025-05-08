@@ -154,6 +154,7 @@ export const paths = {
 			list: "/dashboard/task",
 			create: "/dashboard/task/create",
 			details: (taskId) => `/dashboard/task/${taskId}`,
+			modalCreateWithRef: (refField, id) => `?modal=create&refField=${refField}&id=${id}`,
 		},
 	},
 	pdf: { invoice: (invoiceId) => `/pdf/invoices/${invoiceId}` },

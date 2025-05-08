@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import * as collections from '@/collections';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,6 @@ export function CollectionModal({
   onClose,
   onUpdate,
   onDelete,
-  config,
   record = {},
   onRefresh,
   edit: forceEdit = false
@@ -30,12 +30,19 @@ export function CollectionModal({
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const searchParams = useSearchParams();
 
+  const type = searchParams.get('type');
+  const config = collections[type];
+
+  if (!config) {
+    console.error(`❌ No collection config found for type "${type}"`);
+    return null;
+  }
+
   const refField = searchParams.get('refField');
   const parentId = searchParams.get('id');
   const isCreating = !record?.id;
   const [fetchedRecord, setFetchedRecord] = useState(null);
 
-  // If we are in "edit" mode but the record prop is empty, fetch from Supabase
   useEffect(() => {
     const fetchRecord = async () => {
       const recordId = searchParams.get('id');

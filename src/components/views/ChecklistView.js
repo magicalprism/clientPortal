@@ -4,7 +4,6 @@
 import { useEffect, useState } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
-import { useRouter } from 'next/navigation';
 import {
   DndContext,
   closestCenter,
@@ -17,12 +16,12 @@ import {
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-
+import { CollectionModal } from '@/components/CollectionModal';
+import { useSearchParams } from 'next/navigation';
 import SortableChecklist from '@/components/views/checklists/components/SortableChecklist';
 import ChecklistCard from '@/components/views/checklists/components/ChecklistCard';
 
 export default function ChecklistView({ config }) {
-  const router = useRouter();
   const supabase = createClient();
   const [checklists, setChecklists] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -32,7 +31,7 @@ export default function ChecklistView({ config }) {
   }, []);
 
   const fetchData = async () => {
-    const { data: checklistsData } = await supabase.from('checklist').select('*');
+    const { data: checklistsData } = await supabase.from('checklist').select('*').order('order_index', { ascending: true });
     const { data: tasksData } = await supabase
       .from('task')
       .select('*')
@@ -72,38 +71,58 @@ export default function ChecklistView({ config }) {
     const newOrder = arrayMove(checklists, oldIndex, newIndex);
 
     setChecklists(newOrder);
+
+    // Persist order to Supabase
+    const updates = newOrder.map((cl, index) => ({ id: cl.id, order_index: index }));
+    supabase.from('checklist').upsert(updates, { onConflict: ['id'] });
   };
 
   const sensors = useSensors(useSensor(PointerSensor));
+  const searchParams = useSearchParams();
+  const showModal = searchParams.get('modal') === 'create';
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography sx={{ py: 3 }} variant="h5" gutterBottom>
-        {(config?.singularLabel || config?.label || 'Untitled') + ' Checklists'}
-      </Typography>
+    <>
+      <Box sx={{ p: 3 }}>
+        <Typography sx={{ py: 3 }} variant="h5" gutterBottom>
+          {(config?.singularLabel || config?.label || 'Untitled') + ' Checklists'}
+        </Typography>
+  
+        <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={groupedTasks.map((cl) => cl.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <Grid container spacing={3} alignItems="stretch">
+              {groupedTasks.map((cl) => (
+                <Grid item xs={12} md={6} key={cl.id}>
+                  <SortableChecklist checklist={cl}>
+                    <ChecklistCard
+                        checklist={cl}
+                        config={config}
+                        field={{ name: 'checklist_id', label: 'Task' }}
+                        record={{ id: cl.id }}
+                        onChangeTitle={handleChecklistChange}
+                        onDelete={handleChecklistDelete}
+                        onToggleComplete={handleToggleComplete}
+                    />
+                    </SortableChecklist>
 
-      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
-        <SortableContext
-          items={groupedTasks.map((cl) => cl.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          <Grid container spacing={3} alignItems="stretch">
-            {groupedTasks.map((cl) => (
-              <Grid item xs={12} md={6} key={cl.id}>
-                <SortableChecklist checklist={cl}>
-                  <ChecklistCard
-                    checklist={cl}
-                    config={config}
-                    onChangeTitle={handleChecklistChange}
-                    onDelete={handleChecklistDelete}
-                    onToggleComplete={handleToggleComplete}
-                  />
-                </SortableChecklist>
-              </Grid>
-            ))}
-          </Grid>
-        </SortableContext>
-      </DndContext>
-    </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </SortableContext>
+        </DndContext>
+      </Box>
+  
+      {showModal && (
+        <CollectionModal
+        open
+        config={config} // ✅ use directly
+        onClose={() => window.history.back()}
+        onRefresh={fetchData}
+      />
+      )}
+    </>
   );
 }
