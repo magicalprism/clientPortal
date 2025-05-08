@@ -38,6 +38,9 @@ const NodeWrapper = ({
   };
   console.log('[NodeWrapper] id:', id, 'collectionName:', collectionName, 'refField:', refField);
     
+  const titleWords = (data?.title || label || 'Untitled').split(' ');
+const formattedTitle = titleWords.slice(0, 2).join(' ') + (titleWords.length > 2 ? '…' : '');
+
       
       
 
@@ -116,24 +119,59 @@ const NodeWrapper = ({
             position: 'relative',
           }}
         >
-          {hasImage && data.thumbnailUrl ? (
-            <img
-              src={data.thumbnailUrl}
-              alt={data.title}
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <Typography
-             
-              color={textColor}
-              sx={{
-                fontWeight: '600',
-   
-              }}
-            >
-              {label}
-            </Typography>
-          )}
+          <Box
+  sx={{
+    width: '100%',
+    flexGrow: 1,
+    display: 'flex',
+    flexDirection: 'column',
+    justifyContent: hasImage && data.thumbnailUrl ? 'space-between' : 'center', // ⬅️ key change
+    alignItems: 'center',
+    textAlign: 'center',
+    overflow: 'hidden',
+  }}
+>
+  {/* Image if available */}
+  {hasImage && data.thumbnailUrl && (
+    <Box sx={{ width: '100%', height: '120px', overflow: 'hidden' }}>
+      <img
+        src={data.thumbnailUrl}
+        alt={data.title}
+        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+      />
+    </Box>
+  )}
+
+  {/* Always show title */}
+  <Box
+    sx={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      height: '40px',
+      width: '100%',
+    }}
+  >
+    <Typography
+      variant="caption"
+      sx={{
+        lineHeight: 1.1,
+        fontWeight: 500,
+        fontSize: '0.75rem',
+        color: textColor,
+        whiteSpace: 'normal',
+        textAlign: 'center',
+        display: '-webkit-box',
+        WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    textOverflow: 'ellipsis',
+      }}
+    >
+      {formattedTitle}
+    </Typography>
+  </Box>
+</Box>
+
         </Box>
 
         {/* Status bar */}

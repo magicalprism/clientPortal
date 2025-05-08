@@ -113,7 +113,7 @@ useEffect(() => {
     console.log('    └ newValue:', newValue);
   
     // ✅ Normalize object-type values with `.value`
-    const objectTypes = ['select', 'status', 'timezone', 'color'];
+    const objectTypes = ['select', 'status', 'timezone', 'color', 'title'];
     if (objectTypes.includes(field.type) && typeof newValue === 'object' && newValue !== null) {
       if ('value' in newValue) {
         newValue = newValue.value;

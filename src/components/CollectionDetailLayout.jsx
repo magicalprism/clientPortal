@@ -19,7 +19,7 @@ export async function CollectionDetailLayout({ collectionKey, recordId }) {
     )
     .map((field) => {
       if (field.type === 'media') {
-        return `${field.relation.table}_${field.name}:${field.name}(id, url, alt_text, copyright, file_path, mime_type, is_folder)`;
+        return `${field.relation.table}_${field.name}:${field.name}(id, url, title, alt_text, copyright, file_path, mime_type, is_folder)`;
       } else {
         return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
       }

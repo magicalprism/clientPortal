@@ -25,17 +25,21 @@ export function CollectionModal({
   onRefresh,
   edit: forceEdit = false
 }) {
+  const theme = useTheme();
   const supabase = createClient();
+  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const searchParams = useSearchParams();
+
   const refField = searchParams.get('refField');
-  const recordId = searchParams.get('id');
+  const parentId = searchParams.get('id');
+  const isCreating = !record?.id;
+  const [fetchedRecord, setFetchedRecord] = useState(null);
 
-  const isCreating = !recordId;
-  const [loadedRecord, setLoadedRecord] = useState(null);
-
+  // If we are in "edit" mode but the record prop is empty, fetch from Supabase
   useEffect(() => {
     const fetchRecord = async () => {
-      if (!isCreating && !record?.id && recordId) {
+      const recordId = searchParams.get('id');
+      if (!isCreating && recordId && !record?.id) {
         const { data, error } = await supabase
           .from(config.name)
           .select('*')
@@ -43,23 +47,20 @@ export function CollectionModal({
           .single();
 
         if (error) {
-          console.error(`[CollectionModal] ❌ Failed to load record ID ${recordId}:`, error);
+          console.error(`[CollectionModal] Failed to fetch record ${recordId}`, error);
         } else {
-          setLoadedRecord(data);
+          setFetchedRecord(data);
         }
       }
     };
 
     fetchRecord();
-  }, [isCreating, record?.id, recordId, config.name]);
+  }, [searchParams, config.name, isCreating, record?.id]);
 
   const extendedRecord = {
-    ...(loadedRecord || record || {}),
-    ...(isCreating && recordId && refField ? { [refField]: recordId } : {})
+    ...(fetchedRecord || record || {}),
+    ...(isCreating && parentId && refField ? { [refField]: parentId } : {})
   };
-
-  const theme = useTheme();
-  const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
 
   return (
     <Dialog
@@ -88,6 +89,7 @@ export function CollectionModal({
             <XIcon />
           </IconButton>
         </Box>
+
         <CollectionItemPage
           config={config}
           record={extendedRecord}

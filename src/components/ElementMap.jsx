@@ -54,6 +54,7 @@ const buildNodes = (pages) => {
 
   return pages.map((page) => {
     const type = page.type || 'page';
+    const title = page.title || 'title';
     const status = page.status || 'default';
     const size = customSize[type] || customSize.page;
 
@@ -66,7 +67,7 @@ const buildNodes = (pages) => {
       },
       style: { ...size },
       data: {
-        title: page.title,
+        title: title,
         thumbnailUrl: page.resource?.thumbnail?.url || null,
         status,
         backgroundColor: STATUS_COLORS[status] || STATUS_COLORS.default,
@@ -130,6 +131,8 @@ export const ElementMap = ({ projectId }) => {
         mode={mode}
         collectionName="element" // 👈 make sure this matches your actual route
         refField="element_map"   // 👈 this should match your schema config
+        data={{ ...props.data, label: props.data.title }}
+
       />
     ),
     footer: (props) => <FooterNode {...props} mode={mode} />,
@@ -204,39 +207,40 @@ export const ElementMap = ({ projectId }) => {
 
   return (
     <Box sx={{ height: '2000px', width: '100%', position: 'relative' }}>
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={handleNodeChange}
-        onEdgesChange={onEdgesChange}
-        onConnect={handleConnect}
-        nodeTypes={nodeTypes}
-        fitViewOptions={{ padding: 0.1 }}
-        nodeExtent={[[0, 0], [5000, 10000]]}
-        defaultViewport={{ x: 0, y: 0, zoom: 1 }}
-      >
-        <Box
-          sx={{
-            position: 'sticky',
-            top: 0,
-            zIndex: 1000,
-            width: '100%',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            borderRadius: '999px',
-            paddingRight: '15px',
-          }}
-        >
-          <Switch
-            checked={mode === 'arrange'}
-            onChange={() => setMode(mode === 'edit' ? 'arrange' : 'edit')}
-          />
-        </Box>
-        <Background gap={16} color="#e5e7eb" variant="dots" />
-        <MiniMap />
-        <Controls />
-      </ReactFlow>
-    </Box>
+  {/* Floating switch bar that sticks to top-right of the screen */}
+  <Box
+    sx={{
+      position: 'absolute', // <-- key change
+      top: 16,
+      right: 16,
+      zIndex: 1300, // above everything
+      borderRadius: '999px',
+
+    }}
+  >
+    <Switch
+      checked={mode === 'arrange'}
+      onChange={() => setMode(mode === 'edit' ? 'arrange' : 'edit')}
+    />
+  </Box>
+
+  {/* React Flow Graph */}
+  <ReactFlow
+    nodes={nodes}
+    edges={edges}
+    onNodesChange={handleNodeChange}
+    onEdgesChange={onEdgesChange}
+    onConnect={handleConnect}
+    nodeTypes={nodeTypes}
+    fitViewOptions={{ padding: 0.1 }}
+    nodeExtent={[[0, 0], [5000, 10000]]}
+    defaultViewport={{ x: 0, y: 0, zoom: 1 }}
+  >
+    <Background gap={16} color="#e5e7eb" variant="dots" />
+    <MiniMap />
+    <Controls />
+  </ReactFlow>
+</Box>
+
   );
 };

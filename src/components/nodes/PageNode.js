@@ -109,7 +109,8 @@ const PageNode = React.memo(({ data, id, isConnectable, mode, onClick }) => {
             <Typography
               variant="caption"
               color="text.secondary"
-              sx={{ textAlign: 'center', mt: 4 }}
+              sx={{ textAlign: 'center', }}
+              
             >
               No image
             </Typography>
@@ -119,13 +120,13 @@ const PageNode = React.memo(({ data, id, isConnectable, mode, onClick }) => {
         <Typography
           variant="caption"
           sx={{
-            mt: 1,
             fontSize: '0.75rem',
             fontWeight: 500,
             color: 'text.secondary',
             whiteSpace: 'normal',
             wordBreak: 'break-word',
             maxWidth: 120,
+            
           }}
         >
           {data.title}

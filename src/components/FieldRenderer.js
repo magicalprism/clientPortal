@@ -1,14 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Typography, IconButton, TextField, Box, Checkbox, FormControlLabel, Select, MenuItem, Tooltip } from '@mui/material';
+import { Typography, Switch, IconButton, TextField, Box, Checkbox, FormControlLabel, Select, MenuItem, Tooltip } from '@mui/material';
 import { PencilSimple as PencilIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
-
-
-
 
 import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
 import { RelationshipField } from '@/components/fields/RelationshipField';
@@ -206,21 +203,22 @@ export const FieldRenderer = ({
       );
       break;
 
-    case 'boolean':
-      content = isEditMode ? (
-        <FormControlLabel
-          control={
-            <Checkbox
-              checked={!!localValue}
-              onChange={(e) => handleUpdate(e.target.checked)}
-            />
-          }
-          label={field.label || ''}
-        />
-      ) : (
-        <Typography variant="body2">{localValue ? 'Yes' : 'No'}</Typography>
-      );
-      break;
+      case 'boolean':
+        content = isEditMode ? (
+          <FormControlLabel
+            control={
+              <Switch
+                checked={!!localValue}
+                onChange={(e) => handleUpdate(e.target.checked)}
+              />
+            }
+           
+          />
+        ) : (
+          <Typography variant="body2">{localValue ? 'Yes' : 'No'}</Typography>
+        );
+        break;
+      
 
     case 'status':
       content = <span style={{ textTransform: 'capitalize' }}>{localValue}</span>;

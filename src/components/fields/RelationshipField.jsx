@@ -11,6 +11,8 @@ import {
 import { Eye, Plus } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
+import { resolveDynamicFilter } from '@/lib/utils/filters';
+
 
 export const RelationshipField = ({ field, value, editable, onChange, record }) => {
   const router = useRouter();
@@ -20,33 +22,24 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
 
   useEffect(() => {
     const loadOptions = async () => {
-      if (!field.relation?.table || !field.relation?.labelField) return;
-
+      if (!field.relation?.table || !field.relation?.labelField) {
+        console.warn(`[RelationshipField] Missing table or labelField for field: ${field.name}`);
+        return;
+      }
+  
       setLoading(true);
-
       let query = supabase.from(field.relation.table).select(`id, ${field.relation.labelField}`);
-
-      const filter = field.relation.filter || {};
-      Object.entries(filter).forEach(([key, val]) => {
-        let actualValue = val;
-      
-        // 🧠 Dynamic {{record.field}} replacement
-        if (typeof val === 'string' && val.startsWith('{{record.') && val.endsWith('}}')) {
-          const fieldName = val.slice(9, -2);
-          actualValue = record?.[fieldName] ?? null;
-        }
-      
-        if (actualValue !== null) {
-          // 🧠 Manually coerce string "true"/"false" to real booleans for known boolean fields
-          if (['is_client', 'is_active', 'is_archived'].includes(key)) {
-            if (actualValue === 'true' || actualValue === true) {
-              actualValue = true;
-            }
-            if (actualValue === 'false' || actualValue === false) {
-              actualValue = false;
-            }
+  
+      try {
+        const resolvedFilter = resolveDynamicFilter(field.relation.filter || {}, record);
+        console.log(`[RelationshipField] 🧪 Resolved filter for ${field.name}:`, resolvedFilter);
+  
+        for (const [key, actualValue] of Object.entries(resolvedFilter)) {
+          if (actualValue === null || actualValue === undefined || actualValue === '') {
+            console.warn(`[RelationshipField] Skipping filter ${key} — value is null/undefined`);
+            continue; // skip this filter
           }
-      
+        
           if (Array.isArray(actualValue)) {
             query = query.in(key, actualValue);
           } else if (typeof actualValue === 'boolean') {
@@ -56,39 +49,41 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
           } else if (typeof actualValue === 'string' && actualValue.includes(',')) {
             const parts = actualValue.split(',').map((s) => s.trim());
             query = query.in(key, parts);
-          } else if (typeof actualValue === 'string') {
-            query = query.ilike(key, `%${actualValue}%`);
+          } else if (typeof actualValue === 'string' && actualValue.includes('%')) {
+            query = query.ilike(key, actualValue);
           } else {
             query = query.eq(key, actualValue);
           }
         }
-      });
-      
-      
-      
-      
-      
-      
-      
-      
-
-      const { data, error } = await query;
-      if (error) {
-        console.error(`[RelationshipField] ❌ Failed loading options:`, error);
+        
+        const { data, error } = await query;
+        if (error) {
+          console.error(`[RelationshipField] ❌ Failed loading options for ${field.name}:`, {
+            error,
+            table: field.relation.table,
+            labelField: field.relation.labelField,
+            resolvedFilter,
+          });
+        }
+  
+        if (data) {
+          const sorted = data.sort((a, b) =>
+            (a[field.relation.labelField] || '').localeCompare(b[field.relation.labelField] || '')
+          );
+          setOptions(sorted);
+        }
+      } catch (err) {
+        console.error(`[RelationshipField] ❌ Unexpected error in loadOptions for ${field.name}:`, err);
       }
-
-      if (data) {
-        const sorted = data.sort((a, b) =>
-          (a[field.relation.labelField] || '').localeCompare(b[field.relation.labelField] || '')
-        );
-        setOptions(sorted);
-      }
-
+  
       setLoading(false);
     };
-
+  
     if (editable) loadOptions();
   }, [editable, field.name, record?.id]);
+  
+
+
 
   const selectedOption = options.find(opt => String(opt.id) === String(value));
 
