@@ -20,7 +20,7 @@ import {
 import { CollectionModal } from '@/components/modals/CollectionModal';
 import { useSearchParams } from 'next/navigation';
 import SortableChecklist from '@/components/views/checklists/components/SortableChecklist';
-import ChecklistCard from '@/components/views/checklists/components/ChecklistCard';
+import ChecklistCard from '@/components/views/checklists/ChecklistCard';
 
 export default function ChecklistView({ config, overId, dragging }) {
   const supabase = createClient();

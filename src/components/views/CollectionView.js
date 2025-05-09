@@ -4,13 +4,15 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { CollectionLayout } from '@/components/views/CollectionLayout';
-import ChecklistView from '@/components/views/ChecklistView';
+import ChecklistView from '@/components/views/checklists/ChecklistView';
 import PrimaryTableView from '@/components/views/PrimaryTableView';
 import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
+import CalendarView from './CalendarView';
 
 const componentMap = {
   ChecklistView,
-  PrimaryTableView
+  PrimaryTableView,
+  CalendarView,
 };
 
 export default function CollectionView({ config }) {

@@ -15,7 +15,7 @@ import {
   import { useSearchParams } from 'next/navigation';
   import { useModal } from '@/components/modals/ModalContext';
   import * as collections from '@/collections';
-  import SortableTask from './SortableTask';
+  import SortableTask from './components/SortableTask';
   import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
 

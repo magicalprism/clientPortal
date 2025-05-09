@@ -22,7 +22,11 @@ export const task = {
         checklist: {
           label: 'Checklist View',
           component: 'ChecklistView'
-        }
+        },
+        calendar: {
+          label: 'Calendar',
+          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
+        },
         
   },
       //Quickview
