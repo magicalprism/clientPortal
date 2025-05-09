@@ -126,13 +126,7 @@ export default function ChecklistView({ config }) {
         onRefresh={async (newItem) => {
           if (!newItem) return;
         
-          if (newItem?.checklist_id) {
-            setTasks((prev) => [newItem, ...prev]);
-          } else {
-            setChecklists((prev) => [newItem, ...prev]);
-          }
-        
-          await fetchData(); // optional, for syncing with server
+          await fetchData();
         }}
         
       />

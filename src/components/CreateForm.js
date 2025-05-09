@@ -33,12 +33,20 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
     } else {
       setFormData({});
       if (onSuccess) {
-        console.log('✅ Calling onSuccess with:', data); // 👈 test this
         await onSuccess(data);
       }
-      if (!disableRedirect && data?.id && config.editPathPrefix) {
+      
+      // Modal behavior: refresh page to reflect new item
+      if (disableRedirect) {
+        window.location.reload();
+        return;
+      }
+      
+      // Full page behavior: redirect to new item's page
+      if (data?.id && config.editPathPrefix) {
         router.push(`${config.editPathPrefix}/${data.id}`);
       }
+      
     }
   };
 
