@@ -15,8 +15,10 @@ import {
   import { useSearchParams } from 'next/navigation';
   import { useModal } from '@/components/modals/ModalContext';
   import * as collections from '@/collections';
+  import SortableTask from './SortableTask';
+  import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 
-  
+
   export default function ChecklistCard({
     checklist,
     config,
@@ -26,17 +28,30 @@ import {
     listeners,
     field,
     record,
+    dragging = false
   }) {
     const { openModal } = useModal();
     const [editingTitle, setEditingTitle] = useState(false);
     const [localTitle, setLocalTitle] = useState(checklist.title);
-    const searchParams = useSearchParams(); // ✅ this returns the object
-    const view = searchParams.get('view');  // ✅ this works
+    const searchParams = useSearchParams();
+    const view = searchParams.get('view');
     
   
     return (
       <>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          mb={1}
+          sx={{
+            opacity: dragging ? 0.7 : 1,
+            pointerEvents: dragging ? 'none' : 'auto',
+            backgroundColor: dragging ? 'background.paper' : 'white', // ✅ add this line
+            boxShadow: dragging ? 3 : 0,
+            borderRadius: 2,
+                    }}
+        >
           {editingTitle ? (
             <TextField
               variant="standard"
@@ -55,7 +70,7 @@ import {
               autoFocus
             />
           ) : (
-            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1,  }}>
               <Typography
                 variant="h6"
                 onClick={() => setEditingTitle(true)}
@@ -85,46 +100,24 @@ import {
         </Stack>
   
         <Box sx={{ flexGrow: 1 }}>
-          {checklist.tasks.map((task) => (
-            <Box
-              key={task.id}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                py: 1,
-                pl: 2,
-                borderTop: '1px solid #eee',
-              }}
-            >
-            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-        <Checkbox
-          checked={task.status === 'complete'}
-          onChange={() => onToggleComplete(task.id)}
-          sx={{ mr: 1 }}
-        />
-        <Typography
-        variant="body2"
-        sx={{ userSelect: 'none', cursor: 'pointer', textDecoration: 'underline' }}
-        onClick={() => openModal('edit', {
-          config,
-          defaultValues: task
-        })}
-      >
-        {task.title}
-      </Typography>
+        <SortableContext
+            items={(checklist.tasks || []).map((t) => `task-${t.id}`)}
+            strategy={verticalListSortingStrategy}
+          >
+            {(checklist.tasks || []).map((task) => (
+              <SortableTask
+                key={task.id}
+                task={task}
+                config={config}
+                onToggleComplete={onToggleComplete}
+              />
+            ))}
+          </SortableContext>
 
 
-</Box>
-
-
-              <ViewButtons config={config} id={task.id} />
-            </Box>
-          ))}
-  
           <Box sx={{ mt: 2, textAlign: 'left' }}>
-          <AddRecordButton
-              config={config} // 🔁 or however you're passing config
+            <AddRecordButton
+              config={config}
               defaultValues={{
                 title: 'New Task',
                 status: 'todo',
