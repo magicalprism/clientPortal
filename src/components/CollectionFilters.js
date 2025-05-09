@@ -170,7 +170,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
         </>
       )}
 
-      <Stack direction="row" spacing={2} sx={{ px: 3, py: 2, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Stack direction="row" spacing={2} sx={{ px: 3, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
         {otherFilters.map((filter) => {
   const value = filters[filter.name] || '';

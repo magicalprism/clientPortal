@@ -11,8 +11,6 @@ export const TimezoneSelect = ({
   value,
   onChange,
   name,
-  parentId,
-  parentTable
 }) => {
   const handleChange = async (e) => {
     const newValue = e.target.value;
@@ -20,31 +18,10 @@ export const TimezoneSelect = ({
 
 
     // ✅ FIXED: Correct value is now passed
-    onChange(name, newValue);
+    onChange(newValue);
 
 
-    // ✅ Save to Supabase
-    if (parentId && parentTable) {
-      try {
-        const { data, error } = await supabase
-          .from(parentTable)
-          .update({ [name]: newValue })
-          .eq('id', parentId)
-          .select(); // Forces revalidation
-
-
-
-        if (error) {
-
-        } else {
-
-        }
-      } catch (err) {
-
-      }
-    } else {
-
-    }
+    
   };
 
   return (

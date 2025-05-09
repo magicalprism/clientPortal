@@ -12,6 +12,10 @@ import {
   import { DotsSixVertical } from '@phosphor-icons/react';
   import { ViewButtons } from '@/components/buttons/ViewButtons';
   import AddRecordButton from '@/components/buttons/AddRecordButton';
+  import { useSearchParams } from 'next/navigation';
+  import { useModal } from '@/components/modals/ModalContext';
+  import * as collections from '@/collections';
+
   
   export default function ChecklistCard({
     checklist,
@@ -23,8 +27,12 @@ import {
     field,
     record,
   }) {
+    const { openModal } = useModal();
     const [editingTitle, setEditingTitle] = useState(false);
     const [localTitle, setLocalTitle] = useState(checklist.title);
+    const searchParams = useSearchParams(); // ✅ this returns the object
+    const view = searchParams.get('view');  // ✅ this works
+    
   
     return (
       <>
@@ -60,9 +68,11 @@ import {
   
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <AddRecordButton 
-              type="checklist"
-              fields={{ title: 'New Checklist' }}
+              config={collections.checklist} // 🔁 or however you're passing config
+              defaultValues={{
+                title: 'New Task', title: 'New Checklist'}}
               variant="icon"
+              
         />
             
             <IconButton onClick={() => onDelete(checklist.id)} color="error">
@@ -87,28 +97,40 @@ import {
                 borderTop: '1px solid #eee',
               }}
             >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={task.status === 'complete'}
-                    onChange={() => onToggleComplete(task.id)}
-                  />
-                }
-                label={task.title}
-                sx={{ flexGrow: 1 }}
-              />
+            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+        <Checkbox
+          checked={task.status === 'complete'}
+          onChange={() => onToggleComplete(task.id)}
+          sx={{ mr: 1 }}
+        />
+        <Typography
+        variant="body2"
+        sx={{ userSelect: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+        onClick={() => openModal('edit', {
+          config,
+          defaultValues: task
+        })}
+      >
+        {task.title}
+      </Typography>
+
+
+</Box>
+
+
               <ViewButtons config={config} id={task.id} />
             </Box>
           ))}
   
           <Box sx={{ mt: 2, textAlign: 'left' }}>
-            <AddRecordButton
-              type="task"
-            refField="checklist_id"
-              id={checklist.id}
-              label={`Add ${(config?.singularLabel || config?.label || 'Item')}`}
+          <AddRecordButton
+              config={config} // 🔁 or however you're passing config
+              defaultValues={{
+                title: 'New Task',
+                status: 'todo',
+                checklist_id: checklist.id
+              }}
               variant="button"
-              fields={{ title: 'New Task', status: 'in_progress' }}
             />
           </Box>
         </Box>

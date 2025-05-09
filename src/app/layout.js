@@ -21,6 +21,9 @@ import { SettingsProvider } from "@/components/core/settings/settings-context";
 import { ThemeProvider } from "@/components/core/theme-provider";
 import { Toaster } from "@/components/core/toaster";
 import { ProtectedRoute } from "@/components/auth/supabase/ProtectedRoute";
+import { ModalProvider } from '@/components/modals/ModalContext';
+import GlobalModals from '@/components/modals/GlobalModals';
+
 
 export const metadata = { title: appConfig.name };
 
@@ -78,7 +81,10 @@ export default async function Layout({ children }) {
 										<EmotionCacheProvider options={{ key: "mui" }}>
 											<Rtl direction={direction}>
 												<ThemeProvider>
-													{content}
+													<ModalProvider>
+														{content}
+														<GlobalModals />
+													</ModalProvider>
 													<SettingsButton />
 													<Toaster position="bottom-right" />
 												</ThemeProvider>

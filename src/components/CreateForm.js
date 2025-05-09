@@ -6,19 +6,20 @@ import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { useRouter, usePathname } from 'next/navigation';
 
-const CreateForm = ({ config, onSuccess }) => {
+const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = false }) => {
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
   const { name: table, fields } = config;
 
-  const [formData, setFormData] = useState({});
+  const [formData, setFormData] = useState(() => initialRecord);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleChange = (field, value) => {
-    setFormData((prev) => ({ ...prev, [field.name]: value }));
+  const handleChange = (fieldName, value) => {
+    setFormData((prev) => ({ ...prev, [fieldName]: value }));
   };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -27,13 +28,15 @@ const CreateForm = ({ config, onSuccess }) => {
 
     const { data, error } = await supabase.from(table).insert([formData]).select().single();
     setLoading(false);
-
     if (error) {
       setError(error.message);
     } else {
       setFormData({});
-      if (onSuccess) onSuccess();
-      if (data?.id && config.editPathPrefix) {
+      if (onSuccess) {
+        console.log('✅ Calling onSuccess with:', data); // 👈 test this
+        await onSuccess(data);
+      }
+      if (!disableRedirect && data?.id && config.editPathPrefix) {
         router.push(`${config.editPathPrefix}/${data.id}`);
       }
     }
@@ -61,7 +64,7 @@ const CreateForm = ({ config, onSuccess }) => {
                 config={config}
                 mode="create"
                 editable
-                onChange={handleChange}
+                onChange={(value) => handleChange(field.name, value)}
               />
             </Box>
           </Grid>

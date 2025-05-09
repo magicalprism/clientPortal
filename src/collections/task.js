@@ -69,24 +69,39 @@ export const task = {
     },
     
     //Meta
-    { 
-      name: 'status', 
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
       group: 'Primary', 
-      tab: 'Details',
-      label: 'Status', 
-      group: 'General', 
-      type: 'status', 
       tab: 'Meta', 
-      showInTable: true 
+      defaultValue: 'todo',
+      options: [
+        { value: 'todo', label: 'To do' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'archived', label: 'Archived' },
+      ]
+    },
+    { 
+      name: 'checklist_id', 
+      label: 'Checklist', 
+      type: 'relationship',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        table: 'checklist',
+        labelField: 'title',
+        linkTo: '/dashboard/checklist' // or dynamically derive from config
+      }, 
     },
     { 
       name: 'due_date', 
       group: 'Primary', 
-      tab: 'Details',
+      tab: 'Meta', 
       label: 'Due Date', 
       group: 'General', 
       type: 'date', 
-      tab: 'Meta', 
       showInTable: true 
     },
     { 

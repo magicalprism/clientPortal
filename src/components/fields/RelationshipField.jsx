@@ -80,7 +80,7 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
     };
   
     if (editable) loadOptions();
-  }, [editable, field.name, record?.id]);
+  }, [editable, field.name, field.relation, record]);
   
 
 
@@ -91,23 +91,7 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
     const newValue = e.target.value === '' ? null : e.target.value;
     onChange(newValue); // update UI immediately via FieldRenderer
 
-    const parentId = field.parentId;
-    const parentTable = field.parentTable;
-
-    if (parentId && parentTable) {
-      try {
-        const { error } = await supabase
-          .from(parentTable)
-          .update({ [field.name]: newValue })
-          .eq('id', parentId);
-
-        if (error) {
-          console.error(`[RelationshipField] ❌ Auto-save error on ${field.name}:`, error);
-        }
-      } catch (err) {
-        console.error(`[RelationshipField] ❌ Unexpected save error:`, err);
-      }
-    }
+   
   };
 
   const createButton = !!field.relation?.linkTo && (

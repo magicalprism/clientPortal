@@ -119,7 +119,12 @@ export function SimpleEditor({
         "aria-label": "Main content area, start typing to enter text.",
       },
     },
-    onUpdate: ({ editor }) => setEditorContent(editor.getHTML()),
+    onUpdate: ({ editor }) => {
+      const html = editor.getHTML();
+      if (onChange && html !== content) {
+        onChange(html);
+      }
+    },
   });
 
   React.useEffect(() => {
@@ -168,15 +173,7 @@ export function SimpleEditor({
 
         <div className="content-wrapper">
           <EditorContent editor={editor} className="simple-editor-content" />
-          {editable && (
-            <MuiButton
-              variant="contained"
-              onClick={handleSave}
-              sx={{ mt: 2, alignSelf: "flex-end" }}
-            >
-              Save
-            </MuiButton>
-          )}
+          
         </div>
       </div>
     </EditorContext.Provider>

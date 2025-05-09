@@ -29,7 +29,7 @@ export const TimestampField = ({ field, mode, editable, onChange, value }) => {
     ) {
       console.log(`🕒 Setting ${field.name} to ${now}`);
       triggeredRef.current = true;
-      onChange(field, now);
+      onChange(now);
     }
   }, [editable, mode, field.name, onChange, value]);
 

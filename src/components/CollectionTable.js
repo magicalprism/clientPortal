@@ -15,7 +15,7 @@ import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { DataTable } from '@/components/core/data-table';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
-import { CollectionModal } from '@/components/CollectionModal';
+import { CollectionModal } from '@/components/modals/CollectionModal';
 import { createClient } from '@/lib/supabase/browser';
 
 

@@ -7,7 +7,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
 
-import { MultiRelationshipField } from '@/components/fields/MultiRelationshipField';
+import { MultiRelationshipField } from '@/components/fields/relationships/multi/MultiRelationshipField';
 import { RelationshipField } from '@/components/fields/RelationshipField';
 import { LinkField } from '@/components/fields/LinkField';
 import { SimpleEditor } from '@/components/tiptap/components/tiptap-templates/simple/simple-editor';
@@ -83,7 +83,7 @@ export const FieldRenderer = ({
        content = editable ? (
          <MultiRelationshipField
            field={{ ...field, parentId: record.id }}
-           value={localValue}
+           value={Array.isArray(record?.[field.name]) ? record[field.name] : []}
            onChange={handleUpdate}
          />
        ) : null;
@@ -97,7 +97,7 @@ export const FieldRenderer = ({
           editable={true}
           onChange={debounce((html) => {
             setLocalValue(html);
-            onChange(field, html);
+            handleUpdate(html); // ✅ consistent
           }, 800)}
         />
       ) : (
@@ -246,7 +246,7 @@ export const FieldRenderer = ({
               });
       
               // ✅ Send full object so saveChange can normalize
-              onChange(field, { value: selectedValue, label: selectedLabel });
+              handleUpdate({ value: selectedValue, label: selectedLabel });
             }}
             displayEmpty
             renderValue={(selected) => {
@@ -274,7 +274,7 @@ export const FieldRenderer = ({
         content = isEditMode ? (
           <ColorField
             value={localValue || '#000000'}
-            onChange={handleUpdate}
+            onChange={(value) => handleChange(field.name, value)}
           />
         ) : (
           <Box
@@ -321,7 +321,7 @@ export const FieldRenderer = ({
           editable={isEditMode}
           mode={mode}
           onChange={(f, val) => {
-            onChange(f, val); 
+            handleUpdate(val);
           }}
         />
       );

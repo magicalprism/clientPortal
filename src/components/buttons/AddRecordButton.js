@@ -1,36 +1,20 @@
-import { useRouter } from 'next/navigation';
-import { modalCreateWithRef } from '@/lib/utils/links/modalCreateWithRef';
 import { IconButton, Button } from '@mui/material';
 import { Plus } from '@phosphor-icons/react';
+import { useModal } from '@/components/modals/ModalContext';
 
 export default function AddRecordButton({
-  refField,
-  id,
+  config,
+  defaultValues = {},
   label,
-  variant = 'icon',
-  fields = {},
-  type = 'task' // ✅ Add support for modal type
+  variant = 'icon'
 }) {
-  const router = useRouter();
+  const { openModal } = useModal();
 
   const handleClick = () => {
-    console.log('🧪 AddRecordButton clicked!');
-
-    const fieldParams = Object.entries(fields)
-      .map(([k, v]) => `&${k}=${encodeURIComponent(v)}`)
-      .join('');
-
-    let url;
-
-    if (refField) {
-      url = `?modal=create&type=${type}&refField=${refField}&id=${id}${fieldParams}`;
-    } else {
-      url = `?modal=create&type=${type}${fieldParams}`;
-    }
-
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    console.log('🧭 Computed URL:', `${currentPath}${url}`);
-    router.push(`${currentPath}${url}`);
+    openModal('create', {
+      config,
+      defaultValues
+    });
   };
 
   if (variant === 'icon') {
@@ -41,9 +25,12 @@ export default function AddRecordButton({
     );
   }
 
+  // Use "Add [SingularLabel]" fallback if no label prop
+  const buttonLabel = label || `Add ${config?.singularLabel || config?.label || 'Item'}`;
+
   return (
     <Button onClick={handleClick} startIcon={<Plus />}>
-      {label || 'Add'}
+      {buttonLabel}
     </Button>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
-
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import * as collections from '@/collections';
+import CreateForm from '@/components/CreateForm';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +16,13 @@ import { X as XIcon } from '@phosphor-icons/react';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
 
-export function CollectionModal({
+export default function CollectionModal({
   open,
   onClose,
   onUpdate,
   onDelete,
+  config,
+  defaultValues = {},
   record = {},
   onRefresh,
   edit: forceEdit = false
@@ -28,45 +30,42 @@ export function CollectionModal({
   const theme = useTheme();
   const supabase = createClient();
   const fullScreen = useMediaQuery(theme.breakpoints.down('sm'));
-  const searchParams = useSearchParams();
 
-  const type = searchParams.get('type');
-  const config = collections[type];
-
-  if (!config) {
-    console.error(`❌ No collection config found for type "${type}"`);
-    return null;
-  }
-
-  const refField = searchParams.get('refField');
-  const parentId = searchParams.get('id');
-  const isCreating = !record?.id;
+  const type = config?.name;
+  const recordId = record?.id || defaultValues?.id;
+  const isCreating = !recordId;
   const [fetchedRecord, setFetchedRecord] = useState(null);
+  const parentId = defaultValues?.id;
+  const refField = defaultValues?.refField;
+
+
+
 
   useEffect(() => {
-    const fetchRecord = async () => {
-      const recordId = searchParams.get('id');
-      if (!isCreating && recordId && !record?.id) {
+    if (!isCreating && recordId && !record?.id) {
+      const fetchRecord = async () => {
         const { data, error } = await supabase
           .from(config.name)
           .select('*')
           .eq('id', recordId)
           .single();
-
+  
         if (error) {
           console.error(`[CollectionModal] Failed to fetch record ${recordId}`, error);
         } else {
           setFetchedRecord(data);
         }
-      }
-    };
-
-    fetchRecord();
-  }, [searchParams, config.name, isCreating, record?.id]);
+      };
+  
+      fetchRecord();
+    }
+  }, [recordId, config.name, isCreating, record?.id]);
+  
 
   const extendedRecord = {
     ...(fetchedRecord || record || {}),
-    ...(isCreating && parentId && refField ? { [refField]: parentId } : {})
+    ...(isCreating && parentId && refField ? { [refField]: parentId } : {}),
+    ...(isCreating ? defaultValues : {}) // 👈 Add this line
   };
 
   return (
@@ -97,6 +96,17 @@ export function CollectionModal({
           </IconButton>
         </Box>
 
+        {isCreating ? (
+       <CreateForm
+       config={config}
+       initialRecord={extendedRecord} // ✅ pass prefilled values
+       disableRedirect
+       onSuccess={async (data) => {
+        if (onRefresh) await onRefresh(data); // ⬅️ Make sure this finishes first
+        onClose(); // ⬅️ Only close after
+      }}
+     />
+      ) : (
         <CollectionItemPage
           config={config}
           record={extendedRecord}
@@ -107,6 +117,8 @@ export function CollectionModal({
           onRefresh={onRefresh}
           singleColumn
         />
+      )}
+
       </DialogContent>
     </Dialog>
   );

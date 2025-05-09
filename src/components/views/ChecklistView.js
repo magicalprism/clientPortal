@@ -1,7 +1,7 @@
 // ChecklistView.js
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
 import {
@@ -16,7 +16,7 @@ import {
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { CollectionModal } from '@/components/CollectionModal';
+import { CollectionModal } from '@/components/modals/CollectionModal';
 import { useSearchParams } from 'next/navigation';
 import SortableChecklist from '@/components/views/checklists/components/SortableChecklist';
 import ChecklistCard from '@/components/views/checklists/components/ChecklistCard';
@@ -35,7 +35,7 @@ export default function ChecklistView({ config }) {
     const { data: tasksData } = await supabase
       .from('task')
       .select('*')
-      .in('status', ['in_progress', 'complete']);
+      .in('status', ['in_progress', 'todo']);
 
     setChecklists(checklistsData || []);
     setTasks(tasksData || []);
@@ -57,10 +57,13 @@ export default function ChecklistView({ config }) {
     fetchData();
   };
 
-  const groupedTasks = checklists.map((cl) => ({
-    ...cl,
-    tasks: tasks.filter((t) => t.checklist_id === cl.id),
-  }));
+  const groupedTasks = useMemo(() => {
+    return checklists.map((cl) => ({
+      ...cl,
+      tasks: tasks.filter((t) => t.checklist_id === cl.id),
+    }));
+  }, [checklists, tasks]);
+  
 
   const handleDragEnd = (event) => {
     const { active, over } = event;
@@ -84,7 +87,7 @@ export default function ChecklistView({ config }) {
   return (
     <>
       <Box sx={{ p: 3 }}>
-        <Typography sx={{ py: 3 }} variant="h5" gutterBottom>
+        <Typography sx={{ pb: 3 }} variant="h5" gutterBottom>
           {(config?.singularLabel || config?.label || 'Untitled') + ' Checklists'}
         </Typography>
   
@@ -118,9 +121,20 @@ export default function ChecklistView({ config }) {
       {showModal && (
         <CollectionModal
         open
-        config={config} // ✅ use directly
+        config={config}
         onClose={() => window.history.back()}
-        onRefresh={fetchData}
+        onRefresh={async (newItem) => {
+          if (!newItem) return;
+        
+          if (newItem?.checklist_id) {
+            setTasks((prev) => [newItem, ...prev]);
+          } else {
+            setChecklists((prev) => [newItem, ...prev]);
+          }
+        
+          await fetchData(); // optional, for syncing with server
+        }}
+        
       />
       )}
     </>
