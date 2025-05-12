@@ -1,9 +1,35 @@
 export const project = {
   name: 'project',
   label: 'Projects',
+  singularLabel: 'Project',
   editPathPrefix: '/dashboard/project',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
+  defaultView: 'table',
+  views: {
+    table: {
+      label: 'Table View',
+      component: 'PrimaryTableView',
+
+    },
+      page: { 
+        label: 'Page View', 
+        component: 'PageView' 
+      },
+      kanban: {
+         label: 'Kanban View', 
+         component: 'KanbanView' 
+        },
+        checklist: {
+          label: 'Checklist View',
+          component: 'ChecklistView'
+        },
+        calendar: {
+          label: 'Calendar',
+          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
+        },
+        
+  },
       //Quickview
       quickView: {
         enabled: true,
@@ -297,6 +323,18 @@ export const project = {
         labelField: 'title',
         filter: { is_client: true } // optional: filters options
       }
+    },
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      defaultValue: 'title:asc',
+      options: [
+        { value: 'title:asc', label: 'Title (A–Z)' },
+        { value: 'title:desc', label: 'Title (Z–A)' },
+        { value: 'created_at:desc', label: 'Newest Created' },
+        { value: 'created_at:asc', label: 'Oldest Created' }
+      ]
     }
     
   ]

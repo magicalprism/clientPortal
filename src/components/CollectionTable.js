@@ -9,23 +9,20 @@ import {
   incomingColumns,
   index
 } from '@mui/material';
-import { Eye, CornersOut } from '@phosphor-icons/react'; // ✅ Phosphor icons here
-import * as collections from '@/collections';
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { DataTable } from '@/components/core/data-table';
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
-import { CollectionModal } from '@/components/modals/CollectionModal';
+import { useModal } from '@/components/modals/ModalContext';
 import { createClient } from '@/lib/supabase/browser';
+import { ViewButtons } from '@/components/buttons/ViewButtons';
 
 
 
 export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = false, parentColumns, columns: incomingColumns, expandedRowIds = new Set() }) => {
 
   const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-
+  const { openModal } = useModal();
   const supabase = createClient();
 
   const {
@@ -36,30 +33,10 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
     selected
   } = useCollectionSelection();
 
-  const [selectedRecord, setSelectedRecord] = React.useState(null);
-  const [modalOpen, setModalOpen] = React.useState(false);
 
-  const editId = searchParams.get('id');
-  const modalType = searchParams.get('modal');
 
   const safeRows = Array.isArray(rows) ? rows : [];
 
-  React.useEffect(() => {
-    if (modalType === 'edit' && editId) {
-      const row = safeRows.find((r) => r.id === parseInt(editId));
-      if (row) {
-        setSelectedRecord(row);
-        setModalOpen(true);
-      }
-    } else {
-      setModalOpen(false);
-      setSelectedRecord(null);
-    }
-  }, [editId, modalType, safeRows]);
-
-  const closeModal = () => {
-    router.push(pathname);
-  };
 
   const tableFieldNames = null;
 
@@ -98,12 +75,12 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
               ...(index === 0 ),
             }}
             onClick={() => {
-              if (field.openMode === 'modal') {
-                router.push(`${pathname}?id=${row.id}&modal=edit`);
-              } else {
-                router.push(`/dashboard/${config.name}/${row.id}`);
-              }
+              openModal('edit', {
+                config,
+                defaultValues: row,
+              });
             }}
+            
           >
             {value}
           </Typography>
@@ -132,26 +109,7 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
       field: 'actions',
       align: 'right',
       width: '80px',
-      formatter: (row) => (
-        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-          <IconButton
-            size="small"
-            onClick={() => {
-              router.push(`${pathname}?id=${row.id}&modal=edit`);
-            }}
-          >
-            <Eye size={18} weight="regular" />
-          </IconButton>
-          <IconButton
-            size="small"
-            onClick={() => {
-              window.open(`/dashboard/${config.name}/${row.id}`, '_blank');
-            }}
-          >
-            <CornersOut size={18} weight="regular" />
-          </IconButton>
-        </Box>
-      )
+      formatter: (row) => <ViewButtons config={config} id={row.id} />
     });
   }
 
@@ -179,7 +137,8 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
             py: 0,
             m: 0,
             borderBottom: '1px solid',
-            borderColor: 'divider'
+            borderColor: 'divider',
+          
           }}
 >
 
@@ -213,24 +172,7 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
         </Box>
       )}
 
-      {selectedRecord && (
-        <CollectionModal
-          open={modalOpen}
-          onClose={closeModal}
-          record={selectedRecord}
-          config={config}
-          onUpdate={async (id, data) => {
-            await supabase.from(config.name).update(data).eq('id', id);
-            closeModal();
-            window.location.reload();
-          }}
-          onDelete={async (id) => {
-            await supabase.from(config.name).delete().eq('id', id);
-            closeModal();
-            window.location.reload();
-          }}
-        />
-      )}
+      
     </>
   );
 };

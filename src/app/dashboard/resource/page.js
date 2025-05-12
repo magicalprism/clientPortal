@@ -1,8 +1,8 @@
 'use client';
 
 import { resource } from '@/collections/resource';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import CollectionView from '@/components/views/CollectionView';
 
 export default function ResourcePage() {
-  return <PrimaryTableView config={resource} />;
+  return <CollectionView config={resource} />;
 }

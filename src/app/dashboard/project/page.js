@@ -1,8 +1,8 @@
 'use client';
 
 import { project } from '@/collections/project';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import CollectionView from '@/components/views/CollectionView';
 
 export default function ProjectPage() {
-  return <PrimaryTableView config={project} />;
+  return <CollectionView config={project} />;
 }

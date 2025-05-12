@@ -57,26 +57,29 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
   return (
     <Box component="form" onSubmit={handleSubmit}>
       <Grid container spacing={3}>
-        {fields.map((field) => (
-          <Grid item xs={12} md={field.type === 'boolean' ? 12 : 6} key={field.name}>
-            <Box display="flex" flexDirection="column" gap={1}>
-              <Typography variant="body2" fontWeight={500}>{field.label}</Typography>
-              {field.description && (
-                <Typography variant="caption" color="text.secondary">{field.description}</Typography>
-              )}
+      {fields
+  .filter((field) => !['created_at', 'updated_at'].includes(field.name))
+  .map((field) => (
+    <Grid item xs={12} md={field.type === 'boolean' ? 12 : 6} key={field.name}>
+      <Box display="flex" flexDirection="column" gap={1}>
+        <Typography variant="body2" fontWeight={500}>{field.label}</Typography>
+        {field.description && (
+          <Typography variant="caption" color="text.secondary">{field.description}</Typography>
+        )}
 
-              <FieldRenderer
-                field={field}
-                value={formData[field.name] || ''}
-                record={{}}
-                config={config}
-                mode="create"
-                editable
-                onChange={(value) => handleChange(field.name, value)}
-              />
-            </Box>
-          </Grid>
-        ))}
+        <FieldRenderer
+          field={field}
+          value={formData[field.name] || ''}
+          record={{}}
+          config={config}
+          mode="create"
+          editable
+          onChange={(value) => handleChange(field.name, value)}
+        />
+      </Box>
+    </Grid>
+))}
+
       </Grid>
 
       {error && (

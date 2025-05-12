@@ -1,8 +1,8 @@
-export const company = {
-    name: 'company',
-    label: 'Companies',
-    singularLabel: 'Company',
-    editPathPrefix: '/dashboard/company',
+export const contact = {
+    name: 'contact',
+    label: 'Contacts',
+    singularLabel: 'Contact',
+    editPathPrefix: '/dashboard/contact',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',
     defaultView: 'table',
@@ -39,7 +39,22 @@ export const company = {
         clickable: true, 
         openMode: 'full',  
         showInTable: true,
-        description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+      },
+      { 
+        name: 'email', 
+        label: 'Email', 
+        group: 'Details',
+        tab: 'Overview', 
+        openMode: 'full',  
+        showInTable: true,
+      },
+      { 
+        name: 'role', 
+        label: 'Role', 
+        group: 'Details',
+        tab: 'Overview', 
+        openMode: 'full',  
+        showInTable: true,
       },
     ],
 
@@ -48,21 +63,10 @@ export const company = {
         name: 'status',
         type: 'select',
         label: 'Status',
-        options: [
+        options: [  
           { value: 'active', label: 'Active' },
           { value: 'archived', label: 'Archived' },
-        ]
-      },
-      {
-        name: 'is_client',
-        type: 'select',
-        label: 'Is Client',
-        defaultValue: true,
-        options: [
-          { value: true, label: 'Yes' },
-          { value: false, label: 'No' },
-        ]
-
+      ]
       },
       {
         name: 'sort',

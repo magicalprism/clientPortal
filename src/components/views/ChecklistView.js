@@ -17,7 +17,7 @@ import {
   SortableContext,
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
-import { CollectionModal } from '@/components/modals/CollectionModal';
+import  CollectionModal  from '@/components/modals/CollectionModal';
 import { useSearchParams } from 'next/navigation';
 import SortableChecklist from '@/components/views/checklists/components/SortableChecklist';
 import ChecklistCard from '@/components/views/checklists/ChecklistCard';

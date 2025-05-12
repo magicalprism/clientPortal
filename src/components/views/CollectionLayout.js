@@ -5,6 +5,7 @@ import { Plus as PlusIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ViewSwitcher } from '@/components/ViewSwitcher';
 import { CollectionFilters } from '@/components/CollectionFilters';
+import { TablePagination } from '@mui/material';
 
 export const CollectionLayout = ({
   config,
@@ -17,6 +18,11 @@ export const CollectionLayout = ({
   onDeleteSuccess,
   onAddClick,
   children,
+  page,
+  onPageChange,
+  rowsPerPage,
+  totalCount,
+  onRowsPerPageChange,
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -24,6 +30,8 @@ export const CollectionLayout = ({
   const handleDefaultAdd = () => {
     router.push(`/dashboard/${config.name}/create`);
   };
+
+  
 
   return (
     <Box 
@@ -77,11 +85,22 @@ export const CollectionLayout = ({
           onClick={onAddClick || handleDefaultAdd}
           sx={{ height: 40 }}
         >
-          Add {config.label?.slice(0, -1)}
+          Add {config.singularLabel}
         </Button>
       </Box>
 
       {children}
+      <Box sx={{ px: 3, pt: 2 }}>
+      <TablePagination
+        component="div"
+        count={totalCount || 0} // you'll need to compute this
+        page={page}
+        onPageChange={onPageChange}
+        rowsPerPage={rowsPerPage}
+        onRowsPerPageChange={onRowsPerPageChange}
+        rowsPerPageOptions={[10, 25, 50]}
+      />
+    </Box>
     </Box>
   );
 };

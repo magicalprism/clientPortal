@@ -78,20 +78,16 @@ export const paths = {
 			thread: (threadType, threadId) => `/dashboard/chat/${threadType}/${threadId}`,
 		},
 		crypto: "/dashboard/crypto",
-		contacts: {
-			list: "/dashboard/contacts",
-			create: "/dashboard/contacts/create",
-			details: (contactId) => `/dashboard/contacts/${contactId}`,
-		},
+		
 		company: {
 			list: "/dashboard/company",
 			create: "/dashboard/company/create",
 			details: (companyId) => `/dashboard/company/${companyId}`,
 		},
-		project: {
-			list: "/dashboard/project",
-			create: "/dashboard/project/create",
-			details: (projectId) => `/dashboard/project/${projectId}`,
+		contact: {
+			list: "/dashboard/contact",
+			create: "/dashboard/contact/create",
+			details: (contactId) => `/dashboard/contact/${contactId}`,
 		},
 		element: {
 			list: "/dashboard/element",
@@ -104,6 +100,17 @@ export const paths = {
 			details: (onboardingId) => `/dashboard/onboarding/${onboardingId}`,
 			
 		},
+		media: {
+			list: "/dashboard/media",
+			create: "/dashboard/media/create",
+			details: (mediaId) => `/dashboard/media/${mediaId}`,
+		},
+		project: {
+			list: "/dashboard/project",
+			create: "/dashboard/project/create",
+			details: (projectId) => `/dashboard/project/${projectId}`,
+		},
+		
 		eCommerce: "/dashboard/e-commerce",
 		fileStorage: "/dashboard/file-storage",
 		i18n: "/dashboard/i18n",

@@ -1,4 +1,10 @@
 import { paths } from "@/paths";
+import * as Icons from "@phosphor-icons/react";
+
+const Icon = ({ name }) => {
+  const IconComponent = Icons[toPascalCase(name)]; // e.g., "address-book" → "AddressBook"
+  return IconComponent ? <IconComponent size={20} /> : null;
+};
 
 export const dashboardConfig = {
 	layout: "vertical",
@@ -47,8 +53,8 @@ export const dashboardConfig = {
 				},
 				{
 					key: "company",
-					title: "Company",
-					icon: "users",
+					title: "Companies",
+					icon: "buildings",
 					items: [
 						{ key: "company", title: "List company", href: paths.dashboard.company.list },
 						{ key: "company:create", title: "Create company", href: paths.dashboard.company.create },
@@ -56,15 +62,16 @@ export const dashboardConfig = {
 					],
 				},
 				{
-					key: "contacts",
+					key: "contact",
 					title: "Contacts",
-					icon: "users",
+					icon: "address-book",
 					items: [
-						{ key: "contacts", title: "List contacts", href: paths.dashboard.contacts.list },
-						{ key: "contacts:create", title: "Create contact", href: paths.dashboard.contacts.create },
+						{ key: "contact", title: "List contacts", href: paths.dashboard.contact.list },
+						{ key: "contact:create", title: "Create contact", href: paths.dashboard.contact.create },
 
 					],
 				},
+				
 				{
 					key: "onboarding",
 					title: "Onboarding",
@@ -90,9 +97,19 @@ export const dashboardConfig = {
 					title: "Resource",
 					icon: "text-align-left",
 					items: [
-						{ key: "resource", title: "List posts", href: paths.dashboard.resource.list },
-						{ key: "resource:create", title: "Create post", href: paths.dashboard.resource.create },
-						{ key: "resource:details", title: "Post details", href: paths.dashboard.resource.details("1") },
+						{ key: "resource", title: "List resources", href: paths.dashboard.resource.list },
+						{ key: "resource:create", title: "Create resource", href: paths.dashboard.resource.create },
+						{ key: "resource:details", title: "Resource details", href: paths.dashboard.resource.details("1") },
+					],
+				},
+				{
+					key: "media",
+					title: "Media & Files",
+					icon: "file-storage",
+					items: [
+						{ key: "media", title: "List media", href: paths.dashboard.media.list },
+						{ key: "media:create", title: "Create media", href: paths.dashboard.media.create },
+						{ key: "media:details", title: "Media details", href: paths.dashboard.media.details("1") },
 					],
 				},
 				

@@ -21,8 +21,10 @@ import { SettingsProvider } from "@/components/core/settings/settings-context";
 import { ThemeProvider } from "@/components/core/theme-provider";
 import { Toaster } from "@/components/core/toaster";
 import { ProtectedRoute } from "@/components/auth/supabase/ProtectedRoute";
-import { ModalProvider } from '@/components/modals/ModalContext';
-import GlobalModals from '@/components/modals/GlobalModals';
+import { ModalProvider } from "@/components/modals/ModalContext";
+import GlobalModals from "@/components/modals/GlobalModals";
+import { TaskTimerProvider } from "@/components/fields/time/timer/TimeTrackerContext";
+import { TaskTimerWidget } from "@/components/fields/time/timer/TaskTimerWidget";
 
 
 export const metadata = { title: appConfig.name };
@@ -81,10 +83,13 @@ export default async function Layout({ children }) {
 										<EmotionCacheProvider options={{ key: "mui" }}>
 											<Rtl direction={direction}>
 												<ThemeProvider>
+												<TaskTimerProvider>
 													<ModalProvider>
 														{content}
 														<GlobalModals />
+														<TaskTimerWidget />
 													</ModalProvider>
+													</TaskTimerProvider>
 													<SettingsButton />
 													<Toaster position="bottom-right" />
 												</ThemeProvider>

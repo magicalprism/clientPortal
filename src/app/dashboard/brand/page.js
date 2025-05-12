@@ -1,8 +1,8 @@
 'use client';
 
 import { brand } from '@/collections/brand';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import CollectionView from '@/components/views/CollectionView';
 
 export default function BrandPage() {
-  return <PrimaryTableView config={brand} />;
+  return <CollectionView config={brand} />;
 }

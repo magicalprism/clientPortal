@@ -17,6 +17,7 @@ import { TimestampField } from '@/components/fields/TimestampField';
 import { ColorField } from '@/components/fields/ColorField';
 import { ElementMap } from '@/components/ElementMap';
 import { debounce } from '@/lib/utils/debounce';
+import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerField';
 
 
 export const isIncludedInView = (field, view = 'table') => {
@@ -299,6 +300,8 @@ export const FieldRenderer = ({
             content = <BrandBoardPreview brand={record} />;
           } else if (field.component === 'ElementMap') {
             content = <ElementMap projectId={record.id} />;
+          } else if (field.component === 'TimeTrackerField') {
+            content = <TimeTrackerField task={record} />;
           } else {
             console.warn(`❌ Unsupported custom component: ${field.component}`);
             return null;
@@ -349,7 +352,7 @@ export const FieldRenderer = ({
     }
 
     default:
-      console.log(`🧪 Rendering default text field for "${field.name}"`);
+
       content = isEditMode ? (
         <TextField
           fullWidth
@@ -357,11 +360,11 @@ export const FieldRenderer = ({
           value={localValue || ''}
           onChange={(e) => {
             const next = e.target.value;
-            console.log(`✏️ ${field.name} changed to:`, next);
+
             setLocalValue(next);
           }}
           onBlur={() => {
-            console.log(`🖱️ ${field.name} blur - saving with:`, localValue);
+
             onChange(localValue);
           }}
           onKeyDown={(e) => {

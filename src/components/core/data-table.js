@@ -58,7 +58,8 @@ export function DataTable({
   sx={{
     tableLayout: 'fixed',
     width: '100%',
-    ...props.sx
+    ...props.sx,
+    
   }}
 >
 
@@ -152,7 +153,7 @@ export function DataTable({
                 {selectable && (
                   <TableCell
                   padding="checkbox"
-                  sx={{ pl: 0, pr: 1, width: '40px', minWidth: '40px', maxWidth: '40px' }}
+                  sx={{ pl: 0, pr: 1, width: '40px', minWidth: '40px', maxWidth: '40px',  }}
                 >
                     <Checkbox
                       checked={!!isSelected}
@@ -195,10 +196,10 @@ export function DataTable({
                 <TableRow>
                   <TableCell
                     colSpan={columns.length + (selectable ? 2 : 1)}
-                    sx={{ p: 0, border: 0, }}
+                    sx={{ p: 0, border: 0,  }}
                   >
                     <Collapse in={isExpanded} timeout="auto" unmountOnExit>
-                    <Box sx={{ pl: 2, pt: 0, pb: 0, pr: 0, bgcolor: 'var(--mui-palette-background-level1)' }}>
+                    <Box sx={{ pl: 2, pt: 0, pb: 0, pr: 0, bgcolor: 'white'}}>
 
                         {childRenderer(row, rowIndex)}
                       </Box>

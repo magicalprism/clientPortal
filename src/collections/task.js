@@ -60,6 +60,16 @@ export const task = {
             labelField: 'title',
             linkTo: '/dashboard/contact',
         }},
+
+        {
+          name: 'time_tracker',
+          type: 'custom',
+          component: 'TimeTrackerField',
+          label: 'Time Tracker',
+          includeInViews: ['default', 'edit'], // <== Ensure edit is included
+        },
+        
+        
         
         //Meta
   
@@ -108,18 +118,7 @@ export const task = {
       type: 'date', 
       showInTable: true 
     },
-    { 
-      name: 'created', 
-      label: 'Created', 
-      type: 'date',
-      group: 'General', 
-      tab: 'Meta'
-    },
-    { 
-      name: 'updated_at', label: 'Updated At', type: 'date' , 
-      group: 'General', 
-      tab: 'Meta'
-    },
+   
     { 
       name: 'author_id', 
       label: 'Author', 
@@ -153,7 +152,8 @@ export const task = {
       options: [
         { value: 'due_date:asc', label: 'Due date (oldest first)' },
         { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ]
+      ],
+      defaultValue: 'due_date:asc'
     }
   ]
 };

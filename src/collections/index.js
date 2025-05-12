@@ -5,5 +5,7 @@ export { element } from './element';
 export { media } from './media';
 export { brand } from './brand';
 export { checklist } from './checklist';
+export { contact } from './contact';
+export { resource } from './resource';
 
 
