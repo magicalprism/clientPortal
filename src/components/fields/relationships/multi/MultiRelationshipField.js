@@ -30,24 +30,31 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     [options, normalizedValue]
   );
 
-  const handleChange = async (_, selectedOptionObjects) => {
-    const selectedIds = selectedOptionObjects.map(opt => opt.id);
+const handleChange = async (_, selectedOptionObjects) => {
+  const selectedIds = selectedOptionObjects.map(opt => opt.id);
 
-    const linkedData = await syncMultiRelation({
-      field,
-      parentId,
-      selectedIds,
-      options,
-      onChange
-    });
+  const selectedDetails = selectedOptionObjects.map(opt => ({
+    id: opt.id,
+    [labelField]: opt[labelField]
+  }));
 
-    if (linkedData) {
-      const newOptions = Array.from(
-        new Map([...options, ...linkedData].map(item => [item.id, item])).values()
-      );
-      setOptions(newOptions);
-    }
-  };
+  onChange(selectedIds);
+
+   const linkedData = await syncMultiRelation({
+    field,
+    parentId,
+    selectedIds,
+    options,
+    onChange: () => {} // We've already called onChange above
+  });
+
+  if (linkedData) {
+    const newOptions = Array.from(
+      new Map([...options, ...linkedData].map(item => [item.id, item])).values()
+    );
+    setOptions(newOptions);
+  }
+};
 
   return (
     <FormControl fullWidth size="small" sx={{ display: 'flex', flexDirection: 'row', gap: 1 }}>

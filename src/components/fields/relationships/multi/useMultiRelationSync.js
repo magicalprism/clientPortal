@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/browser';
 export const useMultiRelationSync = () => {
   const supabase = createClient();
 
-  const syncMultiRelation = async ({ field, parentId, selectedIds, options, onChange }) => {
+const syncMultiRelation = async ({ field, parentId, selectedIds, options, onChange }) => {
     const { table, junctionTable, sourceKey, targetKey, labelField } = {
       ...field.relation,
       sourceKey: field.relation?.sourceKey || `${field.parentTable}_id`,
@@ -35,12 +35,14 @@ export const useMultiRelationSync = () => {
         console.error('[useMultiRelationSync] Fetching updated records failed:', error);
       }
 
-      onChange(field, {
-        ids: selectedIds.map(String),
-        details: linkedData || []
-      });
-
-      return linkedData;
+      if (onChange) {
+    onChange(field, {
+      ids: selectedIds.map(String),
+      details: linkedData || []
+    });
+  }
+  
+  return linkedData;
     } catch (err) {
       console.error('[useMultiRelationSync] Sync error:', err);
     }

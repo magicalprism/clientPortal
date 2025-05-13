@@ -195,17 +195,36 @@ export const CollectionFieldRenderer = ({
                         view="detail"
                         editable={editable}
                         isEditing={isEditing}
-                        onChange={(value) => {
+                       onChange={(value) => {
                           if (isSystemReadOnly) return;
 
-                          if (field.type === 'multiRelationship' && value?.ids) {
-                            setLocalRecord((prev) => ({
-                              ...prev,
-                              [field.name]: value.ids,
-                              [`${field.name}_details`]: value.details,
-                            }));
+                          if (field.type === 'multiRelationship') {
+                            // Handle both array of IDs and object with ids/details
+                            if (Array.isArray(value)) {
+                              const currentDetails = localRecord[`${field.name}_details`] || [];
+                              // Update local record
+                              setLocalRecord((prev) => ({
+                                ...prev,
+                                [field.name]: value,
+                                // Keep existing details for the selected IDs
+                                [`${field.name}_details`]: currentDetails.filter(
+                                  detail => value.includes(String(detail.id))
+                                )
+                              }));
+                              // Save the change
+                              saveChange(field.name, value);
+                            } else if (value?.ids) {
+                              // It's already in the expected format
+                              setLocalRecord((prev) => ({
+                                ...prev,
+                                [field.name]: value.ids,
+                                [`${field.name}_details`]: value.details,
+                              }));
+                              // Save the change
+                              saveChange(field.name, value.ids);
+                            }
                           } else {
-                            saveChange(field.name, value); // ✅ standardized
+                            saveChange(field.name, value);
                           }
                         }}
                       />
