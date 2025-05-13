@@ -109,8 +109,8 @@ export const task = {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_resource',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_task',
+        sourceKey: 'task_id',
         targetKey: 'category_id'
       }
     },

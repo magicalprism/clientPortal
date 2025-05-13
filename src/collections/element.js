@@ -45,9 +45,9 @@ export const element = {
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'element', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/element', // or dynamically derive from config
         filter: { company_id: '{{record.company_id}}' }
       }
     },
@@ -118,8 +118,8 @@ export const element = {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_resource',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_element',
+        sourceKey: 'element_id',
         targetKey: 'category_id'
       }
     },

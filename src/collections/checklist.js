@@ -59,10 +59,9 @@ export const checklist = {
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'checklist', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
-        filter: { company_id: '{{record.company_id}}' }
+        linkTo: '/dashboard/checklist', // or dynamically derive from config
       }
     },
 
@@ -133,7 +132,7 @@ export const checklist = {
         labelField: 'title',
         linkTo: '/dashboard/category',
         junctionTable: 'category_resource',
-        sourceKey: 'sample_id',
+        sourceKey: 'checklist_id',
         targetKey: 'category_id'
       }
     },

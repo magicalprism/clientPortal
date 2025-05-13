@@ -142,7 +142,7 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_resource',
+        junctionTable: 'category_sample',
         sourceKey: 'sample_id',
         targetKey: 'category_id'
       }
