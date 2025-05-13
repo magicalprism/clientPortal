@@ -13,7 +13,7 @@ import {
 } from '@mui/material';
 import { useSearchParams } from 'next/navigation';
 import { X as XIcon } from '@phosphor-icons/react';
-import { CollectionItemPage } from '@/components/CollectionItemPage';
+import { CollectionItemPage } from '@/components/collectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
 
 export default function CollectionModal({
