@@ -208,44 +208,42 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
     return <Typography color="error">Invalid config: missing fields</Typography>;
   }
 
-  return (
-    <Box component="form" onSubmit={handleSubmit}>
-      <Grid container spacing={3}>
-        {fields
-          .filter((field) => !['created_at', 'updated_at'].includes(field.name))
-          .map((field) => {
-            // Special handling for multirelationship fields
-            if (field.type === 'multiRelationship') {
-              return (
-                <Grid item xs={12} md={12} key={field.name}>
-                  <Box display="flex" flexDirection="column" gap={1}>
-                    <Typography variant="body2" fontWeight={500}>{field.label}</Typography>
-                    {field.description && (
-                      <Typography variant="caption" color="text.secondary">{field.description}</Typography>
-                    )}
-                    
-                    <ModalMultiRelationshipField
-                      field={field}
-                      record={formData}
-                      setRecord={setFormData}
-                      config={config}
-                      onChange={handleChange}
-                      refreshRecord={refreshRecord}
-                    />
-                  </Box>
-                </Grid>
-              );
-            }
-            
-            // Default rendering for other field types
-            return (
-              <Grid item xs={12} md={field.type === 'boolean' ? 12 : 6} key={field.name}>
-                <Box display="flex" flexDirection="column" gap={1}>
-                  <Typography variant="body2" fontWeight={500}>{field.label}</Typography>
-                  {field.description && (
-                    <Typography variant="caption" color="text.secondary">{field.description}</Typography>
-                  )}
-                  
+ return (
+  <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 720, mx: 'auto', px: 2 }}>
+    <Grid container spacing={3}>
+      {fields
+        .filter((field) => !['created_at', 'updated_at'].includes(field.name))
+        .map((field) => {
+          const isMultiRel = field.type === 'multiRelationship';
+          const isFullWidth = isMultiRel || field.type === 'boolean';
+
+          return (
+            <Grid
+              item
+              xs={12}
+              sm={isFullWidth ? 12 : 6}
+              key={field.name}
+            >
+              <Box display="flex" flexDirection="column" gap={1}>
+                <Typography variant="body2" fontWeight={500}>
+                  {field.label}
+                </Typography>
+                {field.description && (
+                  <Typography variant="caption" color="text.secondary">
+                    {field.description}
+                  </Typography>
+                )}
+
+                {isMultiRel ? (
+                  <ModalMultiRelationshipField
+                    field={field}
+                    record={formData}
+                    setRecord={setFormData}
+                    config={config}
+                    onChange={handleChange}
+                    refreshRecord={refreshRecord}
+                  />
+                ) : (
                   <FieldRenderer
                     field={field}
                     value={currentValue === undefined ? '' : currentValue || ''}
@@ -255,25 +253,27 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                     editable
                     onChange={(value) => handleChange(field.name, value)}
                   />
-                </Box>
-              </Grid>
-            );
-          })}
-      </Grid>
+                )}
+              </Box>
+            </Grid>
+          );
+        })}
+    </Grid>
 
-      {error && (
-        <Typography color="error" mt={2}>
-          {error}
-        </Typography>
-      )}
+    {error && (
+      <Typography color="error" mt={2}>
+        {error}
+      </Typography>
+    )}
 
-      <Box mt={4}>
-        <Button type="submit" variant="contained" disabled={loading}>
-          {loading ? 'Saving...' : 'Create'}
-        </Button>
-      </Box>
+    <Box mt={4}>
+      <Button type="submit" variant="contained" disabled={loading}>
+        {loading ? 'Saving...' : 'Create'}
+      </Button>
     </Box>
-  );
+  </Box>
+);
+
 };
 
 export default CreateForm;
