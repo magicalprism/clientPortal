@@ -14,6 +14,7 @@ import { ElementMap } from '@/components/ElementMap';
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
+import { TagsDebugger } from '@/lib/utils/tagsDebugger';
 
 export const CollectionItemPage = ({ config, record, isModal = false }) => {
   // Add this ref and counter to track renders
@@ -78,34 +79,73 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
  * @param {Object} field - The field configuration object
  * @param {any} value - The new field value
  */
-const handleFieldChange = (field, value) => {
-  console.log(`✏️ Change in "${field.name}":`, value);
+'use client';
+
+// This is a focued fix for the handleFieldChange method in CollectionItemPage.js
+// Replace your existing handleFieldChange method with this:
+
+/**
+ * Handles field value changes in the collection item page
+ * This function correctly handles different field types and ensures 
+ * multirelationship changes trigger the hasChanges flag
+ * 
+ * @param {string|Object} fieldOrName - Either the field name or the field configuration object
+ * @param {any} value - The new field value
+ */
+const handleFieldChange = (fieldOrName, value) => {
+  // Normalize field input - handle both field object and field name string
+  const fieldName = typeof fieldOrName === 'object' ? fieldOrName.name : fieldOrName;
+  const field = typeof fieldOrName === 'object' ? fieldOrName : 
+    config?.fields?.find(f => f.name === fieldOrName) || { name: fieldOrName };
+  
+  console.log(`✏️ Change in "${fieldName}":`, value);
 
   // Special handling for multiRelationship fields
   if (field.type === 'multiRelationship') {
+    // DIRECT FIX: Force the hasChanges flag to true immediately
+    // This is the most reliable way to ensure save button activation
+    if (typeof setHasChanges === 'function') {
+      setHasChanges(true);
+    }
+    
     if (value?.ids) {
       // Handle object format with ids and details
-      setLocalRecord((prev) => ({
+      setLocalRecord(prev => ({
         ...prev,
-        [field.name]: value.ids,
-        [`${field.name}_details`]: value.details,
+        [fieldName]: value.ids,
+        [`${fieldName}_details`]: value.details,
       }));
+      
+      // Log the update for debugging
+      console.log(`✏️ MultiRelationship field "${fieldName}" updated with:`, {
+        ids: value.ids,
+        details: value.details
+      });
     } else if (Array.isArray(value)) {
       // Handle array format with just IDs
-      setLocalRecord((prev) => ({
+      setLocalRecord(prev => ({
         ...prev,
-        [field.name]: value,
+        [fieldName]: value,
       }));
+      
+      // Log the update for debugging
+      console.log(`✏️ MultiRelationship field "${fieldName}" updated with array:`, value);
     }
+    
+    // Also trigger saveRecord to autosave if configured to do so
+    if (config?.autosave === true && typeof saveRecord === 'function') {
+      // Use setTimeout to allow state updates to complete first
+      setTimeout(() => saveRecord(), 100);
+    }
+    
     return;
   } 
   
   // Special handling for select/status fields
   if (field.type === 'select' || field.type === 'status') {
     // Store the complete value/label object for UI display
-    // The actual database save in saveRecord will extract just the value
-    console.log(`✏️ Select/status field "${field.name}" changed:`, value);
-    updateLocalValue(field.name, value);
+    console.log(`✏️ Select/status field "${fieldName}" changed:`, value);
+    updateLocalValue(fieldName, value);
     return;
   }
   
@@ -113,18 +153,17 @@ const handleFieldChange = (field, value) => {
   if (field.type === 'relationship' && value !== null && value !== undefined) {
     // If it's an object with id property, extract just the id
     if (typeof value === 'object' && value.id !== undefined) {
-      updateLocalValue(field.name, value.id);
+      updateLocalValue(fieldName, value.id);
     } else {
       // It's already a simple value (likely an ID)
-      updateLocalValue(field.name, value);
+      updateLocalValue(fieldName, value);
     }
     return;
   }
   
   // Default handling for other field types
-  updateLocalValue(field.name, value);
+  updateLocalValue(fieldName, value);
 };
-      
 
     
   
@@ -133,6 +172,18 @@ const handleFieldChange = (field, value) => {
     setEditingField(fieldName);
     setTempValue(currentValue ?? '');
   };
+
+  // Inside your CollectionItemPage component
+return (
+  <>
+    <Card>
+      {/* Add this line near the top of your component */}
+      {!isCreating && <TagsDebugger record={extendedRecord} config={config} />}
+      
+      {/* Rest of your component */}
+    </Card>
+  </>
+);
 
   return (
     <>

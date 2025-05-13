@@ -46,15 +46,29 @@ export const useMultiRelationSync = () => {
         
       if (fetchError) {
         console.error('[useMultiRelationSync] Error fetching existing relationships:', fetchError);
+        return null;
       }
       
       const existingIds = (existingRels || []).map(r => String(r[targetKey]));
       
-      // Check if anything actually changed - avoid unnecessary DB operations
-      const hasChanges = 
-        existingIds.length !== normalizedIds.length ||
-        normalizedIds.some(id => !existingIds.includes(id)) ||
-        existingIds.some(id => !normalizedIds.includes(id));
+      // FIXED COMPARISON: Check if anything actually changed
+      // Sort arrays for more reliable comparisons
+      const sortedExisting = [...existingIds].sort();
+      const sortedNew = [...normalizedIds].sort();
+      
+      // Compare as strings for more reliable comparison
+      const existingStr = sortedExisting.join(',');
+      const newStr = sortedNew.join(',');
+      
+      const hasChanges = existingStr !== newStr;
+      
+      console.log(`[useMultiRelationSync] Comparing changes for ${field.name}:`, {
+        existingIds: sortedExisting,
+        newIds: sortedNew,
+        existingStr,
+        newStr,
+        hasChanges
+      });
         
       if (!hasChanges) {
         console.log(`[useMultiRelationSync] No changes needed for ${field.name}`);
@@ -63,16 +77,21 @@ export const useMultiRelationSync = () => {
         const { data: linkedData } = await supabase
           .from(table)
           .select(`id, ${labelField}`)
-          .in('id', normalizedIds);
+          .in('id', normalizedIds.length > 0 ? normalizedIds : ['0']);
           
-        return linkedData;
+        return linkedData || [];
       }
       
       // Now remove all existing relationships
-      await supabase
+      const { error: deleteError } = await supabase
         .from(junctionTable)
         .delete()
         .eq(sourceKey, parentId);
+        
+      if (deleteError) {
+        console.error('[useMultiRelationSync] Error deleting existing relationships:', deleteError);
+        return null;
+      }
 
       // Add new relationships
       if (normalizedIds.length > 0) {
@@ -87,17 +106,21 @@ export const useMultiRelationSync = () => {
           
         if (insertError) {
           console.error('[useMultiRelationSync] Error inserting new relationships:', insertError);
+          return null;
         }
+        
+        console.log(`[useMultiRelationSync] Successfully saved ${newLinks.length} relationships for ${field.name}`);
       }
 
       // Fetch the updated data
       const { data: linkedData, error } = await supabase
         .from(table)
         .select(`id, ${labelField}`)
-        .in('id', normalizedIds);
+        .in('id', normalizedIds.length > 0 ? normalizedIds : ['0']);
 
       if (error) {
         console.error('[useMultiRelationSync] Fetching updated records failed:', error);
+        return null;
       }
 
       // Call the onChange callback if provided
@@ -108,7 +131,7 @@ export const useMultiRelationSync = () => {
         });
       }
       
-      return linkedData;
+      return linkedData || [];
     } catch (err) {
       console.error('[useMultiRelationSync] Sync error:', err);
       return null;

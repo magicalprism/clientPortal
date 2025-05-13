@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 
 import { useMultiRelationOptions } from './useMultiRelationOptions';
 import { useMultiRelationSync } from './useMultiRelationSync';
+import normalizeMultiRelationshipValue from '@/lib/utils/normalizeMultiRelationshipValue';
 
 export const MultiRelationshipField = ({ field, value = [], onChange }) => {
   const router = useRouter();
@@ -23,26 +24,17 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
   const labelField = field.relation?.labelField || 'title';
   const parentId = field.parentId;
 
-  // Make sure value is normalized to an array of strings
+  // Make sure value is normalized to an array of strings using our helper
   const normalizedValue = useMemo(() => {
-    if (!value) return [];
-    
-    // Handle array format
-    if (Array.isArray(value)) return value.map(String).filter(Boolean);
-    
-    // Handle { ids, details } format
-    if (value.ids && Array.isArray(value.ids)) return value.ids.map(String).filter(Boolean);
-    
-    // Handle string or number
-    if (typeof value === 'string' || typeof value === 'number') return [String(value)];
-    
-    return [];
+    return normalizeMultiRelationshipValue(value);
   }, [value]);
   
   // Log initial value for debugging
   useEffect(() => {
-    console.log(`[MultiRelationshipField] Field: ${field.name}, Initial value:`, 
-      { rawValue: value, normalizedValue });
+    console.log(`[MultiRelationshipField] Field: ${field.name}, Initial value:`, { 
+      rawValue: value, 
+      normalizedValue 
+    });
   }, [field.name, value, normalizedValue]);
 
   // Get selected option objects based on the normalized value IDs

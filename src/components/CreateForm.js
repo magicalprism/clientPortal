@@ -229,6 +229,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                       record={formData}
                       setRecord={setFormData}
                       config={config}
+                      onChange={handleChange}
                     />
                   </Box>
                 </Grid>

@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/browser';
  */
 export const saveMultiRelationships = async ({ config, record }) => {
   if (!record?.id || !config?.fields) {
-    console.warn('Cannot save multirelationships: Missing record ID or config fields');
+    console.warn('[saveMultiRelationships] Missing record ID or config fields');
     return false;
   }
   
@@ -24,11 +24,11 @@ export const saveMultiRelationships = async ({ config, record }) => {
     return true;
   }
   
-  console.log(`Saving ${multiRelationshipFields.length} multirelationship fields for record ${record.id}`);
+  console.log(`[saveMultiRelationships] Processing ${multiRelationshipFields.length} multirelationship fields for record ${record.id}`);
   
   try {
     // Process each multirelationship field
-    await Promise.all(
+    const results = await Promise.all(
       multiRelationshipFields.map(async field => {
         // Get the configuration for this field
         const { junctionTable, sourceKey, targetKey } = field.relation;
@@ -53,6 +53,15 @@ export const saveMultiRelationships = async ({ config, record }) => {
             .filter(Boolean);
         }
         
+        console.log(`[saveMultiRelationships] Field ${field.name}: `, {
+          rawSelectedIds: selectedIds
+        });
+        
+        // Ensure all IDs are strings for consistency and filter out any empty values
+        const normalizedIds = selectedIds.map(String).filter(Boolean);
+        
+        console.log(`[saveMultiRelationships] Field ${field.name}: Processing ${normalizedIds.length} relationships`);
+        
         // Get current relationships to check for changes
         const { data: currentRelations } = await supabase
           .from(junctionTable)
@@ -63,8 +72,7 @@ export const saveMultiRelationships = async ({ config, record }) => {
           .map(r => String(r[targetKeyName]))
           .filter(Boolean);
         
-        // Ensure all IDs are strings for consistency
-        const normalizedIds = selectedIds.map(String).filter(Boolean);
+        console.log(`[saveMultiRelationships] Field ${field.name}: Current relationships:`, currentIds);
         
         // Check if anything actually changed
         const currentSet = new Set(currentIds);
@@ -77,11 +85,11 @@ export const saveMultiRelationships = async ({ config, record }) => {
           currentIds.some(id => !newSet.has(id));
         
         if (!hasChanges) {
-          console.log(`Field ${field.name}: No changes to relationships, skipping save`);
+          console.log(`[saveMultiRelationships] Field ${field.name}: No changes to relationships, skipping save`);
           return true;
         }
         
-        console.log(`Field ${field.name}: Saving ${normalizedIds.length} relationships (changed from ${currentIds.length})`);
+        console.log(`[saveMultiRelationships] Field ${field.name}: Changes detected, saving ${normalizedIds.length} relationships (changed from ${currentIds.length})`);
         
         // Step 1: Delete existing relationships
         const { error: deleteError } = await supabase
@@ -90,7 +98,7 @@ export const saveMultiRelationships = async ({ config, record }) => {
           .eq(sourceKeyName, record.id);
           
         if (deleteError) {
-          console.error(`Error deleting existing relationships for ${field.name}:`, deleteError);
+          console.error(`[saveMultiRelationships] Error deleting existing relationships for ${field.name}:`, deleteError);
           return false;
         }
         
@@ -101,27 +109,34 @@ export const saveMultiRelationships = async ({ config, record }) => {
             [targetKeyName]: id
           }));
           
+          console.log(`[saveMultiRelationships] Field ${field.name}: Inserting relationships:`, newRelationships);
+          
           const { error: insertError } = await supabase
             .from(junctionTable)
             .insert(newRelationships);
             
           if (insertError) {
-            console.error(`Error inserting new relationships for ${field.name}:`, insertError);
+            console.error(`[saveMultiRelationships] Error inserting new relationships for ${field.name}:`, insertError);
             return false;
           }
+          
+          console.log(`[saveMultiRelationships] Field ${field.name}: Successfully saved relationships`);
         }
         
         return true;
       })
     );
     
-    return true;
+    const success = results.every(result => result === true);
+    
+    console.log(`[saveMultiRelationships] All multirelationship fields saved successfully:`, success);
+    
+    return success;
   } catch (error) {
-    console.error('Error saving multirelationships:', error);
+    console.error('[saveMultiRelationships] Error saving multirelationships:', error);
     return false;
   }
 };
-
 /**
  * A helper function to merge multirelationship values
  * This is useful when you need to combine new selections with existing ones
