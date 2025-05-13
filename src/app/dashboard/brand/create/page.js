@@ -2,7 +2,7 @@
 
 import React from 'react';
 import CreateForm from '@/components/CreateForm';
-import { project } from '@/collections/brand';
+import { brand } from '@/collections/brand';
 
 const CreateBrandPage = () => {
   return (

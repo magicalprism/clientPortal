@@ -174,6 +174,7 @@ export default function CollectionModal({
   return (
     <Dialog
       fullScreen={fullScreen}
+      fullWidth
       maxWidth="sm"
       onClose={onClose}
       open={open}
@@ -183,7 +184,7 @@ export default function CollectionModal({
       }}
     >
       <DialogContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2 }}>
           <Box>
             <Typography variant="h6">
               {config.label || config.name}

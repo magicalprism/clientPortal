@@ -112,10 +112,13 @@ export function SimpleEditor({
       Link.configure({ openOnClick: false }),
     ],
     editorProps: {
+      
       attributes: {
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
+         immediatelyRender: "false",
+        
         "aria-label": "Main content area, start typing to enter text.",
       },
     },
@@ -172,7 +175,7 @@ export function SimpleEditor({
         </Toolbar>
 
         <div className="content-wrapper">
-          <EditorContent editor={editor} className="simple-editor-content" />
+          <EditorContent editor={editor} className="simple-editor-content" style={{ minHeight: 200 }} />
           
         </div>
       </div>

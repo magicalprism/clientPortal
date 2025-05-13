@@ -11,6 +11,7 @@ import { FieldRenderer } from '@/components/FieldRenderer';
 import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
 import { ElementMap } from '@/components/ElementMap';
+import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerField';
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
@@ -144,8 +145,9 @@ const handleFieldChange = (fieldOrName, value) => {
   // Special handling for select/status fields
   if (field.type === 'select' || field.type === 'status') {
     // Store the complete value/label object for UI display
-    console.log(`✏️ Select/status field "${fieldName}" changed:`, value);
-    updateLocalValue(fieldName, value);
+    // The actual database save in saveRecord will extract just the value
+    console.log(`✏️ Select/status field "${field.name}" changed:`, value);
+    updateLocalValue(field.name, value);
     return;
   }
   
@@ -208,7 +210,7 @@ const handleFieldChange = (fieldOrName, value) => {
                     const isBasicTextField = ![
                       'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                       'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                      'select', 'color',
+                      'select', 'color', 'custom',
                     ].includes(field.type);
 
                     const isTwoColumn = !isModal && !isSmallScreen;
@@ -222,6 +224,13 @@ const handleFieldChange = (fieldOrName, value) => {
                       return (
                         <Grid item xs={12} key={field.name}>
                           <BrandBoardPreview brand={localRecord} />
+                        </Grid>
+                      );
+                    }
+                     if (field.type === 'custom' && field.component === 'TimeTrackerField') {
+                      return (
+                        <Grid item xs={12} key={field.name}>
+                          <TimeTrackerField task={localRecord} />
                         </Grid>
                       );
                     }
@@ -258,71 +267,78 @@ const handleFieldChange = (fieldOrName, value) => {
                     }
 
                     return (
-                      <Grid item xs={12} sm={6} key={field.name}>
-                        <Box>
-                          <Typography variant="subtitle2" fontWeight={500}>
-                            {field.label}
-                          </Typography>
-                          {field.description && (
-                            <Typography variant="caption" color="text.secondary">
-                              {field.description}
+                      <Grid item xs={12}  key={field.name}>
+                        <Box
+                             sx={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              justifyContent: 'space-between',
+                              height: '100%', // or a fixed px value like '120px'
+                            }}
+                          >
+                          <Box >
+                            <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
+                              {field.label}
                             </Typography>
-                          )}
+                            {field.description && (
+                              <Typography variant="caption" color="text.secondary">
+                                {field.description}
+                              </Typography>
+                            )}
+                          </Box>
 
-                          {isEditing && isBasicTextField ? (
-                            <TextField
-                              fullWidth
-                              size="medium"
-                              value={tempValue}
-                              autoFocus
-                              onChange={(e) => setTempValue(e.target.value)}
-                              onBlur={() => handleFieldChange(field, tempValue)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  e.preventDefault();
-                                  handleFieldChange(field, tempValue);
-                                }
-                              }}
-                            />
-                          ) : (
-                            <Box
-                              sx={{
-                                cursor: editable && isBasicTextField ? 'pointer' : 'default',
-                                color: editable && isBasicTextField ? 'primary.main' : 'text.primary',
-                                display: 'flex',
-                                alignItems: 'center',
-                                minHeight: '35px',
-                                justifyContent: 'space-between',
-                              }}
-                              onClick={
-                                editable && isBasicTextField
-                                  ? () => startEdit(field.name, value)
-                                  : undefined
-                              }
-                            >
-                              {isLoading ? (
-                                <CircularProgress size={16} />
-                              ) : (
-                                <FieldRenderer
-                                  value={
-                                    field.type === 'media'
-                                      ? localRecord[`${field.name}_details`] || value
-                                      : value
+                          <Box>
+                            {isEditing && isBasicTextField ? (
+                              <TextField
+                                fullWidth
+                                size="medium"
+                                value={tempValue}
+                                autoFocus
+                                onChange={(e) => setTempValue(e.target.value)}
+                                onBlur={() => handleFieldChange(field, tempValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    e.preventDefault();
+                                    handleFieldChange(field, tempValue);
                                   }
-                                  field={field}
-                                  record={localRecord}
-                                  config={config}
-                                  view="detail"
-                                  editable={editable}
-                                  isEditing={isEditing}
-                                  onChange={(val) => handleFieldChange(field, val)}
-                                />
-                              )}
-                            </Box>
-                          )}
+                                }}
+                              />
+                            ) : (
+                              <Box
+                                sx={{
+                                  cursor: editable && isBasicTextField ? 'pointer' : 'default',
+                                  color: editable && isBasicTextField ? 'primary.main' : 'text.primary',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  minHeight: '35px',
+                                  justifyContent: 'space-between',
+                                }}
+                                onClick={
+                                  editable && isBasicTextField
+                                    ? () => startEdit(field.name, value)
+                                    : undefined
+                                }
+                              >
+                                {isLoading ? (
+                                  <CircularProgress size={16} />
+                                ) : (
+                                  <FieldRenderer
+                                    value={field.type === 'media' ? localRecord[`${field.name}_details`] || value : value}
+                                    field={field}
+                                    record={localRecord}
+                                    config={config}
+                                    view="detail"
+                                    editable={editable}
+                                    isEditing={isEditing}
+                                    onChange={(val) => handleFieldChange(field, val)}
+                                  />
+                                )}
+                              </Box>
+                            )}
+                          </Box>
                         </Box>
-                        
                       </Grid>
+
                       
                     );
                   })}

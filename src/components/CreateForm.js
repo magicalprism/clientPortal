@@ -209,7 +209,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
   }
 
  return (
-  <Box component="form" onSubmit={handleSubmit} sx={{ maxWidth: 720, mx: 'auto', px: 2 }}>
+  <Box component="form" onSubmit={handleSubmit} sx={{ mx: 'auto', px: 2, border: '2px solid red' }}>
     <Grid container spacing={3}>
       {fields
         .filter((field) => !['created_at', 'updated_at'].includes(field.name))
@@ -221,10 +221,10 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
             <Grid
               item
               xs={12}
-              sm={isFullWidth ? 12 : 6}
               key={field.name}
             >
-              <Box display="flex" flexDirection="column" gap={1}>
+              <Box display="flex" flexDirection="column" >
+                 <Box sx={{ mb: 1 }}>
                 <Typography variant="body2" fontWeight={500}>
                   {field.label}
                 </Typography>
@@ -233,6 +233,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                     {field.description}
                   </Typography>
                 )}
+                </Box>
 
                 {isMultiRel ? (
                   <ModalMultiRelationshipField

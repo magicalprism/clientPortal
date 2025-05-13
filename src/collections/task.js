@@ -9,7 +9,7 @@ export const task = {
   views: {
     table: {
       label: 'Table View',
-      component: 'PrimaryTableView'
+      component: 'TaskTableView'
     },
       page: { 
         label: 'Page View', 
@@ -42,53 +42,29 @@ export const task = {
     { 
       name: 'title', 
       label: 'Task Name', 
-      group: 'Primary', 
+      group: 'Task', 
       tab: 'Details',
       clickable: true, 
       openMode: 'modal',  
       showInTable: true,
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
         
         { name: 'assigned_id', 
           label: 'Assigned To', 
           type: 'relationship',
-          group: 'Primary', 
+          group: 'Task', 
           tab: 'Details',
           relation: {
             table: 'contact',
             labelField: 'title',
             linkTo: '/dashboard/contact',
         }},
-
-        {
-          name: 'time_tracker',
-          type: 'custom',
-          component: 'TimeTrackerField',
-          label: 'Time Tracker',
-          includeInViews: ['default', 'edit'], // <== Ensure edit is included
-        },
-        
-        
-        
-        //Meta
-  
-    {
-      name: 'content',
-      label: 'Description',
-      type: 'richText',
-      group: 'Primary', 
-      tab: 'Details',
-
-    },
-    
-    //Meta
-    {
+         {
       name: 'status',
-      type: 'select',
-      label: 'Status',
-      group: 'Primary', 
-      tab: 'Meta', 
+      label: 'Status', 
+      tab: 'Details',
+      group: 'Task', 
+      type: 'status', 
       defaultValue: 'todo',
       options: [
         { value: 'todo', label: 'To do' },
@@ -97,7 +73,62 @@ export const task = {
         { value: 'archived', label: 'Archived' },
       ]
     },
+        { 
+      name: 'due_date', 
+          label: 'Due Date', 
+      group: 'Task', 
+      tab: 'Details',
+      type: 'date', 
+      showInTable: true 
+    },
     
+
+        {
+          name: 'time_tracker',
+          type: 'custom',
+          component: 'TimeTrackerField',
+          label: 'Time Tracker',
+          includeInViews: ['edit'], 
+        },
+        
+  
+    {
+      name: 'content',
+      label: 'Description',
+      type: 'richText',
+      group: 'Task', 
+      tab: 'Details',
+      fullWidth: true,
+
+    },
+    
+    //Meta
+    {
+      name: 'company_id',
+      label: 'Company',
+      group: 'Reference',
+      tab: 'Details', 
+      showInTable: true,
+      type: 'relationship',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        linkTo: '/dashboard/company', // or dynamically derive from config
+        filter: { is_client: 'true' }
+      }
+    },
+    {
+      name: 'project_id',
+      label: 'Project',
+      group: 'Reference',
+      tab: 'Details', 
+      type: 'relationship',
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project',
+      }
+    },
     {
       name: 'tags',
       label: 'Tags',
@@ -126,15 +157,7 @@ export const task = {
         linkTo: '/dashboard/checklist' // or dynamically derive from config
       }, 
     },
-    { 
-      name: 'due_date', 
-      group: 'Primary', 
-      tab: 'Meta', 
-      label: 'Due Date', 
-      group: 'General', 
-      type: 'date', 
-      showInTable: true 
-    },
+    
    
     { 
       name: 'author_id', 

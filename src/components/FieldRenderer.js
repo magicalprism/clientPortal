@@ -232,7 +232,12 @@ case 'status': {
   // Normalize the value for consistent handling
   const normalizedValue = normalizeSelectValue(localValue, field.options);
   const rawValue = extractSelectValue(normalizedValue);
-
+  
+  console.log(`🟡 Rendering select field "${field.name}":`, {
+    localValue,
+    normalizedValue,
+    rawValue
+  });
   
   content = isEditMode ? (
     <Select
@@ -245,7 +250,10 @@ case 'status': {
         const selectedLabel = (field.options || [])
           .find(opt => opt.value === selectedValue)?.label || selectedValue;
           
-
+        console.log(`🟡 Select field "${field.name}" changed to:`, {
+          value: selectedValue,
+          label: selectedLabel
+        });
         
         // Always create a value/label pair - this is important for UI display
         const processedValue = {
@@ -278,6 +286,7 @@ case 'status': {
   );
   break;
 }
+
       
       
       case 'color':

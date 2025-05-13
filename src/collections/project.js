@@ -201,7 +201,7 @@ export const project = {
     },
     
     // Content
-    { name: 'content', label: 'Content', group: 'Content', tab: 'Content' },
+    { name: 'content', label: 'Content', group: 'Content', tab: 'Content', fullWidth: true },
     { name: 'categories', label: 'Categories', group: 'Content', type: 'json', tab: 'Content' },
     { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean', tab: 'Content' },
 
