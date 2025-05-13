@@ -1,8 +1,8 @@
 'use client';
 
-import { task } from '@/collections/task';
+import { media } from '@/collections/media';
 import CollectionView from '@/components/views/CollectionView';
 
-export default function TaskPage() {
-  return <CollectionView config={task} />;
+export default function MediaPage() {
+  return <CollectionView config={media} />;
 }

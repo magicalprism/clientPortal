@@ -1,8 +1,8 @@
 'use client';
 
 import { element } from '@/collections/element';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
+import CollectionView from '@/components/views/CollectionView';
 
 export default function ElementPage() {
-  return <PrimaryTableView config={element} />;
+  return <CollectionView config={element} />;
 }
