@@ -15,25 +15,32 @@ export const useMultiRelationOptions = ({ field }) => {
       const { table, filter = {} } = field.relation || {};
       if (!table || !labelField) return;
 
-      let query = supabase.from(table).select(`id, ${labelField}, parent_id`);
-      Object.entries(filter).forEach(([key, val]) => {
-        query = query.eq(key, val);
-      });
+      console.log('[useMultiRelationOptions] Fetching options for:', table);
 
-      const { data, error } = await query;
+      try {
+        let query = supabase.from(table).select(`id, ${labelField}, parent_id`);
+        Object.entries(filter).forEach(([key, val]) => {
+          query = query.eq(key, val);
+        });
 
-      if (error) {
-        console.error('[MultiRelationOptions] Failed to load:', error);
-      } else {
-        const tree = buildTree(data);
-        const flat = flattenTreeWithIndent(tree, 0);
+        const { data, error } = await query;
 
-        // Deduplicate by `id`
-        const deduplicated = Array.from(new Map(flat.map(item => [item.id, item])).values());
-        setOptions(deduplicated);
+        if (error) {
+          console.error('[useMultiRelationOptions] Failed to load:', error);
+        } else {
+          console.log('[useMultiRelationOptions] Received data:', data);
+
+          const tree = buildTree(data || []);
+          const flat = flattenTreeWithIndent(tree, 0);
+
+          const deduplicated = Array.from(new Map(flat.map(item => [item.id, item])).values());
+          setOptions(deduplicated);
+        }
+      } catch (err) {
+        console.error('[useMultiRelationOptions] Unexpected error:', err);
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     loadOptions();

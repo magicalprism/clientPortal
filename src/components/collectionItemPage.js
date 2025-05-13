@@ -173,17 +173,7 @@ const handleFieldChange = (fieldOrName, value) => {
     setTempValue(currentValue ?? '');
   };
 
-  // Inside your CollectionItemPage component
-return (
-  <>
-    <Card>
-      {/* Add this line near the top of your component */}
-      {!isCreating && <TagsDebugger record={extendedRecord} config={config} />}
-      
-      {/* Rest of your component */}
-    </Card>
-  </>
-);
+
 
   return (
     <>

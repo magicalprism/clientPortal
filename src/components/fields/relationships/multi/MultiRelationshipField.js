@@ -11,12 +11,12 @@ import {
 } from '@mui/material';
 import { Plus } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
-
+import { ArrowClockwise } from '@phosphor-icons/react';
 import { useMultiRelationOptions } from './useMultiRelationOptions';
 import { useMultiRelationSync } from './useMultiRelationSync';
 import normalizeMultiRelationshipValue from '@/lib/utils/normalizeMultiRelationshipValue';
 
-export const MultiRelationshipField = ({ field, value = [], onChange }) => {
+export const MultiRelationshipField = ({ field, refreshRecord, value = [], onChange }) => {
   const router = useRouter();
   const { options, loading, setOptions } = useMultiRelationOptions({ field });
   const { syncMultiRelation } = useMultiRelationSync();
@@ -94,6 +94,7 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     }
   };
 
+
   return (
     <FormControl fullWidth size="small" sx={{ display: 'flex', flexDirection: 'row', gap: 1 }}>
       <Autocomplete
@@ -141,13 +142,16 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
                   {params.InputProps.endAdornment}
                 </>
               ),
+              
             }}
+            
           />
         )}
-        sx={{ flexGrow: 1, minWidth: 300 }}
+        sx={{ flexGrow: 1 }}
       />
 
       {!!field.relation?.linkTo && (
+        
         <IconButton
           size="small"
           onClick={() =>
@@ -158,6 +162,8 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
           <Plus size={16} />
         </IconButton>
       )}
+      
     </FormControl>
+    
   );
 };

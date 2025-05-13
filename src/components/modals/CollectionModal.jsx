@@ -16,7 +16,7 @@ import {
 } from '@mui/material';
 import { useSearchParams } from 'next/navigation';
 import { X as XIcon } from '@phosphor-icons/react';
-import { CollectionItemPage } from '@/components/collectionItemPage';
+import { CollectionItemPage } from '@/components/CollectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
 import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
 
@@ -161,7 +161,7 @@ export default function CollectionModal({
   };
   
   useEffect(() => {
-    if (!isCreating && recordId && !record?.id) {
+    if (!isCreating && recordId) {
       const fetchRecordWithTags = async () => {
         setIsLoading(true);
         setFetchError(null);

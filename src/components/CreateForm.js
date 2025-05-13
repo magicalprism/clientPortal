@@ -230,6 +230,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                       setRecord={setFormData}
                       config={config}
                       onChange={handleChange}
+                      refreshRecord={refreshRecord}
                     />
                   </Box>
                 </Grid>
@@ -247,7 +248,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                   
                   <FieldRenderer
                     field={field}
-                    value={formData[field.name] || ''}
+                    value={currentValue === undefined ? '' : currentValue || ''}
                     record={formData}
                     config={config}
                     mode="create"
