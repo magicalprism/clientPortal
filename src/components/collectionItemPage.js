@@ -13,6 +13,7 @@ import { BrandBoardPreview } from '@/components/BrandBoardPreview';
 import { ElementMap } from '@/components/ElementMap';
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
+import { extractSelectValue } from '@/components/fields/SelectField';
 
 export const CollectionItemPage = ({ config, record, isModal = false }) => {
   // Add this ref and counter to track renders
@@ -70,23 +71,62 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
   
 
-  const handleFieldChange = (field, value) => {
-    console.log(`✏️ Change in "${field.name}":`, value);
-  
-    if (field.type === 'multiRelationship' && value?.ids) {
+/**
+ * Handles field value changes in the collection item page
+ * This function correctly handles different field types
+ * 
+ * @param {Object} field - The field configuration object
+ * @param {any} value - The new field value
+ */
+const handleFieldChange = (field, value) => {
+  console.log(`✏️ Change in "${field.name}":`, value);
+
+  // Special handling for multiRelationship fields
+  if (field.type === 'multiRelationship') {
+    if (value?.ids) {
+      // Handle object format with ids and details
       setLocalRecord((prev) => ({
         ...prev,
         [field.name]: value.ids,
         [`${field.name}_details`]: value.details,
       }));
-    } else {
-      // Only update the value locally - don't trigger auto-save
-      updateLocalValue(field.name, value);
-      
-      // IMPORTANT: Remove this auto-save completely for now
-      // We'll only save when the user clicks the save button
+    } else if (Array.isArray(value)) {
+      // Handle array format with just IDs
+      setLocalRecord((prev) => ({
+        ...prev,
+        [field.name]: value,
+      }));
     }
-  };
+    return;
+  } 
+  
+  // Special handling for select/status fields
+  if (field.type === 'select' || field.type === 'status') {
+    // Store the complete value/label object for UI display
+    // The actual database save in saveRecord will extract just the value
+    console.log(`✏️ Select/status field "${field.name}" changed:`, value);
+    updateLocalValue(field.name, value);
+    return;
+  }
+  
+  // Special handling for relationship fields
+  if (field.type === 'relationship' && value !== null && value !== undefined) {
+    // If it's an object with id property, extract just the id
+    if (typeof value === 'object' && value.id !== undefined) {
+      updateLocalValue(field.name, value.id);
+    } else {
+      // It's already a simple value (likely an ID)
+      updateLocalValue(field.name, value);
+    }
+    return;
+  }
+  
+  // Default handling for other field types
+  updateLocalValue(field.name, value);
+};
+      
+
+    
   
   const startEdit = (fieldName, currentValue) => {
     console.log(`✏️ Start editing "${fieldName}"`);

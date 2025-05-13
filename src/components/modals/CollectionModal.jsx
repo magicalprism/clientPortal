@@ -1,4 +1,5 @@
 'use client';
+
 import React, { useEffect, useState, useMemo } from 'react';
 import * as collections from '@/collections';
 import CreateForm from '@/components/CreateForm';
@@ -15,6 +16,7 @@ import { useSearchParams } from 'next/navigation';
 import { X as XIcon } from '@phosphor-icons/react';
 import { CollectionItemPage } from '@/components/collectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
+import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils'; // Add this import
 
 export default function CollectionModal({
   open,
@@ -37,10 +39,7 @@ export default function CollectionModal({
   const [fetchedRecord, setFetchedRecord] = useState(null);
   const parentId = defaultValues?.id;
   const refField = defaultValues?.refField;
-
-
-
-
+  
   useEffect(() => {
     if (!isCreating && recordId && !record?.id) {
       const fetchRecord = async () => {
@@ -49,19 +48,77 @@ export default function CollectionModal({
           .select('*')
           .eq('id', recordId)
           .single();
-  
+
         if (error) {
           console.error(`[CollectionModal] Failed to fetch record ${recordId}`, error);
         } else {
+          // Add this block to fetch multirelationship data
+          const multiRelFields = config.fields.filter(
+            f => f.type === 'multiRelationship' && f.relation?.junctionTable
+          );
+          
+          // Fetch multirelationship data for each field
+          if (multiRelFields.length > 0) {
+            console.log(`[CollectionModal] Fetching multirelationship data for ${multiRelFields.length} fields`);
+            
+            for (const field of multiRelFields) {
+              const { junctionTable, sourceKey, targetKey, table, labelField } = field.relation;
+              const sourceKeyName = sourceKey || `${config.name}_id`;
+              const targetKeyName = targetKey || `${table}_id`;
+              const displayField = labelField || 'title';
+              
+              try {
+                // First, get relationships from junction table
+                const { data: junctionData, error: junctionError } = await supabase
+                  .from(junctionTable)
+                  .select(`${targetKeyName}`)
+                  .eq(sourceKeyName, recordId);
+                  
+                if (junctionError) {
+                  console.error(`[CollectionModal] Error fetching ${field.name} relationships:`, junctionError);
+                  continue;
+                }
+                
+                // Extract related IDs
+                const relatedIds = junctionData.map(item => item[targetKeyName]);
+                
+                if (relatedIds.length > 0) {
+                  // Get details for these IDs
+                  const { data: detailsData, error: detailsError } = await supabase
+                    .from(table)
+                    .select(`id, ${displayField}`)
+                    .in('id', relatedIds);
+                    
+                  if (detailsError) {
+                    console.error(`[CollectionModal] Error fetching ${field.name} details:`, detailsError);
+                    continue;
+                  }
+                  
+                  // Add to record data
+                  data[field.name] = relatedIds.map(String);
+                  data[`${field.name}_details`] = detailsData;
+                  
+                  console.log(`[CollectionModal] Loaded ${relatedIds.length} items for ${field.name}:`, 
+                    relatedIds, detailsData);
+                } else {
+                  // No related records
+                  data[field.name] = [];
+                  data[`${field.name}_details`] = [];
+                }
+              } catch (err) {
+                console.error(`[CollectionModal] Unexpected error loading ${field.name}:`, err);
+              }
+            }
+          }
+          
           setFetchedRecord(data);
         }
       };
-  
+      
       fetchRecord();
     }
   }, [recordId, config.name, isCreating, record?.id]);
   
-
   const extendedRecord = {
     ...(fetchedRecord || record || {}),
     ...(isCreating && parentId && refField ? { [refField]: parentId } : {}),
@@ -97,28 +154,46 @@ export default function CollectionModal({
         </Box>
 
         {isCreating ? (
-       <CreateForm
-       config={config}
-       initialRecord={extendedRecord} // ✅ pass prefilled values
-       disableRedirect
-       onSuccess={async (data) => {
-        if (onRefresh) await onRefresh(data); // ⬅️ Make sure this finishes first
-        onClose(); // ⬅️ Only close after
-      }}
-     />
-      ) : (
-        <CollectionItemPage
-          config={config}
-          record={extendedRecord}
-          isModal
-          onClose={onClose}
-          onUpdate={onUpdate}
-          onDelete={onDelete}
-          onRefresh={onRefresh}
-          singleColumn
-        />
-      )}
-
+          <CreateForm
+            config={config}
+            initialRecord={extendedRecord} // ✅ pass prefilled values
+            disableRedirect
+            onSuccess={async (data) => {
+              // After creating the record, save multirelationship fields
+              if (data && data.id) {
+                await saveMultiRelationships({
+                  config,
+                  record: data
+                });
+              }
+              
+              if (onRefresh) await onRefresh(data); // ⬅️ Make sure this finishes first
+              onClose(); // ⬅️ Only close after
+            }}
+          />
+        ) : (
+          <CollectionItemPage
+            config={config}
+            record={extendedRecord}
+            isModal
+            onClose={onClose}
+            onUpdate={async (updatedRecord) => {
+              // Add this to handle saving multirelationships
+              if (updatedRecord && updatedRecord.id) {
+                await saveMultiRelationships({
+                  config,
+                  record: updatedRecord
+                });
+              }
+              
+              // Then call the original onUpdate
+              if (onUpdate) onUpdate(updatedRecord);
+            }}
+            onDelete={onDelete}
+            onRefresh={onRefresh}
+            singleColumn
+          />
+        )}
       </DialogContent>
     </Dialog>
   );

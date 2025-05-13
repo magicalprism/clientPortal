@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
 import {
   FormControl,
   Autocomplete,
@@ -23,24 +23,46 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
   const labelField = field.relation?.labelField || 'title';
   const parentId = field.parentId;
 
-  // Make sure value is an array of strings
+  // Make sure value is normalized to an array of strings
   const normalizedValue = useMemo(() => {
     if (!value) return [];
-    if (Array.isArray(value)) return value.map(String);
-    if (value.ids && Array.isArray(value.ids)) return value.ids.map(String);
+    
+    // Handle array format
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    
+    // Handle { ids, details } format
+    if (value.ids && Array.isArray(value.ids)) return value.ids.map(String).filter(Boolean);
+    
+    // Handle string or number
+    if (typeof value === 'string' || typeof value === 'number') return [String(value)];
+    
     return [];
   }, [value]);
+  
+  // Log initial value for debugging
+  useEffect(() => {
+    console.log(`[MultiRelationshipField] Field: ${field.name}, Initial value:`, 
+      { rawValue: value, normalizedValue });
+  }, [field.name, value, normalizedValue]);
 
-  const selectedObjects = useMemo(
-    () => normalizedValue.map(id => options.find(opt => String(opt.id) === id)).filter(Boolean),
-    [options, normalizedValue]
-  );
+  // Get selected option objects based on the normalized value IDs
+  const selectedObjects = useMemo(() => {
+    // Match normalized value IDs to options 
+    const result = normalizedValue
+      .map(id => options.find(opt => String(opt.id) === id))
+      .filter(Boolean);
+      
+    return result;
+  }, [options, normalizedValue]);
 
   const handleChange = async (_, selectedOptionObjects) => {
-    console.log('MultiRelationshipField change:', { field, selectedOptionObjects });
+    console.log('[MultiRelationshipField] Change:', { 
+      field: field.name, 
+      selectedOptionObjects 
+    });
     
     // Extract IDs from the selected options
-    const selectedIds = selectedOptionObjects.map(opt => opt.id);
+    const selectedIds = selectedOptionObjects.map(opt => String(opt.id)).filter(Boolean);
     
     // Create details array for UI updates
     const selectedDetails = selectedOptionObjects.map(opt => ({
@@ -50,31 +72,14 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
     
     // Create a standard response format
     const responseFormat = {
-      ids: selectedIds.map(String),
+      ids: selectedIds,
       details: selectedDetails
     };
     
     // First update the UI
     if (typeof onChange === 'function') {
-      // Try different formats to be compatible with different parent components
+      // Use the standard response format that includes both IDs and details
       onChange(responseFormat);
-      
-      // Some components might expect field name and value
-      if (field && field.name) {
-        // Don't call these if they're going to cause errors
-        try {
-          onChange(field.name, responseFormat);
-        } catch (e) {
-          console.log('Error calling onChange with field name:', e);
-        }
-        
-        try {
-          // Also try with just the array of IDs
-          onChange(selectedIds);
-        } catch (e) {
-          console.log('Error calling onChange with selectedIds:', e);
-        }
-      }
     }
     
     // Then sync with the database if we have a parentId
@@ -106,17 +111,19 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
         value={selectedObjects}
         onChange={handleChange}
         getOptionLabel={(option) =>
-          typeof option === 'string' ? option : `${option[labelField]} (${option.id})`
+          typeof option === 'string' ? option : option[labelField] ? `${option[labelField]} (${option.id})` : `ID: ${option.id}`
         }
-        isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
-        getOptionKey={(option) => option.id}
+        isOptionEqualToValue={(option, value) => {
+          return String(option.id) === String(value.id);
+        }}
+        getOptionKey={(option) => `opt-${option.id}`}
         renderTags={(selected, getTagProps) =>
           selected.map((option, index) => {
             const { key: _, ...restChipProps } = getTagProps({ index });
             return (
               <Chip
                 key={`chip-${option.id}`}
-                label={`${option[labelField] || 'Untitled'} (${option.id})`}
+                label={option[labelField] ? `${option[labelField]} (${option.id})` : `ID: ${option.id}`}
                 {...restChipProps}
               />
             );
@@ -124,7 +131,9 @@ export const MultiRelationshipField = ({ field, value = [], onChange }) => {
         }
         renderOption={(props, option) => (
           <li {...props} key={`opt-${option.id}`}>
-            {`${option.indentedLabel || option[labelField]} (${option.id})`}
+            {option.indentedLabel || option[labelField] ? 
+              `${option.indentedLabel || option[labelField]} (${option.id})` : 
+              `ID: ${option.id}`}
           </li>
         )}
         renderInput={(params) => (

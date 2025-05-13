@@ -4,6 +4,18 @@ import { useState, useEffect, useRef } from 'react';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 import { createClient } from '@/lib/supabase/browser';
 
+// Helper function to extract value from select field objects
+const extractSelectValue = (value) => {
+  if (value === null || value === undefined) return value;
+  
+  // Handle object with value property (e.g., {value: 'todo', label: 'To Do'})
+  if (typeof value === 'object' && value !== null && 'value' in value) {
+    return value.value;
+  }
+  
+  return value;
+};
+
 export const useCollectionSave = ({ config, record, setRecord, startEdit, mode = 'edit' }) => {
   if (!record) {
     return {
@@ -47,7 +59,32 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
     if (suppressAutosaveRef.current) return;
 
     const currentValue = record?.[fieldName];
-    if (JSON.stringify(currentValue) === JSON.stringify(newValue)) return;
+    
+    // Compare values properly, handling objects
+    const isEqual = () => {
+      // Handle objects with value property
+      if (
+        typeof currentValue === 'object' && 
+        currentValue !== null && 
+        typeof newValue === 'object' && 
+        newValue !== null
+      ) {
+        // If both have value property, compare that
+        if ('value' in currentValue && 'value' in newValue) {
+          return currentValue.value === newValue.value;
+        }
+      }
+      
+      // Default to JSON string comparison
+      return JSON.stringify(currentValue) === JSON.stringify(newValue);
+    };
+    
+    if (isEqual()) return;
+
+    console.log(`[useCollectionSave] Updating ${fieldName}:`, {
+      from: currentValue,
+      to: newValue
+    });
 
     setRecord((prev) => ({
       ...prev,
@@ -63,11 +100,35 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
 
     // Only include fields defined in the config for the update payload
     const validFieldNames = config.fields.map((f) => f.name);
-    const payload = Object.fromEntries(
-      Object.entries(record).filter(([key]) => validFieldNames.includes(key))
-    );
+    
+    // Create a processed payload
+    const payload = {};
+    
+    Object.entries(record).forEach(([key, value]) => {
+      // Only include fields defined in the config
+      if (!validFieldNames.includes(key)) return;
+      
+      // Find the field definition
+      const fieldDef = config.fields.find(f => f.name === key);
+      
+      // Process special field types
+      if (fieldDef && (fieldDef.type === 'select' || fieldDef.type === 'status')) {
+        // Extract raw value for select fields
+        payload[key] = extractSelectValue(value);
+        
+        console.log(`[useCollectionSave] Processing ${key} for save:`, {
+          original: value,
+          forDb: payload[key]
+        });
+      } else {
+        // Default handling for other fields
+        payload[key] = value;
+      }
+    });
 
     payload.updated_at = getPostgresTimestamp();
+    
+    console.log('[useCollectionSave] Saving payload:', payload);
 
     const { error } = await supabase
       .from(config.name)

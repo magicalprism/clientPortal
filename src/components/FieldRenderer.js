@@ -18,6 +18,11 @@ import { ColorField } from '@/components/fields/ColorField';
 import { ElementMap } from '@/components/ElementMap';
 import { debounce } from '@/lib/utils/debounce';
 import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerField';
+import { 
+  normalizeSelectValue, 
+  extractSelectValue, 
+  processSelectChange 
+} from '@/components/fields/SelectField';
 
 
 export const isIncludedInView = (field, view = 'table') => {
@@ -81,15 +86,15 @@ export const FieldRenderer = ({
     }
 
     case 'multiRelationship':
-       content = editable ? (
-         <MultiRelationshipField
-           field={{ ...field, parentId: record.id }}
-           value={Array.isArray(record?.[field.name]) ? record[field.name] : []}
-           onChange={handleUpdate}
-         />
-       ) : null;
-       break;
-    
+      content = editable ? (
+        <MultiRelationshipField
+          field={{ ...field, parentId: record.id, parentTable: config?.name }}  // Added parentTable
+          value={Array.isArray(record?.[field.name]) ? record[field.name] : []}
+          onChange={handleUpdate}
+        />
+      ) : null;
+      break;
+        
 
     case 'richText':
       content = isEditMode ? (
@@ -222,53 +227,65 @@ export const FieldRenderer = ({
         break;
       
 
-    case 'status':
-      content = <span style={{ textTransform: 'capitalize' }}>{localValue}</span>;
-      break;
-
-      case 'select': {
-        const isValueObject = typeof localValue === 'object' && localValue !== null;
-        const rawValue = isValueObject ? localValue?.value : localValue;
-        const selectedOption = (field.options || []).find((opt) => opt.value === rawValue);
-      
-        content = isEditMode ? (
-          <Select
-            fullWidth
-            size="small"
-            value={rawValue || ''}
-            onChange={(e) => {
-              const selectedValue = e.target.value;
-              const selectedLabel =
-                (field.options || []).find((opt) => opt.value === selectedValue)?.label || selectedValue;
-      
-              console.log(`🟡 Select field "${field.name}" changed to:`, {
-                value: selectedValue,
-                label: selectedLabel,
-              });
-      
-              // ✅ Send full object so saveChange can normalize
-              handleUpdate({ value: selectedValue, label: selectedLabel });
-            }}
-            displayEmpty
-            renderValue={(selected) => {
-              const match = (field.options || []).find((opt) => opt.value === selected);
-              return match ? match.label : 'Select an option';
-            }}
-          >
-            {(field.options || []).map((option) => (
-              <MenuItem key={option.value} value={option.value}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-        ) : (
-          <Typography variant="body2">
-            {/* ✅ Display correct label whether object or raw */}
-            {isValueObject ? localValue.label : selectedOption?.label || rawValue || '—'}
-          </Typography>
-        );
-        break;
-      }
+case 'select':
+case 'status': {
+  // Normalize the value for consistent handling
+  const normalizedValue = normalizeSelectValue(localValue, field.options);
+  const rawValue = extractSelectValue(normalizedValue);
+  
+  console.log(`🟡 Rendering select field "${field.name}":`, {
+    localValue,
+    normalizedValue,
+    rawValue
+  });
+  
+  content = isEditMode ? (
+    <Select
+      fullWidth
+      size="small"
+      value={rawValue || ''}
+      onChange={(e) => {
+        const selectedValue = e.target.value;
+        
+        const selectedLabel = (field.options || [])
+          .find(opt => opt.value === selectedValue)?.label || selectedValue;
+          
+        console.log(`🟡 Select field "${field.name}" changed to:`, {
+          value: selectedValue,
+          label: selectedLabel
+        });
+        
+        // Always create a value/label pair - this is important for UI display
+        const processedValue = {
+          value: selectedValue,
+          label: selectedLabel
+        };
+        
+        handleUpdate(processedValue);
+      }}
+      displayEmpty
+      renderValue={(selected) => {
+        if (!selected) return 'Select an option';
+        const matchedOption = (field.options || []).find((opt) => opt.value === selected);
+        return matchedOption ? matchedOption.label : selected;
+      }}
+    >
+      <MenuItem value="">
+        <em>None</em>
+      </MenuItem>
+      {(field.options || []).map((option) => (
+        <MenuItem key={option.value} value={option.value}>
+          {option.label}
+        </MenuItem>
+      ))}
+    </Select>
+  ) : (
+    <Typography variant="body2">
+      {normalizedValue.label || '—'}
+    </Typography>
+  );
+  break;
+}
       
       
       case 'color':
