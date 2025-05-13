@@ -18,6 +18,7 @@ import { ColorField } from '@/components/fields/ColorField';
 import { ElementMap } from '@/components/ElementMap';
 import { debounce } from '@/lib/utils/debounce';
 import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerField';
+import { RepeaterRenderer } from '@/components/fields/repeater/RepeaterRenderer';
 
 
 export const isIncludedInView = (field, view = 'table') => {
@@ -113,21 +114,7 @@ export const FieldRenderer = ({
 
    
 
-      case 'media': {
-        const fieldName = field.name;
-        const recordFieldDetails = record?.[`${fieldName}_details`];
       
-        content = (
-          <MediaField
-            field={field}
-            record={record}
-            config={config}
-            value={localValue}
-            onChange={(newId) => handleUpdate(newId)}
-          />
-        );
-        break;      
-    }
 
     case 'timezone':
       content = isEditMode ? (
@@ -330,6 +317,39 @@ export const FieldRenderer = ({
       );
       break;
 
+
+      
+      case 'repeater': {
+        content = (
+          <RepeaterRenderer
+            field={field}
+            record={record}
+            config={config}
+            editable={isEditMode}
+            onChange={(newId) => handleUpdate(newId)}
+          />
+        );
+        break;
+      }
+      
+      
+      case 'media': {
+        const fieldName = field.name;
+        const recordFieldDetails = record?.[`${fieldName}_details`];
+      
+        content = (
+          <MediaField
+            field={field}
+            record={record}
+            config={config}
+            value={localValue}
+            onChange={(newId) => handleUpdate(newId)}
+          />
+        );
+        break;      
+    }
+
+
     case 'editButton': {
       const href = config?.editPathPrefix
         ? `${config.editPathPrefix}/${record.id}`
@@ -352,35 +372,33 @@ export const FieldRenderer = ({
     }
 
     default:
-
-      content = isEditMode ? (
-        <TextField
-          fullWidth
-          size="small"
-          value={localValue || ''}
-          onChange={(e) => {
-            const next = e.target.value;
-
-            setLocalValue(next);
-          }}
-          onBlur={() => {
-
+  content = typeof localValue === 'string' || typeof localValue === 'number' ? (
+    isEditMode ? (
+      <TextField
+        fullWidth
+        size="small"
+        value={localValue || ''}
+        onChange={(e) => {
+          const next = e.target.value;
+          setLocalValue(next);
+        }}
+        onBlur={() => onChange(localValue)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
             onChange(localValue);
-          }}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              console.log(`⏎ Saving on Enter for field "${field.name}" with value:`, localValue);
-              onChange(localValue);
-            }
-          }}
-          
-          placeholder={field.label || ''}
-        />
-      ) : (
-        <Typography variant="body2">{localValue ?? '—'}</Typography>
-      );
-      break;
+          }
+        }}
+        placeholder={field.label || ''}
+      />
+    ) : (
+      <Typography variant="body2">{localValue ?? '—'}</Typography>
+    )
+  ) : (
+    <Typography variant="body2" color="text.secondary">—</Typography>
+  );
+  break;
+
     
   }
 

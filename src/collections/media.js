@@ -2,6 +2,7 @@
 export const media = {
   name: 'media',
   label: 'Media',
+
   fields: [
     {
       name: 'url',

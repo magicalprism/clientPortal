@@ -62,7 +62,8 @@ export const CollectionFieldRenderer = ({
             'richText',
             'timezone',
             'select',
-            'color'
+            'color',
+            'repeater',
           ].includes(field.type);
 
           const isTwoColumn = !isModal && !isSmallScreen;
@@ -124,7 +125,13 @@ export const CollectionFieldRenderer = ({
             <Grid
               item
               xs={12}
-              sm={field.type === 'richText' ? 12 : isTwoColumn || field.type === 'media' ? 6 : 12}
+              sm={
+                field.type === 'richText'
+                  ? 12
+                  : isTwoColumn || ['media', 'repeater'].includes(field.type)
+                  ? 6
+                  : 12
+              }
               md={field.type === 'color' ? 6 : 6}
               lg={field.type === 'color' ? 3 : 6}
               xl={field.type === 'color' ? 3 : 6}
@@ -141,8 +148,29 @@ export const CollectionFieldRenderer = ({
                     </Typography>
                   )}
                 </Box>
-
-                {isEditing && isBasicTextField ? (
+          
+                {/* Skip inline editing for media and repeater */}
+                {['media', 'repeater'].includes(field.type) ? (
+                  <FieldRenderer
+                    value={
+                      localRecord[`${field.name}_details`] || localRecord[field.name]
+                    }
+                    field={field}
+                    record={localRecord}
+                    config={collections[field.relation?.table] || {}}
+                    view="detail"
+                    onChange={(value) => {
+                      if (isSystemReadOnly) return;
+                      else if (field.type === 'repeater' && value?.ids) {
+                        saveChange(field.name, value.ids); // save only the ids
+                        localRecord[`${field.name}_details`] = value.details; // keep details for rendering
+                      } else {
+                        saveChange(field.name, value);
+                      }
+                      
+                    }}
+                  />
+                ) : isEditing && isBasicTextField ? (
                   <TextField
                     fullWidth
                     size="medium"
@@ -169,10 +197,11 @@ export const CollectionFieldRenderer = ({
                       justifyContent: 'space-between'
                     }}
                     onClick={
-                      editable && isBasicTextField
+                      editable && isBasicTextField && !['media', 'repeater'].includes(field.type)
                         ? () => startEdit(field.name, value)
                         : undefined
                     }
+                    
                   >
                     {isLoading ? (
                       <CircularProgress size={16} />
@@ -184,11 +213,7 @@ export const CollectionFieldRenderer = ({
                       />
                     ) : (
                       <FieldRenderer
-                        value={
-                          field.type === 'media'
-                            ? localRecord[`${field.name}_details`] || localRecord[field.name]
-                            : localRecord[field.name]
-                        }
+                        value={localRecord[field.name]}
                         field={field}
                         record={localRecord}
                         config={collections[field.relation?.table] || {}}
@@ -197,25 +222,23 @@ export const CollectionFieldRenderer = ({
                         isEditing={isEditing}
                         onChange={(value) => {
                           if (isSystemReadOnly) return;
-
-                          if (field.type === 'multiRelationship' && value?.ids) {
-                            setLocalRecord((prev) => ({
-                              ...prev,
-                              [field.name]: value.ids,
-                              [`${field.name}_details`]: value.details,
-                            }));
+                          else if (field.type === 'repeater' && value?.ids) {
+                            saveChange(field.name, value.ids); // save only the ids
+                            localRecord[`${field.name}_details`] = value.details; // keep details for rendering
                           } else {
-                            saveChange(field.name, value); // ✅ standardized
+                            saveChange(field.name, value);
                           }
+                          
                         }}
                       />
-
                     )}
                   </Box>
                 )}
               </Box>
             </Grid>
           );
+          
+          
         })}
       </Grid>
     </Grid>

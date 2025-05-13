@@ -25,30 +25,56 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
     e.preventDefault();
     setLoading(true);
     setError(null);
-
-    const { data, error } = await supabase.from(table).insert([formData]).select().single();
-    setLoading(false);
-    if (error) {
-      setError(error.message);
-    } else {
-      setFormData({});
-      if (onSuccess) {
-        await onSuccess(data);
+  
+    try {
+      // Strip out repeater fields before insert
+      const { section_id, ...safeData } = formData;
+  
+      const { data: element, error } = await supabase
+        .from(table)
+        .insert([safeData])
+        .select()
+        .single();
+  
+      if (error) throw error;
+  
+      // ✅ Now insert related sections
+      if (section_id?.length > 0) {
+        const newSections = section_id
+          .filter((item) => String(item.id).startsWith('temp-'))
+          .map((item) => ({
+            ...item,
+            element_id: element.id
+          }));
+  
+        if (newSections.length > 0) {
+          const { error: sectionError } = await supabase
+            .from('section')
+            .insert(newSections);
+  
+          if (sectionError) throw sectionError;
+        }
       }
-      
-      // Modal behavior: refresh page to reflect new item
+  
+      setFormData({});
+      if (onSuccess) await onSuccess(element);
+  
       if (disableRedirect) {
         window.location.reload();
-        return;
+      } else if (element?.id && config.editPathPrefix) {
+        router.push(`${config.editPathPrefix}/${element.id}`);
       }
-      
-      // Full page behavior: redirect to new item's page
-      if (data?.id && config.editPathPrefix) {
-        router.push(`${config.editPathPrefix}/${data.id}`);
-      }
-      
+  
+    } catch (err) {
+      console.error('❌ Save error:', err);
+      setError(err.message || 'Unexpected error');
+    } finally {
+      setLoading(false);
     }
   };
+  
+
+   
 
   if (!Array.isArray(fields)) {
     return <Typography color="error">Invalid config: missing fields</Typography>;

@@ -11,19 +11,24 @@ export async function CollectionDetailLayout({ collectionKey, recordId }) {
     return <div>No record ID provided.</div>;
   }
 
-  const relationshipJoins = config.fields
-    .filter(
-      (field) =>
-        (field.type === 'relationship' || field.type === 'media') &&
-        field.relation?.table
-    )
-    .map((field) => {
-      if (field.type === 'media') {
-        return `${field.relation.table}_${field.name}:${field.name}(id, url, title, alt_text, copyright, file_path, mime_type, is_folder)`;
-      } else {
-        return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
-      }
-    });
+  const relationshipJoins = config.fields.flatMap((field) => {
+    if (!field.relation?.table) return [];
+  
+    if (field.type === 'media') {
+      return `${field.relation.table}_${field.name}:${field.name}(id, url, title, alt_text, copyright, file_path, mime_type, is_folder)`;
+    }
+  
+    if (field.type === 'relationship') {
+      return `${field.relation.table}_${field.name}:${field.name}(${field.relation.labelField})`;
+    }
+  
+    if (field.type === 'repeater') {
+      return `${field.name}:${field.relation.table}(*)`; // ✅ raw join of all fields for repeater
+    }
+  
+    return [];
+  });
+  
 
   const selectFields = ['*', ...relationshipJoins].join(', ');
 

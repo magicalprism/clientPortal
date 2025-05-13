@@ -1,6 +1,7 @@
 export const checklist = {
     name: 'checklist',
     label: 'Checklists',
+    singularLabel: 'Checklist',
     editPathPrefix: '/dashboard/checklist',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',

@@ -8,6 +8,9 @@ import ChecklistView from '@/components/views/ChecklistView';
 import PrimaryTableView from '@/components/views/PrimaryTableView';
 import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
 import CalendarView from './CalendarView';
+import { createClient } from '@/lib/supabase/browser';
+import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
+
 
 const componentMap = {
   ChecklistView,
@@ -29,14 +32,61 @@ export default function CollectionView({ config }) {
   
   const [totalCount, setTotalCount] = useState(0);
 
-  const defaultFilters = (config.filters || []).reduce((acc, filter) => {
-    if (filter.defaultValue !== undefined) {
-      acc[filter.name] = filter.defaultValue;
-    }
-    return acc;
-  }, {});
   
-  const [filters, setFilters] = useState(defaultFilters);
+  const activeFilters = (config.filters || []).filter((f) => {
+    if (f.excludeFromViews?.includes(viewKey)) return false;
+    if (f.includeInViews && !f.includeInViews.includes(viewKey)) return false;
+    return true;
+  });
+
+  const [defaultValues, setDefaultValues] = useState({});
+const [loadingUser, setLoadingUser] = useState(true);
+
+useEffect(() => {
+  const fetchDefaults = async () => {
+    const contactId = await getCurrentContactId();
+    console.log('[fetchDefaults] contactId:', contactId);
+
+    const fieldDefaults = (config.fields || []).reduce((acc, field) => {
+      if (field.defaultToCurrentUser && contactId) {
+        console.log(`[fetchDefaults] setting field ${field.name} to contactId: ${contactId}`);
+        acc[field.name] = contactId;
+      } else if (field.defaultValue !== undefined) {
+        console.log(`[fetchDefaults] setting field ${field.name} to defaultValue: ${field.defaultValue}`);
+        acc[field.name] = field.defaultValue;
+      }
+      return acc;
+    }, {});
+
+    const filterDefaults = (config.filters || []).reduce((acc, filter) => {
+      if (filter.defaultToCurrentUser && contactId) {
+        console.log(`[fetchDefaults] setting filter ${filter.name} to contactId: ${contactId}`);
+        acc[filter.name] = contactId;
+      } else if (filter.defaultValue !== undefined) {
+        console.log(`[fetchDefaults] setting filter ${filter.name} to defaultValue: ${filter.defaultValue}`);
+        acc[filter.name] = filter.defaultValue;
+      }
+      return acc;
+    }, {});
+
+    const mergedDefaults = { ...fieldDefaults, ...filterDefaults };
+    console.log('[fetchDefaults] final default values:', mergedDefaults);
+
+    setDefaultValues(mergedDefaults);
+    setLoadingUser(false);
+  };
+
+  fetchDefaults();
+}, [config]);
+
+  
+  
+const [filters, setFilters] = useState({});
+useEffect(() => {
+  if (!loadingUser && defaultValues) {
+    setFilters(defaultValues);
+  }
+}, [loadingUser, defaultValues]);
 
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [selectionIds, setSelectionIds] = useState([]);
@@ -68,7 +118,7 @@ export default function CollectionView({ config }) {
   return (
     <CollectionSelectionProvider ids={selectionIds}>
       <CollectionLayout
-        config={config}
+        config={{ ...config, filters: activeFilters }}
         currentView={viewKey}
         onViewChange={handleViewChange}
         filters={filters}
@@ -81,7 +131,7 @@ export default function CollectionView({ config }) {
         totalCount={totalCount}
       >
         <ViewComponent
-          config={config}
+          config={{ ...config, filters: activeFilters }}
           filters={filters}
           setFilters={setFilters}
           refreshFlag={refreshFlag}

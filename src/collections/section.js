@@ -1,8 +1,8 @@
-export const contact = {
-    name: 'contact',
-    label: 'Contacts',
-    singularLabel: 'Contact',
-    editPathPrefix: '/dashboard/contact',
+export const section = {
+    name: 'section',
+    label: 'Sections',
+    singularLabel: 'Section',
+    editPathPrefix: '/dashboard/section',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',
     defaultView: 'table',
@@ -39,31 +39,53 @@ export const contact = {
         clickable: true, 
         openMode: 'full',  
         showInTable: true,
+        description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
       },
       { 
-        name: 'email', 
-        label: 'Email', 
+        name: 'content', 
+        label: 'Content', 
         group: 'Details',
+        type: 'richText',
         tab: 'Overview', 
-        openMode: 'full',  
-        showInTable: true,
+       
       },
-      { 
-        name: 'role', 
-        label: 'Role', 
-        group: 'Details',
+      {
+        name: 'parent_id',
+        label: 'Parent ',
+        group: 'Info',
         tab: 'Overview', 
-        openMode: 'full',  
-        showInTable: true,
+        type: 'relationship',
+        relation: {
+          table: 'project',
+          labelField: 'title',
+          linkTo: '/dashboard/section', // or dynamically derive from config
+          filter: { company_id: '{{record.company_id}}' }
+        }
       },
       {
         name: 'company_id',
-        type: 'relationship',
         label: 'Company',
+        group: 'Info',
+        tab: 'Overview', 
+        type: 'relationship',
         relation: {
           table: 'company',
           labelField: 'title',
-          filter: { is_client: true } // optional: filters options
+          linkTo: '/dashboard/company', // or dynamically derive from config
+          filter: { company_id: '{{record.company_id}}' }
+        }
+      },
+      {
+        name: 'element_id',
+        label: 'Eelement',
+        group: 'Info',
+        tab: 'Overview', 
+        type: 'relationship',
+        relation: {
+          table: 'element',
+          labelField: 'title',
+          linkTo: '/dashboard/element', // or dynamically derive from config
+          filter: { company_id: '{{record.element_id}}' }
         }
       },
     ],
@@ -73,10 +95,21 @@ export const contact = {
         name: 'status',
         type: 'select',
         label: 'Status',
-        options: [  
+        options: [
           { value: 'active', label: 'Active' },
           { value: 'archived', label: 'Archived' },
-      ]
+        ]
+      },
+      {
+        name: 'is_client',
+        type: 'select',
+        label: 'Is Client',
+        defaultValue: true,
+        options: [
+          { value: true, label: 'Yes' },
+          { value: false, label: 'No' },
+        ]
+
       },
       {
         name: 'sort',

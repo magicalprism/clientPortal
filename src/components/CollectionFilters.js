@@ -136,6 +136,44 @@ function SortFilterPopover() {
   );
 }
 
+function FilterButtonWithLabel({ filter, value, onApply, onDelete }) {
+  const [label, setLabel] = useState('');
+
+  useEffect(() => {
+    const fetchLabel = async () => {
+      if (filter.type === 'relationship' && value) {
+        const { data, error } = await supabase
+          .from(filter.relation.table)
+          .select(filter.relation.labelField)
+          .eq('id', value)
+          .single();
+        if (!error && data) {
+          setLabel(data[filter.relation.labelField]);
+        } else {
+          setLabel(value);
+        }
+      } else if (filter.type === 'select' && filter.options) {
+        const opt = filter.options.find(opt => opt.value === value);
+        setLabel(opt?.label || '');
+      } else {
+        setLabel(value);
+      }
+    };
+    fetchLabel();
+  }, [value, filter]);
+
+  return (
+    <FilterButton
+      displayValue={label}
+      label={filter.label}
+      value={value}
+      onFilterApply={(newValue) => onApply(newValue)}
+      onFilterDelete={onDelete}
+      popover={<TextFilterPopover label={filter.label} filter={filter} />}
+    />
+  );
+}
+
 export function CollectionFilters({ config, filters, onChange, sortDir, onSortChange, onDeleteSuccess }) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -172,35 +210,27 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
 
       <Stack direction="row" spacing={2} sx={{ px: 3, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
-        {otherFilters.map((filter) => {
-  const value = filters[filter.name] || '';
-  let displayValue = value;
-
-  if (filter.type === 'select' && filter.options) {
-    const selectedOption = filter.options.find(opt => opt.value === value);
-    displayValue = selectedOption?.label || '';
-  }
-
-  return (
-    <FilterButton
-      key={filter.name}
-      displayValue={displayValue}
-      label={filter.label}
-      value={value}
-      onFilterApply={(newValue) => {
-        onChange({ ...filters, [filter.name]: newValue }); // <- ALWAYS pass full string like 'due_date:desc'
-      }}
-      onFilterDelete={() => onChange({ ...filters, [filter.name]: '' })}
-      popover={<TextFilterPopover label={filter.label} filter={filter} />}
-    />
-  );
-})}
 
 
 
-          
+  
+  
 
-          {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
+  {otherFilters.map((filter) => {
+    const value = filters[filter.name] || '';
+
+    return (
+      <FilterButtonWithLabel
+        key={filter.name}
+        filter={filter}
+        value={value}
+        onApply={(newValue) => onChange({ ...filters, [filter.name]: newValue })}
+        onDelete={() => onChange({ ...filters, [filter.name]: '' })}
+      />
+    );
+  })}
+
+  {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
         </Stack>
 
         {selection.selectedAny && (

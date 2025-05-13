@@ -177,7 +177,7 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                     }
 
                     return (
-                      <Grid item xs={12} sm={6} key={field.name}>
+                      <Grid item xs={12} md={isModal ? 12 : 6} key={field.name}>
                         <Box>
                           <Typography variant="subtitle2" fontWeight={500}>
                             {field.label}
@@ -223,11 +223,11 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
                                 <CircularProgress size={16} />
                               ) : (
                                 <FieldRenderer
-                                  value={
-                                    field.type === 'media'
-                                      ? localRecord[`${field.name}_details`] || value
-                                      : value
-                                  }
+                                value={
+                                  field.type === 'media'
+                                    ? localRecord?.[`${field.name}_details`] ?? value
+                                    : value
+                                }
                                   field={field}
                                   record={localRecord}
                                   config={config}

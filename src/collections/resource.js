@@ -1,6 +1,7 @@
 export const resource = {
     name: 'resource',
     label: 'Resources',
+    singularLabel: 'Resource',
     editPathPrefix: '/dashboard/resource',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',

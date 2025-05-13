@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import * as React from "react";
 import Calendar from "@fullcalendar/react";
@@ -18,36 +18,38 @@ const plugins = [
   timelinePlugin,
 ];
 
-export function CalendarPage({ view = "dayGridMonth", tasks = [], onTaskClick }) {
-  return (
-    <Card sx={{ overflowX: "auto" }}>
-      <Box sx={{ minWidth: "800px" }}>
-        <Calendar
-          plugins={plugins}
-          initialView={view}
-          headerToolbar={false}
-          height={800}
-          editable={false}
-          selectable={false}
-          events={tasks} // still required as `events`
-          eventClick={({ event }) => {
-            const task = {
-              id: event.id,
-              title: event.title,
-              start: event.start,
-              end: event.end,
-              ...event.extendedProps,
-            };
-            onTaskClick?.(task);
-          }}
-          // these are FullCalendar’s internal props — cannot rename
-          eventDisplay="block"
-          eventMinHeight={25}
-          dayMaxEventRows={3}
-          rerenderDelay={10}
-          weekends
-        />
-      </Box>
-    </Card>
-  );
-}
+export const CalendarPage = React.forwardRef(
+  ({ view = "dayGridMonth", tasks = [], onTaskClick }, ref) => {
+    return (
+      <Card sx={{ overflowX: "auto" }}>
+        <Box sx={{ minWidth: "800px" }}>
+          <Calendar
+            ref={ref} // ✅ pass the ref to FullCalendar
+            plugins={plugins}
+            initialView={view}
+            headerToolbar={false}
+            height={800}
+            editable={false}
+            selectable={false}
+            events={tasks}
+            eventClick={({ event }) => {
+              const task = {
+                id: event.id,
+                title: event.title,
+                start: event.start,
+                end: event.end,
+                ...event.extendedProps,
+              };
+              onTaskClick?.(task);
+            }}
+            eventDisplay="block"
+            eventMinHeight={25}
+            dayMaxEventRows={3}
+            rerenderDelay={10}
+            weekends
+          />
+        </Box>
+      </Card>
+    );
+  }
+);

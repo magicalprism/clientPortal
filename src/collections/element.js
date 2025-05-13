@@ -1,6 +1,7 @@
 export const element = {
   name: 'element',
   label: 'Elements',
+  singularLabel: 'Element',
   editPathPrefix: '/dashboard/element',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
@@ -47,7 +48,7 @@ export const element = {
     },
 
     {
-      name: 'page_folder_id',
+      name: 'folder_id',
       is_folder: true,
       label: 'Primary Content Folder',
       type: 'media',
@@ -194,6 +195,22 @@ export const element = {
         linkTo: '/dashboard/contact' // or dynamically derive from config
       }, 
     },
+
+    {
+      name: 'section',
+      label: 'Sections',
+      type: 'repeater',
+      titleField: 'title',   // customizable title field
+      contentField: 'content',  // customizable content field
+      tab: 'Meta',
+      relation: {
+        table: 'section',
+        labelField: 'title',
+        sourceKey: 'id',            // 👈 element.id (the parent)
+        targetKey: 'element_id',
+      }
+    },
+    
 
     {
       name: 'tags',

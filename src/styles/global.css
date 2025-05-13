@@ -185,3 +185,13 @@ html {
 	}
   }
   
+  /*Tip Tap Editor*/
+  .tiptap {
+	min-height: 220px;
+	max-height: 340px;
+	overflow-y: auto;
+	padding: 8px;
+	line-height: 1.5;
+	font-size: 0.95rem;
+  }
+  

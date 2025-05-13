@@ -105,7 +105,7 @@ export const dashboardConfig = {
 				{
 					key: "media",
 					title: "Media & Files",
-					icon: "file-storage",
+					icon: "aperture",
 					items: [
 						{ key: "media", title: "List media", href: paths.dashboard.media.list },
 						{ key: "media:create", title: "Create media", href: paths.dashboard.media.create },

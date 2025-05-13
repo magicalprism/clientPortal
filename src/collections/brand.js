@@ -2,7 +2,8 @@
 //All primary should coordinate and secondary should be the reverse colors so we can utlize dark mode and light mode
 export const brand = {
   name: 'brand',
-  label: 'Brand',
+  label: 'Brands',
+  singularLabel: 'Brand',
   editPathPrefix: '/dashboard/brand',
   brandBoard: { enabled: true },
   showEditButton: true, // ✅ just a UI toggle

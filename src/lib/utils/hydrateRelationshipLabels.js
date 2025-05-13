@@ -33,7 +33,16 @@ export function hydrateRelationshipLabels(record, config) {
         }));
       }
     }
-  });
+
+  if (field.type === 'repeater' && Array.isArray(hydrated[field.name])) {
+    const labelField = field.relation?.labelField || 'title';
+    hydrated[`${field.name}_details`] = hydrated[field.name].map((item) => ({
+      id: item.id,
+      [labelField]: item[labelField],
+      ...item,
+    }));
+  }
+});
 
   return hydrated;
 }

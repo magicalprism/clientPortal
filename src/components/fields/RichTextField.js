@@ -63,6 +63,7 @@ export const RichTextField = ({ value = '', editable = false, onChange = () => {
           variant="body2"
           component="div"
           className="tiptap"
+          
           sx={{ whiteSpace: 'normal' }}
           dangerouslySetInnerHTML={{ __html: value }}
         />

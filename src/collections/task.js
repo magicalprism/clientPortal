@@ -55,6 +55,7 @@ export const task = {
           type: 'relationship',
           group: 'Primary', 
           tab: 'Details',
+          defaultToCurrentUser: true,
           relation: {
             table: 'contact',
             labelField: 'title',
@@ -69,7 +70,35 @@ export const task = {
           includeInViews: ['default', 'edit'], // <== Ensure edit is included
         },
         
-        
+        {
+          name: 'parent_id',
+          label: 'Parent Project',
+          group: 'Project Info',
+          tab: 'Overview', 
+          type: 'relationship',
+          relation: {
+            table: 'task',
+            labelField: 'title',
+            linkTo: '/dashboard/task', // or dynamically derive from config
+            filter: { company_id: '{{record.company_id}}' }
+          }
+        },
+
+        {
+          name: 'company_id',
+          label: 'Company',
+          group: 'Project Info',
+          tab: 'Overview', 
+          type: 'relationship',
+          showInTable: true,
+      
+          relation: {
+            table: 'company',
+            labelField: 'title',
+            linkTo: '/dashboard/company', // or dynamically derive from config
+            filter: { is_client: 'true' }
+          }
+        },
         
         //Meta
   
@@ -79,6 +108,20 @@ export const task = {
       type: 'richText',
       group: 'Primary', 
       tab: 'Details',
+
+    },
+    {
+      name: 'task_type',
+      label: 'Type',
+      type: 'select',
+      group: 'Primary', 
+      tab: 'Details',
+        options: [
+          { value: 'task', label: 'Task' },
+          { value: 'meeting', label: 'Meeting' },
+          { value: 'error', label: 'Error' },
+          { value: 'unavailable', label: 'Unavailable' },
+        ],
 
     },
     
@@ -125,6 +168,7 @@ export const task = {
       type: 'relationship',
       group: 'General',
       tab: 'Meta',
+      defaultToCurrentUser: true,
       relation: {
         table: 'contact',
         labelField: 'title',
@@ -146,6 +190,24 @@ export const task = {
       ]
     },
     {
+      name: 'task_type',
+      type: 'select',
+      label: 'Type',
+      defaultValueByView: {
+        table: 'task',
+        calendar: 'record',
+        checklist: 'meeting'
+      },
+      options: [
+        { value: 'task', label: 'Task' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'error', label: 'Error' },
+        { value: 'unavailable', label: 'Unavailable' },
+      ],
+      excludeFromViews: ['checklist']
+    },
+
+    {
       name: 'sort',
       type: 'select',
       label: 'Sort',
@@ -153,7 +215,29 @@ export const task = {
         { value: 'due_date:asc', label: 'Due date (oldest first)' },
         { value: 'due_date:desc', label: 'Due date (newest first)' },
       ],
-      defaultValue: 'due_date:asc'
-    }
+      defaultValue: 'due_date:asc',
+      excludeFromViews: ['calendar', 'checklist']
+    },
+    {
+      name: 'assigned_id',
+      type: 'relationship',
+      label: 'Assigned To',
+      defaultToCurrentUser: true,
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+
+      }
+    },
+    {
+      name: 'company_id',
+      type: 'relationship',
+      label: 'Company',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        filter: { is_client: true } // optional: filters options
+      }
+    },
   ]
 };
