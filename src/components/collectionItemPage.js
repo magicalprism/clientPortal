@@ -99,7 +99,7 @@ const handleFieldChange = (fieldOrName, value) => {
   const field = typeof fieldOrName === 'object' ? fieldOrName : 
     config?.fields?.find(f => f.name === fieldOrName) || { name: fieldOrName };
   
-  console.log(`✏️ Change in "${fieldName}":`, value);
+
 
   // Special handling for multiRelationship fields
   if (field.type === 'multiRelationship') {
@@ -117,11 +117,7 @@ const handleFieldChange = (fieldOrName, value) => {
         [`${fieldName}_details`]: value.details,
       }));
       
-      // Log the update for debugging
-      console.log(`✏️ MultiRelationship field "${fieldName}" updated with:`, {
-        ids: value.ids,
-        details: value.details
-      });
+     
     } else if (Array.isArray(value)) {
       // Handle array format with just IDs
       setLocalRecord(prev => ({
@@ -129,8 +125,7 @@ const handleFieldChange = (fieldOrName, value) => {
         [fieldName]: value,
       }));
       
-      // Log the update for debugging
-      console.log(`✏️ MultiRelationship field "${fieldName}" updated with array:`, value);
+     
     }
     
     // Also trigger saveRecord to autosave if configured to do so
@@ -146,7 +141,7 @@ const handleFieldChange = (fieldOrName, value) => {
   if (field.type === 'select' || field.type === 'status') {
     // Store the complete value/label object for UI display
     // The actual database save in saveRecord will extract just the value
-    console.log(`✏️ Select/status field "${field.name}" changed:`, value);
+ 
     updateLocalValue(field.name, value);
     return;
   }
@@ -170,7 +165,7 @@ const handleFieldChange = (fieldOrName, value) => {
     
   
   const startEdit = (fieldName, currentValue) => {
-    console.log(`✏️ Start editing "${fieldName}"`);
+  
     setEditingField(fieldName);
     setTempValue(currentValue ?? '');
   };
@@ -210,13 +205,13 @@ const handleFieldChange = (fieldOrName, value) => {
                     const isBasicTextField = ![
                       'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                       'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                      'select', 'color', 'custom',
+                      'select', 'color', 'custom', 
                     ].includes(field.type);
 
                     const isTwoColumn = !isModal && !isSmallScreen;
 
                     if (!field || typeof field !== 'object') {
-                      console.warn('⚠️ Skipping invalid field:', field);
+                     
                       return null;
                     }
 
@@ -267,7 +262,7 @@ const handleFieldChange = (fieldOrName, value) => {
                     }
 
                     return (
-                      <Grid item xs={12}  key={field.name}>
+                      <Grid item xs={12}  key={field.name} >
                         <Box
                              sx={{
                               display: 'flex',

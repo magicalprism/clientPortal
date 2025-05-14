@@ -6,6 +6,8 @@ import { Timer as TimerIcon, StopCircle, PlayCircle } from '@phosphor-icons/reac
 import { useTaskTimer } from '@/components/fields/time/timer/TimeTrackerContext';
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
+import { createClient } from '@/lib/supabase/browser';
+
 
 function formatElapsed(seconds) {
   const h = Math.floor(seconds / 3600).toString().padStart(2, '0');
@@ -15,41 +17,93 @@ function formatElapsed(seconds) {
 }
 
 export function TaskTimerWidget() {
-  const { currentTask, isRunning, startTime, stopTimer } = useTaskTimer();
+  const { currentTask, isRunning, startTime, stopTimer, getElapsedForTask, startTimer } = useTaskTimer();
   const { openModal } = useModal();
-  const [elapsed, setElapsed] = useState(0);
+  const [elapsed, setElapsed] = useState(() => {
+  return currentTask?.id ? getElapsedForTask(currentTask.id) : 0;
+});
   const taskConfig = collections.task;
+  const supabase = createClient();
+  
 
-  useEffect(() => {
-    if (!isRunning || !startTime) return;
-    const interval = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - new Date(startTime)) / 1000));
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [isRunning, startTime]);
-
-  const handleStop = () => {
+const handleStop = async () => {
     const stoppedTask = stopTimer();
-    // Optional: Persist to Supabase here
-    console.log('⏹️ Stopped task:', stoppedTask);
+
+    if (!stoppedTask?.id) {
+      console.warn('⚠️ No task ID found in stoppedTask:', stoppedTask);
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('task')
+        .update({
+          duration: stoppedTask.duration,
+          end_time: stoppedTask.endTime,
+        })
+        .eq('id', stoppedTask.id);
+
+      if (error) {
+        console.error('❌ Supabase update error:', error);
+      } else {
+        console.log('✅ Task successfully updated in Supabase:', stoppedTask.duration);
+      }
+    } catch (err) {
+      console.error('🚨 Unexpected error during Supabase update:', err);
+    }
   };
 
-  const handleClick = () => {
+useEffect(() => {
+  if (!isRunning || !startTime || !currentTask?.id) return;
+
+  const interval = setInterval(() => {
+    setElapsed(getElapsedForTask(currentTask.id));
+  }, 1000);
+
+  return () => clearInterval(interval);
+}, [isRunning, startTime, currentTask?.id, getElapsedForTask]);
+
+
+
+
+
+
+const handleClick = async () => {
     if (isRunning && currentTask) {
-      return openModal('edit', {
+      openModal('edit', {
         config: taskConfig,
         defaultValues: currentTask
       });
+      return;
     }
-    return openModal('create', {
-      config: taskConfig,
-      defaultValues: {
-        title: '',
-        status: 'in_progress',
-        start_time: new Date().toISOString()
+
+    try {
+      const { data: newTask, error } = await supabase
+        .from('task')
+        .insert({
+          title: 'Untitled Task',
+          status: 'in_progress',
+          start_time: new Date().toISOString(),
+          duration: 0
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('❌ Failed to create task:', error);
+        return;
       }
-    });
+
+      startTimer(newTask);
+      openModal('edit', {
+        config: taskConfig,
+        defaultValues: newTask
+      });
+    } catch (err) {
+      console.error('🚨 Error creating task:', err);
+    }
   };
+
 
   return (
     <Box
@@ -79,6 +133,7 @@ export function TaskTimerWidget() {
           <Tooltip title="Stop Timer">
             <IconButton
               onClick={(e) => {
+                console.log('🛑 Stop button clicked');
                 e.stopPropagation();
                 handleStop();
               }}

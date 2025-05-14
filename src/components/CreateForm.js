@@ -9,7 +9,7 @@ import { ModalMultiRelationshipField } from '@/components/fields/relationships/m
 import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
 import { extractSelectValue } from '@/components/fields/SelectField';
 
-const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = false }) => {
+const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = false, refreshRecord }) => {
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
@@ -247,7 +247,7 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
                 ) : (
                   <FieldRenderer
                     field={field}
-                    value={currentValue === undefined ? '' : currentValue || ''}
+                    value={typeof formData[field.name] !== 'undefined' ? formData[field.name] : ''}
                     record={formData}
                     config={config}
                     mode="create"

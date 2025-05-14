@@ -12,7 +12,10 @@ export function TaskTimerProvider({ children }) {
     const saved = localStorage.getItem('task-timer');
     if (saved) {
       const { task, start, running } = JSON.parse(saved);
-      setCurrentTask(task);
+      setCurrentTask({
+        ...task,
+        initialDuration: Number(task.initialDuration ?? task.duration ?? 0) // 👈 ensure initialDuration is always there
+      });
       setStartTime(start ? new Date(start) : null);
       setIsRunning(running);
     }
@@ -30,34 +33,54 @@ export function TaskTimerProvider({ children }) {
   }, [currentTask, startTime, isRunning]);
 
   const startTimer = useCallback((task) => {
-    setCurrentTask(task);
-    setStartTime(new Date());
-    setIsRunning(true);
-  }, []);
+  setCurrentTask({
+    ...task,
+    initialDuration: Number(task.duration || 0) // ⏱️ make sure duration is included
+  });
+  setStartTime(new Date());
+  setIsRunning(true);
+}, []);
 
-  const stopTimer = useCallback(() => {
-    const endTime = new Date();
-    const duration = startTime ? Math.floor((endTime - new Date(startTime)) / 1000) : 0;
+const stopTimer = useCallback(() => {
+  const endTime = new Date();
+  const elapsed = startTime ? Math.floor((endTime - new Date(startTime)) / 1000) : 0;
 
-    const stoppedTask = {
-      ...currentTask,
-      duration,
-      endTime: endTime.toISOString(),
-      startTime: startTime?.toISOString()
-    };
+  const updatedTask = {
+    ...currentTask,
+    duration: (currentTask?.initialDuration || 0) + elapsed, // ✅ use correct base
+    endTime: endTime.toISOString(),
+    startTime: startTime?.toISOString()
+  };
 
-    setCurrentTask(null);
-    setStartTime(null);
-    setIsRunning(false);
-    localStorage.removeItem('task-timer');
+  setStartTime(null);
+  setIsRunning(false);
+  setCurrentTask(updatedTask);
 
-    return stoppedTask;
-  }, [currentTask, startTime]);
+  localStorage.setItem(
+    'task-timer',
+    JSON.stringify({
+      task: updatedTask,
+      start: null,
+      running: false
+    })
+  );
 
-  const getElapsedForTask = useCallback((taskId) => {
-    if (currentTask?.id !== taskId || !startTime) return 0;
-    return Math.floor((Date.now() - new Date(startTime)) / 1000);
-  }, [currentTask, startTime]);
+  return updatedTask;
+}, [currentTask, startTime]);
+
+
+
+const getElapsedForTask = useCallback((taskId) => {
+  if (currentTask?.id !== taskId) return 0;
+
+  const base = currentTask.initialDuration || 0;
+
+  if (!startTime) return base;
+
+  const activeElapsed = Math.floor((Date.now() - new Date(startTime)) / 1000);
+  return base + activeElapsed;
+}, [currentTask, startTime]);
+
 
   return (
     <TaskTimerContext.Provider

@@ -175,7 +175,7 @@ export function SimpleEditor({
         </Toolbar>
 
         <div className="content-wrapper">
-          <EditorContent editor={editor} className="simple-editor-content" style={{ minHeight: 200 }} />
+          <EditorContent editor={editor} className="simple-editor-content" style={{ minHeight: 400 }} />
           
         </div>
       </div>
