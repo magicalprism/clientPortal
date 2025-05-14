@@ -54,7 +54,12 @@ const handleStop = async () => {
   };
 
 useEffect(() => {
-  if (!isRunning || !startTime || !currentTask?.id) return;
+  if (!currentTask?.id) return;
+
+  // ⏱ Immediately update elapsed as soon as we get a valid task
+  setElapsed(getElapsedForTask(currentTask.id));
+
+  if (!isRunning || !startTime) return;
 
   const interval = setInterval(() => {
     setElapsed(getElapsedForTask(currentTask.id));
@@ -65,44 +70,48 @@ useEffect(() => {
 
 
 
-
-
-
 const handleClick = async () => {
-    if (isRunning && currentTask) {
-      openModal('edit', {
-        config: taskConfig,
-        defaultValues: currentTask
-      });
+  if (isRunning && currentTask) {
+    // 🟢 If already running, open modal for current task
+    openModal('edit', {
+      config: taskConfig,
+      defaultValues: currentTask
+    });
+    return;
+  }
+
+  try {
+    // 🟡 Create a brand new task
+    const { data: insertedTask, error: insertError } = await supabase
+      .from('task')
+      .insert({
+        title: 'Untitled Task',
+        status: 'in_progress',
+        start_time: new Date().toISOString(),
+        duration: 0
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error('❌ Failed to insert task:', insertError);
       return;
     }
 
-    try {
-      const { data: newTask, error } = await supabase
-        .from('task')
-        .insert({
-          title: 'Untitled Task',
-          status: 'in_progress',
-          start_time: new Date().toISOString(),
-          duration: 0
-        })
-        .select()
-        .single();
+    // ✅ Start the timer with the freshly created task
+    startTimer(insertedTask);
 
-      if (error) {
-        console.error('❌ Failed to create task:', error);
-        return;
-      }
+    // ✅ Open modal with that same task
+    openModal('edit', {
+      config: taskConfig,
+      defaultValues: insertedTask
+    });
+  } catch (err) {
+    console.error('🚨 Error creating or starting task:', err);
+  }
+};
 
-      startTimer(newTask);
-      openModal('edit', {
-        config: taskConfig,
-        defaultValues: newTask
-      });
-    } catch (err) {
-      console.error('🚨 Error creating task:', err);
-    }
-  };
+
 
 
   return (

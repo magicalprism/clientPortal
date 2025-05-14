@@ -12,23 +12,18 @@ export function TimeTrackerField({ task }) {
   const supabase = createClient();
 
 useEffect(() => {
-  let interval = null;
+  const updateElapsed = () => {
+    setLocalElapsed(getElapsedForTask(task.id));
+  };
+
+  updateElapsed(); // ✅ Always sync once on mount
 
   if (currentTask?.id === task.id && isRunning) {
-    const updateElapsed = () => {
-      setLocalElapsed(getElapsedForTask(task.id));
-    };
-
-    updateElapsed(); // Initial sync
-    interval = setInterval(updateElapsed, 1000);
-  } else {
-    setLocalElapsed(getElapsedForTask(task.id)); // Stop state fallback
+    const interval = setInterval(updateElapsed, 1000);
+    return () => clearInterval(interval);
   }
-
-  return () => {
-    if (interval) clearInterval(interval);
-  };
 }, [currentTask?.id, isRunning, task.id, getElapsedForTask]);
+
 
 
 
@@ -58,46 +53,50 @@ useEffect(() => {
       </Typography>
       {isActive ? (
         <Button
-          size="small"
-          color="error"
-          onClick={async () => {
-            const stoppedTask = stopTimer();
+  size="small"
+  color="error"
+  onClick={async () => {
+    // 🛠 Immediately set final elapsed before stopping
+    const finalElapsed = getElapsedForTask(task.id);
+    setLocalElapsed(finalElapsed);
 
-            if (!stoppedTask?.id) {
-              console.warn('⚠️ No task ID found in stoppedTask:', stoppedTask);
-              return;
-            }
+    const stoppedTask = stopTimer();
 
-            const { data: existingTask, error: fetchError } = await supabase
-              .from('task')
-              .select('duration')
-              .eq('id', stoppedTask.id)
-              .single();
+    if (!stoppedTask?.id) {
+      console.warn('⚠️ No task ID found in stoppedTask:', stoppedTask);
+      return;
+    }
 
-            if (fetchError) {
-              console.error('❌ Error fetching task:', fetchError);
-              return;
-            }
+    const { data: existingTask, error: fetchError } = await supabase
+      .from('task')
+      .select('duration')
+      .eq('id', stoppedTask.id)
+      .single();
 
+    if (fetchError) {
+      console.error('❌ Error fetching task:', fetchError);
+      return;
+    }
 
-            const { error: updateError } = await supabase
-              .from('task')
-              .update({
-                duration: stoppedTask.duration, // ✅ already includes total
-                end_time: stoppedTask.endTime,
-              })
-              .eq('id', stoppedTask.id);
+    const { error: updateError } = await supabase
+      .from('task')
+      .update({
+        duration: stoppedTask.duration,
+        end_time: stoppedTask.endTime,
+      })
+      .eq('id', stoppedTask.id);
 
+    if (updateError) {
+      console.error('❌ Failed to update duration in Supabase:', updateError);
+    } else {
+      console.log('✅ Timer duration saved from modal:', stoppedTask.duration);
+    }
+  }}
+  startIcon={<Stop size={16} />}
+>
+  Stop
+</Button>
 
-            if (updateError) {
-              console.error('❌ Failed to update duration in Supabase:', updateError);
-            } else {
-              console.log('✅ Timer duration saved from modal:', stoppedTask.duration);
-            }
-          }}
-          startIcon={<Stop size={16} />}>
-          Stop
-        </Button>
 
       ) : (
         <Button

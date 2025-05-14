@@ -45,9 +45,11 @@ const stopTimer = useCallback(() => {
   const endTime = new Date();
   const elapsed = startTime ? Math.floor((endTime - new Date(startTime)) / 1000) : 0;
 
+  const baseDuration = Number(currentTask?.initialDuration ?? currentTask?.duration ?? 0); // ✅ fallback to currentTask.duration
+
   const updatedTask = {
     ...currentTask,
-    duration: (currentTask?.initialDuration || 0) + elapsed, // ✅ use correct base
+    duration: baseDuration + elapsed,
     endTime: endTime.toISOString(),
     startTime: startTime?.toISOString()
   };
@@ -67,6 +69,7 @@ const stopTimer = useCallback(() => {
 
   return updatedTask;
 }, [currentTask, startTime]);
+
 
 
 
