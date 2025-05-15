@@ -1,4 +1,4 @@
-export const getBrandColors = (brand) => [
+export const getBrandColors = (brand = {}) => [
     { label: 'Primary', value: brand.primary_color },
     { label: 'Secondary', value: brand.secondary_color },
     { label: 'Accent 1', value: brand.primary_accent_color },
@@ -15,7 +15,7 @@ export const getBrandColors = (brand) => [
     { label: 'Alt 6', value: brand.alt_color_6 },
   ].filter(c => !!c.value);
   
-  export const getBrandFonts = (brand) => [
+  export const getBrandFonts = (brand = {}) => [
     {
       label: 'Primary Font',
       url: brand.primary_font_details?.url,
@@ -67,7 +67,7 @@ export const getBrandColors = (brand) => [
   ].filter(f => !!f.url);
   
   
-  export const getBrandLogos = (brand) => [
+  export const getBrandLogos = (brand = {}) => [
     {
       label: 'Primary Square Logo',
       url: brand.primary_square_logo_details?.url,

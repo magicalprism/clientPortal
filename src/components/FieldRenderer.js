@@ -88,15 +88,23 @@ export const FieldRenderer = ({
       break;
     }
 
-    case 'multiRelationship':
-      content = editable ? (
-        <MultiRelationshipField
-          field={{ ...field, parentId: record.id, parentTable: config?.name }}  // Added parentTable
-          value={Array.isArray(record?.[field.name]) ? record[field.name] : []}
-          onChange={handleUpdate}
-        />
-      ) : null;
-      break;
+    case 'multiRelationship': {
+  const valueArray =
+    Array.isArray(record?.[field.name])
+      ? record[field.name]
+      : record?.[field.name] === null
+      ? []
+      : [];
+
+  content = editable ? (
+    <MultiRelationshipField
+      field={{ ...field, parentId: record?.id || undefined, parentTable: config?.name }}
+      value={valueArray}
+      onChange={handleUpdate}
+    />
+  ) : null;
+  break;
+}
         
 
     case 'richText':
@@ -201,13 +209,17 @@ export const FieldRenderer = ({
 case 'date': {
   const isDueDate = field.name === 'due_date';
 
+  const normalizedDate = localValue
+    ? new Date(localValue).toISOString().split('T')[0]
+    : '';
+
   content = isEditMode ? (
     <Box display="flex" alignItems="center" gap={1}>
       <TextField
         fullWidth
         type="date"
         size="small"
-        value={localValue || ''}
+        value={normalizedDate}
         onChange={(e) => handleUpdate(e.target.value)}
         InputLabelProps={{ shrink: true }}
       />
@@ -226,6 +238,7 @@ case 'date': {
   );
   break;
 }
+
 
       case 'boolean':
         content = isEditMode ? (
@@ -299,11 +312,11 @@ case 'status': {
 }
       
       
-      case 'color':
+    case 'color':
         content = isEditMode ? (
           <ColorField
-            value={localValue || '#000000'}
-            onChange={(value) => handleChange(field.name, value)}
+            value={localValue ?? '#000000'} // prevent null input
+            onChange={(value) => handleUpdate(value)}
           />
         ) : (
           <Box
@@ -311,14 +324,15 @@ case 'status': {
               width: 24,
               height: 24,
               borderRadius: '50%',
-              backgroundColor: localValue || '#000000',
+              backgroundColor: localValue ?? '#000000',
               border: '1px solid #ccc',
               display: 'inline-block',
             }}
-            title={localValue}
+            title={localValue ?? 'No color'}
           />
         );
         break;
+
 
 
 

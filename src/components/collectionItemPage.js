@@ -183,7 +183,7 @@ const handleFieldChange = (fieldOrName, value) => {
 
   return (
     <>
-      <Card>
+      <Card  elevation={0}>
         <CardContent>
           <Tabs
             value={activeTab}
@@ -203,7 +203,7 @@ const handleFieldChange = (fieldOrName, value) => {
                   {groupName}
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <Grid container spacing={4}>
+                <Grid container spacing={3}>
                   {fields.map((field) => {
                     const value = localRecord?.[field.name];
                     const isSystemReadOnly = ['updated_at', 'created_at'].includes(field.name);
@@ -278,7 +278,8 @@ const handleFieldChange = (fieldOrName, value) => {
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              height: '100%', // or a fixed px value like '120px'
+                              height: '100%', // or a fixed px value like '120px',
+                              
                             }}
                           >
                           <Box >
@@ -292,7 +293,7 @@ const handleFieldChange = (fieldOrName, value) => {
                             )}
                           </Box>
 
-                          <Box>
+                          <Box >
                             {isEditing && isBasicTextField ? (
                               <TextField
                                 fullWidth
@@ -328,7 +329,11 @@ const handleFieldChange = (fieldOrName, value) => {
                                   <CircularProgress size={16} />
                                 ) : (
                                   <FieldRenderer
-                                    value={field.type === 'media' ? localRecord[`${field.name}_details`] || value : value}
+                                    value={
+                                      field.type === 'media'
+                                        ? localRecord?.[`${field.name}_details`] ?? value
+                                        : value
+                                    }
                                     field={field}
                                     record={localRecord}
                                     config={config}

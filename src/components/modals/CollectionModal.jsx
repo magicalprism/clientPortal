@@ -64,47 +64,54 @@ export default function CollectionModal({
     return result;
   };
 
-  const fetchTagsForRecord = async (recordId) => {
-    if (!recordId) return null;
-    const tagsField = config.fields.find(f =>
-      f.type === 'multiRelationship' &&
-      f.name === 'tags' &&
-      f.relation?.junctionTable
-    );
-    if (!tagsField) return null;
+ const fetchMultiRelationshipsForRecord = async (config, recordId) => {
+  const multiRelFields = config.fields.filter(
+    (f) => f.type === 'multiRelationship' && f.relation?.junctionTable
+  );
 
+  const result = {};
+
+  for (const field of multiRelFields) {
     const {
-      junctionTable = 'category_task',
-      sourceKey = `${config.name}_id`,
-      targetKey = 'category_id',
-      table = 'category',
-      labelField = 'title'
-    } = tagsField.relation;
+      name,
+      relation: {
+        junctionTable,
+        sourceKey = `${config.name}_id`,
+        targetKey,
+        table,
+        labelField = 'title'
+      }
+    } = field;
 
     const { data: junctionData, error: junctionError } = await supabase
       .from(junctionTable)
       .select(targetKey)
       .eq(sourceKey, recordId);
 
-    if (junctionError) return null;
+    if (junctionError) continue;
 
-    const tagIds = junctionData.map(row => row[targetKey]).filter(Boolean);
-    if (tagIds.length === 0) {
-      return { tags: [], tags_details: [] };
+    const relatedIds = junctionData.map(row => row[targetKey]).filter(Boolean);
+
+    if (relatedIds.length === 0) {
+      result[name] = [];
+      result[`${name}_details`] = [];
+      continue;
     }
 
-    const { data: tagDetails, error: detailsError } = await supabase
+    const { data: relatedDetails, error: detailsError } = await supabase
       .from(table)
       .select(`id, ${labelField}`)
-      .in('id', tagIds);
+      .in('id', relatedIds);
 
-    if (detailsError) return null;
+    if (detailsError) continue;
 
-    return {
-      tags: tagIds.map(String),
-      tags_details: tagDetails
-    };
-  };
+    result[name] = relatedIds.map(String);
+    result[`${name}_details`] = relatedDetails;
+  }
+
+  return result;
+};
+
 
   useEffect(() => {
     if (!isCreating && recordId) {
@@ -125,8 +132,9 @@ export default function CollectionModal({
           }
 
           const parsedRecord = parseTagsField(data);
-          const tagsData = await fetchTagsForRecord(recordId);
-          setFetchedRecord(tagsData ? { ...parsedRecord, ...tagsData } : parsedRecord);
+          const multiRelData = await fetchMultiRelationshipsForRecord(config, recordId);
+          setFetchedRecord({ ...parsedRecord, ...multiRelData });
+
         } catch (err) {
           setFetchError(err.message);
         } finally {
@@ -184,7 +192,7 @@ export default function CollectionModal({
       }}
     >
       <DialogContent sx={{ p: 3 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pt: 2, pl: 3 }}>
           <Box>
             <Typography variant="h6">
               {config.label || config.name}
@@ -216,7 +224,7 @@ export default function CollectionModal({
         ) : (
           <>
             {isLoading ? (
-              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'center', p: 4, }}>
                 <CircularProgress />
               </Box>
             ) : (

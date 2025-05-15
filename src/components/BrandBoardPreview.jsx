@@ -17,6 +17,8 @@ import {
 import { getBrandColors, getBrandFonts, getBrandLogos } from '@/data/brandBoardFields';
 
 export const BrandBoardPreview = ({ brand }) => {
+  if (!brand || typeof brand !== 'object') return null;
+
   const [mode, setMode] = useState('light');
   const colors = getBrandColors(brand);
   const fonts = getBrandFonts(brand);

@@ -26,7 +26,11 @@ function FilterPopoverContent({ filter, value, setValue }) {
 
         const { data, error } = await query;
         if (!error && data) {
-          setOptions(data);
+          const labelField = filter.relation.labelField;
+          const sortedData = [...data].sort((a, b) =>
+            (a[labelField] || '').localeCompare(b[labelField] || '')
+          );
+          setOptions(sortedData);
         }
       }
     };

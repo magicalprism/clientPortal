@@ -12,6 +12,13 @@ export const element = {
         subtitleField: 'status',
         extraFields: []
       }, 
+  defaultView: 'table',
+  views: {
+    table: {
+      label: 'Table View',
+      component: 'TaskTableView'
+    },
+  },
   fields: [   
     // Overview
     { 
@@ -24,33 +31,8 @@ export const element = {
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
-     {
-      name: 'status',
-      type: 'select',
-      label: 'Status',
-      group: 'Primary', 
-      tab: 'Meta', 
-      defaultValue: 'todo',
-      options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'archived', label: 'Archived' },
-      ]
-    },
-    {
-      name: 'parent_id',
-      label: 'Parent',
-      group: 'General', 
-      tab: 'Meta',
-      type: 'relationship',
-      relation: {
-        table: 'element', //usually current collection or pivot table
-        labelField: 'title',
-        linkTo: '/dashboard/element', // or dynamically derive from config
-        filter: { company_id: '{{record.company_id}}' }
-      }
-    },
+
+
 
      {
       name: 'company_id',
@@ -67,45 +49,8 @@ export const element = {
         filter: { is_client: 'true' }
       }
     },
-     {
-      name: 'project_id',
-      type: 'relationship',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
-      relation: {
-        table: 'project',
-        labelField: 'title',
+   
 
-      }
-    },
-    
-    { 
-      name: 'created_at', 
-      label: 'Created', 
-      type: 'timestamp',
-      group: 'General', 
-      tab: 'Meta'
-    },
-    { 
-      name: 'updated_at', 
-      label: 'Updated At', 
-      type: 'timestamp' , 
-      group: 'General', 
-      tab: 'Meta'
-    },
-    { 
-      name: 'author_id', 
-      label: 'Author', 
-      type: 'relationship',
-      group: 'General',
-      tab: 'Meta',
-      relation: {
-        table: 'contact',
-        labelField: 'title',
-        linkTo: '/dashboard/contact' // or dynamically derive from config
-      }, 
-    },
 
     {
       name: 'tags',
@@ -167,35 +112,6 @@ export const element = {
       tab: 'Overview'
     },
 
-    {
-      name: 'company_id',
-      label: 'Company',
-      group: 'Details',
-      tab: 'Overview', 
-      type: 'relationship',
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
-      }
-    },
-
-    {
-      name: 'project_id',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
-      type: 'relationship',
-      showInTable: true,
-      relation: {
-        table: 'project',
-        labelField: 'title',
-        linkTo: '/dashboard/project', // or dynamically derive from config
-        filter: { company_id: '{{record.company_id}}' }
-      },
-      
-    },
 
     
 
@@ -209,7 +125,7 @@ export const element = {
       name: 'status',
       label: 'Stage',
       group: 'General',
-      type: 'select',
+      type: 'status',
       tab: 'Meta',
       showInTable: true,
       
@@ -240,13 +156,13 @@ export const element = {
 
     {
       name: 'is_template',
-      label: 'Is this a custom page or template?',
+      label: 'Is this a template?',
       type: 'boolean',
       group: 'General', 
       tab: 'Meta',
       options: [
-        { label: 'Custom', value: 'custom' },
-        { label: 'Template', value: 'single' }
+        { label: 'Custom', value: true },
+        { label: 'Template', value: false }
       ]
     }, 
     
@@ -260,7 +176,6 @@ export const element = {
         table: 'element', //usually current collection or pivot table
         labelField: 'title',
         linkTo: '/dashboard/element', // or dynamically derive from config
-        filter: { project_id: '{{record.project_id}}' }
       }
     },
     
@@ -291,22 +206,7 @@ export const element = {
       }, 
     },
 
-    {
-      name: 'tags',
-      label: 'Tags',
-      type: 'multiRelationship',
-      displayMode: 'tags',
-      group: 'General',
-      tab: 'Meta',
-      relation: {
-        table: 'category',
-        labelField: 'title',
-        linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
-        targetKey: 'category_id'
-      }
-    },
+   
 
     {
       name: 'resource_id',
@@ -318,8 +218,7 @@ export const element = {
       relation: {
         table: 'resource',
         labelField: 'title',
-        linkTo: '/dashboard/project', // or dynamically derive from config
-        filter: { type: 'element' }
+        linkTo: '/dashboard/resource', // or dynamically derive from config
       },
       
     },
@@ -328,7 +227,7 @@ export const element = {
   filters: [
     {
       name: 'status',
-      type: 'select',
+      type: 'status',
       label: 'Stage',
       options: [
         { label: 'Planning', value: 'plan' },

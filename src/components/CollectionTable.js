@@ -19,7 +19,7 @@ import { ViewButtons } from '@/components/buttons/ViewButtons';
 
 
 
-export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = false, parentColumns, columns: incomingColumns, expandedRowIds = new Set() }) => {
+export const CollectionTable = ({ config, refresh, data, rows, fieldContext = null, hideHead = false, parentColumns, columns: incomingColumns, expandedRowIds = new Set() }) => {
 
   const router = useRouter();
   const { openModal } = useModal();
@@ -145,10 +145,16 @@ export const CollectionTable = ({ config, rows, fieldContext = null, hideHead = 
           <CollectionTable
             config={config}
             rows={children}
+            expandedRowIds={expandedRowIds}
+            rowSx={{
+              '& .MuiTableCell-root': { borderBottom: '1px solid #e0e0e0' },
+              '& .MuiTableCell-root > .MuiBox-root': { p: '0 !important', m: 0 }
+            }}
+            onDeleteSuccess={refresh} // ✅ REFRESH ON DELETE
+            onEditSuccess={refresh}   // ✅ REFRESH ON EDIT (if supported in modals)
             fieldContext={fieldContext}
             hideHead
             indentLevel={5}
-            expandedRowIds={expandedRowIds}
           />
 
 

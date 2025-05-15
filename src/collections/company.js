@@ -11,14 +11,7 @@ export const company = {
             label: 'Table View',
             component: 'PrimaryTableView'
           },
-            page: { 
-              label: 'Page View', 
-              component: 'PageView' 
-            },
-            kanban: {
-               label: 'Kanban View', 
-               component: 'KanbanView' 
-              }
+
         },
         //Quickview
         quickView: {
@@ -26,8 +19,7 @@ export const company = {
           imageField: 'thumbnail_id',
           titleField: 'title',
           subtitleField: 'status',
-          descriptionField: 'site_tagline',
-          extraFields: ['url', 'cloudflare_url']
+
         }, 
     fields: [   
       // Overview
@@ -41,17 +33,30 @@ export const company = {
         showInTable: true,
         description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
       },
+      {
+      name: 'thumbnail_id',
+      label: 'Logo Mark',
+      type: 'media',
+      relation: {
+        table: 'media',
+        labelField: 'url'  // or 'alt' if you want something different
+      },
+        group: 'Details',
+        tab: 'Overview', 
+    },
+    
     {
       name: 'status',
-      type: 'select',
+      type: 'status',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: 'todo',
+      defaultValue: 'in_progress',
       options: [
-        { value: 'todo', label: 'To do' },
+        { value: 'maintained', label: 'Maintained' },
+        { value: 'active', label: 'Active' },
         { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
+        { value: 'external', label: 'External' },
         { value: 'archived', label: 'Archived' },
       ]
     },
@@ -68,18 +73,7 @@ export const company = {
 
       }
     },
-     {
-      name: 'project_id',
-      type: 'relationship',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
-      relation: {
-        table: 'project',
-        labelField: 'title',
-
-      }
-    },
+     
     
     { 
       name: 'created_at', 
@@ -129,11 +123,15 @@ export const company = {
     filters: [
       {
         name: 'status',
-        type: 'select',
+        type: 'status',
         label: 'Status',
+        defaultValue: '',
         options: [
-          { value: 'active', label: 'Active' },
-          { value: 'archived', label: 'Archived' },
+           { value: 'maintained', label: 'Maintained' },
+        { value: 'active', label: 'Active' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'external', label: 'External' },
+        { value: 'archived', label: 'Archived' },
         ]
       },
       {

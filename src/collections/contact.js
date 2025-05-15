@@ -3,7 +3,6 @@ export const contact = {
     label: 'Contacts',
     singularLabel: 'Contact',
     editPathPrefix: '/dashboard/contact',
-    showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',
     defaultView: 'table',
         views: {
@@ -11,14 +10,7 @@ export const contact = {
             label: 'Table View',
             component: 'PrimaryTableView'
           },
-            page: { 
-              label: 'Page View', 
-              component: 'PageView' 
-            },
-            kanban: {
-               label: 'Kanban View', 
-               component: 'KanbanView' 
-              }
+
         },
         //Quickview
         quickView: {
@@ -26,47 +18,75 @@ export const contact = {
           imageField: 'thumbnail_id',
           titleField: 'title',
           subtitleField: 'status',
-          descriptionField: 'site_tagline',
-          extraFields: ['url', 'cloudflare_url']
+
         }, 
     fields: [   
       // Overview
-      { 
+            { 
         name: 'title', 
-        label: 'Title', 
+        label: 'Full Name', 
         group: 'Details',
         tab: 'Overview', 
-        clickable: true, 
-        openMode: 'full',  
+        clickable: true,  
         showInTable: true,
+        editable: false,
       },
+      { 
+        name: 'first_name', 
+        label: 'First Name', 
+        group: 'Details',
+        tab: 'Overview', 
+      },
+       { 
+        name: 'last_name', 
+        label: 'Last Name', 
+        group: 'Details',
+        tab: 'Overview', 
+      },
+      { 
+      name: 'thumbnail_id', 
+      label: 'Headshot', 
+      type: 'media',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        relation: {
+        table: 'media',
+        labelField: 'alt_text',
+        linkTo: 'url', // or dynamically derive from config
+      },
+      }, 
+    },
       { 
         name: 'email', 
         label: 'Email', 
         group: 'Details',
         tab: 'Overview', 
-        openMode: 'full',  
         showInTable: true,
       },
       { 
         name: 'role', 
         label: 'Role', 
+        type: 'select',
         group: 'Details',
         tab: 'Overview', 
-        openMode: 'full',  
-        showInTable: true,
-      },
+      options: [
+        { value: 'user', label: 'User' },
+        { value: 'superadmin', label: 'Super Admin' },
+        { value: 'staff', label: 'Archived' },
+      ]
+    },
      {
       name: 'status',
-      type: 'select',
+      type: 'status',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
       defaultValue: 'todo',
+      showInTable: true,
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
+        { value: 'client', label: 'Client' },
+        { value: 'team', label: 'Team' },
         { value: 'archived', label: 'Archived' },
       ]
     },
@@ -80,37 +100,44 @@ export const contact = {
         table: 'contact', //usually current collection or pivot table
         labelField: 'title',
         linkTo: '/dashboard/contact', // or dynamically derive from config
-        filter: { company_id: '{{record.company_id}}' }
       }
     },
 
      {
       name: 'company_id',
       label: 'Company',
+      type: 'multiRelationship',
       group: 'Details',
       tab: 'Overview', 
-      type: 'relationship',
-      showInTable: true,
-  
+      displayMode: 'tags', 
       relation: {
         table: 'company',
         labelField: 'title',
         linkTo: '/dashboard/company', // or dynamically derive from config
+        junctionTable: 'company_contact',
+        sourceKey: 'contact_id',
+        targetKey: 'company_id',
         filter: { is_client: 'true' }
       }
     },
      {
       name: 'project_id',
-      type: 'relationship',
       label: 'Project',
+      type: 'multiRelationship',     
       group: 'Details',
       tab: 'Overview', 
+      displayMode: 'tags',
       relation: {
         table: 'project',
         labelField: 'title',
+        linkTo: '/dashboard/project',
+        junctionTable: 'contact_project',
+        sourceKey: 'contact_id',
+        targetKey: 'project_id'
 
       }
     },
+   
     
     { 
       name: 'created_at', 
@@ -160,25 +187,40 @@ export const contact = {
     filters: [
       {
         name: 'status',
-        type: 'select',
+        type: 'status',
         label: 'Status',
         options: [  
-          { value: 'active', label: 'Active' },
+          { value: 'client', label: 'Client' },
+          { value: 'team', label: 'Team' },
           { value: 'archived', label: 'Archived' },
-      ]
+      ],
+      defaultValue: '',
       },
       {
         name: 'sort',
         type: 'select',
         label: 'Sort',
-        defaultValue: 'title:asc',
+        
         options: [
           { value: 'title:asc', label: 'Title (A–Z)' },
           { value: 'title:desc', label: 'Title (Z–A)' },
           { value: 'created_at:desc', label: 'Newest Created' },
           { value: 'created_at:asc', label: 'Oldest Created' }
-        ]
+        ],
+              defaultValue: 'due_date:asc',
+              excludeFromViews: ['calendar', 'checklist']
+
+      },
+       {
+      name: 'company_id',
+      label: 'Company',
+      type: 'relationship',
+      relation: {
+        table: 'company', //usually current collection or pivot table
+        labelField: 'title',
+        filter: { is_client: true } //temporary until I add all clients & contractors as users 
       }
+    },
       
       
     ]

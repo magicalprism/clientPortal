@@ -6,6 +6,7 @@ export const project = {
   showTimelineTab: true,
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
+  brandBoard: { enabled: true },
   defaultView: 'table',
   views: {
     table: {
@@ -81,7 +82,7 @@ export const project = {
       tab: 'Overview', 
       type: 'timezone',
     },
-    { name: 'show_on_front', label: 'Show on Front', group: 'Site Info', tab: 'Overview', },
+     { name: 'blog_public', label: 'Blog Public', group: 'Site Info', tab: 'Overview', type: 'boolean', },
     { name: 'admin_email', label: 'Admin Email', group: 'Site Info', tab: 'Overview', },
 
     {
@@ -100,18 +101,26 @@ export const project = {
       }
     },
   
-    
-    //TImeline
+
     { 
       name: 'start_date', 
       label: 'Start Date', 
       type: 'date',
-      group: 'Overview', 
-      tab: 'Timeline'
+      group: 'Site Info', 
+      tab: 'Overview', 
     },
 
     // Media
     //Thumbnails
+     {
+      name: 'brand_board_preview',
+      label: 'Brand Board Preview',
+      type: 'custom',
+      component: 'BrandBoardPreview',
+      group: 'Media',
+      tab: 'Brand'
+    },
+    
     {
       name: 'thumbnail_id',
       label: 'Thumbnail',
@@ -202,9 +211,7 @@ export const project = {
     },
     
     // Content
-    { name: 'content', label: 'Content', group: 'Content', tab: 'Content', fullWidth: true },
-    { name: 'categories', label: 'Categories', group: 'Content', type: 'json', tab: 'Content' },
-    { name: 'blog_public', label: 'Blog Public', group: 'Content', type: 'boolean', tab: 'Content' },
+
 
     //Team
     //Tasks
@@ -224,7 +231,7 @@ export const project = {
         filters: [
           {
             name: 'status',
-            type: 'select',
+            type: 'status',
             label: 'Status',
             options: ['todo', 'in-progress', 'done']
           },
@@ -248,7 +255,7 @@ export const project = {
       name: 'status',
       label: 'Status',
       group: 'General',
-      type: 'select',
+      type: 'status',
       tab: 'Meta',
       showInTable: true,
       width: 'auto',
@@ -306,7 +313,7 @@ export const project = {
   filters: [
     {
       name: 'status',
-      type: 'select',
+      type: 'status',
       label: 'Status',
       options: [
         { label: 'Pending', value: 'pending' },

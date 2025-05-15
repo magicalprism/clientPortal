@@ -13,8 +13,15 @@ export const brand = {
         imageField: 'thumbnail_id',
         titleField: 'title',
         subtitleField: 'status',
-        extraFields: ['brand_board', 'brand_folder', 'images_folder']
+
       }, 
+  defaultView: 'table',
+  views: {
+    table: {
+      label: 'Table View',
+      component: 'TaskTableView'
+    },
+  },
   fields: [
     { 
       name: 'title', 
@@ -55,17 +62,7 @@ export const brand = {
         sourceKey: 'brand_id',
         targetKey: 'project_id'
       },
-        filters: [
-          {
-            name: 'company_id',
-            type: 'relationship',
-            label: 'Company',
-            relation: {
-              table: 'company',
-              labelField: 'title'
-            }
-          }
-        ]
+
       },
 
     {
@@ -436,6 +433,20 @@ export const brand = {
         linkTo: '/dashboard/contact' // or dynamically derive from config
       }, 
     },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      group: 'Primary', 
+      tab: 'Meta', 
+      defaultValue: 'todo',
+      options: [
+        { value: 'todo', label: 'To do' },
+        { value: 'in_progress', label: 'In Progress' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'archived', label: 'Archived' },
+      ]
+    },
 
     {
       name: 'tags',
@@ -451,6 +462,19 @@ export const brand = {
         junctionTable: 'brand_category',
         sourceKey: 'brand_id',
         targetKey: 'category_id'
+      }
+    },
+    {
+      name: 'parent_id',
+      label: 'Parent',
+      group: 'General',
+      tab: 'Meta', 
+      type: 'relationship',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        linkTo: '/dashboard/company', // or dynamically derive from config
+        filter: { is_client: 'true' }
       }
     },
     /*

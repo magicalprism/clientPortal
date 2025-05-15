@@ -157,6 +157,18 @@ export const task = {
         linkTo: '/dashboard/checklist' // or dynamically derive from config
       }, 
     },
+     { 
+      name: 'parent_id', 
+      label: 'Parent', 
+      type: 'relationship',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task' // or dynamically derive from config
+      }, 
+    },
     
    
     { 
@@ -176,9 +188,9 @@ export const task = {
   filters: [
     {
       name: 'status',
-      type: 'select',
+      type: 'status',
       label: 'Status',
-      defaultValue: 'todo',
+      defaultValue: ['todo',', ', 'not started'],
       options: [
         { value: 'not started', label: 'Not started' },
         { value: 'todo', label: 'To do' },
@@ -204,7 +216,8 @@ export const task = {
         { value: 'due_date:asc', label: 'Due date (oldest first)' },
         { value: 'due_date:desc', label: 'Due date (newest first)' },
       ],
-      defaultValue: 'due_date:asc'
+      defaultValue: 'due_date:asc',
+      excludeFromViews: ['calendar', 'checklist']
     }
   ]
 };
