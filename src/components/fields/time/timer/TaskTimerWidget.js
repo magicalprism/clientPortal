@@ -7,6 +7,7 @@ import { useTaskTimer } from '@/components/fields/time/timer/TimeTrackerContext'
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
 import { createClient } from '@/lib/supabase/browser';
+import { useCurrentContact } from '@/hooks/useCurrentContact';
 
 
 function formatElapsed(seconds) {
@@ -17,6 +18,7 @@ function formatElapsed(seconds) {
 }
 
 export function TaskTimerWidget() {
+  const { contact, loading } = useCurrentContact();
   const { currentTask, isRunning, startTime, stopTimer, getElapsedForTask, startTimer } = useTaskTimer();
   const { openModal } = useModal();
   const [elapsed, setElapsed] = useState(() => {
@@ -79,16 +81,23 @@ const handleClick = async () => {
     });
     return;
   }
+    if (!contact?.id) {
+        console.error('❌ No contact found for current user.');
+        return;
+      }
 
   try {
     // 🟡 Create a brand new task
-    const { data: insertedTask, error: insertError } = await supabase
+
+    const { data: insertedTask, error: insertError } = await supabase   
       .from('task')
       .insert({
         title: 'Untitled Task',
-        status: 'in_progress',
+        status: 'todo',
         start_time: new Date().toISOString(),
-        duration: 0
+        duration: 0,
+        author_id: contact.id,
+        assigned_id: contact.id
       })
       .select()
       .single();
@@ -118,10 +127,10 @@ const handleClick = async () => {
     <Box
       sx={{
         position: 'fixed',
-        bottom: 24,
-        right: 24,
+        bottom: 30,
+        right: 100,
         zIndex: 1400,
-        backgroundColor: isRunning ? 'success.main' : 'grey.700',
+        backgroundColor: isRunning ? 'success.main' : '#1c1d1e',
         color: 'white',
         px: 2,
         py: 1,

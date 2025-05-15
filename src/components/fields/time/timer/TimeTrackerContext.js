@@ -12,10 +12,12 @@ export function TaskTimerProvider({ children }) {
     const saved = localStorage.getItem('task-timer');
     if (saved) {
       const { task, start, running } = JSON.parse(saved);
-      setCurrentTask({
-        ...task,
-        initialDuration: Number(task.initialDuration ?? task.duration ?? 0) // 👈 ensure initialDuration is always there
-      });
+      if (task) {
+        setCurrentTask({
+          ...task,
+          initialDuration: Number(task?.initialDuration ?? task?.duration ?? 0)
+        });
+      }
       setStartTime(start ? new Date(start) : null);
       setIsRunning(running);
     }

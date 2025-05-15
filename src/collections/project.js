@@ -3,6 +3,7 @@ export const project = {
   label: 'Projects',
   singularLabel: 'Project',
   editPathPrefix: '/dashboard/project',
+  showTimelineTab: true,
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',

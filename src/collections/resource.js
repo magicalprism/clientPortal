@@ -81,10 +81,10 @@ export const resource = {
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'element', //usually current collection or pivot table
+        table: 'resource', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/element', // or dynamically derive from config
-        filter: { project_id: '{{record.project_id}}' }
+        linkTo: '/dashboard/resource', // or dynamically derive from config
+
       }
     },
     

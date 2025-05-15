@@ -23,9 +23,12 @@ import {
   extractSelectValue, 
   processSelectChange 
 } from '@/components/fields/SelectField';
+import CascadeRefreshButton from '@/components/views/timeline/CascadeRefreshButton';
+import { useAutoUpdateTasks } from '@/hooks/useAutoUpdateTasks';
 
 
 export const isIncludedInView = (field, view = 'table') => {
+  if (!field || typeof field !== 'object') return false;
   if (!field.includeInViews) return true;
   if (field.includeInViews.length === 1 && field.includeInViews[0] === 'none') return false;
   return field.includeInViews.includes(view);
@@ -195,20 +198,34 @@ export const FieldRenderer = ({
 
       
 
-    case 'date':
-      content = isEditMode ? (
-        <TextField
-          fullWidth
-          type="date"
-          size="small"
-          value={localValue || ''}
-          onChange={(e) => handleUpdate(e.target.value)}
-          InputLabelProps={{ shrink: true }}
+case 'date': {
+  const isDueDate = field.name === 'due_date';
+
+  content = isEditMode ? (
+    <Box display="flex" alignItems="center" gap={1}>
+      <TextField
+        fullWidth
+        type="date"
+        size="small"
+        value={localValue || ''}
+        onChange={(e) => handleUpdate(e.target.value)}
+        InputLabelProps={{ shrink: true }}
+      />
+      {isDueDate && record?.milestone_id && record?.project_id && (
+        <CascadeRefreshButton
+          taskId={record.id}
+          milestoneId={record.milestone_id}
+          projectId={record.project_id}
         />
-      ) : (
-        <Typography variant="body2">{localValue ? new Date(localValue).toLocaleDateString() : '—'}</Typography>
-      );
-      break;
+      )}
+    </Box>
+  ) : (
+    <Typography variant="body2">
+      {localValue ? new Date(localValue).toLocaleDateString() : '—'}
+    </Typography>
+  );
+  break;
+}
 
       case 'boolean':
         content = isEditMode ? (
@@ -229,12 +246,15 @@ export const FieldRenderer = ({
 
 case 'select':
 case 'status': {
+  // ✅ Only run task status update logic if this field is 'status'
+  if (field.name === 'status') {
+    useAutoUpdateTasks(record); // Hook runs only if needed
+  }
+
   // Normalize the value for consistent handling
   const normalizedValue = normalizeSelectValue(localValue, field.options);
   const rawValue = extractSelectValue(normalizedValue);
-  
 
-  
   content = isEditMode ? (
     <Select
       fullWidth
@@ -242,18 +262,16 @@ case 'status': {
       value={rawValue || ''}
       onChange={(e) => {
         const selectedValue = e.target.value;
-        
-        const selectedLabel = (field.options || [])
-          .find(opt => opt.value === selectedValue)?.label || selectedValue;
-          
 
-        
+        const selectedLabel =
+          (field.options || []).find((opt) => opt.value === selectedValue)?.label || selectedValue;
+
         // Always create a value/label pair - this is important for UI display
         const processedValue = {
           value: selectedValue,
           label: selectedLabel
         };
-        
+
         handleUpdate(processedValue);
       }}
       displayEmpty
@@ -274,12 +292,11 @@ case 'status': {
     </Select>
   ) : (
     <Typography variant="body2">
-      {normalizedValue.label || '—'}
+      {normalizeSelectValue(localValue, field.options).label || '—'}
     </Typography>
   );
   break;
 }
-
       
       
       case 'color':

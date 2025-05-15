@@ -67,8 +67,8 @@ export const task = {
       type: 'status', 
       defaultValue: 'todo',
       options: [
+        { value: 'not started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
         { value: 'complete', label: 'Complete' },
         { value: 'archived', label: 'Archived' },
       ]
@@ -180,10 +180,21 @@ export const task = {
       label: 'Status',
       defaultValue: 'todo',
       options: [
+        { value: 'not started', label: 'Not started' },
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },
-        { value: 'in_progress', label: 'In Progress' },
+        
       ]
+    },
+    {
+      name: 'assigned_id',
+      label: 'Assigned to',
+      type: 'relationship',
+      relation: {
+        table: 'contact', //usually current collection or pivot table
+        labelField: 'title',
+        filter: { is_assignable: true } //temporary until I add all clients & contractors as users 
+      }
     },
     {
       name: 'sort',

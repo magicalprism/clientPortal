@@ -15,7 +15,9 @@ import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerFiel
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
-import { TagsDebugger } from '@/lib/utils/tagsDebugger';
+import TimelineView from '@/components/views/timeline/TimelineView';
+
+
 
 export const CollectionItemPage = ({ config, record, isModal = false }) => {
   // Add this ref and counter to track renders
@@ -69,7 +71,14 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
 
   
   const [activeTab, setActiveTab] = useState(0);
-  const { tabNames, currentTabGroups } = useGroupedFields(config?.fields || [], activeTab);
+const baseTabs = useGroupedFields(config?.fields || [], activeTab);
+const isProject = config?.name === 'project';
+const showTimelineTab = config?.showTimelineTab === true;
+
+const tabNames = showTimelineTab ? [...baseTabs.tabNames, 'Timeline'] : baseTabs.tabNames;
+const isTimelineTab = showTimelineTab && activeTab === baseTabs.tabNames.length;
+const currentTabGroups = isTimelineTab ? null : baseTabs.currentTabGroups;
+
 
   
 
@@ -182,11 +191,11 @@ const handleFieldChange = (fieldOrName, value) => {
             sx={{ mb: 3 }}
             variant="scrollable"
           >
-            {tabNames.map((tabName) => (
-              <Tab key={tabName} label={tabName} />
+            {tabNames.map((tabName, index) => (
+              <Tab key={index} label={tabName} />
             ))}
           </Tabs>
-
+            {currentTabGroups ? (
           <Grid container spacing={5}>
             {Object.entries(currentTabGroups || {}).map(([groupName, fields]) => (
               <Grid item xs={12} key={groupName}>
@@ -260,6 +269,7 @@ const handleFieldChange = (fieldOrName, value) => {
                         </Grid>
                       );
                     }
+                  
 
                     return (
                       <Grid item xs={12}  key={field.name} >
@@ -345,6 +355,14 @@ const handleFieldChange = (fieldOrName, value) => {
             
 
           </Grid>
+          ) : (
+              showTimelineTab && isTimelineTab && localRecord?.id && (
+                <Box mt={2}>
+                  <TimelineView projectId={localRecord.id} config={config} />
+                </Box>
+              )
+            )}
+          
         </CardContent>
         
       </Card>

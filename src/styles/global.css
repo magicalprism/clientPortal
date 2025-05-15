@@ -16,6 +16,10 @@
 /* Remove if mapbox is not used */
 @import "~mapbox-gl/dist/mapbox-gl.css";
 
+/*Allow for space for widgets at the bottom of screen*/
+main {
+	padding-bottom: 3rem;
+}
 /* Remove is recharts is not used */
 .recharts-cartesian-axis-tick-value {
 	color: var(--mui-palette-text-secondary);
