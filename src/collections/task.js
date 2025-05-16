@@ -48,9 +48,24 @@ export const task = {
       openMode: 'modal',  
       showInTable: true,
     },
+
+     { 
+      name: 'task_type', 
+      label: 'What kind of task/event is this?', 
+      group: 'Task', 
+      tab: 'Details', 
+      type: 'select',
+      defaultValue: 'task',
+      options: [
+        { value: 'task', label: 'Task' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'unavailable', label: 'Unavailable' },
+      ]
+    },
         
         { name: 'assigned_id', 
           label: 'Assigned To', 
+          showInTable: true,
           type: 'relationship',
           group: 'Task', 
           tab: 'Details',
@@ -64,12 +79,14 @@ export const task = {
       label: 'Status', 
       tab: 'Details',
       group: 'Task', 
-      type: 'status', 
+      type: 'select', 
       defaultValue: 'todo',
       options: [
         { value: 'not started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },
+        { value: 'unavailable', label: 'Unavailable' },
+        { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },
       ]
     },
@@ -169,6 +186,22 @@ export const task = {
         linkTo: '/dashboard/task' // or dynamically derive from config
       }, 
     },
+    { 
+      name: 'element_id', 
+      label: 'Element', 
+      type: 'multiRelationship',
+      displayMode: 'tags',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        table: 'element',
+        labelField: 'title',
+        linkTo: '/dashboard/element',
+        junctionTable: 'element_task',
+        sourceKey: 'task_id',
+        targetKey: 'element_id'
+      }
+    },
     
    
     { 
@@ -188,15 +221,17 @@ export const task = {
   filters: [
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
-      defaultValue: ['todo',', ', 'not started'],
       options: [
-        { value: 'not started', label: 'Not started' },
+        { value: 'not started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },
-        
-      ]
+        { value: 'unavailable', label: 'Unavailable' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'archived', label: 'Archived' },       
+      ],
+      defaultValue: 'todo',
     },
     {
       name: 'assigned_id',

@@ -167,9 +167,7 @@ export default function TimelinePdfView({ project, milestones }) {
   return (
     <Document>
       <Page style={styles.page}>
-        {project.company_id?.thumbnail_id?.url && (
-          <Image style={styles.logo} src={project.company_id.thumbnail_id.url} />
-        )}
+
 
         <View style={styles.headerRow}>
           <Text style={styles.heading}>Project Timeline</Text>

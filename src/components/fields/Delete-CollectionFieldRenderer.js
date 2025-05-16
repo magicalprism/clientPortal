@@ -1,4 +1,4 @@
-'use client';
+/*'use client';
 
 import {
   Grid,
@@ -240,3 +240,4 @@ export const CollectionFieldRenderer = ({
     </Grid>
   );
 };
+*/

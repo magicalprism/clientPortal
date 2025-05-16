@@ -40,7 +40,7 @@ export const checklist = {
       },
      {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
@@ -141,7 +141,7 @@ export const checklist = {
      filters: [
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       defaultValue: 'todo',
       options: [

@@ -151,7 +151,7 @@
   filters: [
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       defaultValue: 'todo',
       options: [

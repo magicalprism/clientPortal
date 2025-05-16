@@ -45,7 +45,7 @@ export const resource = {
       name: 'status',
       label: 'Status',
       group: 'General',
-      type: 'status',
+      type: 'select',
       tab: 'Meta',
       showInTable: true,
       
@@ -139,7 +139,7 @@ export const resource = {
       name: 'status',
       label: 'Status',
       group: 'General',
-      type: 'status',
+      type: 'select',
       tab: 'Meta',
       showInTable: true,
       

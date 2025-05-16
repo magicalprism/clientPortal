@@ -125,7 +125,7 @@ export const element = {
       name: 'status',
       label: 'Stage',
       group: 'General',
-      type: 'status',
+      type: 'select',
       tab: 'Meta',
       showInTable: true,
       
@@ -227,7 +227,7 @@ export const element = {
   filters: [
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Stage',
       options: [
         { label: 'Planning', value: 'plan' },

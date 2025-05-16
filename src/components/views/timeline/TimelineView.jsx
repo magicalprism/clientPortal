@@ -64,8 +64,7 @@ export default function TimelineView({ projectId, config }) {
 
   const supabase = createClient();
 
-useEffect(() => {
-  const fetchMilestones = async () => {
+   const fetchMilestones = async () => {
     const { data, error } = await supabase
       .from('milestone_project')
       .select('milestone(*)')
@@ -113,6 +112,7 @@ useEffect(() => {
     setLoading(false);
   };
 
+useEffect(() => {
   if (projectId) fetchMilestones();
 }, [projectId]);
 
@@ -128,7 +128,10 @@ return (
       </Typography>
       <Box spacing={4} sx={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '20px', alignContent: 'center', gap: 2}}>
           <DownloadPdfButton projectId={projectId} />
-          <GenerateDatesButton projectId={projectId} onComplete={() => window.location.reload()} />
+          <GenerateDatesButton
+  projectId={projectId}
+  onComplete={fetchMilestones}
+/>
       </Box>
 
     </Box>

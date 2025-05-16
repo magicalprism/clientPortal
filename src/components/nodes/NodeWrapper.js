@@ -3,12 +3,16 @@ import React from 'react';
 import { Box, Typography, IconButton } from '@mui/material';
 import { Handle, Position } from 'reactflow';
 import { useRouter } from 'next/navigation';
+import { useModal } from '@/components/modals/ModalContext';
+import * as collections from '@/collections';
+import { createClient } from '@/lib/supabase/browser';
 
 export const NODE_THEME_COLOR = '#6366f1';
 
 const NodeWrapper = ({
   id,
   mode,
+  config,
   data = {},
   isConnectable,
   collectionName,   // <-- NEW
@@ -21,22 +25,28 @@ const NodeWrapper = ({
   height = 170,
   centerContentVertically = false
 }) => {
+    const { openModal } = useModal();
+    const supabase = createClient();
+    const fullConfig = collections[collectionName] || config;
 
-    const router = useRouter();
+const handleClick = async (e) => {
+  if (mode === 'edit') {
+    e.stopPropagation();
 
-    const handleClick = (e) => {
-      if (mode === 'edit') {
-        e.stopPropagation();
-        const searchParams = new URLSearchParams({
-          modal: 'edit',
-          id: id.toString(),
-          refField: refField || ''
-        });
-        router.push(`/dashboard/${collectionName}/${id}?${searchParams.toString()}`);
+    const { data, error } = await supabase
+      .from(fullConfig.name)
+      .select('*')
+      .eq('id', id)
+      .single();
 
-    }
-  };
-  console.log('[NodeWrapper] id:', id, 'collectionName:', collectionName, 'refField:', refField);
+
+    openModal('edit', {
+      config: fullConfig,
+      defaultValues: data,
+
+    });
+  }
+};
     
   const titleWords = (data?.title || label || 'Untitled').split(' ');
 const formattedTitle = titleWords.slice(0, 2).join(' ') + (titleWords.length > 2 ? '…' : '');

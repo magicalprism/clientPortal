@@ -17,6 +17,7 @@ import { X as XIcon } from '@phosphor-icons/react';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
 import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
+import { parseStringArrayField } from '@/lib/utils/parseStringArrayField';
 
 export default function CollectionModal({
   open,
@@ -41,28 +42,6 @@ export default function CollectionModal({
   const parentId = defaultValues?.id;
   const refField = defaultValues?.refField;
 
-  const parseTagsField = (record) => {
-    if (!record) return record;
-    const result = { ...record };
-    if ('tags' in result) {
-      if (typeof result.tags === 'string') {
-        try {
-          const parsedTags = JSON.parse(result.tags);
-          if (Array.isArray(parsedTags)) {
-            result.tags = parsedTags.map(String);
-          }
-        } catch {
-          if (result.tags.includes(',')) {
-            result.tags = result.tags.split(',').map(tag => tag.trim()).filter(Boolean);
-          }
-        }
-      }
-      if (!Array.isArray(result.tags)) {
-        result.tags = result.tags ? [String(result.tags)] : [];
-      }
-    }
-    return result;
-  };
 
  const fetchMultiRelationshipsForRecord = async (config, recordId) => {
   const multiRelFields = config.fields.filter(
@@ -131,7 +110,7 @@ export default function CollectionModal({
             return;
           }
 
-          const parsedRecord = parseTagsField(data);
+          const parsedRecord = parseStringArrayField(data);
           const multiRelData = await fetchMultiRelationshipsForRecord(config, recordId);
           setFetchedRecord({ ...parsedRecord, ...multiRelData });
 
@@ -158,7 +137,7 @@ export default function CollectionModal({
 
       if (error) return;
 
-      const parsedRecord = parseTagsField(data);
+      const parsedRecord = parseStringArrayField(data);
       const tagsData = await fetchTagsForRecord(recordId);
       setFetchedRecord(tagsData ? { ...parsedRecord, ...tagsData } : parsedRecord);
     } finally {
@@ -166,18 +145,27 @@ export default function CollectionModal({
     }
   };
 
-  const extendedRecord = useMemo(() => {
-    const baseRecord = fetchedRecord || record || {};
-    const parsedBaseRecord = parseTagsField(baseRecord);
-    const withDefaults = isCreating && parentId && refField
-      ? { ...parsedBaseRecord, [refField]: parentId }
-      : parsedBaseRecord;
+const extendedRecord = useMemo(() => {
+  const baseRecord = fetchedRecord || record || {};
+  const parsedBaseRecord = parseStringArrayField(baseRecord);
 
-    return {
-      ...withDefaults,
-      ...(isCreating ? defaultValues : {})
-    };
-  }, [fetchedRecord, record, isCreating, parentId, refField, defaultValues]);
+  let withDefaults = parsedBaseRecord;
+
+  if (isCreating && parentId && refField) {
+    withDefaults = { ...parsedBaseRecord, [refField]: parentId };
+  }
+
+  // Only use defaultValues when creating a record,
+  // and ONLY for values that don't already exist in the record
+  const merged = isCreating
+    ? {
+        ...defaultValues,
+        ...withDefaults // allow record to override default values
+      }
+    : withDefaults;
+
+  return merged;
+}, [fetchedRecord, record, isCreating, parentId, refField, defaultValues]);
 
   return (
     <Dialog

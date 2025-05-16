@@ -231,7 +231,7 @@ export const project = {
         filters: [
           {
             name: 'status',
-            type: 'status',
+            type: 'select',
             label: 'Status',
             options: ['todo', 'in-progress', 'done']
           },
@@ -247,7 +247,69 @@ export const project = {
         ]
       }
     },
-    
+{
+  name: 'files_gallery',
+  label: 'File Gallery',
+  type: 'galleryRelationship',
+  relation: {
+    table: 'media',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id'
+  },
+  tab: 'Resources',
+  group: 'Media',
+},
+{
+  name: 'images_gallery',
+  label: 'Image Library',
+  type: 'galleryRelationship',
+  relation: {
+    table: 'media',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id'
+  },
+  tab: 'Resources',
+  group: 'Media',
+},
+
+{
+  name: 'media_items',
+  type: 'galleryRelationship',
+  label: 'All Media',
+  showAll: true,
+  filters: [
+    { 
+    name: 'mime_type', label: 'File Type' 
+  },
+  { 
+    name: 'element_id', label: 'Page or Element' 
+  },
+  
+  
+], // 👈 multiple fields used in dropdowns
+sortOptions: [ // ✅ Add this here
+    { value: 'title:asc', label: 'Title (A–Z)' },
+    { value: 'title:desc', label: 'Title (Z–A)' },
+    { value: 'created_at:desc', label: 'Newest Created' },
+    { value: 'created_at:asc', label: 'Oldest Created' }
+  ],
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id',
+    filter: {
+      project_id: 'record.id'
+    }
+  },
+    tab: 'Resources',
+  group: 'Media',
+},
+
+
     
     
     //Meta
@@ -255,7 +317,7 @@ export const project = {
       name: 'status',
       label: 'Status',
       group: 'General',
-      type: 'status',
+      type: 'select',
       tab: 'Meta',
       showInTable: true,
       width: 'auto',
@@ -313,7 +375,7 @@ export const project = {
   filters: [
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       options: [
         { label: 'Pending', value: 'pending' },

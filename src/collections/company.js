@@ -47,7 +47,7 @@ export const company = {
     
     {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
@@ -123,7 +123,7 @@ export const company = {
     filters: [
       {
         name: 'status',
-        type: 'status',
+        type: 'select',
         label: 'Status',
         defaultValue: '',
         options: [

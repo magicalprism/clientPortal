@@ -78,7 +78,7 @@ export const contact = {
     },
      {
       name: 'status',
-      type: 'status',
+      type: 'select',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
@@ -187,7 +187,7 @@ export const contact = {
     filters: [
       {
         name: 'status',
-        type: 'status',
+        type: 'select',
         label: 'Status',
         options: [  
           { value: 'client', label: 'Client' },

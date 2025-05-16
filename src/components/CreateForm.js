@@ -13,8 +13,12 @@ const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = f
   const supabase = createClient();
   const router = useRouter();
   const pathname = usePathname();
-  const { name: table, fields } = config;
+    const table = config?.name;
+const fields = config?.fields || [];
 
+if (!table || fields.length === 0) {
+  return <Typography color="error">Invalid config: missing table name or fields</Typography>;
+}
   // Process initialRecord to ensure proper formatting
   const processedInitialRecord = { ...initialRecord };
   fields.forEach(field => {

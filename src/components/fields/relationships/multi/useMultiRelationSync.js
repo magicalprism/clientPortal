@@ -7,7 +7,7 @@ export const useMultiRelationSync = () => {
 
   const syncMultiRelation = async ({ field, parentId, selectedIds, options, onChange }) => {
     if (!field?.relation) {
-      console.warn('[useMultiRelationSync] Missing field relation configuration');
+     
       return;
     }
     
@@ -18,12 +18,7 @@ export const useMultiRelationSync = () => {
       labelField: field.relation?.labelField || 'title'
     };
 
-    if (!parentId || !junctionTable || !table) {
-      console.warn('[useMultiRelationSync] Missing required parameters:', {
-        parentId, junctionTable, table
-      });
-      return;
-    }
+
     
     // Log what we're about to do
     console.log(`[useMultiRelationSync] Syncing ${selectedIds.length} selected IDs for ${field.name}`, {
@@ -45,7 +40,7 @@ export const useMultiRelationSync = () => {
         .eq(sourceKey, parentId);
         
       if (fetchError) {
-        console.error('[useMultiRelationSync] Error fetching existing relationships:', fetchError);
+   
         return null;
       }
       
@@ -62,16 +57,10 @@ export const useMultiRelationSync = () => {
       
       const hasChanges = existingStr !== newStr;
       
-      console.log(`[useMultiRelationSync] Comparing changes for ${field.name}:`, {
-        existingIds: sortedExisting,
-        newIds: sortedNew,
-        existingStr,
-        newStr,
-        hasChanges
-      });
+
         
       if (!hasChanges) {
-        console.log(`[useMultiRelationSync] No changes needed for ${field.name}`);
+
         
         // Retrieve the existing data for consistency
         const { data: linkedData } = await supabase
@@ -89,7 +78,7 @@ export const useMultiRelationSync = () => {
         .eq(sourceKey, parentId);
         
       if (deleteError) {
-        console.error('[useMultiRelationSync] Error deleting existing relationships:', deleteError);
+
         return null;
       }
 
@@ -105,11 +94,10 @@ export const useMultiRelationSync = () => {
           .insert(newLinks);
           
         if (insertError) {
-          console.error('[useMultiRelationSync] Error inserting new relationships:', insertError);
+   
           return null;
         }
-        
-        console.log(`[useMultiRelationSync] Successfully saved ${newLinks.length} relationships for ${field.name}`);
+
       }
 
       // Fetch the updated data
@@ -119,7 +107,7 @@ export const useMultiRelationSync = () => {
         .in('id', normalizedIds.length > 0 ? normalizedIds : ['0']);
 
       if (error) {
-        console.error('[useMultiRelationSync] Fetching updated records failed:', error);
+
         return null;
       }
 
@@ -133,7 +121,7 @@ export const useMultiRelationSync = () => {
       
       return linkedData || [];
     } catch (err) {
-      console.error('[useMultiRelationSync] Sync error:', err);
+
       return null;
     }
   };

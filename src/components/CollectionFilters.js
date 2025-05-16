@@ -57,7 +57,7 @@ function FilterPopoverContent({ filter, value, setValue }) {
     );
   }
 
-  if (filter.options) {
+  if (filter.options || filter.type === 'status') {
     return (
       <Select
         fullWidth
@@ -67,7 +67,7 @@ function FilterPopoverContent({ filter, value, setValue }) {
         size="small"
       >
         <MenuItem key="all" value="">All</MenuItem>
-        {filter.options.map(opt => (
+        {(filter.options || []).map(opt => (
           <MenuItem key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</MenuItem>
         ))}
       </Select>

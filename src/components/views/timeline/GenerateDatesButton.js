@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
+import { isWeekend, shiftDateToNextWeekday } from '@/lib/utils/dateUtils';
 
 export default function GenerateDatesButton({ projectId, onComplete }) {
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,9 @@ export default function GenerateDatesButton({ projectId, onComplete }) {
         .eq('project_id', projectId);
 
       const childTasks = tasks.filter(t => t.parent_id);
-      const parentTasks = tasks.filter(t => !t.parent_id);
+      const parentTasks = tasks
+      .filter(t => !t.parent_id)
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
 
       const childDateMap = {}; // { parent_id: { startDates: [], endDates: [] } }
 
@@ -66,9 +69,13 @@ for (const parentId of Object.keys(groupedChildren)) {
 
   for (const task of children) {
     const est = Number(task.estimated_duration) || 1;
-    const start = new Date(localCursor);
-    const end = new Date(start);
-    end.setDate(end.getDate() + est);
+    const start = shiftDateToNextWeekday(new Date(localCursor));
+    let end = new Date(start);
+    let added = 0;
+    while (added < est) {
+      end.setDate(end.getDate() + 1);
+      if (!isWeekend(end)) added++;
+    }
 
     await supabase
       .from('task')
@@ -80,7 +87,7 @@ for (const parentId of Object.keys(groupedChildren)) {
 
     childStarts.push(start);
     childEnds.push(end);
-    localCursor = new Date(end);
+    localCursor = shiftDateToNextWeekday(new Date(end));
   }
 
   childDateMap[parentId] = {
@@ -113,9 +120,14 @@ for (const parentId of Object.keys(groupedChildren)) {
         } else {
           // No children — treat as standalone
           const est = Number(task.estimated_duration) || 1;
-          const start = new Date(cursor);
-          const end = new Date(start);
-          end.setDate(end.getDate() + est);
+            const start = shiftDateToNextWeekday(new Date(cursor));
+            let end = new Date(start);
+            let added = 0;
+            while (added < est) {
+              end.setDate(end.getDate() + 1);
+              if (!isWeekend(end)) added++;
+            }
+
 
           await supabase
             .from('task')
@@ -125,7 +137,7 @@ for (const parentId of Object.keys(groupedChildren)) {
             })
             .eq('id', task.id);
 
-          cursor = new Date(end);
+          cursor = shiftDateToNextWeekday(new Date(end));
           milestoneEnd = new Date(end);
         }
       }

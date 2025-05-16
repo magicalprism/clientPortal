@@ -16,6 +16,8 @@ import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
 import TimelineView from '@/components/views/timeline/TimelineView';
+import CollectionGridView from '@/components/views/grid/CollectionGridView';
+
 
 
 
@@ -24,31 +26,15 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
-
-  // IMPORTANT: Add sanitization function
-  const sanitizeRecord = (input) => {
-    const blacklist = ['modal', 'type', 'view', 'refField', 'variant'];
-    return Object.fromEntries(Object.entries(input || {}).filter(([key]) => !blacklist.includes(key)));
-  };
-
-  // Start with a clean record
-  const initializedRecord = useMemo(() => sanitizeRecord(record), [record]);
-  
-
-
   const [localRecord, setLocalRecord] = useState(null);
 
   // Only set once record is initialized
-  useEffect(() => {
-    if (!record) return;
-  
-    const sanitized = sanitizeRecord(record);
-    setLocalRecord((prev) => {
-      const prevJson = JSON.stringify(prev);
-      const nextJson = JSON.stringify(sanitized);
-      return prevJson !== nextJson ? sanitized : prev;
-    });
-  }, [record]);
+useEffect(() => {
+  if (record) {
+    setLocalRecord({ ...record }); // shallow clone at least
+  }
+}, [JSON.stringify(record)]); // OR make the effect more reactive
+
   
   
   // Always call the hook, but guard its usage with a default empty object
@@ -70,9 +56,8 @@ export const CollectionItemPage = ({ config, record, isModal = false }) => {
   
 
   
-  const [activeTab, setActiveTab] = useState(0);
+const [activeTab, setActiveTab] = useState(0);
 const baseTabs = useGroupedFields(config?.fields || [], activeTab);
-const isProject = config?.name === 'project';
 const showTimelineTab = config?.showTimelineTab === true;
 
 const tabNames = showTimelineTab ? [...baseTabs.tabNames, 'Timeline'] : baseTabs.tabNames;
@@ -108,7 +93,10 @@ const handleFieldChange = (fieldOrName, value) => {
   const field = typeof fieldOrName === 'object' ? fieldOrName : 
     config?.fields?.find(f => f.name === fieldOrName) || { name: fieldOrName };
   
-
+if (field.type === 'date') {
+  updateLocalValue(fieldName, value); // make sure it's a YYYY-MM-DD string
+  return;
+}
 
   // Special handling for multiRelationship fields
   if (field.type === 'multiRelationship') {
@@ -246,6 +234,25 @@ const handleFieldChange = (fieldOrName, value) => {
                         </Grid>
                       );
                     }
+                    if (field.type === 'custom' && field.component === 'CollectionGridView') {
+                        const items = localRecord?.[`${field.sourceField}_details`] ?? [];
+
+                        return (
+                          <Grid item xs={12} key={field.name}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                              <Typography variant="subtitle2">{field.label || 'Gallery'}</Typography>
+                              <IconButton
+                                onClick={() =>
+                                  router.push(`?modal=create&id=${record.id}&field=${field.sourceField}`)
+                                }
+                              >
+                                <Plus />
+                              </IconButton>
+                            </Box>
+                            <CollectionGridView items={items} />
+                          </Grid>
+                        );
+                      }
 
                     if (field.type === 'multiRelationship' && field.displayMode === 'table') {
                       return (
