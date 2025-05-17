@@ -2,7 +2,7 @@
 
 import * as React from "react";
 
-import { PDFViewer } from "@/components/core/pdf-viewer";
+import { PDFViewer } from "@react-pdf/renderer";
 import { InvoicePDFDocument } from "@/components/dashboard/invoice/invoice-pdf-document";
 
 export default function Page() {

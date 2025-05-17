@@ -58,8 +58,7 @@ export const paths = {
 			security: "/dashboard/settings/security",
 			team: "/dashboard/settings/team",
 		},
-		academy: { browse: "/dashboard/academy", details: (courseId) => `/dashboard/academy/courses/${courseId}` },
-		analytics: "/dashboard/analytics",
+		
 		blank: "/dashboard/blank",
 		resource: {
 			list: "/dashboard/resource",
@@ -71,14 +70,7 @@ export const paths = {
 			create: "/dashboard/brand/create",
 			details: (brandId) => `/dashboard/brand/${brandId}`,
 		},
-		calendar: "/dashboard/calendar",
-		chat: {
-			base: "/dashboard/chat",
-			compose: "/dashboard/chat/compose",
-			thread: (threadType, threadId) => `/dashboard/chat/${threadType}/${threadId}`,
-		},
-		crypto: "/dashboard/crypto",
-		
+
 		company: {
 			list: "/dashboard/company",
 			create: "/dashboard/company/create",
@@ -111,51 +103,8 @@ export const paths = {
 			details: (projectId) => `/dashboard/project/${projectId}`,
 		},
 		
-		eCommerce: "/dashboard/e-commerce",
-		fileStorage: "/dashboard/file-storage",
-		i18n: "/dashboard/i18n",
-		invoices: {
-			list: "/dashboard/invoices",
-			create: "/dashboard/invoices/create",
-			details: (invoiceId) => `/dashboard/invoices/${invoiceId}`,
-		},
-		jobs: {
-			browse: "/dashboard/jobs",
-			create: "/dashboard/jobs/create",
-			companies: {
-				overview: (companyId) => `/dashboard/jobs/companies/${companyId}`,
-				reviews: (companyId) => `/dashboard/jobs/companies/${companyId}/reviews`,
-				activity: (companyId) => `/dashboard/jobs/companies/${companyId}/activity`,
-				team: (companyId) => `/dashboard/jobs/companies/${companyId}/team`,
-				assets: (companyId) => `/dashboard/jobs/companies/${companyId}/assets`,
-			},
-		},
-		logistics: { metrics: "/dashboard/logistics", fleet: "/dashboard/logistics/fleet" },
-		mail: {
-			list: (label) => `/dashboard/mail/${label}`,
-			details: (label, emailId) => `/dashboard/mail/${label}/${emailId}`,
-		},
-		orders: {
-			list: "/dashboard/orders",
-			create: "/dashboard/orders/create",
-			preview: (orderId) => `/dashboard/orders?previewId=${orderId}`,
-			details: (orderId) => `/dashboard/orders/${orderId}`,
-		},
-		products: {
-			list: "/dashboard/products",
-			create: "/dashboard/products/create",
-			preview: (productId) => `/dashboard/products?previewId=${productId}`,
-			details: (productId) => `/dashboard/products/${productId}`,
-		},
-		social: {
-			profile: { timeline: "/dashboard/social/profile", connections: "/dashboard/social/profile/connections" },
-			feed: "/dashboard/social/feed",
-		},
-		tasks: {
-			list: "/dashboard/tasks",
-			create: "/dashboard/tasks/create",
-			details: (taskId) => `/dashboard/tasks/${taskId}`,
-		},
+
+		
 		
 		task: {
 			list: "/dashboard/task",
@@ -164,7 +113,7 @@ export const paths = {
 			modalCreateWithRef: (refField, id) => `?modal=create&refField=${refField}&id=${id}`,
 		},
 	},
-	pdf: { invoice: (invoiceId) => `/pdf/invoices/${invoiceId}` },
+	
 	components: {
 		index: "/components",
 		buttons: "/components/buttons",
@@ -180,6 +129,9 @@ export const paths = {
 		tables: "/components/tables",
 		typography: "/components/typography",
 	},
+	
+
+
 	notAuthorized: "/errors/not-authorized",
 	notFound: "/errors/not-found",
 	internalServerError: "/errors/internal-server-error",

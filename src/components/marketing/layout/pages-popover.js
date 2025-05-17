@@ -12,10 +12,8 @@ const groups = [
 		title: "Dashboard",
 		items: [
 			{ key: "overview", title: "Overview", href: paths.dashboard.overview },
-			{ key: "contacts", title: "contacts", href: paths.dashboard.contacts.list },
-			{ key: "logistics", title: "Logistics", href: paths.dashboard.logistics.metrics },
+			{ key: "contacts", title: "contacts", href: paths.dashboard.contact.list },
 			{ key: "settings", title: "Settings", href: paths.dashboard.settings.account },
-			{ key: "file-storage", title: "File storage", href: paths.dashboard.fileStorage },
 		],
 	},
 	{

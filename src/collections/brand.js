@@ -441,9 +441,9 @@ export const brand = {
       tab: 'Meta', 
       defaultValue: 'todo',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
+        { value: 'primary', label: 'Primary' },
+        { value: 'secondary', label: 'Secondary' },
+        { value: 'project', label: 'Project Only' },
         { value: 'archived', label: 'Archived' },
       ]
     },

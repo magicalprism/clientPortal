@@ -18,7 +18,7 @@ import { Minus as MinusIcon } from "@phosphor-icons/react/dist/ssr/Minus";
 
 import { paths } from "@/paths";
 import { DataTable } from "@/components/core/data-table";
-import { useOnboardingSelection } from "../onboarding/onboarding-selection-context";
+import { useOnboardingSelection } from "./onboarding-selection-context";
 import { createClient } from "@/lib/supabase/browser";
 
 export function OnboardingTable({ rows, onRefresh }) {

@@ -1,10 +1,15 @@
 'use client';
+import dynamic from 'next/dynamic';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useTheme } from '@mui/material/styles';
 import {
   useMediaQuery, Card, CardContent, Tabs, Tab, Grid, Divider,
   Typography, TextField, CircularProgress, Box, IconButton, Button
 } from '@mui/material';
+const CollectionView = dynamic(() => import('@/components/views/CollectionView'), {
+  ssr: false,
+  loading: () => <div>Loading collection...</div>,
+});
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
 import { useCollectionSave } from '@/hooks/useCollectionSave';
 import { FieldRenderer } from '@/components/FieldRenderer';
@@ -18,7 +23,6 @@ import { extractSelectValue } from '@/components/fields/SelectField';
 import TimelineView from '@/components/views/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
 import { RelatedTagsField } from '@/components/fields/RelatedTagsField';
-import CollectionView from '@/components/views/CollectionView';
 import { useRelatedRecords } from '@/hooks/useRelatedRecords';
 
 
@@ -291,6 +295,7 @@ if (field.type === 'date') {
                                 forcedFilters={{
                                   [field.relation.sourceKey]: localRecord?.id
                                 }}
+                                variant="details"
                               />
                             </Grid>
                           );

@@ -98,6 +98,15 @@ export const task = {
       type: 'date', 
       showInTable: true 
     },
+
+        { 
+      name: 'is_launch', 
+          label: 'This task contains the project launch date', 
+      group: 'Task', 
+      tab: 'Details',
+      type: 'boolean', 
+      showInTable: true 
+    },
     
 
         {

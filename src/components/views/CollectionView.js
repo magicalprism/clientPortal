@@ -10,6 +10,9 @@ import { CollectionSelectionProvider } from '@/components/CollectionSelectionCon
 import CalendarView from './CalendarView';
 import { createClient } from '@/lib/supabase/browser';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
+import { Box } from '@mui/material';
+
+
 
 
 const componentMap = {
@@ -18,7 +21,7 @@ const componentMap = {
   CalendarView,
 };
 
-export default function CollectionView({ config, forcedFilters = {} }) {
+export default function CollectionView({ config, forcedFilters = {}, variant = 'default' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewKey, setViewKey] = useState(config.defaultView);
@@ -44,11 +47,16 @@ export default function CollectionView({ config, forcedFilters = {} }) {
 const [loadingUser, setLoadingUser] = useState(true);
 
 const [filters, setFilters] = useState({});
- useEffect(() => {
-    if (!loadingUser && defaultValues) {
-      setFilters({ ...defaultValues, ...forcedFilters });
-    }
-  }, [loadingUser, defaultValues, forcedFilters]);
+useEffect(() => {
+  if (!loadingUser && defaultValues) {
+    setFilters((prevFilters) => {
+      const merged = { ...defaultValues, ...forcedFilters };
+      const isEqual = JSON.stringify(prevFilters) === JSON.stringify(merged);
+      return isEqual ? prevFilters : merged;
+    });
+  }
+}, [loadingUser, defaultValues, forcedFilters]);
+
 
 useEffect(() => {
   const fetchDefaults = async () => {
@@ -93,11 +101,16 @@ useEffect(() => {
   const [selectionIds, setSelectionIds] = useState([]);
 
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const viewParam = params.get('view');
-    setViewKey(viewParam || config.defaultView);
-  }, [typeof window !== 'undefined' && window.location.search]);
+useEffect(() => {
+  if (typeof window === 'undefined') return;
+
+  const params = new URLSearchParams(window.location.search);
+  const viewParam = params.get('view');
+  if (viewParam && viewParam !== viewKey) {
+    setViewKey(viewParam);
+  }
+}, [searchParams]); // ← stable from next/navigation
+
 
   const viewConfig = config.views?.[viewKey];
   const ViewComponent = componentMap[viewConfig?.component] || PrimaryTableView;
@@ -114,9 +127,14 @@ useEffect(() => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0); // reset to first page
   };
-  
+
+const containerSx = {
+  default: { p: 9 },
+  details: { p: 0, boxShadow: 'none', backgroundColor: 'transparent' },
+}[variant] || {};
 
   return (
+    <Box sx={containerSx}>
     <CollectionSelectionProvider ids={selectionIds}>
       <CollectionLayout
         config={{ ...config, filters: activeFilters }}
@@ -144,5 +162,6 @@ useEffect(() => {
         />
       </CollectionLayout>
     </CollectionSelectionProvider>
+    </Box>
   );
 }

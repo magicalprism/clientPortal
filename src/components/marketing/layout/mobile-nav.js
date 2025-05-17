@@ -30,10 +30,9 @@ const navItems = [
 				title: "Dashboard",
 				items: [
 					{ key: "overview", title: "Overview", href: paths.dashboard.overview },
-					{ key: "analytics", title: "contacts", href: paths.dashboard.contacts.list },
-					{ key: "logistics", title: "Logistics", href: paths.dashboard.logistics.metrics },
+					{ key: "analytics", title: "contact", href: paths.dashboard.contact.list },
 					{ key: "settings", title: "Settings", href: paths.dashboard.settings.account },
-					{ key: "file-storage", title: "File storage", href: paths.dashboard.fileStorage },
+
 				],
 			},
 			{
@@ -47,7 +46,7 @@ const navItems = [
 					{ key: "error", title: "Error", href: paths.notFound },
 				],
 			},
-			{ key: "docs", title: "Docs", href: paths.docs, external: true },
+
 		],
 	},
 ];

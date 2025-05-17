@@ -1,8 +1,8 @@
-// components/pdf/TimelinePdfView.js
+'use client';
+
 import {
-  Document, Page, Text, View, StyleSheet, Image
+  Document, Page, Text, View, StyleSheet, Font
 } from '@react-pdf/renderer';
-import { Font } from '@react-pdf/renderer';
 
 function getStatusStyle(status) {
   const colorMap = {

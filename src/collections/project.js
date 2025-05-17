@@ -110,6 +110,15 @@ export const project = {
       tab: 'Overview', 
     },
 
+     { 
+      name: 'launch_date', 
+      label: 'Projected Launch Date', 
+      type: 'date',
+      group: 'Site Info', 
+      tab: 'Overview', 
+    },
+
+
     // Media
     //Thumbnails
      {
