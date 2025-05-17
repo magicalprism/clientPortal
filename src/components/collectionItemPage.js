@@ -17,8 +17,9 @@ import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
 import TimelineView from '@/components/views/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
-import { useRelatedRecords } from '@/hooks/useRelatedRecords';
+import { RelatedTagsField } from '@/components/fields/RelatedTagsField';
 import CollectionView from '@/components/views/CollectionView';
+import { useRelatedRecords } from '@/hooks/useRelatedRecords';
 
 
 
@@ -172,15 +173,6 @@ if (field.type === 'date') {
   const tableRelationships = (config?.fields || [])
   .filter(f => f.type === 'multiRelationship' && f.displayMode === 'table');
 
-const relatedTableData = {};
-
-tableRelationships.forEach((field) => {
-  relatedTableData[field.name] = useRelatedRecords({
-    parentId: localRecord?.id,
-    field,
-  });
-});
-
 
   return (
     <>
@@ -247,6 +239,16 @@ tableRelationships.forEach((field) => {
                         </Grid>
                       );
                     }
+
+                    //tags multirelationship 
+                    if (field.type === 'multiRelationship' && field.displayMode === 'tags') {
+                      return (
+                        <Grid item xs={12} key={field.name}>
+                          <RelatedTagsField field={field} parentId={localRecord?.id} />
+                        </Grid>
+                      );
+                    }
+
                     if (field.type === 'custom' && field.component === 'CollectionGridView') {
                         const items = localRecord?.[`${field.sourceField}_details`] ?? [];
 

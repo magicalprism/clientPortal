@@ -128,7 +128,7 @@ const { data: children, error: childError } = await childQuery;
   const memoizedIds = useMemo(() => data.map((d) => d.id), [data]);
 
   return (
-    <Box sx={{ px: 3 }}>
+    <Box sx={{ px: 0 }}>
       <Typography sx={{ py: 3 }} variant="h5" gutterBottom>
         {(config?.singularLabel || config?.label || 'Untitled') + ' Lists'}
       </Typography>

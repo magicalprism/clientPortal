@@ -112,7 +112,48 @@ export const element = {
       tab: 'Overview'
     },
 
-
+    {
+      name: 'tasks',
+      label: 'Tasks',
+      type: 'multiRelationship',
+      component: 'CollectionView',
+      displayMode: 'table',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task',
+        sourceKey: 'element_id',
+        tableFields: ['title']
+    },
+      filters: [
+         {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      options: [
+        { value: 'not started', label: 'Not Started' },
+        { value: 'todo', label: 'To do' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'unavailable', label: 'Unavailable' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'archived', label: 'Archived' },       
+      ],
+      defaultValue: 'todo',
+    },
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      options: [
+        { value: 'due_date:asc', label: 'Due date (oldest first)' },
+        { value: 'due_date:desc', label: 'Due date (newest first)' },
+      ],
+      defaultValue: 'due_date:asc',
+    }
+      ],
+       tab: 'Tasks',
+      group: 'Upcoming'
+    },
     
 
 

@@ -44,7 +44,7 @@ export const CollectionLayout = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           px: 3,
-          py: 1,
+
           mb: 2,
           flexWrap: 'wrap',
         }}

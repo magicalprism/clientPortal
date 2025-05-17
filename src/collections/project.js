@@ -185,6 +185,42 @@ export const project = {
 
     //Services
     { 
+      name: 'element_id', 
+      label: 'Pages & Site Elements', 
+      group: 'Site Deliverables',
+      tab: 'Deliverables',
+      type: 'multiRelationship',
+      displayMode: 'tags',  
+      relation: {
+        table: 'element',
+        labelField: 'title',
+        linkTo: '/dashboard/element',
+        sourceKey: 'project_id',
+        tableFields: ['title']
+    },
+  },
+
+  {
+  name: 'file_deliverables',
+  type: 'galleryRelationship',
+  label: 'Files',
+  showAll: false,
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id',
+    foreignKey: 'project_id',
+    filter: {
+      project_id: 'record.id'
+    }
+  },
+    group: 'Site Deliverables',
+      tab: 'Deliverables',
+},
+
+    { 
       name: 'care_plan_id', 
       label: 'Care Plan', 
       group: 'Subscriptions',
@@ -193,7 +229,7 @@ export const project = {
       relation: {
         table: 'product',
         labelField: 'title',
-        linkTo: '/dashboard/product'
+        linkTo: '/dashboard/product',
       } 
     },
 
@@ -214,7 +250,6 @@ export const project = {
 
 
     //Team
-    //Tasks
     {
       name: 'tasks',
       label: 'Tasks',
@@ -362,7 +397,8 @@ sortOptions: [ // ✅ Add this here
         linkTo: '/dashboard/category',
         junctionTable: 'category_project',
         sourceKey: 'project_id',
-        targetKey: 'category_id'
+        targetKey: 'category_id',
+        tableFields: ['title']
       }
     },
   
