@@ -17,6 +17,8 @@ import { Plus } from '@phosphor-icons/react';
 import { extractSelectValue } from '@/components/fields/SelectField';
 import TimelineView from '@/components/views/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
+import { useRelatedRecords } from '@/hooks/useRelatedRecords';
+import CollectionView from '@/components/views/CollectionView';
 
 
 
@@ -167,6 +169,17 @@ if (field.type === 'date') {
     setTempValue(currentValue ?? '');
   };
 
+  const tableRelationships = (config?.fields || [])
+  .filter(f => f.type === 'multiRelationship' && f.displayMode === 'table');
+
+const relatedTableData = {};
+
+tableRelationships.forEach((field) => {
+  relatedTableData[field.name] = useRelatedRecords({
+    parentId: localRecord?.id,
+    field,
+  });
+});
 
 
   return (
@@ -253,30 +266,34 @@ if (field.type === 'date') {
                           </Grid>
                         );
                       }
-
-                    if (field.type === 'multiRelationship' && field.displayMode === 'table') {
-                      return (
-                        <Grid item xs={12} key={field.name}>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                            <Typography variant="subtitle2">{field.label}</Typography>
-                            <IconButton
-                              onClick={() =>
-                                router.push(`?modal=create&id=${record.id}`)
+                        if (field.type === 'multiRelationship' && field.displayMode === 'table') {
+                          const relatedConfig = {
+                            name: field.relation.table,
+                            label: field.label,
+                            singularLabel: field.label || field.relation.table,
+                            defaultView: 'table',
+                            fields: config.fields.filter(f => field.relation.tableFields.includes(f.name)),
+                            filters: field.filters || [],
+                            views: {
+                              table: {
+                                label: 'Table',
+                                component: 'PrimaryTableView'
                               }
-                            >
-                              <Plus />
-                            </IconButton>
-                          </Box>
-                          <MiniCollectionTable
-                            field={field}
-                            config={config}
-                            rows={localRecord?.[field.name + '_details'] ?? []}
-                            parentId={record.id}
-                          />
-                        </Grid>
-                      );
-                    }
-                  
+                            }
+                          };
+
+                          return (
+                            <Grid item xs={12} key={field.name}>
+                              <CollectionView
+                                config={relatedConfig}
+                                forcedFilters={{
+                                  [field.relation.sourceKey]: localRecord?.id
+                                }}
+                              />
+                            </Grid>
+                          );
+                        }
+                                      
 
                     return (
                       <Grid item xs={12}  key={field.name} >

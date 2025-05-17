@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import {
   Dialog,
+  DialogTitle,
   DialogContent,
   DialogActions,
-  DialogTitle,
   Button,
   Box,
   Typography,
@@ -17,10 +17,11 @@ import {
   InputLabel
 } from '@mui/material';
 import { X as XIcon } from '@phosphor-icons/react';
-import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
-import { MediaLibraryPicker } from '@/components/fields/MediaLibraryPicker';
 import { createClient } from '@/lib/supabase/browser';
+import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';
+import { MediaLibraryPicker } from '@/components/fields/MediaLibraryPicker';
+import { fileTypeIcons } from '@/data/fileTypeIcons';
 
 export const MediaUploadModal = ({
   open,
@@ -28,18 +29,13 @@ export const MediaUploadModal = ({
   onUploadComplete,
   record,
   field,
-  config,
-  file,
-  existingMedia = null
+  config
 }) => {
   const supabase = createClient();
 
-
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [previewUrl, setPreviewUrl] = useState('');
-  const [altText, setAltText] = useState('');
-  const [copyright, setCopyright] = useState('');
-  const [manualUrl, setManualUrl] = useState('');
+  const [mode, setMode] = useState(null); // 'file' or 'manual'
+  const [selectedFiles, setSelectedFiles] = useState([]);
+  const [manualEntries, setManualEntries] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [chooseFromLibraryOpen, setChooseFromLibraryOpen] = useState(false);
@@ -65,316 +61,363 @@ export const MediaUploadModal = ({
     if (open) loadOptions();
   }, [open]);
 
-  useEffect(() => {
-    if (existingMedia) {
-      setPreviewUrl(existingMedia.url || '');
-      setManualUrl(existingMedia.url || '');
-      setAltText(existingMedia.alt_text || '');
-      setCopyright(existingMedia.copyright || '');
-      setCompanyId(existingMedia.company_id || record?.company_id || '');
-      setProjectId(existingMedia.project_id || record?.project_id || '');
-    } else {
-      setPreviewUrl('');
-      setManualUrl('');
-      setAltText('');
-      setCopyright('');
-      let inferredCompanyId = record?.company_id || null;
-      let inferredProjectId = record?.project_id || null;
+useEffect(() => {
+  setSelectedFiles([]);
+  setManualEntries([]);
+  setMode(null);
 
-      if (!inferredCompanyId && !inferredProjectId) {
-        const currentTable = config?.name;
-        const id = record?.[`${currentTable}_id`] || record?.id || null;
+  // 🔁 Infer company/project from context or record
+  let inferredCompanyId = record?.company_id || '';
+  let inferredProjectId = record?.project_id || '';
 
-        if (currentTable === 'company') {
-          inferredCompanyId = id;
-        }
-        if (currentTable === 'project') {
-          inferredProjectId = id;
-        }
-      }
-      setCompanyId(inferredCompanyId || '');
-      setProjectId(inferredProjectId || '');
-    }
-    setSelectedFile(null);
-  }, [open, existingMedia, record, config]);
+  const currentTable = config?.name;
+  const currentId = record?.[`${currentTable}_id`] || record?.id || '';
 
-  const handleFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-  
-    setSelectedFile(file);
-    setPreviewUrl(URL.createObjectURL(file));
-    setManualUrl(''); // 🧹 Clear manual URL if uploading file
+  if (!inferredCompanyId && currentTable === 'company') {
+    inferredCompanyId = currentId;
+  }
+
+  if (!inferredProjectId && currentTable === 'project') {
+    inferredProjectId = currentId;
+  }
+
+  setCompanyId(inferredCompanyId || '');
+  setProjectId(inferredProjectId || '');
+}, [open, record, config]);
+
+  const addManualEntry = () => {
+    setManualEntries([...manualEntries, { url: '', title: '', altText: '', copyright: '' }]);
   };
-  
 
-  const handleClear = () => {
-    setPreviewUrl('');
-    setSelectedFile(null);
-    setAltText('');
-    setCopyright('');
-    setManualUrl('');
+  const removeManualEntry = (index) => {
+    const next = [...manualEntries];
+    next.splice(index, 1);
+    setManualEntries(next);
+  };
+
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    setSelectedFiles(
+      files.map((file) => ({
+        file,
+        previewUrl: URL.createObjectURL(file),
+        title: '',
+        altText: '',
+        copyright: ''
+      }))
+    );
   };
 
   const handleUpload = async () => {
-    setUploading(true);
-    setError(null);
-  
-    try {
-      let mediaData;
-  
-      // Resolve both independently
-      let resolvedCompanyId = null;
-      let resolvedProjectId = null;
-  
-      if (record?.company_id) {
-        resolvedCompanyId = record.company_id;
-      } else if (config?.name === 'company') {
-        resolvedCompanyId = record?.id || null;
-      }
-  
-      if (record?.project_id) {
-        resolvedProjectId = record.project_id;
-      } else if (config?.name === 'project') {
-        resolvedProjectId = record?.id || null;
-      }
+  setUploading(true);
+  setError(null);
 
-      
-  
-      const metadata = {
-        alt_text: altText,
-        copyright,
-        company_id: Array.isArray(resolvedCompanyId) ? resolvedCompanyId[0] : resolvedCompanyId,
-        project_id: Array.isArray(resolvedProjectId) ? resolvedProjectId[0] : resolvedProjectId,
-      };
-      
-  
-      if (manualUrl) {
-        const { data, error: insertError } = await supabase
-          .from('media')
-          .insert({
-            url: manualUrl,
-            mime_type: field?.is_folder === true ? 'folder' : getMimeTypeFromUrl(manualUrl),
-            created_at: new Date().toISOString(),
-            ...metadata,
-            is_folder: field?.is_folder === true,
+  const resolvedCompanyId = record?.company_id || (config?.name === 'company' ? record?.id : null);
+  const resolvedProjectId = record?.project_id || (config?.name === 'project' ? record?.id : null);
+  const metadata = {
+    company_id: resolvedCompanyId,
+    project_id: resolvedProjectId
+  };
 
-          })
-          .select()
-          .single();
-  
-        if (insertError) throw insertError;
-        mediaData = data;
-      } else if (selectedFile) {
-        mediaData = await uploadAndCreateMediaRecord({
-          file: selectedFile,
+  let allMediaIds = [];
+
+  try {
+    if (mode === 'file') {
+      for (const media of selectedFiles) {
+        const uploaded = await uploadAndCreateMediaRecord({
+          file: media.file,
           record,
           field,
           baseFolder: field.baseFolder || '',
-          altText,
-          copyright,
+          altText: media.altText,
+          copyright: media.copyright,
+          title: media.title
         });
-  
+
         const { error: updateError } = await supabase
           .from('media')
-          .update({
-            company_id: metadata.company_id,
-            project_id: metadata.project_id,
-          })
-          .eq('id', mediaData.id);
-  
+          .update(metadata)
+          .eq('id', uploaded.id);
+
         if (updateError) throw updateError;
-  
-        mediaData = { ...mediaData, ...metadata };
-      } else {
-        mediaData = {
-          ...existingMedia,
-          ...metadata,
-        };
+
+        allMediaIds.push(uploaded.id);
       }
-  
-      onUploadComplete(mediaData);
-      onClose();
-    } catch (err) {
-      console.error('❌ Upload failed:', err);
-      setError('Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
+    } else if (mode === 'manual') {
+      for (const media of manualEntries) {
+        const { data, error } = await supabase
+          .from('media')
+          .insert({
+            url: media.url,
+            title: media.title,
+            alt_text: media.altText,
+            copyright: media.copyright,
+            mime_type: getMimeTypeFromUrl(media.url),
+            created_at: new Date().toISOString(),
+            ...metadata
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        allMediaIds.push(data.id);
+      }
     }
-  };
-  
-  const finalPreview = selectedFile ? previewUrl : manualUrl || previewUrl; 
+
+    // ✅ Refetch the uploaded media so you get all fields + thumbnails
+    const { data: refreshedMedia, error: refetchError } = await supabase
+      .from('media')
+      .select('*')
+      .in('id', allMediaIds);
+
+    if (refetchError) throw refetchError;
+
+const refreshedIds = refreshedMedia.map(m => m.id);
+const { data: finalMedia, error: finalError } = await supabase
+  .from('media')
+  .select('*')
+  .in('id', refreshedIds);
+
+if (finalError) throw finalError;
+
+onUploadComplete((prev) => {
+  if (!field?.multi) return finalMedia[0];
+  return [...(Array.isArray(prev) ? prev : []), ...finalMedia];
+});
+    onClose();
+  } catch (err) {
+    console.error('❌ Upload failed:', err);
+    setError('Upload failed. Please try again.');
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle>Upload Media</DialogTitle>
-      
-      <DialogContent sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-        <Box sx={{ width: 150, flexShrink: 0, position: 'relative' }}>
-        
+      <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
 
-        {manualUrl || previewUrl ? (
-          
-            <>
-              {selectedFile?.type?.startsWith('image') || getMimeTypeFromUrl(finalPreview).startsWith('image') ? (
-              <img
-                src={finalPreview}
-                alt={altText || 'Media Preview'}
-                style={{ width: '100%', height: 150, objectFit: 'cover', borderRadius: 8 }}
-              />
+        {!mode && (
+          <Box display="flex" gap={2}>
+            <Button variant="contained" onClick={() => setMode('file')}>Upload Files</Button>
+            <Button variant="outlined" onClick={() => setMode('manual')}>Add Manual Links</Button>
+          </Box>
+        )}
 
-) : (
-              <Box
-                sx={{
-                  width: '100%',
-                  height: 150,
-                  borderRadius: 2,
-                  border: '1px solid #ccc',
-                  backgroundColor: '#f9f9f9',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  textAlign: 'center',
-                  p: 1,
-                }}
-              >
-                <Typography variant="body2" fontWeight={500}>
-                  {altText || selectedFile?.name || 'Unnamed file'}
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                  {field?.is_folder === true
-                    ? 'Folder'
-                    : selectedFile?.type || getMimeTypeFromUrl(finalPreview) || 'Unknown type'}
-                </Typography>
+        {mode === 'file' && (
+          <>
+            {selectedFiles.map((media, idx) => (
+              <Box key={idx} sx={{ display: 'flex', gap: 2 }}>
+
+                    <Box
+                      sx={{
+                        width: 100,
+                        height: 100,
+                        borderRadius: 2,
+                        border: '1px solid #ccc',
+                        backgroundColor: '#f9f9f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      {media.file?.type?.startsWith('image/') ? (
+                        <img
+                          src={media.previewUrl}
+                          alt="Preview"
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        />
+                      ) : (
+                        (() => {
+                          const mime = media.file?.type;
+                          const Icon = fileTypeIcons[mime] || fileTypeIcons.default;
+                          return <Icon size={32} color="#888" />;
+                        })()
+                      )}
+                    </Box>
+
+                    <Box flexGrow={1} display="flex" flexDirection="column" gap={1}>
+                      <TextField
+                        label="Title"
+                        size="small"
+                        value={media.title}
+                        onChange={(e) => {
+                          const updated = [...selectedFiles];
+                          updated[idx].title = e.target.value;
+                          setSelectedFiles(updated);
+                        }}
+                      />
+                      <TextField
+                        label="Alt Text"
+                        size="small"
+                        value={media.altText}
+                        onChange={(e) => {
+                          const updated = [...selectedFiles];
+                          updated[idx].altText = e.target.value;
+                          setSelectedFiles(updated);
+                        }}
+                      />
+                      <TextField
+                        label="Copyright"
+                        size="small"
+                        value={media.copyright}
+                        onChange={(e) => {
+                          const updated = [...selectedFiles];
+                          updated[idx].copyright = e.target.value;
+                          setSelectedFiles(updated);
+                        }}
+                      />
+
+                  </Box>
               </Box>
-            )}
+            ))}
+            <Button component="label" variant="outlined">
+              Select Files
+              <input type="file" hidden multiple onChange={handleFileChange} />
+            </Button>
+          </>
+        )}
 
-              <IconButton
-                size="small"
-                onClick={handleClear}
-                sx={{
-                  position: 'absolute',
-                  top: 4,
-                  right: 4,
-                  backgroundColor: 'white',
-                  boxShadow: 1
-                }}
-              >
-                <XIcon size={16} />
-              </IconButton>
-            </>
+{mode === 'manual' && (
+  <>
+    <Button onClick={addManualEntry}>+ Add Manual Entry</Button>
+    {manualEntries.map((entry, index) => (
+      <Box key={index} sx={{ display: 'flex', gap: 2, mt: 2 }}>
+       <Box
+          sx={{
+            width: 100,
+            height: 100,
+            borderRadius: 2,
+            border: '1px solid #ccc',
+            backgroundColor: '#f9f9f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            overflow: 'hidden',
+          }}
+        >
+          {entry.url?.match(/\.(jpeg|jpg|png|webp|gif)$/i) ? (
+            <img
+              src={entry.url}
+              alt="Preview"
+              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+            />
           ) : (
-            <Typography variant="body2" color="text.secondary">
-              No file selected
-            </Typography>
+            (() => {
+              const mime = getMimeTypeFromUrl(entry.url);
+              const Icon = fileTypeIcons[mime] || fileTypeIcons.default;
+              return <Icon size={32} color="#888" />;
+            })()
           )}
-
-          <Button variant="outlined" component="label" fullWidth sx={{ mt: 1 }} disabled={uploading}>
-            {selectedFile || previewUrl ? 'Change File' : 'Select File'}
-            <input type="file" hidden onChange={handleFileChange} />
-          </Button>
-
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={() => setChooseFromLibraryOpen(true)}
-            disabled={uploading}
-            sx={{ mt: 1 }}
-          >
-            Explore Library
-          </Button>
         </Box>
 
-        <Box flexGrow={1} display="flex" flexDirection="column" gap={2}>
+        <Box flexGrow={1} display="flex" flexDirection="column" gap={1}>
           <TextField
             fullWidth
-            label="Image URL (optional)"
-            placeholder="/assets/placeholder.png"
-            value={manualUrl}
-            onChange={(e) => setManualUrl(e.target.value)}
+            size="small"
+            label="Image URL"
+            value={entry.url}
+            onChange={(e) => {
+              const updated = [...manualEntries];
+              updated[index].url = e.target.value;
+              setManualEntries(updated);
+            }}
           />
           <TextField
             fullWidth
+            size="small"
+            label="Title"
+            value={entry.title}
+            onChange={(e) => {
+              const updated = [...manualEntries];
+              updated[index].title = e.target.value;
+              setManualEntries(updated);
+            }}
+          />
+          <TextField
+            fullWidth
+            size="small"
             label="Alt Text"
-            size="small"
-            value={altText}
-            onChange={(e) => setAltText(e.target.value)}
+            value={entry.altText}
+            onChange={(e) => {
+              const updated = [...manualEntries];
+              updated[index].altText = e.target.value;
+              setManualEntries(updated);
+            }}
           />
           <TextField
             fullWidth
-            label="Copyright"
             size="small"
-            value={copyright}
-            onChange={(e) => setCopyright(e.target.value)}
+            label="Copyright"
+            value={entry.copyright}
+            onChange={(e) => {
+              const updated = [...manualEntries];
+              updated[index].copyright = e.target.value;
+              setManualEntries(updated);
+            }}
           />
-          {!isCompanyContext && (
-            <FormControl fullWidth size="small">
-              <InputLabel>Company</InputLabel>
-              <Select
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                label="Company"
-              >
-                <MenuItem value="">None</MenuItem>
-                {companies.map((c) => (
-                  <MenuItem key={c.id} value={c.id}>
-                    {c.title}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-          {!isProjectContext && (
-            <FormControl fullWidth size="small">
-              <InputLabel>Project</InputLabel>
-              <Select
-                value={projectId}
-                onChange={(e) => setProjectId(e.target.value)}
-                label="Project"
-              >
-                <MenuItem value="">None</MenuItem>
-                {projects.map((p) => (
-                  <MenuItem key={p.id} value={p.id}>
-                    {p.title}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          )}
-
-          {error && (
-            <Typography color="error" variant="caption">
-              {error}
-            </Typography>
-          )}
         </Box>
+
+        <IconButton onClick={() => removeManualEntry(index)} sx={{ alignSelf: 'start', mt: 1 }}>
+          <XIcon />
+        </IconButton>
+      </Box>
+    ))}
+  </>
+)}
+
+
+        {/* Company/Project Select */}
+        {!isCompanyContext && (
+          <FormControl fullWidth size="small">
+            <InputLabel>Company</InputLabel>
+            <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} label="Company">
+              <MenuItem value="">None</MenuItem>
+              {companies.map((c) => (
+                <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+        {!isProjectContext && (
+          <FormControl fullWidth size="small">
+            <InputLabel>Project</InputLabel>
+            <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} label="Project">
+              <MenuItem value="">None</MenuItem>
+              {projects.map((p) => (
+                <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+        )}
+
+        {error && <Typography color="error" variant="caption">{error}</Typography>}
       </DialogContent>
+
+      <DialogActions>
+        <Button onClick={onClose} disabled={uploading}>Cancel</Button>
+        {mode && (
+          <Button variant="contained" onClick={handleUpload} disabled={uploading}>
+            {uploading ? 'Saving…' : 'Save'}
+          </Button>
+        )}
+      </DialogActions>
 
       <MediaLibraryPicker
         open={chooseFromLibraryOpen}
         onClose={() => setChooseFromLibraryOpen(false)}
         onSelect={(media) => {
-          setPreviewUrl(media.url);
-          setManualUrl(media.url);
-          setAltText(media.alt_text || '');
-          setCopyright(media.copyright || '');
-          setSelectedFile(null);
           onUploadComplete(media);
           setChooseFromLibraryOpen(false);
           onClose();
         }}
         record={record}
       />
-
-      <DialogActions>
-        <Button onClick={onClose} disabled={uploading}>
-          Cancel
-        </Button>
-        <Button variant="contained" onClick={handleUpload} disabled={uploading}>
-          {uploading ? 'Saving…' : 'Save'}
-        </Button>
-      </DialogActions>
     </Dialog>
   );
 };

@@ -18,13 +18,14 @@ const componentMap = {
   CalendarView,
 };
 
-export default function CollectionView({ config }) {
+export default function CollectionView({ config, forcedFilters = {} }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewKey, setViewKey] = useState(config.defaultView);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  
 
   const handlePageChange = (event, newPage) => {
     setPage(newPage);
@@ -41,6 +42,13 @@ export default function CollectionView({ config }) {
 
   const [defaultValues, setDefaultValues] = useState({});
 const [loadingUser, setLoadingUser] = useState(true);
+
+const [filters, setFilters] = useState({});
+ useEffect(() => {
+    if (!loadingUser && defaultValues) {
+      setFilters({ ...defaultValues, ...forcedFilters });
+    }
+  }, [loadingUser, defaultValues, forcedFilters]);
 
 useEffect(() => {
   const fetchDefaults = async () => {
@@ -80,13 +88,6 @@ useEffect(() => {
 }, [config]);
 
   
-  
-const [filters, setFilters] = useState({});
-useEffect(() => {
-  if (!loadingUser && defaultValues) {
-    setFilters(defaultValues);
-  }
-}, [loadingUser, defaultValues]);
 
   const [refreshFlag, setRefreshFlag] = useState(0);
   const [selectionIds, setSelectionIds] = useState([]);

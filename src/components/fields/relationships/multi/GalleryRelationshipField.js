@@ -72,16 +72,43 @@ export const GalleryRelationshipField = ({ field, value = [], onChange, config, 
     });
   };
 
-  const handleRemove = (id) => {
-    if (showAll) return;
-    const next = items.filter((m) => m.id !== id);
-    setItems(next);
-    onChange?.({
-      ids: next.map((m) => m.id),
-      details: next
-    });
-  };
-  const allowAdd = field?.allowAdd !== false; // default to true
+const handleRemove = async (mediaId) => {
+  if (!record?.id || !config?.name) return;
+
+  const foreignKey = config.name === 'project'
+    ? 'project_id'
+    : config.name === 'company'
+    ? 'company_id'
+    : null;
+
+  if (!foreignKey) {
+    console.warn('[GalleryRelationshipField] No valid foreign key for this config');
+    return;
+  }
+
+  console.log(`[GalleryRelationshipField] Unsetting ${foreignKey} from media ID: ${mediaId}`);
+
+  const { error } = await supabase
+    .from('media')
+    .update({ [foreignKey]: null })
+    .eq('id', mediaId)
+    .eq(foreignKey, record.id); // 🔒 Make sure you're only unsetting it if it's still assigned to this record
+
+  if (error) {
+    console.error(`[GalleryRelationshipField] Failed to unset ${foreignKey}:`, error);
+    return;
+  }
+
+  const next = items.filter((m) => m.id !== mediaId);
+  setItems(next);
+
+  onChange?.({
+    ids: next.map((m) => m.id),
+    details: next
+  });
+};
+
+
 
   return (
     <Box onClick={(e) => e.stopPropagation()} sx={{ width: '100%' }}>
@@ -91,12 +118,13 @@ export const GalleryRelationshipField = ({ field, value = [], onChange, config, 
      
         {items.length > 0 ? (
           <CollectionGridView
-            items={items.map((item) => ({
-              ...item,
-              onClick: () => !showAll && handleRemove(item.id)
-            }))}
-            field={field} // ✅ includes filters for dropdowns
-          />
+            items={items}
+            field={field}
+            onDelete={(item) => {
+                console.log('[GalleryRelationshipField] Removing media ID:', item.id);
+                handleRemove(item.id);
+            }}
+            />
         ) : (
           <Typography variant="body2" color="text.secondary">
             No media found

@@ -13,10 +13,20 @@ export const MiniCollectionTable = ({ field, config, rows, parentId }) => {
   const [filteredRows, setFilteredRows] = useState(rows);
 
   useEffect(() => {
+  const defaultValues = (field.filters || []).reduce((acc, filter) => {
+    if (filter.defaultValue !== undefined) {
+      acc[filter.name] = filter.defaultValue;
+    }
+    return acc;
+  }, {});
+  setFilters(defaultValues);
+}, [field.filters]);
+
+  useEffect(() => {
     const applyFilters = async () => {
       let updatedRows = [...rows];
 
-      for (const filter of field.relation.filters || []) {
+      for (const filter of field.filters || []) {
         const val = filters[filter.name];
         if (!val) continue;
 
@@ -35,7 +45,7 @@ export const MiniCollectionTable = ({ field, config, rows, parentId }) => {
     };
 
     applyFilters();
-  }, [filters, rows, field.relation.filters]);
+  }, [filters, rows, field.filters]);
 
   const displayConfig = field.relation.tableFields
     ? {
@@ -47,10 +57,9 @@ export const MiniCollectionTable = ({ field, config, rows, parentId }) => {
   return (
     <CollectionSelectionProvider ids={filteredRows.map((r) => r.id)}>
       <CollectionFilters
-        key={field.name}
         config={{
           ...displayConfig,
-          filters: field.relation.filters || []
+          filters: field.filters || []
         }}
         filters={filters}
         onChange={setFilters}
@@ -65,7 +74,9 @@ export const MiniCollectionTable = ({ field, config, rows, parentId }) => {
           showEditButton: false
         }}
         rows={filteredRows}
-        fieldContext={field}
+        fieldContext={{
+  relation: field.relation
+}}
       />
 
       {filteredRows.length === 0 && (

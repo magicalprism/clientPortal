@@ -11,6 +11,7 @@ import LinkFieldRenderer from './LinkFieldRenderer';
 import ColorFieldRenderer from './ColorFieldRenderer';
 import CustomFieldRenderer from './CustomFieldRenderer';
 import GalleryRelationshipFieldRenderer from './GalleryRelationshipFieldRenderer';
+import TimezoneFieldRenderer from './TimezoneFieldRenderer';
 
 const RENDERERS = {
   select: SelectFieldRenderer,
@@ -27,6 +28,7 @@ const RENDERERS = {
   custom: CustomFieldRenderer,
   default: TextFieldRenderer,
   galleryRelationship: GalleryRelationshipFieldRenderer,
+  timezone: TimezoneFieldRenderer,
 };
 
 export const getRendererForField = (type) => {

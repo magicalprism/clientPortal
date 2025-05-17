@@ -14,6 +14,7 @@ const extractSelectValue = (value) => {
     return value.value;
   }
   
+  
   return value;
 };
 
@@ -128,41 +129,26 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
     setIsSaving(true);
     
     // Only include fields defined in the config for the update payload
-    const validFieldNames = config.fields.map((f) => f.name);
-    
-    // Create a processed payload
-    const payload = {};
-    
-    Object.entries(record).forEach(([key, value]) => {
-      // Only include fields defined in the config
-      if (!validFieldNames.includes(key)) return;
-      
-      // Find the field definition
-      const fieldDef = config.fields.find(f => f.name === key);
-      
-      // Process special field types
-      if (fieldDef) {
-        if (fieldDef.type === 'select' || fieldDef.type === 'status') {
-          // Extract raw value for select fields
-          payload[key] = extractSelectValue(value);
-          
-          console.log(`[useCollectionSave] Processing ${key} for save:`, {
-            original: value,
-            forDb: payload[key]
-          });
-        } else if (fieldDef.type === 'multiRelationship') {
-          // Skip multirelationship fields - they're handled separately
-          // Don't include them in the main payload
-          console.log(`[useCollectionSave] Skipping multirelationship field ${key} from payload`);
-        } else {
-          // Default handling for other fields
-          payload[key] = value;
-        }
-      } else {
-        // Include system fields
-        payload[key] = value;
-      }
-    });
+    const dbFieldNames = config.fields
+  .filter((f) => f.database !== false)
+  .map((f) => f.name);
+
+const payload = {};
+
+Object.entries(record).forEach(([key, value]) => {
+  if (!dbFieldNames.includes(key)) return;
+
+  const fieldDef = config.fields.find(f => f.name === key);
+
+  if (fieldDef?.type === 'select' || fieldDef?.type === 'status') {
+    payload[key] = extractSelectValue(value);
+  } else if (fieldDef?.type === 'multiRelationship') {
+    // skip multiRelationship fields
+  } else {
+    payload[key] = value;
+  }
+});
+
 
     payload.updated_at = getPostgresTimestamp();
     

@@ -219,75 +219,69 @@ export const project = {
       name: 'tasks',
       label: 'Tasks',
       type: 'multiRelationship',
+      component: 'CollectionView',
       displayMode: 'table',
       relation: {
         table: 'task',
         labelField: 'title',
         linkTo: '/dashboard/task',
-        junctionTable: 'project_task',
         sourceKey: 'project_id',
-        targetKey: 'task_id',
-        tableFields: ['title', 'status', 'assigned_id'],
-        filters: [
-          {
-            name: 'status',
-            type: 'select',
-            label: 'Status',
-            options: ['todo', 'in-progress', 'done']
-          },
-          {
-            name: 'assigned_id',
-            type: 'relationship',
-            label: 'Assigned To',
-            relation: {
-              table: 'contact',
-              labelField: 'title'
-            }
-          }
-        ]
+        tableFields: [
+          'title', 'status', 'assigned_id'
+        ],
+      },
+      filters: [
+         {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      options: [
+        { value: 'not started', label: 'Not Started' },
+        { value: 'todo', label: 'To do' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'unavailable', label: 'Unavailable' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'archived', label: 'Archived' },       
+      ],
+      defaultValue: 'todo',
+    },
+    {
+      name: 'assigned_id',
+      label: 'Assigned to',
+      type: 'relationship',
+      relation: {
+        table: 'contact', //usually current collection or pivot table
+        labelField: 'title',
+        filter: 
+        { 
+          is_assignable: true } //temporary until I add all clients & contractors as users 
       }
     },
-{
-  name: 'files_gallery',
-  label: 'File Gallery',
-  type: 'galleryRelationship',
-  relation: {
-    table: 'media',
-    junctionTable: 'media_project',
-    sourceKey: 'project_id',
-    targetKey: 'media_id'
-  },
-  tab: 'Resources',
-  group: 'Media',
-},
-{
-  name: 'images_gallery',
-  label: 'Image Library',
-  type: 'galleryRelationship',
-  relation: {
-    table: 'media',
-    junctionTable: 'media_project',
-    sourceKey: 'project_id',
-    targetKey: 'media_id'
-  },
-  tab: 'Resources',
-  group: 'Media',
-},
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      options: [
+        { value: 'due_date:asc', label: 'Due date (oldest first)' },
+        { value: 'due_date:desc', label: 'Due date (newest first)' },
+      ],
+      defaultValue: 'due_date:asc',
+    }
+      ],
+       tab: 'Tasks',
+      group: 'Upcoming'
+    },
+
 
 {
   name: 'media_items',
   type: 'galleryRelationship',
   label: 'All Media',
+  database: false,
   showAll: true,
   filters: [
-    { 
-    name: 'mime_type', label: 'File Type' 
-  },
-  { 
-    name: 'element_id', label: 'Page or Element' 
-  },
-  
-  
+    { name: 'mime_type', label: 'File Type' },
+  { name: 'element_id', label: 'Page or Element'  },
 ], // 👈 multiple fields used in dropdowns
 sortOptions: [ // ✅ Add this here
     { value: 'title:asc', label: 'Title (A–Z)' },
@@ -301,6 +295,7 @@ sortOptions: [ // ✅ Add this here
     junctionTable: 'media_project',
     sourceKey: 'project_id',
     targetKey: 'media_id',
+    foreignKey: 'project_id',
     filter: {
       project_id: 'record.id'
     }

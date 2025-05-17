@@ -36,8 +36,6 @@ export const CollectionLayout = ({
   return (
     <Box 
     sx={{
-        p: 5,
-        background: '#fdfcff',
     }}
     >
       <Box

@@ -14,7 +14,7 @@ import {
 import { X } from '@phosphor-icons/react';
 import CollectionItem from './CollectionItem';
 
-const CollectionGridView = ({ items = [], field = {}, onFilterChange }) => {
+const CollectionGridView = ({ items = [], field = {}, onFilterChange, onDelete }) => {
   const filters = field.filters || [];
   const sortOptions = field.sortOptions || [];
 
@@ -169,7 +169,11 @@ const CollectionGridView = ({ items = [], field = {}, onFilterChange }) => {
         }}
       >
         {sortedItems.map((item) => (
-          <CollectionItem key={item.id} item={item} />
+          <CollectionItem 
+            key={item.id}
+            item={item}
+            onDelete={onDelete}
+            />
         ))}
       </Box>
     </Box>
