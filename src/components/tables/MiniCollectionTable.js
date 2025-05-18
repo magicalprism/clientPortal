@@ -31,8 +31,10 @@ export const MiniCollectionTable = ({ field, config, rows, parentId }) => {
         if (!val) continue;
 
         if (filter.type === 'select' || filter.type === 'relationship') {
-          updatedRows = updatedRows.filter(row => String(row[filter.name]) === String(val));
-        }
+  const filterValue = typeof val === 'object' && val !== null ? val.value : val;
+  updatedRows = updatedRows.filter(row => String(row[filter.name]) === String(filterValue));
+}
+
 
         if (filter.type === 'text') {
           updatedRows = updatedRows.filter(row =>

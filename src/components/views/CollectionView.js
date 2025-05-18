@@ -21,48 +21,52 @@ const componentMap = {
   CalendarView,
 };
 
-export default function CollectionView({ config, forcedFilters = {}, variant = 'default' }) {
+export default function CollectionView({ config, event, forcedFilters = {}, variant = 'default' }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [viewKey, setViewKey] = useState(config.defaultView);
+  const [ignoreDefaults, setIgnoreDefaults] = useState(false);
 
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   
+  const handleClearFilters = () => {
+  setDefaultValues({});
+  setFilters({});
+};
 
+	
   const handlePageChange = (event, newPage) => {
+  console.log('[Pagination] Changing page to:', newPage);
+  setPage(newPage);
     setPage(newPage);
-  };
+};
+
   
   const [totalCount, setTotalCount] = useState(0);
-
-  
   const activeFilters = (config.filters || []).filter((f) => {
     if (f.excludeFromViews?.includes(viewKey)) return false;
     if (f.includeInViews && !f.includeInViews.includes(viewKey)) return false;
     return true;
   });
 
-  const [defaultValues, setDefaultValues] = useState({});
+
+
+
+const [defaultValues, setDefaultValues] = useState({});
 const [loadingUser, setLoadingUser] = useState(true);
 
 const [filters, setFilters] = useState({});
 useEffect(() => {
   if (!loadingUser && defaultValues) {
-    setFilters((prevFilters) => {
-      const merged = { ...defaultValues, ...forcedFilters };
-      const isEqual = JSON.stringify(prevFilters) === JSON.stringify(merged);
-      return isEqual ? prevFilters : merged;
-    });
+    setFilters(defaultValues);
   }
-}, [loadingUser, defaultValues, forcedFilters]);
-
+}, [loadingUser, defaultValues]);
 
 useEffect(() => {
   const fetchDefaults = async () => {
     const contactId = await getCurrentContactId();
     console.log('[fetchDefaults] contactId:', contactId);
-
     const fieldDefaults = (config.fields || []).reduce((acc, field) => {
       if (field.defaultToCurrentUser && contactId) {
         console.log(`[fetchDefaults] setting field ${field.name} to contactId: ${contactId}`);
@@ -73,7 +77,6 @@ useEffect(() => {
       }
       return acc;
     }, {});
-
     const filterDefaults = (config.filters || []).reduce((acc, filter) => {
       if (filter.defaultToCurrentUser && contactId) {
         console.log(`[fetchDefaults] setting filter ${filter.name} to contactId: ${contactId}`);
@@ -84,17 +87,13 @@ useEffect(() => {
       }
       return acc;
     }, {});
-
     const mergedDefaults = { ...fieldDefaults, ...filterDefaults };
     console.log('[fetchDefaults] final default values:', mergedDefaults);
-
     setDefaultValues(mergedDefaults);
     setLoadingUser(false);
   };
-
   fetchDefaults();
 }, [config]);
-
   
 
   const [refreshFlag, setRefreshFlag] = useState(0);
@@ -107,9 +106,14 @@ useEffect(() => {
   const params = new URLSearchParams(window.location.search);
   const viewParam = params.get('view');
   if (viewParam && viewParam !== viewKey) {
-    setViewKey(viewParam);
+    		
+    setViewKey(viewParam || config.defaultView);
   }
-}, [searchParams]); // ← stable from next/navigation
+  }, [typeof window !== 'undefined' && window.location.search]);
+
+useEffect(() => {
+  setPage(0);
+}, [filters]);
 
 
   const viewConfig = config.views?.[viewKey];
@@ -127,6 +131,8 @@ useEffect(() => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0); // reset to first page
   };
+
+
 
 const containerSx = {
   default: { p: 9 },
@@ -148,6 +154,9 @@ const containerSx = {
         rowsPerPage={rowsPerPage}
         onRowsPerPageChange={handleRowsPerPageChange}
         totalCount={totalCount}
+        onClearFilters={handleClearFilters}
+        setIgnoreDefaults={setIgnoreDefaults}
+        setDefaultValues={setDefaultValues}
       >
         <ViewComponent
           config={{ ...config, filters: activeFilters }}

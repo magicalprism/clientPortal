@@ -22,6 +22,7 @@ export default function PrimaryTableView({
   page,
   rowsPerPage,
   setTotalCount,
+  totalCount,
 }) {
   const supabase = createClient();
   const router = useRouter();
@@ -49,11 +50,30 @@ export default function PrimaryTableView({
     const start = page * rowsPerPage;
     const end = start + rowsPerPage - 1;
 
+       // Count query to get total number of parents
+    const { count, error: countError } = await supabase
+      .from(config.name)
+      .select('*', { count: 'exact', head: true })
+      .is('parent_id', null);
+    if (countError) {
+      console.error('Count error:', countError);
+    } else if (setTotalCount) {
+      setTotalCount(count || 0);
+    }
+    console.log('[Pagination] start:', start, 'end:', end, 'total:', count);
+
+    if (start >= totalCount) {
+  console.warn('Page out of bounds — skipping fetch:', { page, start, totalCount });
+  setData([]);
+  return;
+}
+
     let parentQuery = supabase
       .from(config.name)
       .select(selectClause, { count: 'exact' })
       .is('parent_id', null)
-      .range(start, end);
+      .range(start, end)
+      .order(field, { ascending, nullsLast: true })
 
     if (columnExists) {
       parentQuery = parentQuery.order(field, { ascending, nullsLast: true });
@@ -72,7 +92,7 @@ export default function PrimaryTableView({
       }
     }
 
-    const { data: parents, count, error: parentError } = await parentQuery;
+    const { data: parents, error: parentError } = await parentQuery;
     if (setTotalCount) setTotalCount(count || 0);
 
     if (parentError) {

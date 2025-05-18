@@ -23,6 +23,9 @@ export const CollectionLayout = ({
   rowsPerPage,
   totalCount,
   onRowsPerPageChange,
+  onClearFilters,
+  setIgnoreDefaults,
+  setDefaultValues
 }) => {
   const router = useRouter();
   const pathname = usePathname();
@@ -43,7 +46,7 @@ export const CollectionLayout = ({
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          px: 3,
+          px: 0,
 
           mb: 2,
           flexWrap: 'wrap',
@@ -74,6 +77,9 @@ export const CollectionLayout = ({
             sortDir={sortDir}
             onSortChange={onSortChange}
             onDeleteSuccess={onDeleteSuccess}
+            onClearFilters={onClearFilters}
+            setIgnoreDefaults={setIgnoreDefaults}
+            setDefaultValues={setDefaultValues}
           />
         </Box>
 
