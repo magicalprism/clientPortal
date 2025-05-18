@@ -38,14 +38,16 @@ export const MultiRelationshipField = ({ field, refreshRecord, value = [], onCha
   }, [field.name, value, normalizedValue]);
 
   // Get selected option objects based on the normalized value IDs
-  const selectedObjects = useMemo(() => {
-    // Match normalized value IDs to options 
-    const result = normalizedValue
-      .map(id => options.find(opt => String(opt.id) === id))
-      .filter(Boolean);
-      
-    return result;
-  }, [options, normalizedValue]);
+const selectedObjects = useMemo(() => {
+  const ids = new Set(normalizedValue.map(String));
+  const enriched = options
+    .filter(opt => ids.has(String(opt.id)))
+    .map(opt => ({
+      ...opt,
+      indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
+    }));
+  return enriched;
+}, [options, normalizedValue]);
 
   const handleChange = async (_, selectedOptionObjects) => {
     console.log('[MultiRelationshipField] Change:', { 
@@ -57,10 +59,11 @@ export const MultiRelationshipField = ({ field, refreshRecord, value = [], onCha
     const selectedIds = selectedOptionObjects.map(opt => String(opt.id)).filter(Boolean);
     
     // Create details array for UI updates
-    const selectedDetails = selectedOptionObjects.map(opt => ({
-      id: opt.id,
-      [labelField]: opt[labelField] || 'Untitled'
-    }));
+const selectedDetails = selectedOptionObjects.map(opt => ({
+  id: opt.id,
+  [labelField]: opt[labelField] || 'Untitled',
+  indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
+}));
     
     // Create a standard response format
     const responseFormat = {
@@ -85,11 +88,29 @@ export const MultiRelationshipField = ({ field, refreshRecord, value = [], onCha
         onChange: () => {}
       });
       
-      if (linkedData) {
-        const newOptions = Array.from(
-          new Map([...options, ...linkedData].map(item => [item.id, item])).values()
-        );
-        setOptions(newOptions);
+      if (linkedData?.length > 0) {
+        const enriched = linkedData
+          .filter(item => item && item.id)
+          .map(item => ({
+            ...item,
+            indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+          }));
+
+          const newOptions = Array.from(
+            new Map([...options, ...enriched].map(item => [item.id, item])).values()
+          );
+
+
+        setOptions(prev => {
+          const map = new Map([...prev, ...enriched].map(item => [item.id, item]));
+          return Array.from(map.values());
+        });
+
+        const normalizedOptions = newOptions.map(item => ({
+        ...item,
+        indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+      }));
+      setOptions(newOptions);
       }
     }
   };
@@ -98,57 +119,54 @@ export const MultiRelationshipField = ({ field, refreshRecord, value = [], onCha
   return (
     <FormControl fullWidth size="small" sx={{ display: 'flex', flexDirection: 'row', gap: 1 }}>
       <Autocomplete
-        multiple
-        loading={loading}
-        options={options}
-        value={selectedObjects}
-        onChange={handleChange}
-        getOptionLabel={(option) =>
-          typeof option === 'string' ? option : option[labelField] ? `${option[labelField]} (${option.id})` : `ID: ${option.id}`
-        }
-        isOptionEqualToValue={(option, value) => {
-          return String(option.id) === String(value.id);
-        }}
-        getOptionKey={(option) => `opt-${option.id}`}
-        renderTags={(selected, getTagProps) =>
-          selected.map((option, index) => {
-            const { key: _, ...restChipProps } = getTagProps({ index });
-            return (
-              <Chip
-                key={`chip-${option.id}`}
-                label={option[labelField] ? `${option[labelField]} (${option.id})` : `ID: ${option.id}`}
-                {...restChipProps}
-              />
-            );
-          })
-        }
-        renderOption={(props, option) => (
-          <li {...props} key={`opt-${option.id}`}>
-            {option.indentedLabel || option[labelField] ? 
-              `${option.indentedLabel || option[labelField]} (${option.id})` : 
-              `ID: ${option.id}`}
-          </li>
-        )}
-        renderInput={(params) => (
-          <TextField
-            {...params}
-            label={`Select ${field.label}`}
-            placeholder="Search..."
-            InputProps={{
-              ...params.InputProps,
-              endAdornment: (
-                <>
-                  {loading && <CircularProgress size={16} />}
-                  {params.InputProps.endAdornment}
-                </>
-              ),
+            multiple
+            loading={loading}
+            options={options}
+            value={selectedObjects}
+            onChange={handleChange}
+            getOptionLabel={(option) =>
+              // 👇 remove duplicate-prone formatting here
+              typeof option === 'string' ? option : `${option[labelField]} (${option.id})`
+            }
+            isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+            getOptionKey={(option) => option.id} // 👈 if supported, else see below
+            renderTags={(selected, getTagProps) =>
               
-            }}
-            
+              selected.map((option, index) => {
+                const { key: _, ...restChipProps } = getTagProps({ index });
+                return (
+                  <Chip
+                    key={`chip-${option.id}`}
+                    label={`${option[labelField] || 'Untitled'} (${option.id})`}
+                    {...restChipProps}
+                  />
+                );
+              })
+            }
+            renderOption={(props, option) => (
+              <li {...props} key={`opt-${option.id}`}>
+                {`${option.indentedLabel || option[labelField]} (${option.id})`}
+              </li>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label={`Select ${field.label}`}
+                placeholder="Search..."
+                InputProps={{
+                  ...params.InputProps,
+                  endAdornment: (
+                    <>
+                      {loading && <CircularProgress size={16} />}
+                      {params.InputProps.endAdornment}
+                    </>
+                  ),
+                }}
+              />
+            )}
+            sx={{ flexGrow: 1, minWidth: 300 }}
           />
-        )}
-        sx={{ flexGrow: 1 }}
-      />
+
 
       {!!field.relation?.linkTo && (
         

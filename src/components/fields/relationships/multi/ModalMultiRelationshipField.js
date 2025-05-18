@@ -106,13 +106,19 @@ export const ModalMultiRelationshipField = ({
       ids: newIds,
       details: newDetails
     });
+
+    const enrichedDetails = newDetails.map(opt => ({
+        id: opt.id,
+        [field.relation.labelField]: opt[field.relation.labelField] || 'Untitled',
+        indentedLabel: opt.indentedLabel || opt[field.relation.labelField] || `ID: ${opt.id}`
+      }));
     
     // Call the parent onChange handler if provided
     // This is CRITICAL for change detection in modal forms
     if (typeof onChange === 'function') {
       onChange(field.name, {
         ids: newIds,
-        details: newDetails
+        details: enrichedDetails
       });
     }
   };
