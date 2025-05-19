@@ -196,8 +196,8 @@ export const task = {
       }, 
     },
     { 
-      name: 'element_id', 
-      label: 'Element', 
+      name: 'elements', 
+      label: 'Elements', 
       type: 'multiRelationship',
       displayMode: 'tags',
       group: 'General',
@@ -209,10 +209,11 @@ export const task = {
         junctionTable: 'element_task',
         sourceKey: 'task_id',
         targetKey: 'element_id',
+       filter: { project_id: '{{record.project_id}}' }
+
 
       }
     },
-    
    
     { 
       name: 'author_id', 
@@ -241,7 +242,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      defaultValue: ['todo'],
+      defaultValue: 'todo',
     },
     {
       name: 'assigned_id',

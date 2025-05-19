@@ -12,7 +12,7 @@ import {
 import { Plus } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { ArrowClockwise } from '@phosphor-icons/react';
-import { useMultiRelationOptions } from './useMultiRelationOptions';
+import { useMultiRelationOptions } from './table/useMultiRelationOptions';
 import { useMultiRelationSync } from './useMultiRelationSync';
 import normalizeMultiRelationshipValue from '@/lib/utils/normalizeMultiRelationshipValue';
 

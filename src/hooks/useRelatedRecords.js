@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 
-export const useRelatedRecords = ({ parentId, field }) => {
+export const useRelatedRecords = ({ parentId, field,  }) => {
   const [records, setRecords] = useState([]);
   const supabase = createClient();
 
@@ -72,7 +72,9 @@ export const useRelatedRecords = ({ parentId, field }) => {
       } catch (err) {
         console.error('[useRelatedRecords] unexpected error:', err);
       }
+      
     };
+    
 
     fetch();
   }, [parentId, field]);

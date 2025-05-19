@@ -23,11 +23,13 @@ const NodeWrapper = ({
   hasImage = true,
   width = 140,
   height = 170,
-  centerContentVertically = false
+  centerContentVertically = false,
+  icon,
+  onClick
 }) => {
     const { openModal } = useModal();
     const supabase = createClient();
-    const fullConfig = collections[collectionName] || config;
+    const fullConfig = config?.name ? collections[config.name] || config : collections[collectionName];
 
 const handleClick = async (e) => {
   if (mode === 'edit') {
@@ -56,7 +58,13 @@ const formattedTitle = titleWords.slice(0, 2).join(' ') + (titleWords.length > 2
 
   return (
     <Box
-    onClick={handleClick}
+      onClick={(e) => {
+        if (mode === 'edit') {
+          e.stopPropagation();
+          onClick?.(id); // 👈 enable external click handling
+          handleClick?.(e); // 👈 retain internal modal logic
+        }
+      }}
       sx={{
         width,
         height,
@@ -141,16 +149,21 @@ const formattedTitle = titleWords.slice(0, 2).join(' ') + (titleWords.length > 2
     overflow: 'hidden',
   }}
 >
-  {/* Image if available */}
-  {hasImage && data.thumbnailUrl && (
-    <Box sx={{ width: '100%', height: '120px', overflow: 'hidden' }}>
-      <img
-        src={data.thumbnailUrl}
-        alt={data.title}
-        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-      />
-    </Box>
-  )}
+      {/* Icon or image */}
+      {icon ? (
+        <Box sx={{ mt: 2, mb: 0 }}>
+          {icon}
+        </Box>
+      ) : hasImage && data.thumbnailUrl ? (
+        <Box sx={{ width: '100%', height: '120px', overflow: 'hidden' }}>
+          <img
+            src={data.thumbnailUrl}
+            alt={data.title}
+            style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+          />
+        </Box>
+      ) : null}
+
 
   {/* Always show title */}
   <Box
