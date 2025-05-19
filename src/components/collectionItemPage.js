@@ -13,17 +13,15 @@ const CollectionView = dynamic(() => import('@/components/views/CollectionView')
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
 import { useCollectionSave } from '@/hooks/useCollectionSave';
 import { FieldRenderer } from '@/components/FieldRenderer';
-import { MiniCollectionTable } from '@/components/tables/MiniCollectionTable';
 import { BrandBoardPreview } from '@/components/BrandBoardPreview';
 import { ElementMap } from '@/components/ElementMap';
 import { TimeTrackerField } from '@/components/fields/time/timer/TimeTrackerField';
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
-import { extractSelectValue } from '@/components/fields/SelectField';
 import TimelineView from '@/components/views/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
 import { RelatedTagsField } from '@/components/fields/RelatedTagsField';
-import { useRelatedRecords } from '@/hooks/useRelatedRecords';
+import * as collections from '@/collections';
 
 
 
@@ -272,19 +270,22 @@ if (field.type === 'date') {
                           </Grid>
                         );
                       }
-                        if (field.type === 'multiRelationship' && field.displayMode === 'table') {
+                      if (field.type === 'multiRelationship' && field.displayMode === 'table') {
+                          const baseConfig = collections[field.relation.table];
+
+                          if (!baseConfig) {
+                            console.warn(`Missing collection config for ${field.relation.table}`);
+                            return null;
+                          }
+
+                          const sourceKey = field.relation.sourceKey;
+
                           const relatedConfig = {
-                            name: field.relation.table,
-                            label: field.label,
-                            singularLabel: field.label || field.relation.table,
-                            defaultView: 'table',
-                            fields: config.fields.filter(f => field.relation.tableFields.includes(f.name)),
-                            filters: field.filters || [],
-                            views: {
-                              table: {
-                                label: 'Table',
-                                component: 'PrimaryTableView'
-                              }
+                            ...baseConfig,
+                            label: field.label || baseConfig.label,
+                            singularLabel: field.label || baseConfig.singularLabel || baseConfig.label,
+                            forcedFilters: {
+                              [sourceKey]: localRecord?.id
                             }
                           };
 
@@ -292,15 +293,13 @@ if (field.type === 'date') {
                             <Grid item xs={12} key={field.name}>
                               <CollectionView
                                 config={relatedConfig}
-                                forcedFilters={{
-                                  [field.relation.sourceKey]: localRecord?.id
-                                }}
                                 variant="details"
                               />
                             </Grid>
                           );
                         }
-                                      
+
+                                                                                      
 
                     return (
                       <Grid item xs={12}  key={field.name} >

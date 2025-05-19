@@ -64,6 +64,14 @@ export const contact = {
         tab: 'Overview', 
         showInTable: true,
       },
+            { 
+        name: 'is_assignable', 
+        type: 'boolean',
+        label: 'Can we assign them tasks?', 
+        group: 'Details',
+        tab: 'Overview', 
+
+      },
       { 
         name: 'role', 
         label: 'Role', 

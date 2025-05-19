@@ -73,6 +73,7 @@ export const task = {
             table: 'contact',
             labelField: 'title',
             linkTo: '/dashboard/contact',
+            filter: { is_assignable: true }
         }},
          {
       name: 'status',
@@ -105,7 +106,6 @@ export const task = {
       group: 'Task', 
       tab: 'Details',
       type: 'boolean', 
-      showInTable: true 
     },
     
 

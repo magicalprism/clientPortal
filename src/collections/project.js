@@ -270,48 +270,9 @@ export const project = {
         labelField: 'title',
         linkTo: '/dashboard/task',
         sourceKey: 'project_id',
-        tableFields: [
-          'title', 'status', 'assigned_id'
-        ],
+        
       },
-      filters: [
-         {
-      name: 'status',
-      type: 'select',
-      label: 'Status',
-      options: [
-        { value: 'not started', label: 'Not Started' },
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'unavailable', label: 'Unavailable' },
-        { value: 'meeting', label: 'Meeting' },
-        { value: 'archived', label: 'Archived' },       
-      ],
-      defaultValue: 'todo',
-    },
-    {
-      name: 'assigned_id',
-      label: 'Assigned to',
-      type: 'relationship',
-      relation: {
-        table: 'contact', //usually current collection or pivot table
-        labelField: 'title',
-        filter: 
-        { 
-          is_assignable: true } //temporary until I add all clients & contractors as users 
-      }
-    },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc',
-    }
-      ],
+      
        tab: 'Tasks',
       group: 'Upcoming'
     },

@@ -47,6 +47,21 @@ export default function PrimaryTableView({
     const ascending = direction === 'asc';
     const columnExists = config.fields.some(f => f.name === field);
 
+    const defaultFilters = Object.fromEntries(
+        (config.filters || [])
+          .filter(f => f.defaultValue !== undefined)
+          .map(f => [f.name, f.defaultValue])
+      );
+
+      const forcedFilters = config?.forcedFilters || {};
+
+      const effectiveFilters = {
+        ...defaultFilters,
+        ...filters,         // From user interaction (e.g. dropdown)
+        ...forcedFilters    // From parent view like ProjectItemPage
+      };
+console.log('[Effective Filters]', effectiveFilters);
+
     const start = page * rowsPerPage;
     const end = start + rowsPerPage - 1;
 
@@ -60,7 +75,7 @@ export default function PrimaryTableView({
     } else if (setTotalCount) {
       setTotalCount(count || 0);
     }
-    console.log('[Pagination] start:', start, 'end:', end, 'total:', count);
+
 
     if (start >= totalCount) {
   console.warn('Page out of bounds — skipping fetch:', { page, start, totalCount });
@@ -91,6 +106,14 @@ export default function PrimaryTableView({
         parentQuery = parentQuery.ilike(filter.name, `%${value}%`);
       }
     }
+
+    for (const [key, value] of Object.entries(effectiveFilters)) {
+  const alreadyHandled = (config.filters || []).some(f => f.name === key);
+  if (!alreadyHandled && value !== undefined && value !== '') {
+    console.log(`[Forced Filter Applied] ${key} = ${value}`);
+    parentQuery = parentQuery.eq(key, value);
+  }
+}
 
     const { data: parents, error: parentError } = await parentQuery;
     if (setTotalCount) setTotalCount(count || 0);
@@ -139,13 +162,15 @@ const { data: children, error: childError } = await childQuery;
     fetchData();
   }, [filters, sortDir, refreshFlag, page, rowsPerPage]);
 
+  
+
   useEffect(() => {
     if (onIdsChange) {
       onIdsChange(data.map((d) => d.id));
     }
   }, [data]);
 
-  const memoizedIds = useMemo(() => data.map((d) => d.id), [data]);
+
 
   return (
     <Box sx={{ px: 0 }}>
