@@ -4,6 +4,7 @@ import { Box, Typography, Chip, CircularProgress, Autocomplete, TextField } from
 import { useRelatedRecords } from '@/hooks/useRelatedRecords';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
+import { fetchResolvedFilter } from '@/lib/utils/filters';
 
 export const RelatedTagsField = ({ field, parentId }) => {
   const router = useRouter();
@@ -12,17 +13,53 @@ export const RelatedTagsField = ({ field, parentId }) => {
   const [allOptions, setAllOptions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [localSelectedItems, setLocalSelectedItems] = useState([]);
+  const [resolvedFilter, setResolvedFilter] = useState({});
 
   const {
-    relation: { table, labelField, sourceKey, junctionTable, targetKey }
+    relation: { 
+      table, 
+      labelField, 
+      sourceKey, 
+      junctionTable, 
+      targetKey,
+      filterFrom,
+      filter,
+      filterReferenceKey 
+    }
   } = field;
 
-  // Fetch all possible tag options
+    // Resolve dynamic filter
+  useEffect(() => {
+    const resolve = async () => {
+      if (filterFrom && filter && parentId) {
+        const result = await fetchResolvedFilter({
+          supabase,
+          field,
+          parentId
+        });
+        setResolvedFilter(result);
+      }
+    };
+    resolve();
+  }, [filterFrom, filter, parentId]);
+
+
+  // Fetch all tag options (filtered)
   useEffect(() => {
     const fetchOptions = async () => {
-      const { data, error } = await supabase.from(table).select(`id, ${labelField}`);
+      let query = supabase.from(table).select(`id, ${labelField}`);
+
+      // Apply resolved filter to query
+      if (resolvedFilter && Object.keys(resolvedFilter).length > 0) {
+        for (const [key, val] of Object.entries(resolvedFilter)) {
+          query = query.eq(key, val);
+        }
+      }
+
+      const { data, error } = await query;
+
       if (error) {
-        console.error('Error loading options:', error);
+        console.error('[RelatedTagsField] Failed to load options:', error);
       } else {
         setAllOptions(
           (data || []).map(opt => ({
@@ -31,11 +68,24 @@ export const RelatedTagsField = ({ field, parentId }) => {
           }))
         );
       }
+
       setLoading(false);
     };
 
     fetchOptions();
-  }, [table, labelField]);
+  }, [table, labelField, resolvedFilter]);
+
+    // Keep selected items synced with live related records
+  useEffect(() => {
+    if (Array.isArray(relatedItems)) {
+      setLocalSelectedItems(
+        relatedItems.map(item => ({
+          ...item,
+          indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+        }))
+      );
+    }
+  }, [relatedItems]);
 
   const handleChange = async (event, selectedItems) => {
     if (!parentId || !Array.isArray(selectedItems)) return;

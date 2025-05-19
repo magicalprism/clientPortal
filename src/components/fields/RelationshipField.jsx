@@ -32,7 +32,7 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
   
       try {
         const resolvedFilter = resolveDynamicFilter(field.relation.filter || {}, record);
-        console.log(`[RelationshipField] 🧪 Resolved filter for ${field.name}:`, resolvedFilter);
+        
   
         for (const [key, actualValue] of Object.entries(resolvedFilter)) {
           if (actualValue === null || actualValue === undefined || actualValue === '') {

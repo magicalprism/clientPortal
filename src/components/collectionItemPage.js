@@ -246,7 +246,15 @@ if (field.type === 'date') {
                     if (field.type === 'multiRelationship' && field.displayMode === 'tags') {
                       return (
                         <Grid item xs={12} key={field.name}>
-                          <RelatedTagsField field={field} parentId={localRecord?.id} />
+                          <RelatedTagsField 
+                          field={field} 
+                          parentId={localRecord?.id} 
+                          value={{
+                            ids: localRecord?.[field.name] || [],
+                            details: localRecord?.[`${field.name}_details`] || []
+                          }}
+                          onChange={(val) => handleFieldChange(field, val)}
+                          />
                         </Grid>
                       );
                     }

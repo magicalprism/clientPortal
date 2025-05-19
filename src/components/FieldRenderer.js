@@ -31,6 +31,11 @@ export const FieldRenderer = ({
   };
 
   const RendererComponent = getRendererForField(field.type);
+  console.log('[FieldRenderer] 🎯 Using renderer:', field.type, RendererComponent?.name);
+  console.log('[FieldRenderer] 🧩 Field:', {
+  name: field.name,
+  type: field.type
+});
 
   if (!RendererComponent) return null;
 

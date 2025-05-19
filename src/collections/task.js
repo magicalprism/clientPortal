@@ -209,7 +209,8 @@ export const task = {
         junctionTable: 'element_task',
         sourceKey: 'task_id',
         targetKey: 'element_id',
-       filter: { project_id: '{{record.project_id}}' }
+       filter: { project_id: '{{record.project_id}}' },
+       filterFrom: 'task'
 
 
       }
