@@ -240,7 +240,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      defaultValue: 'todo',
+      defaultValue: ['todo', 'not started'],
     },
     {
       name: 'assigned_id',

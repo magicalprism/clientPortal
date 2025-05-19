@@ -40,39 +40,88 @@ function FilterPopoverContent({ filter, value, setValue }) {
 
   if (filter.type === 'relationship' && options.length) {
     return (
-      <Select
+     <Select
         fullWidth
-        value={value}
+        multiple={Array.isArray(filter.defaultValue)}
+        value={value || []}
         onChange={(e) => setValue(e.target.value)}
         displayEmpty
         size="small"
+        renderValue={(selected) => {
+          if (!Array.isArray(selected)) return '';
+          return selected
+            .map(val => {
+              const opt = options.find(o => o.id === val || o.value === val);
+              return opt?.[filter.relation?.labelField] || opt?.label || val;
+            })
+            .join(', ');
+        }}
       >
         <MenuItem value="">All</MenuItem>
-        {options.map((opt) => (
+        {options.map(opt => (
           <MenuItem key={opt.id} value={opt.id}>
             {opt[filter.relation.labelField] || `Untitled (${opt.id})`}
           </MenuItem>
         ))}
+
+        <Divider />
+        <MenuItem
+          onClick={() => {
+            const fakeEvent = { target: { value: [] } };
+            setValue(fakeEvent.target.value);
+          }}
+          sx={{ fontStyle: 'italic', color: 'text.secondary' }}
+        >
+          Clear
+        </MenuItem>
+
       </Select>
+
     );
   }
 
-  if (filter.options) {
-    return (
-      <Select
-        fullWidth
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        displayEmpty
-        size="small"
-      >
-        <MenuItem key="all" value="">All</MenuItem>
-        {filter.options.map(opt => (
-          <MenuItem key={opt.value || opt} value={opt.value || opt}>{opt.label || opt}</MenuItem>
-        ))}
-      </Select>
-    );
-  }
+if (filter.options) {
+  const isArrayValue = Array.isArray(value);
+  return (
+    <Select
+      fullWidth
+      multiple={isArrayValue}
+      value={isArrayValue ? value : ''}
+      onChange={(e) => setValue(e.target.value)}
+      displayEmpty
+      size="small"
+      renderValue={(selected) => {
+        if (!Array.isArray(selected)) return '';
+        return selected
+          .map(val => {
+            const opt = options.find(o => o.id === val || o.value === val);
+            return opt?.[filter.relation?.labelField] || opt?.label || val;
+          })
+          .join(', ');
+      }}
+    >
+      <MenuItem value="">All</MenuItem>
+      {filter.options.map(opt => (
+        <MenuItem key={opt.value || opt} value={opt.value || opt}>
+          {opt.label || opt}
+        </MenuItem>
+      ))}
+      <Divider />
+      <MenuItem
+          onClick={() => {
+            const fakeEvent = { target: { value: [] } };
+            setValue(fakeEvent.target.value);
+          }}
+          sx={{ fontStyle: 'italic', color: 'text.secondary' }}
+        >
+          Clear
+        </MenuItem>
+
+    </Select>
+
+  );
+}
+
 
   return (
     <TextField
@@ -177,13 +226,19 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
       <Stack direction="row" spacing={2} sx={{ px: 3, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
         {otherFilters.map((filter) => {
-  const value = filters[filter.name] || '';
-  let displayValue = value;
+  const value = filters[filter.name];
+    let displayValue = '';
 
-  if (filter.type === 'select' && filter.options) {
-    const selectedOption = filter.options.find(opt => opt.value === value);
-    displayValue = selectedOption?.label || '';
-  }
+    if (Array.isArray(value)) {
+      const labels = value.map(val => {
+        const match = filter.options?.find(opt => opt.value === val);
+        return match?.label || val;
+      });
+      displayValue = labels.join(', ');
+    } else if (typeof value === 'string') {
+      const match = filter.options?.find(opt => opt.value === value);
+      displayValue = match?.label || value;
+    }
 
   return (
     <FilterButton
