@@ -208,7 +208,8 @@ export const task = {
         linkTo: '/dashboard/element',
         junctionTable: 'element_task',
         sourceKey: 'task_id',
-        targetKey: 'element_id'
+        targetKey: 'element_id',
+
       }
     },
     
@@ -240,7 +241,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      defaultValue: ['todo', 'not started'],
+      defaultValue: ['todo'],
     },
     {
       name: 'assigned_id',

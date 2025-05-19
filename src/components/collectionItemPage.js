@@ -20,7 +20,7 @@ import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
 import TimelineView from '@/components/views/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
-import { RelatedTagsField } from '@/components/fields/RelatedTagsField';
+import { RelatedTagsField } from '@/components/fields/relationships/multi/RelatedTagsField';
 import * as collections from '@/collections';
 
 

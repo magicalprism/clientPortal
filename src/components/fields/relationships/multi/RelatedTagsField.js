@@ -3,8 +3,10 @@ import { useEffect, useState } from 'react';
 import { Box, Typography, Chip, CircularProgress, Autocomplete, TextField } from '@mui/material';
 import { useRelatedRecords } from '@/hooks/useRelatedRecords';
 import { createClient } from '@/lib/supabase/browser';
+import { useRouter } from 'next/navigation';
 
 export const RelatedTagsField = ({ field, parentId }) => {
+  const router = useRouter();
   const supabase = createClient();
   const relatedItems = useRelatedRecords({ parentId, field });
   const [allOptions, setAllOptions] = useState([]);
@@ -84,6 +86,22 @@ export const RelatedTagsField = ({ field, parentId }) => {
     }
   }, [relatedItems]);
 
+  // Handle navigation to tag detail
+  const handleTagClick = (e, tagId) => {
+    // If user clicked on delete icon or other parts of the chip, don't navigate
+    if (e.target.tagName === 'svg' || 
+        e.target.tagName === 'path' || 
+        e.target.classList.contains('MuiChip-deleteIcon') ||
+        e.target.classList.contains('MuiSvgIcon-root')) {
+      return;
+    }
+    
+    // Otherwise navigate to tag detail
+    router.push(`/dashboard/${table}/${tagId}`);
+  };
+
+
+
   return (
     <Box>
       <Typography variant="subtitle2" gutterBottom>
@@ -112,6 +130,36 @@ export const RelatedTagsField = ({ field, parentId }) => {
           renderInput={params => (
             <TextField {...params} variant="outlined" size="small" placeholder="Add tags" />
           )}
+          renderTags={(tagValues, getTagProps) =>
+            tagValues.map((option, index) => {
+              const tagProps = getTagProps({ index });
+                const { key, ...tagPropsWithoutKey } = getTagProps({ index });
+              
+             return (
+              <Chip
+                key={key} // Pass key directly as a prop
+                label={option.indentedLabel}
+                {...tagPropsWithoutKey} // Spread the rest of the props
+                onClick={(e) => handleTagClick(e, option.id)}
+                  sx={{
+                    cursor: 'pointer',
+                    '&:hover': {
+                      backgroundColor: 'primary.light', // Uses your theme's primary light color
+                      color: 'primary.contrastText',   // Uses the contrasting text color (usually white)
+                      borderColor: 'primary.main'      // Adds a border in the primary color
+                    },
+                    '& .MuiChip-label': {
+                      cursor: 'pointer',
+                    },
+                    // Make the delete icon more visible on hover
+                    '&:hover .MuiChip-deleteIcon': {
+                      color: 'primary.contrastText',   // Makes the delete icon match the text color
+                    }
+                  }}
+                />
+              );
+            })
+          }
         />
       )}
     </Box>

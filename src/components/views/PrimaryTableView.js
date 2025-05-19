@@ -97,18 +97,15 @@ console.log('[Effective Filters]', effectiveFilters);
     }
 
     for (const filter of config.filters || []) {
-  if (filter.name === 'sort') continue;
-  const value = effectiveFilters?.[filter.name];
-  if (!value || value.length === 0) continue;
-
-  if (Array.isArray(value)) {
-    parentQuery = parentQuery.in(filter.name, value);
-  } else if (['select', 'relationship'].includes(filter.type)) {
-    parentQuery = parentQuery.eq(filter.name, value);
-  } else if (filter.type === 'text') {
-    parentQuery = parentQuery.ilike(filter.name, `%${value}%`);
-  }
-}
+      if (filter.name === 'sort') continue;
+      const value = filters?.[filter.name];
+      if (!value) continue;
+      if (['select', 'relationship'].includes(filter.type)) {
+        parentQuery = parentQuery.eq(filter.name, value);
+      } else if (filter.type === 'text') {
+        parentQuery = parentQuery.ilike(filter.name, `%${value}%`);
+      }
+    }
 
     for (const [key, value] of Object.entries(effectiveFilters)) {
   const alreadyHandled = (config.filters || []).some(f => f.name === key);

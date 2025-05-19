@@ -191,6 +191,7 @@ export const element = {
         { label: 'General Page', value: 'page' },
         { label: 'Header', value: 'header' },
         { label: 'Footer', value: 'footer' },
+        { label: 'Email', value: 'email' },
         { label: 'Popup', value: 'popup' }
       ]
     },  

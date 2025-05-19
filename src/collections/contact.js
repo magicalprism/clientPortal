@@ -80,7 +80,7 @@ export const contact = {
         tab: 'Overview', 
       options: [
         { value: 'user', label: 'User' },
-        { value: 'superadmin', label: 'Super Admin' },
+        { value: 'super-admin', label: 'Super Admin' },
         { value: 'staff', label: 'Archived' },
       ]
     },
