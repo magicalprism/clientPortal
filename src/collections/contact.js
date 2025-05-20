@@ -2,6 +2,7 @@ export const contact = {
     name: 'contact',
     label: 'Contacts',
     singularLabel: 'Contact',
+    showEditButton: true,
     editPathPrefix: '/dashboard/contact',
     subtitleField: 'title',
     defaultView: 'table',
@@ -130,24 +131,29 @@ export const contact = {
       }
     },
 
-     {
-      name: 'projects',
-      label: 'Project',
-      type: 'multiRelationship',     
-      group: 'Details',
-      tab: 'Overview', 
-      displayMode: 'tags',
-      relation: {
-        table: 'project',
-        labelField: 'title',
-        linkTo: '/dashboard/project',
-        junctionTable: 'contact_project',
-        sourceKey: 'contact_id',
-        targetKey: 'project_id',
-        filterFrom: 'project'
+   {
+  name: 'project_id',
+  label: 'Project',
+  type: 'multiRelationship',     
+  group: 'General',
+  tab: 'Overview',
+  displayMode: 'tags',
+  relation: {
+    table: 'project',
+    labelField: 'title',
+    isOneToMany: true,
+    linkTo: '/dashboard/project',
+    junctionTable: 'contact_project',
+    sourceKey: 'contact_id',
+    targetKey: 'project_id',
+    filterFrom: 'contact',
+    filterFrom: 'company_contact',
+    filter: {
 
-      }
-    },
+    }
+  }
+},
+   
    
     
     { 

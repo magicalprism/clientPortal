@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { MultiRelationshipField } from '@/components/fields/relationships/multi/MultiRelationshipField';
-import normalizeMultiRelationshipValue from '@/lib/utils/normalizeMultiRelationshipValue';
+// Fix: Import as named export instead of default
+import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
 import { useModalMultiRelationships } from '@/lib/utils/multirelationshipUtils';
 
 /**
@@ -24,6 +25,7 @@ export const ModalMultiRelationshipField = ({
   const [selectedIds, setSelectedIds] = useState([]);
   const [initialized, setInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [lastChangedTimestamp, setLastChangedTimestamp] = useState(null);
   
   // Use the custom hook for multirelationship handling
   const { updateMultiRelationship } = useModalMultiRelationships({
@@ -41,6 +43,11 @@ export const ModalMultiRelationshipField = ({
     const hasExistingDetails = Array.isArray(record[`${field.name}_details`]) && 
       record[`${field.name}_details`].length > 0;
     
+    console.log(`[ModalMultiRelationshipField] ${field.name} initializing:`, {
+      value: record[field.name],
+      normalizedIds,
+      hasExistingDetails
+    });
 
     // Set the selected IDs
     setSelectedIds(normalizedIds);
@@ -60,8 +67,6 @@ export const ModalMultiRelationshipField = ({
           updatedRecord[`${field.name}_details`] = record[`${field.name}_details`];
         }
         
-
-        
         return updatedRecord;
       });
       
@@ -72,7 +77,8 @@ export const ModalMultiRelationshipField = ({
   
   // When selections change
   const handleChange = (value) => {
-
+    // Track change timestamp for debugging
+    setLastChangedTimestamp(new Date().toISOString());
     
     // Handle different formats of value
     let newIds = [];
@@ -90,7 +96,11 @@ export const ModalMultiRelationshipField = ({
       newIds = Object.keys(value).map(String).filter(Boolean);
     }
     
-
+    console.log(`[ModalMultiRelationshipField] ${field.name} changed:`, {
+      newIds,
+      detailsCount: newDetails.length,
+      previousIds: selectedIds
+    });
     
     // Update our local state
     setSelectedIds(newIds);
@@ -101,11 +111,12 @@ export const ModalMultiRelationshipField = ({
       details: newDetails
     });
 
+    // Enrich details with label field for display
     const enrichedDetails = newDetails.map(opt => ({
-        id: opt.id,
-        [field.relation.labelField]: opt[field.relation.labelField] || 'Untitled',
-        indentedLabel: opt.indentedLabel || opt[field.relation.labelField] || `ID: ${opt.id}`
-      }));
+      id: opt.id,
+      [field.relation.labelField]: opt[field.relation.labelField] || 'Untitled',
+      indentedLabel: opt.indentedLabel || opt[field.relation.labelField] || `ID: ${opt.id}`
+    }));
     
     // Call the parent onChange handler if provided
     // This is CRITICAL for change detection in modal forms
@@ -114,6 +125,11 @@ export const ModalMultiRelationshipField = ({
         ids: newIds,
         details: enrichedDetails
       });
+      
+      // Also explicitly set hasChanges if that property exists in onChange
+      if (onChange.setHasChanges) {
+        onChange.setHasChanges(true);
+      }
     }
   };
   
@@ -129,19 +145,19 @@ export const ModalMultiRelationshipField = ({
   return (
     <Box sx={{ mt: 2, mb: 2 }}>
      {!hideLabel && (
-  <>
-    {field.label && (
-      <Typography variant="subtitle2" fontWeight={500} mb={1}>
-        {field.label}
-      </Typography>
-    )}
-    {field.description && (
-      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-        {field.description}
-      </Typography>
-    )}
-  </>
-)}
+      <>
+        {field.label && (
+          <Typography variant="subtitle2" fontWeight={500} mb={1}>
+            {field.label}
+          </Typography>
+        )}
+        {field.description && (
+          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+            {field.description}
+          </Typography>
+        )}
+      </>
+     )}
       
       <MultiRelationshipField
         field={{
@@ -153,28 +169,35 @@ export const ModalMultiRelationshipField = ({
         onChange={handleChange}
       />
       
-      {/* Debug info */}
-      <Box sx={{ 
-        mt: 1, 
-        p: 1, 
-        border: '1px dashed #ccc', 
-        borderRadius: 1,
-        backgroundColor: '#f9f9f9',
-        fontSize: '10px'
-      }}>
-        <Typography variant="caption" fontWeight="bold">
-          Selected Tags: {selectedIds.length}
-        </Typography>
-        <div style={{ 
-          whiteSpace: 'nowrap', 
-          overflow: 'hidden', 
-          textOverflow: 'ellipsis',
-          fontFamily: 'monospace',
-          fontSize: '9px'
+      {/* Debug info - hidden in production */}
+      {process.env.NODE_ENV === 'development' && (
+        <Box sx={{ 
+          mt: 1, 
+          p: 1, 
+          border: '1px dashed #ccc', 
+          borderRadius: 1,
+          backgroundColor: '#f9f9f9',
+          fontSize: '10px'
         }}>
-          {selectedIds.join(', ') || '(none)'}
-        </div>
-      </Box>
+          <Typography variant="caption" fontWeight="bold">
+            Selected Tags: {selectedIds.length}
+          </Typography>
+          <div style={{ 
+            whiteSpace: 'nowrap', 
+            overflow: 'hidden', 
+            textOverflow: 'ellipsis',
+            fontFamily: 'monospace',
+            fontSize: '9px'
+          }}>
+            {selectedIds.join(', ') || '(none)'}
+          </div>
+          {lastChangedTimestamp && (
+            <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
+              Last changed: {lastChangedTimestamp}
+            </Typography>
+          )}
+        </Box>
+      )}
     </Box>
   );
 };

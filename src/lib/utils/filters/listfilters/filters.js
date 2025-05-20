@@ -31,6 +31,10 @@ export async function fetchResolvedFilter({ supabase, field, parentId }) {
     parentId
   });
 
+  if (!parentId) {
+  console.warn('[fetchResolvedFilter] ⚠️ Missing parentId – filtering will fail.');
+}
+
   if (!filterFrom || !rawFilter || !parentId) {
     console.warn('[fetchResolvedFilter] Missing required inputs. Aborting.');
     return {};

@@ -218,9 +218,29 @@ export const task = {
         junctionTable: 'element_task',
         sourceKey: 'task_id',
         targetKey: 'element_id',
-       filter: { project_id: '{{record.project_id}}' },
-       filterFrom: 'task'
+          filter: { project_id: '{{record.project_id}}' },
+          filterFrom: 'task'
 
+
+      }
+    },
+
+        //Meta
+         {
+      name: 'contacts',
+      label: 'Contact',
+      type: 'multiRelationship',     
+      group: 'General',
+      tab: 'Meta',
+      displayMode: 'tags',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact',
+        junctionTable: 'contact_project',
+        sourceKey: 'project_id',
+        targetKey: 'contact_id',
+        filterFrom: 'contact'
 
       }
     },

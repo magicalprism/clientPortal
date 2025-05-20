@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 import { createClient } from '@/lib/supabase/browser';
-import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
+import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
 
 // Helper function to extract value from select field objects
 const extractSelectValue = (value) => {
@@ -14,10 +14,10 @@ const extractSelectValue = (value) => {
     return value.value;
   }
   
-  
   return value;
 };
 
+// IMPORTANT: This is a simplified version focused on fixing multi-relationship saving
 export const useCollectionSave = ({ config, record, setRecord, startEdit, mode = 'edit' }) => {
   if (!record) {
     return {
@@ -30,7 +30,7 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
       loadingField: null,
       startEdit: () => {},
       hasChanges: false,
-      setHasChanges: () => {}, // Add this for explicit control
+      setHasChanges: () => {},
     };
   }
 
@@ -43,6 +43,8 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
   const [loadingField, setLoadingField] = useState(null);
   const [hasChanges, setHasChanges] = useState(false); 
   const [isSaving, setIsSaving] = useState(false);
+  const [dirtyFields] = useState(new Set()); // Track which fields have changed
+  const [multiRelChanges, setMultiRelChanges] = useState({}); // Track multi-relationship changes
 
   const suppressAutosaveRef = useRef(isCreateMode || !record?.id);
 
@@ -56,99 +58,143 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
     if (record?.id !== lastRecordIdRef.current) {
       lastRecordIdRef.current = record?.id;
       setHasChanges(false);
+      setMultiRelChanges({});
     }
   }, [record?.id]);
 
   const updateLocalValue = (fieldName, newValue) => {
-    if (suppressAutosaveRef.current) return;
+  if (suppressAutosaveRef.current) return;
 
-    const currentValue = record?.[fieldName];
-    
-    // Compare values properly, handling objects
-    const isEqual = () => {
-      // Handle arrays (for multirelationship fields)
-      if (Array.isArray(currentValue) && Array.isArray(newValue)) {
-        if (currentValue.length !== newValue.length) return false;
-        // Compare arrays as sets of string values
-        const currentSet = new Set(currentValue.map(String));
-        return newValue.every(id => currentSet.has(String(id)));
-      }
-      
-      // Handle objects with value property
-      if (
-        typeof currentValue === 'object' && 
-        currentValue !== null && 
-        typeof newValue === 'object' && 
-        newValue !== null
-      ) {
-        // If both have value property, compare that
-        if ('value' in currentValue && 'value' in newValue) {
-          return currentValue.value === newValue.value;
-        }
-        
-        // For objects with ids property (multirelationships)
-        if ('ids' in currentValue && 'ids' in newValue) {
-          if (currentValue.ids.length !== newValue.ids.length) return false;
-          const currentSet = new Set(currentValue.ids.map(String));
-          return newValue.ids.every(id => currentSet.has(String(id)));
-        }
-        if (
-          Array.isArray(currentValue) && 
-          typeof newValue === 'object' && 
-          Array.isArray(newValue.ids)
-        ) {
-          const currentSet = new Set(currentValue.map(String));
-          return newValue.ids.every(id => currentSet.has(String(id)));
-        }
-      }
-      
-      // Default to JSON string comparison
-      return JSON.stringify(currentValue) === JSON.stringify(newValue);
-    };
-    
-    if (isEqual()) return;
+  const currentValue = record?.[fieldName];
+  
+  // Find field definition
+  const fieldDef = config.fields.find(f => f.name === fieldName);
+  if (!fieldDef) return;
 
-    console.log(`[useCollectionSave] Updating ${fieldName}:`, {
-      from: currentValue,
-      to: newValue
+  // Special handling for multiRelationship fields
+  if (fieldDef.type === 'multiRelationship') {
+    console.log(`[useCollectionSave] Multi field ${fieldName} update:`, {
+      current: currentValue,
+      new: newValue
     });
 
-    setRecord((prev) => ({
+    // Extract IDs from current and new values
+    let currentIds = normalizeMultiRelationshipValue(currentValue);
+    let newIds;
+    let newDetails = [];
+    
+    // Handle different input formats
+    if (typeof newValue === 'object' && newValue !== null && Array.isArray(newValue.ids)) {
+      newIds = newValue.ids.map(String);
+      newDetails = newValue.details || [];
+    } else {
+      newIds = normalizeMultiRelationshipValue(newValue);
+    }
+    
+    // Compare arrays (order doesn't matter for multi-relationship)
+    const currentSet = new Set(currentIds);
+    const newSet = new Set(newIds);
+    
+    // Check if different
+    const hasChanged = 
+      currentSet.size !== newSet.size || 
+      newIds.some(id => !currentSet.has(id));
+    
+    // If nothing changed, don't trigger a re-render
+    if (!hasChanged) {
+      console.log(`[useCollectionSave] No change detected for ${fieldName}`);
+      return;
+    }
+    
+    console.log(`[useCollectionSave] Change detected for ${fieldName}:`, {
+      from: currentIds,
+      to: newIds,
+      detailsCount: newDetails.length
+    });
+
+    // Update the record with both IDs and details
+    setRecord(prev => ({
+      ...prev,
+      [fieldName]: newIds,
+      ...(newDetails.length > 0 ? { [`${fieldName}_details`]: newDetails } : {}),
+      ...(prev && 'updated_at' in prev ? { updated_at: getPostgresTimestamp() } : {})
+    }));
+    
+    // Set hasChanges to activate the save button
+    setHasChanges(true);
+    return;
+  }
+
+    // For other field types
+    let valueChanged = false;
+    
+    if (fieldDef.type === 'select' || fieldDef.type === 'status') {
+      const currentExtracted = extractSelectValue(currentValue);
+      const newExtracted = extractSelectValue(newValue);
+      valueChanged = currentExtracted !== newExtracted;
+    } else {
+      // Check if values are different (simple comparison)
+      valueChanged = JSON.stringify(currentValue) !== JSON.stringify(newValue);
+    }
+
+    if (!valueChanged) return;
+
+    // Update the record with the new value
+    setRecord(prev => ({
       ...prev,
       [fieldName]: newValue,
-      ...(prev && 'updated_at' in prev ? { updated_at: getPostgresTimestamp() } : {}),
+      ...(prev && 'updated_at' in prev ? { updated_at: getPostgresTimestamp() } : {})
     }));
 
+    dirtyFields.add(fieldName);
     setHasChanges(true);
   };
 
   const saveRecord = async () => {
-    if (!record?.id || typeof record.id !== 'number' || !hasChanges || isSaving) return;
+    if (!record?.id || typeof record.id !== 'number' || isSaving) return false;
 
-    // Set saving state to prevent multiple simultaneous saves
+    // Even if hasChanges is false, always process when multiRelChanges has entries
+    if (!hasChanges && Object.keys(multiRelChanges).length === 0) {
+      console.log('[useCollectionSave] No changes to save');
+      return false;
+    }
+
+    // Log current state before saving
+    console.log('Saving record:', record);
+    console.log('Fields marked for saving:', [...dirtyFields]);
+    console.log('Multi fields in config:', config.fields
+      .filter(f => f.type === 'multiRelationship')
+      .map(f => f.name));
+    console.log('Multi field changes:', multiRelChanges);
+
     setIsSaving(true);
     
     // Only include fields defined in the config for the update payload
     const dbFieldNames = config.fields
-  .filter((f) => f.database !== false)
-  .map((f) => f.name);
+      .filter((f) => f.database !== false)
+      .map((f) => f.name);
 
-const payload = {};
+    // Find all multiRelationship fields in the config
+    const multiRelFields = config.fields
+      .filter(f => f.type === 'multiRelationship')
+      .map(f => f.name);
 
-Object.entries(record).forEach(([key, value]) => {
-  if (!dbFieldNames.includes(key)) return;
+    const payload = {};
 
-  const fieldDef = config.fields.find(f => f.name === key);
+    Object.entries(record).forEach(([key, value]) => {
+      if (!dbFieldNames.includes(key)) return;
 
-  if (fieldDef?.type === 'select' || fieldDef?.type === 'status') {
-    payload[key] = extractSelectValue(value);
-  } else if (fieldDef?.type === 'multiRelationship') {
-    // skip multiRelationship fields
-  } else {
-    payload[key] = value;
-  }
-});
+      // Skip multiRelationship fields - they're handled separately
+      if (multiRelFields.includes(key)) return;
 
+      const fieldDef = config.fields.find(f => f.name === key);
+
+      if (fieldDef?.type === 'select' || fieldDef?.type === 'status') {
+        payload[key] = extractSelectValue(value);
+      } else {
+        payload[key] = value;
+      }
+    });
 
     payload.updated_at = getPostgresTimestamp();
     
@@ -167,24 +213,108 @@ Object.entries(record).forEach(([key, value]) => {
         return false;
       }
       
-      // Step 2: Save multirelationship fields
-      const multirelationshipResult = await saveMultiRelationships({
-        config,
-        record
-      });
+      // Step 2: Save multirelationship fields separately
+      // This is the key part that was likely missing before
+      // We'll save ALL multi-relationship fields that are in the config
+      // regardless of whether they're marked as "dirty"
+      let allMultiSaved = true;
       
-      if (!multirelationshipResult) {
-        console.error('❌ Error saving multirelationships');
-        setIsSaving(false);
-        return false;
+      for (const fieldName of multiRelFields) {
+        // Get the field definition
+        const fieldDef = config.fields.find(f => f.name === fieldName);
+        if (!fieldDef?.relation?.junctionTable) continue;
+        
+        const { 
+          junctionTable, 
+          sourceKey = `${config.name}_id`, 
+          targetKey = `${fieldDef.relation.table}_id` 
+        } = fieldDef.relation;
+        
+        try {
+          // Get the value - handle various formats
+          let fieldValue = record[fieldName];
+          let normalizedIds = normalizeMultiRelationshipValue(fieldValue);
+          
+          console.log(`[useCollectionSave] Saving ${fieldName}:`, {
+            value: fieldValue,
+            normalizedIds
+          });
+          
+          // 1. Get existing relationships
+          const { data: existingRels, error: fetchError } = await supabase
+            .from(junctionTable)
+            .select(targetKey)
+            .eq(sourceKey, record.id);
+            
+          if (fetchError) {
+            console.error(`[useCollectionSave] Error fetching existing ${fieldName}:`, fetchError);
+            allMultiSaved = false;
+            continue;
+          }
+          
+          // 2. Extract existing IDs
+          const existingIds = (existingRels || [])
+            .map(rel => String(rel[targetKey]))
+            .filter(Boolean);
+            
+          console.log(`[useCollectionSave] Existing ${fieldName}:`, existingIds);
+          
+          // 3. Calculate additions and removals
+          const toAdd = normalizedIds.filter(id => !existingIds.includes(String(id)));
+          const toRemove = existingIds.filter(id => !normalizedIds.includes(String(id)));
+          
+          console.log(`[useCollectionSave] Changes for ${fieldName}:`, {
+            toAdd,
+            toRemove
+          });
+          
+          // 4. Add new relationships
+          if (toAdd.length > 0) {
+            const insertData = toAdd.map(id => ({
+              [sourceKey]: record.id,
+              [targetKey]: id
+            }));
+            
+            const { error: insertError } = await supabase
+              .from(junctionTable)
+              .insert(insertData);
+              
+            if (insertError) {
+              console.error(`[useCollectionSave] Error adding ${fieldName}:`, insertError);
+              allMultiSaved = false;
+            }
+          }
+          
+          // 5. Remove relationships
+          for (const id of toRemove) {
+            const { error: deleteError } = await supabase
+              .from(junctionTable)
+              .delete()
+              .match({
+                [sourceKey]: record.id,
+                [targetKey]: id
+              });
+              
+            if (deleteError) {
+              console.error(`[useCollectionSave] Error removing ${fieldName} item:`, deleteError);
+              allMultiSaved = false;
+            }
+          }
+        } catch (err) {
+          console.error(`[useCollectionSave] Error processing ${fieldName}:`, err);
+          allMultiSaved = false;
+        }
       }
       
+      // Clear state
+      setMultiRelChanges({});
       setHasChanges(false);
-      console.debug('✅ Record and relationships saved successfully.');
       setIsSaving(false);
+      
+      console.log(`[useCollectionSave] ✅ Save completed. Multi fields success: ${allMultiSaved}`);
       return true;
     } catch (err) {
-      console.error('❌ Unexpected error saving record:', err);
+      console.error('[useCollectionSave] ❌ Unexpected error saving record:', err);
       setIsSaving(false);
       return false;
     }
@@ -200,7 +330,24 @@ Object.entries(record).forEach(([key, value]) => {
     loadingField,
     startEdit,
     hasChanges,
-    setHasChanges, // Export this for explicit control
+    setHasChanges,
     isSaving,
+    // Expose for debugging
+    dirtyFields,
+    multiRelChanges,
+    forceAddMultiChange: (fieldName) => {
+      if (!fieldName) return;
+      
+      setMultiRelChanges(prev => ({
+        ...prev,
+        [fieldName]: {
+          value: record[fieldName],
+          timestamp: new Date().toISOString(),
+          forced: true
+        }
+      }));
+      
+      setHasChanges(true);
+    }
   };
 };

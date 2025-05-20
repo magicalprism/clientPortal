@@ -252,7 +252,7 @@ export const element = {
 
     {
       name: 'resource_id',
-      label: 'Project',
+      label: 'Resource',
       group: 'Help',
       tab: 'Meta', 
       type: 'relationship',
@@ -261,6 +261,20 @@ export const element = {
         table: 'resource',
         labelField: 'title',
         linkTo: '/dashboard/resource', // or dynamically derive from config
+      },
+      
+    },
+        {
+      name: 'project_id',
+      label: 'Project',
+      group: 'Help',
+      tab: 'Meta', 
+      type: 'relationship',
+      showInTable: true,
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project', // or dynamically derive from config
       },
       
     },

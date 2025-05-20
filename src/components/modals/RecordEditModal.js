@@ -7,135 +7,318 @@ import normalizeMultiRelationshipValue from './lib/utils/normalizeMultiRelations
  * Helper function to save multirelationship fields to junction tables
  * This is particularly useful for modal views
  */
+'use client';
+
+import { createClient } from '@/lib/supabase/browser';
+import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
+
+/**
+ * Utility for handling multirelationship operations
+ * Enhanced to work with various component implementations
+ */
+export const useModalMultiRelationships = ({ config, record, setRecord }) => {
+  const supabase = createClient();
+
+  /**
+   * Updates a multirelationship field in a record with proper format
+   * 
+   * @param {string} fieldName - Name of the field to update
+   * @param {Object} value - Value object with ids and details
+   */
+  const updateMultiRelationship = (fieldName, value) => {
+    if (!fieldName) return;
+    
+    // Find field definition
+    const fieldDef = config?.fields?.find(f => f.name === fieldName);
+    if (!fieldDef || fieldDef.type !== 'multiRelationship') {
+      console.warn(`[useModalMultiRelationships] Field ${fieldName} not found or not a multiRelationship`);
+      return;
+    }
+    
+    // Ensure we have a normalized list of IDs
+    let ids = [];
+    let details = [];
+    
+    if (typeof value === 'object' && value !== null) {
+      if (Array.isArray(value.ids)) {
+        ids = value.ids.map(String).filter(Boolean);
+        details = Array.isArray(value.details) ? value.details : [];
+      } else if (Array.isArray(value)) {
+        ids = value.map(String).filter(Boolean);
+      } else {
+        // Try to extract IDs from generic object
+        ids = Object.keys(value).filter(k => value[k]).map(String);
+      }
+    } else if (Array.isArray(value)) {
+      ids = value.map(String).filter(Boolean);
+    } else {
+      ids = normalizeMultiRelationshipValue(value);
+    }
+    
+    // Ensure details has proper format
+    const labelField = fieldDef.relation?.labelField || 'title';
+    
+    if (details.length === 0) {
+      // Try to use existing details from record
+      const existingDetails = record?.[`${fieldName}_details`] || [];
+      const existingMap = new Map(existingDetails.map(d => [String(d.id), d]));
+      
+      details = ids.map(id => {
+        if (existingMap.has(String(id))) {
+          return existingMap.get(String(id));
+        }
+        return { id, [labelField]: `ID: ${id}` };
+      });
+    }
+    
+    // Log what we're doing
+    console.log(`[useModalMultiRelationships] Updating ${fieldName}:`, {
+      ids,
+      detailsCount: details.length
+    });
+    
+    // Update the record with both IDs array and details
+    setRecord(prev => ({
+      ...prev,
+      [fieldName]: ids,
+      [`${fieldName}_details`]: details
+    }));
+  };
+  
+  /**
+   * Saves multirelationship changes to the database
+   * 
+   * @param {string} fieldName - Name of the field to save
+   * @returns {Promise<boolean>} - Success status
+   */
+  const saveMultiRelationship = async (fieldName) => {
+    if (!record?.id || !fieldName) return false;
+    
+    // Find field definition
+    const fieldDef = config?.fields?.find(f => f.name === fieldName);
+    if (!fieldDef || !fieldDef.relation?.junctionTable) {
+      console.warn(`[useModalMultiRelationships] Field ${fieldName} missing junction table config`);
+      return false;
+    }
+    
+    const { 
+      junctionTable, 
+      sourceKey = `${config.name}_id`, 
+      targetKey = `${fieldDef.relation.table}_id` 
+    } = fieldDef.relation;
+    
+    // Get the normalized IDs
+    const ids = normalizeMultiRelationshipValue(record[fieldName]);
+    
+    // Fetch existing relations
+    try {
+      const { data: existingRels, error } = await supabase
+        .from(junctionTable)
+        .select(targetKey)
+        .eq(sourceKey, record.id);
+        
+      if (error) {
+        console.error(`[useModalMultiRelationships] Error fetching relations for ${fieldName}:`, error);
+        return false;
+      }
+      
+      // Extract existing IDs
+      const existingIds = (existingRels || []).map(r => String(r[targetKey]));
+      
+      // Calculate additions and removals
+      const toAdd = ids.filter(id => !existingIds.includes(String(id)));
+      const toRemove = existingIds.filter(id => !ids.includes(String(id)));
+      
+      // Add new relations
+      if (toAdd.length > 0) {
+        const insertData = toAdd.map(id => ({
+          [sourceKey]: record.id,
+          [targetKey]: id
+        }));
+        
+        const { error: insertError } = await supabase
+          .from(junctionTable)
+          .insert(insertData);
+          
+        if (insertError) {
+          console.error(`[useModalMultiRelationships] Error adding relations for ${fieldName}:`, insertError);
+          return false;
+        }
+      }
+      
+      // Remove relations
+      if (toRemove.length > 0) {
+        for (const id of toRemove) {
+          const { error: deleteError } = await supabase
+            .from(junctionTable)
+            .delete()
+            .match({
+              [sourceKey]: record.id,
+              [targetKey]: id
+            });
+            
+          if (deleteError) {
+            console.error(`[useModalMultiRelationships] Error removing relation for ${fieldName}:`, deleteError);
+          }
+        }
+      }
+      
+      return true;
+    } catch (err) {
+      console.error(`[useModalMultiRelationships] Unexpected error for ${fieldName}:`, err);
+      return false;
+    }
+  };
+  
+  /**
+   * Saves all multirelationship fields in a record
+   * 
+   * @returns {Promise<boolean>} - Success status
+   */
+  const saveAllMultiRelationships = async () => {
+    if (!record?.id || !config?.fields) return false;
+    
+    // Find all multirelationship fields
+    const multiRelFields = config.fields
+      .filter(f => f.type === 'multiRelationship' && f.relation?.junctionTable);
+      
+    if (multiRelFields.length === 0) return true; // No fields to save
+    
+    try {
+      // Save each field
+      const results = await Promise.all(
+        multiRelFields.map(field => saveMultiRelationship(field.name))
+      );
+      
+      // Check if all succeeded
+      return results.every(Boolean);
+    } catch (err) {
+      console.error('[useModalMultiRelationships] Error saving multirelationships:', err);
+      return false;
+    }
+  };
+  
+  return {
+    updateMultiRelationship,
+    saveMultiRelationship,
+    saveAllMultiRelationships
+  };
+};
+
+/**
+ * Saves all multirelationship fields for a record
+ * Standalone function for use without hooks
+ * 
+ * @param {Object} params - Parameters object
+ * @param {Object} params.config - Collection configuration
+ * @param {Object} params.record - Record to save
+ * @returns {Promise<boolean>} - Success status
+ */
 export const saveMultiRelationships = async ({ config, record }) => {
   if (!record?.id || !config?.fields) {
-    console.warn('[saveMultiRelationships] Missing record ID or config fields');
+    console.warn('[saveMultiRelationships] Missing record ID or config');
     return false;
   }
   
   const supabase = createClient();
   
-  // Find all multirelationship fields in the config
-  const multiRelationshipFields = config.fields.filter(
-    field => field.type === 'multiRelationship' && field.relation?.junctionTable
+  // Find multirelationship fields
+  const multiRelFields = config.fields.filter(
+    f => f.type === 'multiRelationship' && f.relation?.junctionTable
   );
   
-  if (multiRelationshipFields.length === 0) {
-    // No multirelationship fields to save
-    console.log('[saveMultiRelationships] No multirelationship fields found in config');
-    return true;
-  }
+  if (multiRelFields.length === 0) return true; // No fields to save
   
-  console.log(`[saveMultiRelationships] Processing ${multiRelationshipFields.length} multirelationship fields for record ${record.id}`);
+  console.log(`[saveMultiRelationships] Saving ${multiRelFields.length} fields for record ${record.id}`);
   
   try {
-    // Process each multirelationship field
+    // Process each field
     const results = await Promise.all(
-      multiRelationshipFields.map(async field => {
-        // Get the configuration for this field
-        const { junctionTable, sourceKey, targetKey } = field.relation;
-        const sourceKeyName = sourceKey || `${config.name}_id`;
-        const targetKeyName = targetKey || `${field.relation.table}_id`;
+      multiRelFields.map(async (field) => {
+        const { 
+          junctionTable, 
+          sourceKey = `${config.name}_id`, 
+          targetKey = `${field.relation.table}_id` 
+        } = field.relation;
         
-        // Use the normalizeMultiRelationshipValue utility to handle different formats
-        const selectedIds = normalizeMultiRelationshipValue(record[field.name]);
+        // Get normalized IDs from the record
+        const normalizedIds = normalizeMultiRelationshipValue(record[field.name]);
         
-        console.log(`[saveMultiRelationships] Field ${field.name}: Raw value from record:`, record[field.name]);
-        console.log(`[saveMultiRelationships] Field ${field.name}: Normalized IDs:`, selectedIds);
+        // Debug the values being saved
+        console.log(`[saveMultiRelationships] ${field.name} IDs to save:`, {
+          normalizedIds,
+          rawValue: record[field.name]
+        });
         
-        // Get current relationships to check for changes
-        const { data: currentRelations } = await supabase
+        // Fetch existing relations
+        const { data: existingRels, error: fetchError } = await supabase
           .from(junctionTable)
-          .select(targetKeyName)
-          .eq(sourceKeyName, record.id);
+          .select(targetKey)
+          .eq(sourceKey, record.id);
           
-        const currentIds = (currentRelations || [])
-          .map(r => String(r[targetKeyName]))
-          .filter(Boolean);
-        
-        console.log(`[saveMultiRelationships] Field ${field.name}: Current relationships:`, currentIds);
-        
-        // Check if anything actually changed
-        const currentSet = new Set(currentIds);
-        const newSet = new Set(selectedIds);
-        
-        // Quick comparison to see if sets match
-        const hasChanges = 
-          currentIds.length !== selectedIds.length ||
-          selectedIds.some(id => !currentSet.has(id)) ||
-          currentIds.some(id => !newSet.has(id));
-        
-        if (!hasChanges) {
-          console.log(`[saveMultiRelationships] Field ${field.name}: No changes to relationships, skipping save`);
-          return true;
-        }
-        
-        console.log(`[saveMultiRelationships] Field ${field.name}: Changes detected, saving ${selectedIds.length} relationships (changed from ${currentIds.length})`);
-        
-        // Step 1: Delete existing relationships
-        const { error: deleteError } = await supabase
-          .from(junctionTable)
-          .delete()
-          .eq(sourceKeyName, record.id);
-          
-        if (deleteError) {
-          console.error(`[saveMultiRelationships] Error deleting existing relationships for ${field.name}:`, deleteError);
+        if (fetchError) {
+          console.error(`[saveMultiRelationships] Error fetching relations for ${field.name}:`, fetchError);
           return false;
         }
         
-        // Step 2: Insert new relationships if there are any
-        if (selectedIds.length > 0) {
-          const newRelationships = selectedIds.map(id => ({
-            [sourceKeyName]: record.id,
-            [targetKeyName]: id
+        // Extract existing IDs
+        const existingIds = (existingRels || []).map(r => String(r[targetKey]));
+        
+        // Calculate additions and removals
+        const toAdd = normalizedIds.filter(id => !existingIds.includes(String(id)));
+        const toRemove = existingIds.filter(id => !normalizedIds.includes(String(id)));
+        
+        console.log(`[saveMultiRelationships] ${field.name} changes:`, {
+          existing: existingIds.length,
+          toAdd: toAdd.length,
+          toRemove: toRemove.length
+        });
+        
+        // Add new relations
+        if (toAdd.length > 0) {
+          const insertData = toAdd.map(id => ({
+            [sourceKey]: record.id,
+            [targetKey]: id
           }));
-          
-          console.log(`[saveMultiRelationships] Field ${field.name}: Inserting relationships:`, newRelationships);
           
           const { error: insertError } = await supabase
             .from(junctionTable)
-            .insert(newRelationships);
+            .insert(insertData);
             
           if (insertError) {
-            console.error(`[saveMultiRelationships] Error inserting new relationships for ${field.name}:`, insertError);
+            console.error(`[saveMultiRelationships] Error adding relations for ${field.name}:`, insertError);
             return false;
           }
-          
-          console.log(`[saveMultiRelationships] Field ${field.name}: Successfully saved relationships`);
         }
         
-        // Step 3: Also update the tags field in the main record to keep it in sync
-        // This is important because some parts of the app may rely on the tags field
-        try {
-          const { error: updateError } = await supabase
-            .from(config.name)
-            .update({ 
-              [field.name]: selectedIds,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', record.id);
-            
-          if (updateError) {
-            console.error(`[saveMultiRelationships] Error updating ${field.name} in main record:`, updateError);
-            // Don't fail the entire operation for this, since the junction table is the source of truth
-          } else {
-            console.log(`[saveMultiRelationships] Successfully updated ${field.name} in main record`);
+        // Remove relations
+        if (toRemove.length > 0) {
+          for (const id of toRemove) {
+            const { error: deleteError } = await supabase
+              .from(junctionTable)
+              .delete()
+              .match({
+                [sourceKey]: record.id,
+                [targetKey]: id
+              });
+              
+            if (deleteError) {
+              console.error(`[saveMultiRelationships] Error removing relation for ${field.name}:`, deleteError);
+            }
           }
-        } catch (err) {
-          console.error(`[saveMultiRelationships] Unexpected error updating main record:`, err);
         }
         
         return true;
       })
     );
     
-    const success = results.every(result => result === true);
-    
-    console.log(`[saveMultiRelationships] All multirelationship fields saved successfully:`, success);
+    // Check if all succeeded
+    const success = results.every(Boolean);
+    console.log(`[saveMultiRelationships] Completed with status: ${success}`);
     
     return success;
-  } catch (error) {
-    console.error('[saveMultiRelationships] Error saving multirelationships:', error);
+  } catch (err) {
+    console.error('[saveMultiRelationships] Unexpected error:', err);
     return false;
   }
 };
@@ -173,37 +356,6 @@ export const mergeMultiRelationshipValues = (existing, newValue) => {
   };
 };
 
-/**
- * Hook for handling multirelationship fields in modal context
- */
-export const useModalMultiRelationships = ({ config, record, setRecord }) => {
-  const updateMultiRelationship = (fieldName, value) => {
-    console.log(`Updating multirelationship field ${fieldName}:`, value);
-    
-    // Get existing values
-    const existingValue = record[fieldName] || [];
-    
-    // Merge with new values instead of replacing
-    const mergedValue = mergeMultiRelationshipValues(existingValue, value);
-    
-    setRecord(prev => ({
-      ...prev,
-      [fieldName]: mergedValue.ids,
-      [`${fieldName}_details`]: mergedValue.details.length > 0 
-        ? mergedValue.details 
-        : prev[`${fieldName}_details`] || []
-    }));
-  };
-  
-  const saveAllMultiRelationships = async () => {
-    return saveMultiRelationships({ config, record });
-  };
-  
-  return {
-    updateMultiRelationship,
-    saveAllMultiRelationships
-  };
-};
 
 /**
  * Helper to extract multirelationship IDs from a record in a consistent format

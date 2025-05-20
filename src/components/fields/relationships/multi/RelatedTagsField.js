@@ -1,83 +1,196 @@
 'use client';
+
 import { useEffect, useState } from 'react';
 import { Box, Typography, Chip, CircularProgress, Autocomplete, TextField } from '@mui/material';
 import { useRelatedRecords } from '@/hooks/useRelatedRecords';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
-import { fetchResolvedFilter } from '@/lib/utils/filters';
+import { fetchResolvedFilter } from '@/lib/utils/filters/listfilters/dynamicFilterUtils';
+import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
 
-export const RelatedTagsField = ({ field, parentId, hideLabel = false }) => {
+/**
+ * A field for displaying and editing tags (multirelationship) in a more
+ * user-friendly format with chips
+ */
+export const RelatedTagsField = ({ 
+  field, 
+  parentId, 
+  hideLabel = false,
+  value,
+  onChange
+}) => {
   const router = useRouter();
   const supabase = createClient();
-  const relatedItems = useRelatedRecords({ parentId, field });
-  const [allOptions, setAllOptions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [allOptions, setAllOptions] = useState([]);
   const [localSelectedItems, setLocalSelectedItems] = useState([]);
   const [resolvedFilter, setResolvedFilter] = useState({});
-
+  const [filterError, setFilterError] = useState(null);
+  
+  // Fetch related records if we're in read-only mode (no onChange)
+  const relatedItems = !onChange ? useRelatedRecords({ parentId, field }) : null;
+  
+  // Configuration for relationship
   const {
     relation: { 
       table, 
-      labelField, 
+      labelField = 'title', 
       sourceKey, 
       junctionTable, 
       targetKey,
       filterFrom,
-      filter,
-      filterReferenceKey 
-    }
-  } = field;
+      filter
+    } = {} // Add default empty object to prevent null/undefined errors
+  } = field || {};
 
-    // Resolve dynamic filter
+  // Resolve dynamic filter
   useEffect(() => {
-    const resolve = async () => {
-      if (filterFrom && filter && parentId) {
+    const resolveFilter = async () => {
+      // Skip if missing required fields
+      if (!filterFrom || !filter || !parentId) {
+        console.log('[RelatedTagsField] Skipping filter resolution - missing required fields');
+        return;
+      }
+      
+      try {
+        setFilterError(null);
+        
         const result = await fetchResolvedFilter({
           supabase,
-          field,
+          field: {
+            ...field,
+            parentId
+          },
           parentId
         });
+        
+        console.log('[RelatedTagsField] Resolved filter:', result);
         setResolvedFilter(result);
+      } catch (err) {
+        console.error('[RelatedTagsField] Error resolving filter:', err);
+        setFilterError(err.message || 'Error resolving filter');
       }
     };
-    resolve();
-  }, [filterFrom, filter, parentId]);
+    
+    resolveFilter();
+  }, [filterFrom, filter, parentId, field, supabase]);
 
-
-  // Fetch all tag options (filtered)
+  // Fetch all tag options with filtering
   useEffect(() => {
     const fetchOptions = async () => {
-      let query = supabase.from(table).select(`id, ${labelField}`);
+      if (!table) {
+        console.log('[RelatedTagsField] No table specified, skipping options fetch');
+        setLoading(false);
+        return;
+      }
+      
+      setLoading(true);
+      
+      try {
+        let query = supabase.from(table).select(`id, ${labelField}, parent_id`);
 
-      // Apply resolved filter to query
-      if (resolvedFilter && Object.keys(resolvedFilter).length > 0) {
-        for (const [key, val] of Object.entries(resolvedFilter)) {
-          query = query.eq(key, val);
+        // Apply resolved filter to query
+        if (resolvedFilter && Object.keys(resolvedFilter).length > 0) {
+          for (const [key, val] of Object.entries(resolvedFilter)) {
+            if (val === null || val === undefined || val === '') continue;
+            
+            if (Array.isArray(val)) {
+              query = query.in(key, val);
+            } else if (typeof val === 'string' && val.includes('%')) {
+              query = query.ilike(key, val);
+            } else {
+              query = query.eq(key, val);
+            }
+          }
         }
+
+        const { data, error } = await query;
+
+        if (error) {
+          console.error('[RelatedTagsField] Failed to load options:', error);
+          setAllOptions([]);
+        } else {
+          // Check if we have a parent_id field for hierarchical display
+          const hasParentField = data.some(item => 'parent_id' in item);
+          
+          if (hasParentField) {
+            // Build a hierarchical tree
+            const map = new Map();
+            const roots = [];
+            
+            // Create nodes
+            data.forEach(item => map.set(item.id, { ...item, children: [] }));
+            
+            // Build the tree
+            map.forEach(item => {
+              if (item.parent_id && map.has(item.parent_id)) {
+                map.get(item.parent_id).children.push(item);
+              } else {
+                roots.push(item);
+              }
+            });
+            
+            // Flatten with indentation
+            const flatten = (nodes, depth = 0) => {
+              return nodes.flatMap(node => {
+                const prefix = '—'.repeat(depth);
+                const formatted = { 
+                  ...node, 
+                  indentedLabel: depth > 0 ? `${prefix} ${node[labelField] || ''}`.trim() : node[labelField] || ''
+                };
+                return [formatted, ...flatten(node.children || [], depth + 1)];
+              });
+            };
+            
+            const flattened = flatten(roots);
+            setAllOptions(flattened);
+          } else {
+            // Simple flat list
+            setAllOptions(
+              (data || []).map(opt => ({
+                ...opt,
+                indentedLabel: opt[labelField] || `ID: ${opt.id}`
+              }))
+            );
+          }
+        }
+      } catch (err) {
+        console.error('[RelatedTagsField] Error fetching options:', err);
+      } finally {
+        setLoading(false);
       }
-
-      const { data, error } = await query;
-
-      if (error) {
-        console.error('[RelatedTagsField] Failed to load options:', error);
-      } else {
-        setAllOptions(
-          (data || []).map(opt => ({
-            ...opt,
-            indentedLabel: opt[labelField] || `ID: ${opt.id}`
-          }))
-        );
-      }
-
-      setLoading(false);
     };
 
     fetchOptions();
-  }, [table, labelField, resolvedFilter]);
+  }, [table, labelField, resolvedFilter, supabase]);
 
-    // Keep selected items synced with live related records
+  // Initialize from value or related items
   useEffect(() => {
-    if (Array.isArray(relatedItems)) {
+    if (onChange && value) {
+      // Extract IDs from value
+      const ids = normalizeMultiRelationshipValue(value);
+      
+      // Extract details if available
+      let details = [];
+      
+      if (value && typeof value === 'object' && Array.isArray(value.details)) {
+        details = value.details;
+      } else if (Array.isArray(value)) {
+        // Try to match with allOptions
+        details = allOptions.filter(opt => 
+          ids.includes(String(opt.id))
+        );
+      }
+      
+      // Create local selected items for display
+      setLocalSelectedItems(
+        details.map(item => ({
+          ...item,
+          indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+        }))
+      );
+    } else if (relatedItems) {
+      // We're in read-only mode, use the fetched related items
       setLocalSelectedItems(
         relatedItems.map(item => ({
           ...item,
@@ -85,60 +198,70 @@ export const RelatedTagsField = ({ field, parentId, hideLabel = false }) => {
         }))
       );
     }
-  }, [relatedItems]);
+  }, [value, relatedItems, allOptions, labelField, onChange]);
 
+  // Handle selection changes
   const handleChange = async (event, selectedItems) => {
     if (!parentId || !Array.isArray(selectedItems)) return;
 
-    const selectedIds = selectedItems.map(item => item.id);
-    const currentIds = relatedItems.map(item => item.id);
+    // Prepare the selected items for display
+    const enrichedItems = selectedItems.map(item => ({
+      ...item,
+      indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+    }));
+    
+    // Update local UI state
+    setLocalSelectedItems(enrichedItems);
+    
+    if (onChange) {
+      // We're in controlled mode with onChange
+      const selectedIds = selectedItems.map(item => item.id);
+      
+      onChange({
+        ids: selectedIds,
+        details: enrichedItems
+      });
+    } else {
+      // We're in direct database mode
+      const selectedIds = selectedItems.map(item => item.id);
+      const currentIds = relatedItems.map(item => item.id);
 
-    const toAdd = selectedIds.filter(id => !currentIds.includes(id));
-    const toRemove = currentIds.filter(id => !selectedIds.includes(id));
+      const toAdd = selectedIds.filter(id => !currentIds.includes(id));
+      const toRemove = currentIds.filter(id => !selectedIds.includes(id));
 
-    // Optimistically update UI
-    setLocalSelectedItems(
-      selectedItems.map(item => ({
-        ...item,
-        indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-      }))
-    );
+      // Add new tags
+      if (toAdd.length && junctionTable) {
+        const insertData = toAdd.map(id => ({
+          [sourceKey]: parentId,
+          [targetKey]: id
+        }));
+        
+        const { error } = await supabase.from(junctionTable).insert(insertData);
+        
+        if (error) {
+          console.error('[RelatedTagsField] Error adding relationships:', error);
+        }
+      }
 
-    // Add new tags
-    if (toAdd.length && junctionTable) {
-      const insertData = toAdd.map(id => ({
-        [sourceKey]: parentId,
-        [targetKey]: id
-      }));
-      await supabase.from(junctionTable).insert(insertData);
-    }
-
-    // Remove deselected tags
-    if (toRemove.length && junctionTable) {
-      for (const id of toRemove) {
-        await supabase
-          .from(junctionTable)
-          .delete()
-          .match({ [sourceKey]: parentId, [targetKey]: id });
+      // Remove deselected tags
+      if (toRemove.length && junctionTable) {
+        for (const id of toRemove) {
+          const { error } = await supabase
+            .from(junctionTable)
+            .delete()
+            .match({ [sourceKey]: parentId, [targetKey]: id });
+            
+          if (error) {
+            console.error('[RelatedTagsField] Error removing relationship:', error);
+          }
+        }
       }
     }
   };
 
-  // Sync from relatedItems to local state
-  useEffect(() => {
-    if (Array.isArray(relatedItems)) {
-      setLocalSelectedItems(
-        relatedItems.map(item => ({
-          ...item,
-          indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-        }))
-      );
-    }
-  }, [relatedItems]);
-
-  // Handle navigation to tag detail
+  // Handle tag click for navigation
   const handleTagClick = (e, tagId) => {
-    // If user clicked on delete icon or other parts of the chip, don't navigate
+    // Avoid navigation when clicking delete icon
     if (e.target.tagName === 'svg' || 
         e.target.tagName === 'path' || 
         e.target.classList.contains('MuiChip-deleteIcon') ||
@@ -146,66 +269,80 @@ export const RelatedTagsField = ({ field, parentId, hideLabel = false }) => {
       return;
     }
     
-    // Otherwise navigate to tag detail
+    // Navigate to tag detail
     router.push(`/dashboard/${table}/${tagId}`);
   };
-
-
 
   return (
     <Box>
       {!hideLabel && (
-  <Typography variant="subtitle2" gutterBottom>
-    {field.label}
-  </Typography>
-)}
+        <Typography variant="subtitle2" gutterBottom>
+          {field.label}
+        </Typography>
+      )}
+
+      {filterError && (
+        <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
+          Filter error: {filterError}
+        </Typography>
+      )}
 
       {loading ? (
         <CircularProgress size={20} />
       ) : (
         <Autocomplete
           multiple
-          options={[...allOptions].sort((a, b) =>
+          size="small"
+          options={allOptions.sort((a, b) =>
             (a.indentedLabel || '').localeCompare(b.indentedLabel || '')
           )}
           value={localSelectedItems}
           getOptionLabel={option =>
             option.indentedLabel || option[labelField] || `ID: ${option.id}`
           }
-          isOptionEqualToValue={(option, value) => option.id === value.id}
+          isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
           onChange={handleChange}
           renderOption={(props, option) => (
-            <li {...props} key={`option-${option.id}`}>
-              {option.indentedLabel}
+            <li 
+              {...props} 
+              key={`option-${option.id}`}
+              style={{ 
+                paddingLeft: option.depth ? `${(option.depth * 16) + 16}px` : undefined 
+              }}
+            >
+              {option.indentedLabel || option[labelField] || `ID: ${option.id}`}
             </li>
           )}
           renderInput={params => (
-            <TextField {...params} variant="outlined" size="small" placeholder="Add tags" />
+            <TextField 
+              {...params} 
+              variant="outlined" 
+              size="small" 
+              placeholder={`Add ${field.label || 'tags'}`} 
+            />
           )}
           renderTags={(tagValues, getTagProps) =>
             tagValues.map((option, index) => {
-              const tagProps = getTagProps({ index });
-                const { key, ...tagPropsWithoutKey } = getTagProps({ index });
+              const { key, ...tagPropsWithoutKey } = getTagProps({ index });
               
-             return (
-              <Chip
-                key={key} // Pass key directly as a prop
-                label={option.indentedLabel}
-                {...tagPropsWithoutKey} // Spread the rest of the props
-                onClick={(e) => handleTagClick(e, option.id)}
+              return (
+                <Chip
+                  key={key}
+                  label={option.indentedLabel || option[labelField]}
+                  {...tagPropsWithoutKey}
+                  onClick={(e) => handleTagClick(e, option.id)}
                   sx={{
                     cursor: 'pointer',
                     '&:hover': {
-                      backgroundColor: 'primary.light', // Uses your theme's primary light color
-                      color: 'primary.contrastText',   // Uses the contrasting text color (usually white)
-                      borderColor: 'primary.main'      // Adds a border in the primary color
+                      backgroundColor: 'primary.light',
+                      color: 'primary.contrastText',
+                      borderColor: 'primary.main'
                     },
                     '& .MuiChip-label': {
                       cursor: 'pointer',
                     },
-                    // Make the delete icon more visible on hover
                     '&:hover .MuiChip-deleteIcon': {
-                      color: 'primary.contrastText',   // Makes the delete icon match the text color
+                      color: 'primary.contrastText',
                     }
                   }}
                 />
@@ -217,3 +354,5 @@ export const RelatedTagsField = ({ field, parentId, hideLabel = false }) => {
     </Box>
   );
 };
+
+export default RelatedTagsField;

@@ -65,7 +65,7 @@ export const project = {
         table: 'project',
         labelField: 'title',
         linkTo: '/dashboard/project', // or dynamically derive from config
-        filter: { company_id: '{{record.company_id}}' }
+
       }
     },
 
@@ -86,6 +86,7 @@ export const project = {
      { name: 'blog_public', label: 'Blog Public', group: 'Site Info', tab: 'Overview', type: 'boolean', },
     { name: 'admin_email', label: 'Admin Email', group: 'Site Info', tab: 'Overview', },
 
+    //1 project has 1 company but a company has many projects
     {
       name: 'company_id',
       label: 'Company',
@@ -130,7 +131,7 @@ export const project = {
       group: 'Media',
       tab: 'Brand'
     },
-    
+    //1 to many but not relationship or multi fields
     {
       name: 'thumbnail_id',
       label: 'Thumbnail',
@@ -160,12 +161,14 @@ export const project = {
 
     //Backend
     //Hosting
+    //1 project has 1 server
     {
       name: 'server_id',
       label: 'Server',
+      tab: 'Backend',
       group: 'Hosting',
       type: 'relationship',
-      tab: 'Backend',
+
       relation: {
         table: 'server',
         labelField: 'title',
@@ -194,26 +197,7 @@ export const project = {
     //Deliverables
 
     //Services
-     { 
-      name: 'elements', 
-      label: 'Elements', 
-      type: 'multiRelationship',
-      displayMode: 'tags',
-      group: 'General',
-      tab: 'Meta',
-      relation: {
-        table: 'element',
-        labelField: 'title',
-        linkTo: '/dashboard/element',
-        junctionTable: 'element_project',
-        sourceKey: 'project_id',
-        targetKey: 'element_id',
-       filter: { project_id: '{{record.project_id}}' },
-       filterFrom: 'project'
 
-
-      }
-    },
 
   {
   name: 'file_deliverables',
@@ -228,13 +212,13 @@ export const project = {
     targetKey: 'media_id',
     foreignKey: 'project_id',
     filter: {
-      project_id: 'record.id'
+      project_id: '{{record.id}}'
     }
   },
     group: 'Site Deliverables',
       tab: 'Deliverables',
 },
-
+//1 project has 1 care plan  but a care plan has many projects
     { 
       name: 'care_plan_id', 
       label: 'Care Plan', 
@@ -252,6 +236,7 @@ export const project = {
     //Contracts
     
     //Site Elements
+
     {
       name: 'element_map',
       label: 'Site Element Map',
@@ -260,11 +245,32 @@ export const project = {
       tab: 'Site Structure',
       group: 'Elements'
     },
+    //1 project has many elements but 1 element only has 1 project
+     {
+ name: 'elements',
+  label: 'Elements',
+  type: 'multiRelationship',
+  displayMode: 'tags',
+  group: 'General',
+  tab: 'Meta',
+  relation: {
+    table: 'element',
+    labelField: 'title',
+    linkTo: '/dashboard/element',
+    isOneToMany: true,
+    filterFrom: 'project',
+    sourceKey: 'project_id',
+    filter: {
+      project_id: '{{record.id}}'
+    }
+  }
+},
     
     // Content
 
 
     //Team
+    //don't worry because its component 
     {
       name: 'tasks',
       label: 'Tasks',
@@ -283,7 +289,7 @@ export const project = {
       group: 'Upcoming'
     },
 
-
+//different kind of field
 {
   name: 'media_items',
   type: 'galleryRelationship',
@@ -319,24 +325,28 @@ sortOptions: [ // ✅ Add this here
     
     
     //Meta
-         {
-      name: 'contacts',
-      label: 'Contact',
-      type: 'multiRelationship',     
-      group: 'General',
-      tab: 'Meta',
-      displayMode: 'tags',
-      relation: {
-        table: 'contact',
-        labelField: 'title',
-        linkTo: '/dashboard/contact',
-        junctionTable: 'contact_project',
-        sourceKey: 'project_id',
-        targetKey: 'contact_id',
-        filterFrom: 'contact'
-
-      }
-    },
+    //a project has many contacts
+   {
+  name: 'contacts',
+  label: 'Contact',
+  type: 'multiRelationship',     
+  group: 'General',
+  tab: 'Meta',
+  displayMode: 'tags',
+  relation: {
+    table: 'contact',
+    labelField: 'title',
+    linkTo: '/dashboard/contact',
+    junctionTable: 'contact_project',
+    sourceKey: 'project_id',
+    targetKey: 'contact_id',
+    filterFrom: 'project',
+    filterFrom: 'company_contact',
+    filter: {
+      company_id: '{{record.company_id}}'
+    }
+  }
+},
    
     {
       name: 'status',
@@ -368,6 +378,7 @@ sortOptions: [ // ✅ Add this here
       group: 'General', 
       tab: 'Meta'
     },
+    //a project has 1 author
     { 
       name: 'author_id', 
       label: 'Author', 
@@ -380,7 +391,7 @@ sortOptions: [ // ✅ Add this here
         linkTo: '/dashboard/contact' // or dynamically derive from config
       }, 
     },
-
+//a project has many tags and tags have many projects
     {
       name: 'tags',
       label: 'Tags',
@@ -393,7 +404,8 @@ sortOptions: [ // ✅ Add this here
         junctionTable: 'category_project',
         sourceKey: 'project_id',
         targetKey: 'category_id',
-        tableFields: ['title']
+        tableFields: ['title'],
+        filter: {}
       }
     },
   

@@ -9,6 +9,7 @@ import { FilterButton, FilterPopover, useFilterContext } from '@/components/core
 import { useCollectionSelection } from '@/components/CollectionSelectionContext';
 import { DeleteSelectedButton } from '@/components/core/delete-selected-button';
 import { createClient } from '@/lib/supabase/browser';
+import { resolveDynamicFilter } from '@/lib/utils/filters/listfilters/filters';
 
 const supabase = createClient();
 
@@ -19,10 +20,12 @@ function FilterPopoverContent({ filter, value, setValue }) {
     const fetchOptions = async () => {
       if (filter.type === 'relationship' && filter.relation?.table && filter.relation?.labelField) {
         let query = supabase.from(filter.relation.table).select(`id, ${filter.relation.labelField}`);
-        const relationFilter = filter.relation.filter || {};
-        Object.entries(relationFilter).forEach(([key, val]) => {
-          query = query.eq(key, val);
-        });
+        
+          const resolvedFilter = resolveDynamicFilter(filter.relation.filter || {}, { record: filters }); // pass current filters
+
+          Object.entries(resolvedFilter).forEach(([key, val]) => {
+            if (val) query = query.eq(key, val);
+          });
 
         const { data, error } = await query;
         if (!error && data) {

@@ -11,7 +11,7 @@ import {
 import { Eye, Plus } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
-import { resolveDynamicFilter } from '@/lib/utils/filters';
+import { resolveDynamicFilter } from '@/lib/utils/filters/listfilters/filters';
 
 
 export const RelationshipField = ({ field, value, editable, onChange, record }) => {
