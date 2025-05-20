@@ -81,8 +81,14 @@ export async function fetchResolvedFilter({ supabase, field, parentId }) {
   }
 
   const resolved = resolveDynamicFilter(rawFilter, data);
-  console.log('[fetchResolvedFilter] resolved filter', resolved);
-  return resolved;
+const hasUnresolved = Object.values(resolved).some(val =>
+  typeof val === 'string' && val.includes('{{')
+);
+
+if (hasUnresolved) {
+  console.warn('[fetchResolvedFilter] Skipping fetch: unresolved template in filter');
+  return {};
+}
 }
 
 

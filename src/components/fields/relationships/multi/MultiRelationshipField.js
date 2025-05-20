@@ -12,8 +12,8 @@ import {
 import { Plus } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { ArrowClockwise } from '@phosphor-icons/react';
-import { useMultiRelationOptions } from './table/useMultiRelationOptions';
-import { useMultiRelationSync } from './useMultiRelationSync';
+import { useMultiRelationOptions } from '@/components/fields/relationships/multi/useMultiRelationOptions';
+import { useMultiRelationSync } from '@/components/fields/relationships/multi/useMultiRelationSync';
 import normalizeMultiRelationshipValue from '@/lib/utils/normalizeMultiRelationshipValue';
 
 export const MultiRelationshipField = ({ field, refreshRecord, value = [], onChange }) => {
@@ -151,7 +151,7 @@ const selectedDetails = selectedOptionObjects.map(opt => ({
             renderInput={(params) => (
               <TextField
                 {...params}
-                label={`Select ${field.label}`}
+    
                 placeholder="Search..."
                 InputProps={{
                   ...params.InputProps,

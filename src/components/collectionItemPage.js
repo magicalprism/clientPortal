@@ -248,6 +248,7 @@ if (field.type === 'date') {
                         <Grid item xs={12} key={field.name}>
                           <RelatedTagsField 
                           field={field} 
+                        
                           parentId={localRecord?.id} 
                           value={{
                             ids: localRecord?.[field.name] || [],

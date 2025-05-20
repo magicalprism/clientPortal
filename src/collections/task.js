@@ -91,6 +91,15 @@ export const task = {
         { value: 'archived', label: 'Archived' },
       ]
     },
+            { 
+      name: 'start_date', 
+          label: 'Start Date', 
+      group: 'Task', 
+      tab: 'Details',
+      type: 'date', 
+      showInTable: true 
+    },
+
         { 
       name: 'due_date', 
           label: 'Due Date', 
@@ -243,7 +252,33 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
+      excludeFromViews: ['calendar'],
       defaultValue: 'todo',
+    },
+    {
+      name: 'task_type',
+      type: 'select',
+      label: 'Event Type',
+      options: [
+        { value: 'task', label: 'Task' },
+        { value: 'vacation', label: 'Vacation' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'archived', label: 'Archived' },       
+      ],
+      excludeFromViews: ['table', 'checklist']
+    },
+     {
+      name: 'task_type',
+      type: 'select',
+      label: 'Event Type',
+      options: [
+        { value: 'task', label: 'Task' },
+        { value: 'vacation', label: 'Vacation' },
+        { value: 'meeting', label: 'Meeting' },
+        { value: 'archived', label: 'Archived' },       
+      ],
+      excludeFromViews: ['calendar'],
+      defaultValue: 'task',
     },
     {
       name: 'assigned_id',

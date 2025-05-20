@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import { fetchResolvedFilter } from '@/lib/utils/filters';
 
-export const RelatedTagsField = ({ field, parentId }) => {
+export const RelatedTagsField = ({ field, parentId, hideLabel = false }) => {
   const router = useRouter();
   const supabase = createClient();
   const relatedItems = useRelatedRecords({ parentId, field });
@@ -154,9 +154,11 @@ export const RelatedTagsField = ({ field, parentId }) => {
 
   return (
     <Box>
-      <Typography variant="subtitle2" gutterBottom>
-        {field.label}
-      </Typography>
+      {!hideLabel && (
+  <Typography variant="subtitle2" gutterBottom>
+    {field.label}
+  </Typography>
+)}
 
       {loading ? (
         <CircularProgress size={20} />

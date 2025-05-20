@@ -16,6 +16,7 @@ export const ModalMultiRelationshipField = ({
   field, 
   record, 
   setRecord, 
+  hideLabel = false,
   config,
   onChange // Add onChange prop to propagate changes up
 }) => {
@@ -40,13 +41,7 @@ export const ModalMultiRelationshipField = ({
     const hasExistingDetails = Array.isArray(record[`${field.name}_details`]) && 
       record[`${field.name}_details`].length > 0;
     
-    console.log(`[ModalMultiRelationshipField] Initializing ${field.name}:`, { 
-      rawValue: record[field.name],
-      normalizedIds,
-      hasExistingDetails,
-      details: record[`${field.name}_details`]
-    });
-    
+
     // Set the selected IDs
     setSelectedIds(normalizedIds);
     
@@ -65,7 +60,7 @@ export const ModalMultiRelationshipField = ({
           updatedRecord[`${field.name}_details`] = record[`${field.name}_details`];
         }
         
-        console.log(`[ModalMultiRelationshipField] Initialized record:`, updatedRecord);
+
         
         return updatedRecord;
       });
@@ -77,7 +72,7 @@ export const ModalMultiRelationshipField = ({
   
   // When selections change
   const handleChange = (value) => {
-    console.log(`[ModalMultiRelationshipField] Change in ${field.name}:`, value);
+
     
     // Handle different formats of value
     let newIds = [];
@@ -95,8 +90,7 @@ export const ModalMultiRelationshipField = ({
       newIds = Object.keys(value).map(String).filter(Boolean);
     }
     
-    console.log(`[ModalMultiRelationshipField] Processed ids:`, newIds);
-    console.log(`[ModalMultiRelationshipField] Processed details:`, newDetails);
+
     
     // Update our local state
     setSelectedIds(newIds);
@@ -134,17 +128,20 @@ export const ModalMultiRelationshipField = ({
   
   return (
     <Box sx={{ mt: 2, mb: 2 }}>
-      {field.label && (
-        <Typography variant="subtitle2" fontWeight={500} mb={1}>
-          {field.label}
-        </Typography>
-      )}
-      
-      {field.description && (
-        <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-          {field.description}
-        </Typography>
-      )}
+     {!hideLabel && (
+  <>
+    {field.label && (
+      <Typography variant="subtitle2" fontWeight={500} mb={1}>
+        {field.label}
+      </Typography>
+    )}
+    {field.description && (
+      <Typography variant="caption" color="text.secondary" display="block" mb={1}>
+        {field.description}
+      </Typography>
+    )}
+  </>
+)}
       
       <MultiRelationshipField
         field={{

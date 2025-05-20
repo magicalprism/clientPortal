@@ -26,9 +26,9 @@ export const useMultiRelationOptions = ({ field }) => {
         const { data, error } = await query;
 
         if (error) {
-          console.error('[useMultiRelationOptions] Failed to load:', error);
+
         } else {
-          console.log('[useMultiRelationOptions] Received data:', data);
+      
 
           const tree = buildTree(data || []);
           const flat = flattenTreeWithIndent(tree, 0);

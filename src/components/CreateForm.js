@@ -127,17 +127,22 @@ if (!table || fields.length === 0) {
 
     try {
       // Create a clean copy of the form data for saving
-      const cleanData = { ...formData };
-      
-      // Remove _details fields before saving to database
-      const detailsFields = fields
-        .filter(f => f.type === 'multiRelationship')
-        .map(f => `${f.name}_details`);
-        
-      detailsFields.forEach(field => {
-        delete cleanData[field];
-      });
-      
+        const cleanData = {};
+          fields.forEach(field => {
+            const { name, type } = field;
+
+            // Skip virtual fields (multiRelationship, custom render-only)
+            if (type === 'multiRelationship' || type === 'custom') return;
+
+            const value = formData[name];
+
+            if ((type === 'select' || type === 'status') && value) {
+              cleanData[name] = extractSelectValue(value);
+            } else {
+              cleanData[name] = value;
+            }
+          });
+                
       // Process select fields to extract just the raw values for database
       fields.forEach(field => {
         if ((field.type === 'select' || field.type === 'status') && cleanData[field.name]) {
@@ -213,7 +218,7 @@ if (!table || fields.length === 0) {
   }
 
  return (
-  <Box component="form" onSubmit={handleSubmit} sx={{ mx: 'auto', px: 2, border: '2px solid red' }}>
+  <Box component="form" onSubmit={handleSubmit} sx={{ mx: 'auto', px: 2 }}>
     <Grid container spacing={3}>
       {fields
         .filter((field) => !['created_at', 'updated_at'].includes(field.name))
@@ -247,6 +252,7 @@ if (!table || fields.length === 0) {
                     config={config}
                     onChange={handleChange}
                     refreshRecord={refreshRecord}
+                    hideLabel={true}
                   />
                 ) : (
                   <FieldRenderer
