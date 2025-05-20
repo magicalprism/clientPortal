@@ -20,7 +20,7 @@ import { X as XIcon } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';
-import { MediaLibraryPicker } from '@/components/fields/MediaLibraryPicker';
+import { MediaLibraryPicker } from '@/components/fields/media/MediaLibraryPicker';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 
 export const MediaUploadModal = ({
@@ -409,15 +409,18 @@ onUploadComplete((prev) => {
       </DialogActions>
 
       <MediaLibraryPicker
-        open={chooseFromLibraryOpen}
-        onClose={() => setChooseFromLibraryOpen(false)}
-        onSelect={(media) => {
-          onUploadComplete(media);
-          setChooseFromLibraryOpen(false);
-          onClose();
-        }}
-        record={record}
-      />
+          open={chooseFromLibraryOpen}
+          onClose={() => setChooseFromLibraryOpen(false)}
+          onSelect={(media) => {
+            onUploadComplete((prev) => {
+              if (!field?.multi) return media; // 🎯 SINGLE field = return just 1
+              return [...(Array.isArray(prev) ? prev : []), media];
+            });
+            setChooseFromLibraryOpen(false);
+            onClose();
+          }}
+          record={record}
+        />
     </Dialog>
   );
 };

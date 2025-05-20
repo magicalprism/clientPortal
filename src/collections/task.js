@@ -265,6 +265,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
+      defaultValue: 'task',
       excludeFromViews: ['table', 'checklist']
     },
      {
@@ -278,7 +279,7 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       excludeFromViews: ['calendar'],
-      defaultValue: 'task',
+      defaultValue: '',
     },
     {
       name: 'assigned_id',

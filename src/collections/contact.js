@@ -112,7 +112,7 @@ export const contact = {
     },
 
      {
-      name: 'company_id',
+      name: 'companies',
       label: 'Company',
       type: 'multiRelationship',
       group: 'Details',
@@ -125,11 +125,13 @@ export const contact = {
         junctionTable: 'company_contact',
         sourceKey: 'contact_id',
         targetKey: 'company_id',
-        filter: { is_client: 'true' }
+        filter: { is_client: 'true' },
+        filterFrom: 'company'
       }
     },
+
      {
-      name: 'project_id',
+      name: 'projects',
       label: 'Project',
       type: 'multiRelationship',     
       group: 'Details',
@@ -141,7 +143,8 @@ export const contact = {
         linkTo: '/dashboard/project',
         junctionTable: 'contact_project',
         sourceKey: 'contact_id',
-        targetKey: 'project_id'
+        targetKey: 'project_id',
+        filterFrom: 'project'
 
       }
     },
@@ -202,7 +205,7 @@ export const contact = {
           { value: 'team', label: 'Team' },
           { value: 'archived', label: 'Archived' },
       ],
-      defaultValue: '',
+      defaultValue: 'client',
       },
       {
         name: 'sort',
@@ -215,7 +218,7 @@ export const contact = {
           { value: 'created_at:desc', label: 'Newest Created' },
           { value: 'created_at:asc', label: 'Oldest Created' }
         ],
-              defaultValue: 'due_date:asc',
+              defaultValue: 'title:asc',
               excludeFromViews: ['calendar', 'checklist']
 
       },

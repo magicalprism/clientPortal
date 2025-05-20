@@ -368,11 +368,7 @@ if (field.type === 'date') {
                                   <CircularProgress size={16} />
                                 ) : (
                                   <FieldRenderer
-                                    value={
-                                      field.type === 'media'
-                                        ? localRecord?.[`${field.name}_details`] ?? value
-                                        : value
-                                    }
+                                    value={value}
                                     field={field}
                                     record={localRecord}
                                     config={config}

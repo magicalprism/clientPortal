@@ -2,7 +2,7 @@
 
 import { Box, Container, Grid } from '@mui/material';
 import { CollectionItemPage } from '@/components/CollectionItemPage';
-import { QuickViewCard } from '@/components/QuickViewCard';
+import { QuickViewCard } from '@/components/views/quickview/QuickViewCard';
 
 export default function CollectionDetailClient({ config, record }) {
   return (

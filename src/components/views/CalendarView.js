@@ -14,6 +14,7 @@ import { useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/browser';
 import { useModal } from '@/components/modals/ModalContext';
 import { CalendarPage } from './calendar/CalendarPage';
+import { getCompanyLogoJoinSelect } from '@/lib/utils/getCompanyLogoJoinSelect';
 
 const supabase = createClient();
 const allowedViews = ['dayGridMonth', 'timeGridWeek', 'listWeek'];
@@ -92,36 +93,46 @@ export default function CalendarView({ config, filters }) {
   useEffect(() => {
     logCalendarApi('onRender');
 
-    const fetchTasks = async () => {
-      let query = supabase.from(config.name).select('*');
+const fetchItems = async () => {
+  const selectString = getCompanyLogoJoinSelect(config);
 
-      for (const filter of config.filters || []) {
-        const value = filters?.[filter.name];
-        if (!value) continue;
-        if (filter.name === 'sort') continue;
+  const { data, error } = await supabase
+    .from(config.name)
+    .select(selectString);
 
-        if (['select', 'relationship', 'boolean'].includes(filter.type)) {
-          query = query.eq(filter.name, value);
-        } else if (filter.type === 'text') {
-          query = query.ilike(filter.name, `%${value}%`);
-        }
-      }
+  if (error) {
+    console.error('Failed to fetch records with company logo:', error);
+    return;
+  }
 
-      const { data, error } = await query;
-      if (error) return console.error('Error fetching calendar tasks:', error);
+  for (const filter of config.filters || []) {
+    const value = filters?.[filter.name];
+    if (!value || filter.name === 'sort') continue;
 
-      const parsed = data.map((item) => ({
-        ...item,
-        id: item.id,
-        start: new Date(item.start_date || item.due_date || item.created_at),
-        end: new Date(item.due_date || item.start_date),
-        allDay: item.type !== 'meeting', 
-      }));
+    if (['select', 'relationship', 'boolean'].includes(filter.type)) {
+      query = query.eq(filter.name, value);
+    } else if (filter.type === 'text') {
+      query = query.ilike(filter.name, `%${value}%`);
+    }
+  }
 
-      setTasks(parsed);
-    };
+  const parentIds = new Set(data.map(item => item.parent_id).filter(Boolean));
 
-    fetchTasks();
+  const parsed = data.map((item) => ({
+    ...item,
+    id: item.id,
+    start: new Date(item.start_date || item.due_date || item.created_at),
+    end: new Date(item.due_date || item.start_date),
+    allDay: item.type !== 'meeting',
+    has_children: parentIds.has(item.id),
+    company_thumbnail_url: item.company?.media?.url || null
+  }));
+
+  setTasks(parsed);
+};
+
+
+    fetchItems();
   }, [filters, config]);
 
   const month = currentDate.getMonth();

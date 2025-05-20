@@ -39,7 +39,8 @@ export const project = {
         titleField: 'title',
         subtitleField: 'status',
         descriptionField: 'site_tagline',
-        extraFields: ['url', 'cloudflare_url']
+        extraFields: ['url', 'cloudflare_url', 'company_id', 'contacts'],
+        relatedFields: ['contacts']
       }, 
   fields: [   
     // Overview
@@ -193,21 +194,26 @@ export const project = {
     //Deliverables
 
     //Services
-    { 
-      name: 'element_id', 
-      label: 'Pages & Site Elements', 
-      group: 'Site Deliverables',
-      tab: 'Deliverables',
+     { 
+      name: 'elements', 
+      label: 'Elements', 
       type: 'multiRelationship',
-      displayMode: 'tags',  
+      displayMode: 'tags',
+      group: 'General',
+      tab: 'Meta',
       relation: {
         table: 'element',
         labelField: 'title',
         linkTo: '/dashboard/element',
+        junctionTable: 'element_project',
         sourceKey: 'project_id',
-        tableFields: ['title']
+        targetKey: 'element_id',
+       filter: { project_id: '{{record.project_id}}' },
+       filterFrom: 'project'
+
+
+      }
     },
-  },
 
   {
   name: 'file_deliverables',
@@ -313,6 +319,25 @@ sortOptions: [ // ✅ Add this here
     
     
     //Meta
+         {
+      name: 'contacts',
+      label: 'Contact',
+      type: 'multiRelationship',     
+      group: 'General',
+      tab: 'Meta',
+      displayMode: 'tags',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact',
+        junctionTable: 'contact_project',
+        sourceKey: 'project_id',
+        targetKey: 'contact_id',
+        filterFrom: 'contact'
+
+      }
+    },
+   
     {
       name: 'status',
       label: 'Status',

@@ -190,20 +190,34 @@ html {
   }
   
   /*Calendar Styling*/
-  .event-meeting {
-  background-color: #ffeb3b !important; /* Yellow */
-  color: #000 !important;
-  border: none !important;
+.fc .event-meeting {
+  background-color: #ffeb3b !important; /* yellow */
+  color: #000;
 }
 
-.event-task {
-  background-color: var(--mui-palette-primary-main) !important;
-  color: white !important;
-  border: none !important;
+.fc .event-vacation {
+  background-color: #201f20 !important; /* green */
+  color: #fff;
 }
 
-.event-default {
-  background-color: #9e9e9e !important; /* Gray */
-  color: white !important;
-  border: none !important;
+.fc .event-task {
+  background-color: #4b13b3 !important; /* green */
+  color: #fff;
+}
+
+.fc .event-parent {
+  background-color: #eadfff67 !important; /* Gray */
+  color: #000;
+  border: 1px solid #7777771a;
+}
+.fc .event-complete {
+  background-color: #e8e7eb33 !important; /* Gray */
+  color: #acacac;
+  border: 1px solid #7777770e;
+  text-decoration: line-through;
+}
+
+.fc .event-default {
+  background-color: #2196f3 !important; /* default blue */
+  color: #fff;
 }

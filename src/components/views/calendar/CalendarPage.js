@@ -28,28 +28,55 @@ const plugins = [
 
 
 
-export function CalendarPage({ view = "dayGridMonth", tasks = [], onTaskClick }) {
-  const { openModal } = useModal(); // Place this at the top of your CalendarPage
+export const CalendarPage = React.forwardRef(function CalendarPage(
+  { view = 'dayGridMonth', tasks = [], onTaskClick },
+  ref
+) 
+{
+  
+  const { openModal } = useModal();
   return (
     <Card sx={{ overflowX: "auto" }}>
       <Box sx={{ minWidth: "800px" }}>
         <Calendar
+         ref={ref} 
           plugins={plugins}
           initialView={view}
           headerToolbar={false}
-          height={800}
+          height={1200}
           eventContent={({ event }) => {
             const type = event.extendedProps.type;
             const isMeeting = type === 'meeting';
             const timeText = isMeeting
               ? event.start.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
               : null;
+              const thumbnailUrl = event.extendedProps.company_thumbnail_url;
 
             return (
               <div
-                style={{ padding: '4px 8px' }}
+                style={{ 
+                  display: 'inline-flex',
+                  padding: '4px 8px'
+                 }}
                 title={event.title} // 👈 Native HTML tooltip
               >
+                 {thumbnailUrl && (
+                    <img
+                      src={thumbnailUrl}
+                      alt="Logo"
+                      style={{
+                        width: 20,
+                        height: 20,
+                        objectFit: 'cover',
+                        borderRadius: 4,
+                        marginRight: 6,         // Adds spacing to the right of the image
+                        flexShrink: 0,          // Prevents it from shrinking
+                        display: 'inline-block',
+                        padding: 1, 
+                        background: 'white',
+                      }}
+                    />
+                  )}
                 {timeText && <strong>{timeText} </strong>}
                 <span>{event.title}</span>
               </div>
@@ -84,13 +111,18 @@ export function CalendarPage({ view = "dayGridMonth", tasks = [], onTaskClick })
           // these are FullCalendar’s internal props — cannot rename
           eventDisplay="block"
           eventMinHeight={25}
-          dayMaxEventRows={3}
+          dayMaxEventRows={4}
           rerenderDelay={10}
           weekends
           eventClassNames={({ event }) => {
             const type = event.extendedProps.task_type;
+            const isParent = event.extendedProps.has_children;
+            const isComplete = event.extendedProps.status === 'complete';
 
+            if (isParent) return ['event-parent'];
+            if (isComplete) return ['event-complete'];
             if (type === 'meeting') return ['event-meeting'];
+            if (type === 'vacation') return ['event-vacation'];
             if (type === 'task') return ['event-task'];
             return ['event-default'];
           }}
@@ -99,3 +131,4 @@ export function CalendarPage({ view = "dayGridMonth", tasks = [], onTaskClick })
     </Card>
   );
 }
+)
