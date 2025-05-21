@@ -273,7 +273,7 @@ export const project = {
     linkTo: '/dashboard/element',
     isOneToMany: true,
     sourceKey: 'project_id',  // this is on element table
-    targetKey: 'project_id',  // ✅ add this
+ // ✅ add this
     filterFrom: 'project',
     filter: {
       project_id: '{{record.id}}'
