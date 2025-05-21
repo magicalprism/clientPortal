@@ -3,13 +3,14 @@ export const element = {
   label: 'Elements',
   editPathPrefix: '/dashboard/element',
   showEditButton: true, // ✅ just a UI toggle
+  singularLabel: 'Element',
   subtitleField: 'title',
       //Quickview
       quickView: {
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
-        subtitleField: 'status',
+        subtitleField: 'live_url',
         extraFields: []
       }, 
   defaultView: 'table',
@@ -19,6 +20,16 @@ export const element = {
       component: 'TaskTableView'
     },
   },
+  //Quickview
+      quickView: {
+        enabled: true,
+        imageField: 'thumbnail_id',
+        titleField: 'title',
+        subtitleField: 'status',
+        descriptionField: '',
+        extraFields: [],
+        relatedFields: []
+      }, 
   fields: [   
     // Overview
     { 

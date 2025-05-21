@@ -259,7 +259,7 @@ export const project = {
     linkTo: '/dashboard/element',
     junctionTable: 'element',
     isOneToMany: true,    
-        targetKey: 'project_id',
+    sourceKey: 'project_id',
     filterFrom: 'project',
     filter: {
       project_id: '{{record.id}}' //this filter works 
@@ -338,13 +338,12 @@ sortOptions: [ // ✅ Add this here
     table: 'contact',
     labelField: 'title',
     linkTo: '/dashboard/contact',
-    junctionTable: 'contact_project',
+    junctionTable: 'contact_project', //must keep or it breaks
     sourceKey: 'project_id',
     targetKey: 'contact_id',
-    filterFrom: 'project',
-    filterFrom: 'company_contact',
+    filterFrom: 'contact_project',
     filter: {
-      company_id: '{{record.company_id}}'
+      is_assignable: true
     }
   }
 },

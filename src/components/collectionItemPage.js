@@ -176,47 +176,48 @@ useEffect(() => {
     }
 
     // Special handling for multiRelationship fields
-    if (field.type === 'multiRelationship') {
-      console.log('MultiRelationship field change:', { fieldName, value }); // Add debug log
-      
-      if (value?.ids) {
-        // Handle object format with ids and details
-        setLocalRecord(prev => ({
-          ...prev,
-          [fieldName]: value.ids,
-          [`${fieldName}_details`]: value.details,
-        }));
-        
-        // IMPORTANT: Update formData to trigger isDirty
-        setFormData(prev => ({
-          ...prev,
-          [fieldName]: value.ids,
-          [`${fieldName}_details`]: value.details,
-        }));
-      } else if (Array.isArray(value)) {
-        // Handle array format with just IDs
-        setLocalRecord(prev => ({
-          ...prev,
-          [fieldName]: value,
-        }));
-        
-        // IMPORTANT: Update formData to trigger isDirty
-        setFormData(prev => ({
-          ...prev,
-          [fieldName]: value,
-        }));
-      }
-      
-      // Explicitly set as dirty
-      setIsDirty(true);
-      
-      // Trigger autoSave if configured
-      if (config?.autosave === true && typeof saveRecord === 'function') {
-        setTimeout(() => saveRecord(), 100);
-      }
-      
-      return;
-    }
+// Special handling for multiRelationship fields
+if (field.type === 'multiRelationship') {
+  console.log('MultiRelationship field change:', { fieldName, value }); // Add debug log
+  
+  if (value?.ids) {
+    // Handle object format with ids and details
+    setLocalRecord(prev => ({
+      ...prev,
+      [fieldName]: value.ids,
+      [`${fieldName}_details`]: value.details,
+    }));
+    
+    // IMPORTANT: Update formData to trigger isDirty
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value.ids,
+      [`${fieldName}_details`]: value.details,
+    }));
+    
+    // ALWAYS FORCE isDirty to true for multirelationship changes
+    setIsDirty(true);
+    console.log(`Explicitly setting isDirty=true for ${fieldName} change`);
+  } else if (Array.isArray(value)) {
+    // Handle array format with just IDs
+    setLocalRecord(prev => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+    
+    // IMPORTANT: Update formData to trigger isDirty
+    setFormData(prev => ({
+      ...prev,
+      [fieldName]: value,
+    }));
+    
+    // ALWAYS FORCE isDirty to true for multirelationship changes
+    setIsDirty(true);
+    console.log(`Explicitly setting isDirty=true for ${fieldName} change`);
+  }
+  
+  return;
+}
     
     // Special handling for select/status fields
     if (field.type === 'select' || field.type === 'status') {

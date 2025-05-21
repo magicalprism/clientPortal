@@ -25,6 +25,7 @@ export const QuickViewCard = ({ config, record }) => {
   debug('Record structure', record);
   debug('Config', config?.quickView);
   
+  // Guard clause for config
   if (!config?.quickView?.enabled) return null;
 
   const {
@@ -34,14 +35,14 @@ export const QuickViewCard = ({ config, record }) => {
     descriptionField,
     extraFields = [],
     relatedFields = []
-  } = config.quickView;
+  } = config.quickView || {};
 
   // --- Smart image handling ---
   // Try each possible image source path
   const imageSources = {
     // Direct image field
-    directImageDetail: record?.[`${imageField}_details`]?.url,
-    directImage: record?.[imageField],
+    directImageDetail: imageField && record?.[`${imageField}_details`]?.url,
+    directImage: imageField && record?.[imageField],
     
     // Company logo paths
     companyLogo: record?.company?.media?.url,
@@ -60,18 +61,18 @@ export const QuickViewCard = ({ config, record }) => {
     imageSources.companyDetailsThumb || 
     '/assets/placeholder.png';
   
-  // Get basic content fields
-  const title = record[titleField];
+  // Get basic content fields - allow any field to be null
+  const title = titleField ? record?.[titleField] : null;
   
   // For status/select fields, find the proper label
   let subtitle = null;
-  if (subtitleField && record[subtitleField] !== undefined) {
-    const subtitleFieldConfig = config.fields.find(f => f.name === subtitleField);
+  if (subtitleField && record?.[subtitleField] !== undefined) {
+    const subtitleFieldConfig = config.fields?.find(f => f.name === subtitleField);
     
     if (subtitleFieldConfig?.type === 'select' || subtitleFieldConfig?.type === 'status') {
       // Handle different status field formats
       const value = typeof record[subtitleField] === 'object' 
-        ? record[subtitleField].value 
+        ? record[subtitleField]?.value 
         : record[subtitleField];
         
       const option = subtitleFieldConfig.options?.find(opt => opt.value === value);
@@ -83,7 +84,7 @@ export const QuickViewCard = ({ config, record }) => {
     }
   }
   
-  const description = record[descriptionField];
+  const description = descriptionField ? record?.[descriptionField] : null;
 
   return (
     <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
@@ -130,15 +131,17 @@ export const QuickViewCard = ({ config, record }) => {
           </Typography>
         )}
 
-        {extraFields.length > 0 && (
+        {extraFields && extraFields.length > 0 && (
           <>
             <Divider sx={{ my: 2 }} />
             <Stack spacing={2}>
               {extraFields.map((fieldName) => {
-                const field = config.fields.find((f) => f.name === fieldName);
+                if (!fieldName) return null;
+                
+                const field = config.fields?.find((f) => f.name === fieldName);
                 if (!field) {
                   debug(`Field not found: ${fieldName}`, 
-                    config.fields.map(f => f.name)
+                    config.fields?.map(f => f.name)
                   );
                   return null;
                 }
@@ -147,8 +150,8 @@ export const QuickViewCard = ({ config, record }) => {
                 
                 // For relationship fields, basic output without FieldRenderer
                 if (field.type === 'relationship') {
-                  const details = record[`${fieldName}_details`];
-                  const id = record[fieldName];
+                  const details = record?.[`${fieldName}_details`];
+                  const id = record?.[fieldName];
                   
                   debug(`Relationship field ${fieldName}`, { 
                     id,
@@ -187,8 +190,8 @@ export const QuickViewCard = ({ config, record }) => {
 
                 // For multi-relationship fields, show as chips
                 if (field.type === 'multiRelationship') {
-                  const details = record[`${fieldName}_details`] || [];
-                  const ids = record[fieldName] || [];
+                  const details = record?.[`${fieldName}_details`] || [];
+                  const ids = record?.[fieldName] || [];
                   
                   debug(`MultiRelationship field ${fieldName}`, { 
                     ids: ids.length,
@@ -261,7 +264,7 @@ export const QuickViewCard = ({ config, record }) => {
                     </Typography>
                     
                     <FieldRenderer
-                      value={record[field.name]}
+                      value={record?.[field.name]}
                       field={field}
                       record={record}
                       config={config}
@@ -275,22 +278,24 @@ export const QuickViewCard = ({ config, record }) => {
         )}
         
         {/* Show related fields (like tags) if specified in relatedFields */}
-        {relatedFields?.length > 0 && (
+        {relatedFields && relatedFields.length > 0 && (
           <>
             <Divider sx={{ my: 2 }} />
             <Stack spacing={2}>
               {relatedFields.map((fieldName) => {
-                // Skip if already displayed in extraFields
-                if (extraFields.includes(fieldName)) return null;
+                if (!fieldName) return null;
                 
-                const field = config.fields.find(f => f.name === fieldName);
+                // Skip if already displayed in extraFields
+                if (extraFields?.includes(fieldName)) return null;
+                
+                const field = config.fields?.find(f => f.name === fieldName);
                 if (!field || field.type !== 'multiRelationship') {
                   debug(`Related field not found or not multiRelationship: ${fieldName}`);
                   return null;
                 }
                 
-                const details = record[`${fieldName}_details`] || [];
-                const ids = record[fieldName] || [];
+                const details = record?.[`${fieldName}_details`] || [];
+                const ids = record?.[fieldName] || [];
                 
                 debug(`Related field ${fieldName}`, {
                   details: details.length,

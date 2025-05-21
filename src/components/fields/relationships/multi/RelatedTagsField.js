@@ -232,16 +232,16 @@ useEffect(() => {
 }, [value, relatedItems, allOptions, labelField, onChange, field?.name]);
 
   // Handle selection changes
-  const handleChange = async (event, selectedItems) => {
+const handleChange = async (event, selectedItems) => {
   if (!Array.isArray(selectedItems)) {
     console.log('[RelatedTagsField] Invalid selectedItems, not an array');
     return;
   }
 
-  console.log(`[RelatedTagsField] Selection changed:`, {
-    previous: localSelectedItems.length,
-    new: selectedItems.length,
-    items: selectedItems.map(i => ({id: i.id, label: i[labelField]}))
+  console.log(`[RelatedTagsField] ${field.name} handleChange triggered`, {
+    selectedItemsCount: selectedItems.length,
+    originalItemsCount: localSelectedItems.length,
+    onChange: typeof onChange === 'function' ? 'defined' : 'undefined'
   });
   
   // Prepare the selected items for display
@@ -257,6 +257,7 @@ useEffect(() => {
   
   if (onChange) {
     // We're in controlled mode with onChange
+    // FIXED: Define selectedIds here BEFORE using it
     const selectedIds = selectedItems.map(item => item.id);
     
     // Create a consistent response format
@@ -265,7 +266,7 @@ useEffect(() => {
       details: enrichedItems
     };
     
-    console.log(`[RelatedTagsField] Calling onChange with:`, {
+    console.log(`[RelatedTagsField] ${field.name} calling onChange with:`, {
       idsCount: selectedIds.length,
       detailsCount: enrichedItems.length
     });

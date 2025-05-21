@@ -150,175 +150,185 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
     setHasChanges(true);
   };
 
-  const saveRecord = async () => {
-    if (!record?.id || typeof record.id !== 'number' || isSaving) return false;
+const saveRecord = async () => {
+  // Find all multiRelationship fields in the config
+  const multiRelFields = config.fields
+    .filter(f => f.type === 'multiRelationship')
+    .map(f => f.name);
+  
+  console.log('[useCollectionSave] Save requested:', {
+    hasChangesFlag: hasChanges,
+    dirtyFieldsCount: dirtyFields.size,
+    multiRelFields: multiRelFields.length,
+    recordId: record?.id
+  });
 
-    // Even if hasChanges is false, always process when multiRelChanges has entries
-    if (!hasChanges && Object.keys(multiRelChanges).length === 0) {
-      console.log('[useCollectionSave] No changes to save');
+  // *ALWAYS* proceed with save for any record with multiRelationship fields!
+  let shouldSave = hasChanges || dirtyFields.size > 0;
+
+  // If there are no typical changes, but we have multirelationship fields, proceed anyway
+  if (!shouldSave && multiRelFields.length > 0) {
+    console.log('[useCollectionSave] No standard changes, but forcing save for multiRelationship fields');
+    shouldSave = true; // Force save
+  } else if (!shouldSave) {
+    console.log('[useCollectionSave] No changes to save');
+    return false;
+  }
+
+  // Log current state before saving
+  console.log('[useCollectionSave] Starting save with:', {
+    recordId: record?.id,
+    multiFields: multiRelFields
+  });
+
+  setIsSaving(true);
+  
+  // Only include fields defined in the config for the update payload
+  const dbFieldNames = config.fields
+    .filter((f) => f.database !== false)
+    .map((f) => f.name);
+
+  const payload = {};
+
+  Object.entries(record).forEach(([key, value]) => {
+    if (!dbFieldNames.includes(key)) return;
+
+    // Skip multiRelationship fields - they're handled separately
+    if (multiRelFields.includes(key)) return;
+
+    const fieldDef = config.fields.find(f => f.name === key);
+
+    if (fieldDef?.type === 'select' || fieldDef?.type === 'status') {
+      payload[key] = extractSelectValue(value);
+    } else {
+      payload[key] = value;
+    }
+  });
+
+  payload.updated_at = getPostgresTimestamp();
+  
+  console.log('[useCollectionSave] Saving payload:', payload);
+
+  try {
+    // Step 1: Save the main record
+    const { error } = await supabase
+      .from(config.name)
+      .update(payload)
+      .eq('id', record.id);
+
+    if (error) {
+      console.error('❌ Error saving record:', error);
+      setIsSaving(false);
       return false;
     }
-
-    // Log current state before saving
-    console.log('Saving record:', record);
-    console.log('Fields marked for saving:', [...dirtyFields]);
-    console.log('Multi fields in config:', config.fields
-      .filter(f => f.type === 'multiRelationship')
-      .map(f => f.name));
-    console.log('Multi field changes:', multiRelChanges);
-
-    setIsSaving(true);
     
-    // Only include fields defined in the config for the update payload
-    const dbFieldNames = config.fields
-      .filter((f) => f.database !== false)
-      .map((f) => f.name);
-
-    // Find all multiRelationship fields in the config
-    const multiRelFields = config.fields
-      .filter(f => f.type === 'multiRelationship')
-      .map(f => f.name);
-
-    const payload = {};
-
-    Object.entries(record).forEach(([key, value]) => {
-      if (!dbFieldNames.includes(key)) return;
-
-      // Skip multiRelationship fields - they're handled separately
-      if (multiRelFields.includes(key)) return;
-
-      const fieldDef = config.fields.find(f => f.name === key);
-
-      if (fieldDef?.type === 'select' || fieldDef?.type === 'status') {
-        payload[key] = extractSelectValue(value);
-      } else {
-        payload[key] = value;
-      }
-    });
-
-    payload.updated_at = getPostgresTimestamp();
+    // Step 2: Save multirelationship fields separately
+    // This is the key part - we'll save ALL multi-relationship fields
+    let allMultiSaved = true;
     
-    console.log('[useCollectionSave] Saving payload:', payload);
-
-    try {
-      // Step 1: Save the main record
-      const { error } = await supabase
-        .from(config.name)
-        .update(payload)
-        .eq('id', record.id);
-
-      if (error) {
-        console.error('❌ Error saving record:', error);
-        setIsSaving(false);
-        return false;
+    for (const fieldName of multiRelFields) {
+      // Get the field definition
+      const fieldDef = config.fields.find(f => f.name === fieldName);
+      if (!fieldDef?.relation?.junctionTable) {
+        console.log(`[useCollectionSave] Skipping ${fieldName} - no junction table defined`);
+        continue;
       }
       
-      // Step 2: Save multirelationship fields separately
-      // This is the key part that was likely missing before
-      // We'll save ALL multi-relationship fields that are in the config
-      // regardless of whether they're marked as "dirty"
-      let allMultiSaved = true;
+      const { 
+        junctionTable, 
+        sourceKey = `${config.name}_id`, 
+        targetKey = `${fieldDef.relation.table}_id` 
+      } = fieldDef.relation;
       
-      for (const fieldName of multiRelFields) {
-        // Get the field definition
-        const fieldDef = config.fields.find(f => f.name === fieldName);
-        if (!fieldDef?.relation?.junctionTable) continue;
+      try {
+        // Get the value - handle various formats
+        let fieldValue = record[fieldName];
+        let normalizedIds = normalizeMultiRelationshipValue(fieldValue);
         
-        const { 
-          junctionTable, 
-          sourceKey = `${config.name}_id`, 
-          targetKey = `${fieldDef.relation.table}_id` 
-        } = fieldDef.relation;
+        console.log(`[useCollectionSave] Saving ${fieldName}:`, {
+          value: fieldValue,
+          normalizedIds
+        });
         
-        try {
-          // Get the value - handle various formats
-          let fieldValue = record[fieldName];
-          let normalizedIds = normalizeMultiRelationshipValue(fieldValue);
+        // 1. Get existing relationships
+        const { data: existingRels, error: fetchError } = await supabase
+          .from(junctionTable)
+          .select(targetKey)
+          .eq(sourceKey, record.id);
           
-          console.log(`[useCollectionSave] Saving ${fieldName}:`, {
-            value: fieldValue,
-            normalizedIds
-          });
+        if (fetchError) {
+          console.error(`[useCollectionSave] Error fetching existing ${fieldName}:`, fetchError);
+          allMultiSaved = false;
+          continue;
+        }
+        
+        // 2. Extract existing IDs
+        const existingIds = (existingRels || [])
+          .map(rel => String(rel[targetKey]))
+          .filter(Boolean);
           
-          // 1. Get existing relationships
-          const { data: existingRels, error: fetchError } = await supabase
+        console.log(`[useCollectionSave] Existing ${fieldName}:`, existingIds);
+        
+        // 3. Calculate additions and removals
+        const toAdd = normalizedIds.filter(id => !existingIds.includes(String(id)));
+        const toRemove = existingIds.filter(id => !normalizedIds.includes(String(id)));
+        
+        console.log(`[useCollectionSave] Changes for ${fieldName}:`, {
+          toAdd,
+          toRemove
+        });
+        
+        // 4. Add new relationships
+        if (toAdd.length > 0) {
+          const insertData = toAdd.map(id => ({
+            [sourceKey]: record.id,
+            [targetKey]: id
+          }));
+          
+          const { error: insertError } = await supabase
             .from(junctionTable)
-            .select(targetKey)
-            .eq(sourceKey, record.id);
+            .insert(insertData);
             
-          if (fetchError) {
-            console.error(`[useCollectionSave] Error fetching existing ${fieldName}:`, fetchError);
+          if (insertError) {
+            console.error(`[useCollectionSave] Error adding ${fieldName}:`, insertError);
             allMultiSaved = false;
-            continue;
           }
-          
-          // 2. Extract existing IDs
-          const existingIds = (existingRels || [])
-            .map(rel => String(rel[targetKey]))
-            .filter(Boolean);
-            
-          console.log(`[useCollectionSave] Existing ${fieldName}:`, existingIds);
-          
-          // 3. Calculate additions and removals
-          const toAdd = normalizedIds.filter(id => !existingIds.includes(String(id)));
-          const toRemove = existingIds.filter(id => !normalizedIds.includes(String(id)));
-          
-          console.log(`[useCollectionSave] Changes for ${fieldName}:`, {
-            toAdd,
-            toRemove
-          });
-          
-          // 4. Add new relationships
-          if (toAdd.length > 0) {
-            const insertData = toAdd.map(id => ({
+        }
+        
+        // 5. Remove relationships
+        for (const id of toRemove) {
+          const { error: deleteError } = await supabase
+            .from(junctionTable)
+            .delete()
+            .match({
               [sourceKey]: record.id,
               [targetKey]: id
-            }));
+            });
             
-            const { error: insertError } = await supabase
-              .from(junctionTable)
-              .insert(insertData);
-              
-            if (insertError) {
-              console.error(`[useCollectionSave] Error adding ${fieldName}:`, insertError);
-              allMultiSaved = false;
-            }
+          if (deleteError) {
+            console.error(`[useCollectionSave] Error removing ${fieldName} item:`, deleteError);
+            allMultiSaved = false;
           }
-          
-          // 5. Remove relationships
-          for (const id of toRemove) {
-            const { error: deleteError } = await supabase
-              .from(junctionTable)
-              .delete()
-              .match({
-                [sourceKey]: record.id,
-                [targetKey]: id
-              });
-              
-            if (deleteError) {
-              console.error(`[useCollectionSave] Error removing ${fieldName} item:`, deleteError);
-              allMultiSaved = false;
-            }
-          }
-        } catch (err) {
-          console.error(`[useCollectionSave] Error processing ${fieldName}:`, err);
-          allMultiSaved = false;
         }
+      } catch (err) {
+        console.error(`[useCollectionSave] Error processing ${fieldName}:`, err);
+        allMultiSaved = false;
       }
-      
-      // Clear state
-      setMultiRelChanges({});
-      setHasChanges(false);
-      setIsSaving(false);
-      
-      console.log(`[useCollectionSave] ✅ Save completed. Multi fields success: ${allMultiSaved}`);
-      return true;
-    } catch (err) {
-      console.error('[useCollectionSave] ❌ Unexpected error saving record:', err);
-      setIsSaving(false);
-      return false;
     }
-  };
+    
+    // Clear state
+    setMultiRelChanges({});
+    setHasChanges(false);
+    setIsSaving(false);
+    
+    console.log(`[useCollectionSave] ✅ Save completed. Multi fields success: ${allMultiSaved}`);
+    return true;
+  } catch (err) {
+    console.error('[useCollectionSave] ❌ Unexpected error saving record:', err);
+    setIsSaving(false);
+    return false;
+  }
+};
 
   return {
     editingField,

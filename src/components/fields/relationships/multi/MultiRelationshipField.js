@@ -10,13 +10,14 @@ import {
   IconButton,
   Box,
   Typography,
-  Button
+  Button,
 } from '@mui/material';
 import { Plus, ArrowsClockwise, Bug } from '@phosphor-icons/react';
 import { useRouter } from 'next/navigation';
 import { useMultiRelationOptions } from '@/hooks/filters/listfilters/useMultiRelationOptions';
 import { useMultiRelationSync } from '@/hooks/filters/listfilters/useMultiRelationSync';
 import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
+import * as collections from '@/collections';
 
 /**
  * Enhanced MultiRelationshipField component with better debugging
@@ -27,6 +28,8 @@ export const MultiRelationshipField = ({
   value = [], 
   onChange, 
   record,
+  config,
+
   refreshRecord, 
   debug = false 
 }) => {
@@ -228,6 +231,7 @@ export const MultiRelationshipField = ({
 
   // Add this to your component that edits records
 useEffect(() => {
+  if (!config) return;
   console.log('Current record state:', record);
   
   // Check multi fields specifically

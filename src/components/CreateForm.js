@@ -191,20 +191,34 @@ if (!table || fields.length === 0) {
       // Reset form and handle success
       setFormData({});
       setLoading(false);
-      
+
       if (onSuccess) {
         await onSuccess(data);
       }
-      
+
       // Modal behavior: refresh page to reflect new item
       if (disableRedirect) {
         window.location.reload();
         return;
       }
-      
+
       // Full page behavior: redirect to new item's page
-      if (data?.id && config.editPathPrefix) {
-        router.push(`${config.editPathPrefix}/${data.id}`);
+      if (data?.id) {
+        // Log the current configuration for debugging
+        console.log('Config for redirect:', config);
+        
+        if (config.paths && typeof config.paths.details === 'function') {
+          // Use the details function from the paths configuration
+          const detailsPath = config.paths.details(data.id);
+          console.log('Redirecting to details path:', detailsPath);
+          router.push(detailsPath);
+        } else if (config.editPathPrefix) {
+          // Fallback to the old editPathPrefix approach
+          console.log('Redirecting to edit path prefix:', `${config.editPathPrefix}/${data.id}`);
+          router.push(`${config.editPathPrefix}/${data.id}`);
+        } else {
+          console.error('Missing path configuration for redirect');
+        }
       }
     } catch (err) {
       console.error('Unexpected error creating record:', err);

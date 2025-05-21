@@ -5,6 +5,51 @@ import { createClient } from '@/lib/supabase/browser';
 import { fetchResolvedFilter, buildTree, flattenTreeWithIndent } from '@/lib/utils/filters/listfilters/dynamicFilterUtils';
 
 /**
+ * Custom implementation for building a tree with sorted children
+ * Ensures alphabetical ordering at each level while maintaining hierarchy
+ */
+const buildSortedTree = (items, parentId = null, labelField = 'title') => {
+  // Find all items with the given parentId
+  const children = items
+    .filter(item => item.parent_id === parentId)
+    // Sort children alphabetically by labelField
+    .sort((a, b) => (a[labelField] || '').localeCompare(b[labelField] || ''));
+  
+  // For each child, recursively build its own subtree
+  return children.map(child => ({
+    ...child,
+    children: buildSortedTree(items, child.id, labelField)
+  }));
+};
+
+/**
+ * Custom implementation for flattening a tree with indentation
+ * Preserves the hierarchical ordering
+ */
+const flattenSortedTree = (tree, level = 0, labelField = 'title') => {
+  return tree.reduce((acc, node) => {
+    // Create indented label
+    const indent = '  '.repeat(level);
+    const label = node[labelField] || `ID: ${node.id}`;
+    const indentedLabel = `${indent}${label}`;
+    
+    // Add current node with its indent
+    acc.push({
+      ...node,
+      indentedLabel,
+      level // Store the level for UI rendering
+    });
+    
+    // Recursively add children
+    if (node.children && node.children.length) {
+      acc.push(...flattenSortedTree(node.children, level + 1, labelField));
+    }
+    
+    return acc;
+  }, []);
+};
+
+/**
  * Hook to fetch and manage options for MultiRelationship fields
  * Handles hierarchical display and filtering
  * 
@@ -107,9 +152,18 @@ export const useMultiRelationOptions = ({ field, record }) => {
       const hasParentField = data.some(item => 'parent_id' in item);
       
       if (hasParentField) {
-        // Build and flatten the tree for indented display
-        const tree = buildTree(data);
-        const flattenedTree = flattenTreeWithIndent(tree, 0, labelField);
+        console.log('[useMultiRelationOptions] Building hierarchical options');
+        
+        // Use our custom functions instead of the imported ones
+        // This ensures proper sorting at each level
+        const sortedTree = buildSortedTree(data, null, labelField);
+        const flattenedTree = flattenSortedTree(sortedTree, 0, labelField);
+        
+        console.log('[useMultiRelationOptions] Generated hierarchical options', {
+          raw: data.length,
+          tree: sortedTree.length,
+          flattened: flattenedTree.length
+        });
         
         // Ensure unique options (no duplicates by ID)
         const uniqueOptions = Array.from(
