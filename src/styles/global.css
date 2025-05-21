@@ -20,6 +20,21 @@
 main {
 	padding-bottom: 3rem;
 }
+
+/*Tip Tap Text Editor*/
+/*Fixes not being able to select in the text box*/
+.tiptap {
+  * {
+    user-select: text !important;
+	z-index: 5;
+  }
+}
+
+.tiptap .selection, ::selection {
+  background: #d3deff59 !important; /* light blue, or any visible color */
+  color: black;
+} 
+
 /* Remove is recharts is not used */
 .recharts-cartesian-axis-tick-value {
 	color: var(--mui-palette-text-secondary);

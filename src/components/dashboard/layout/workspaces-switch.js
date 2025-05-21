@@ -31,8 +31,8 @@ export function WorkspacesSwitch() {
 				}}
 			>
 				<Avatar src={workspace.avatar} variant="rounded" />
-				<Box sx={{ flex: "1 1 auto" }}>
-					<Typography color="var(--Workspaces-title-color)" variant="caption">
+				<Box sx={{ flex: "1 1 auto" , margin: "0px"}}>
+					<Typography color="var(--Workspaces-title-color)" variant="caption" >
 						Workspace
 					</Typography>
 					<Typography color="var(--Workspaces-name-color)" variant="subtitle2">

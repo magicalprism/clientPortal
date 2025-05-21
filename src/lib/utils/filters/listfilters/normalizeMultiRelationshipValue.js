@@ -7,55 +7,28 @@ import { createClient } from '@/lib/supabase/browser';
  * @param {any} value - Value in any format
  * @returns {string[]} - Array of string IDs
  */
-export const normalizeMultiRelationshipValue = (value) => {
-  // Handle null/undefined
-  if (value === null || value === undefined) {
-    return [];
-  }
-  
-  // Already an array of IDs
-  if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean);
-  }
-  
-  // Object with 'ids' property
-  if (typeof value === 'object' && value !== null) {
-    // Format: { ids: [...], details: [...] }
-    if (Array.isArray(value.ids)) {
-      return value.ids.map(String).filter(Boolean);
+export const normalizeMultiRelationshipValue = (value, parentId = null) => {
+  const result = (() => {
+    if (!value) return [];
+    if (Array.isArray(value)) return value.map(String).filter(Boolean);
+    if (typeof value === 'object') {
+      if (Array.isArray(value.ids)) return value.ids.map(String).filter(Boolean);
+      if (!('ids' in value)) return Object.keys(value).filter(k => value[k]);
     }
-    
-    // Format: { id1: true, id2: true, ... }
-    if (Object.keys(value).length > 0 && !('ids' in value) && !('details' in value)) {
-      return Object.keys(value).filter(key => value[key]).map(String);
+    if (typeof value === 'string' && value.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(value);
+        return Array.isArray(parsed) ? parsed.map(String) : [];
+      } catch {}
     }
-  }
-  
-  // String that looks like JSON array
-  if (typeof value === 'string' && value.trim().startsWith('[') && value.trim().endsWith(']')) {
-    try {
-      const parsed = JSON.parse(value);
-      if (Array.isArray(parsed)) {
-        return parsed.map(String).filter(Boolean);
-      }
-    } catch (e) {
-      // Not valid JSON, continue to other checks
+    if (typeof value === 'string' && value.includes(',')) {
+      return value.split(',').map(v => v.trim()).filter(Boolean);
     }
-  }
-  
-  // Comma-separated string
-  if (typeof value === 'string' && value.includes(',')) {
-    return value.split(',').map(s => s.trim()).filter(Boolean);
-  }
-  
-  // Single value (number or string)
-  if (typeof value === 'string' || typeof value === 'number') {
-    const str = String(value).trim();
-    return str ? [str] : [];
-  }
-  
-  // No recognized format, return empty array
-  return [];
+    return [String(value)];
+  })();
+
+  // 🔥 Remove parentId if it's somehow there
+  return parentId ? result.filter(id => id !== String(parentId)) : result;
 };
 
 /**

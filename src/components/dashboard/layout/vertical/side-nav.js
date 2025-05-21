@@ -48,11 +48,27 @@ export function SideNav({ color = "evident", items = [] }) {
 				zIndex: "var(--SideNav-zIndex)",
 			}}
 		>
-			<Stack spacing={2} sx={{ p: 2 }}>
-				<div>
-					<Box component={RouterLink} href={paths.home} sx={{ display: "inline-flex" }}>
-						<Logo color={logoColor} height={32} width={122} />
-					</Box>
+			<Stack spacing={2} sx={{ px: 2 }}>
+				<div >
+					<Box //hiding this for now - may replace with logo mark
+							component={RouterLink}
+							href={paths.home}
+							sx={{
+								display: "none",           // flex, not inline-flex, unless you need it inline
+								justifyContent: "center",  // correct spelling
+								alignItems: "center",
+								width: "100%",
+								textDecoration: "none",
+								paddingRight: "5px"     // optional: remove link underline
+							}}
+							>
+							<Logo
+								color={logoColor}
+								height={50}
+								width={200}
+								sx={{ display: "block" }} // you don't need flex on the logo itself
+							/>
+							</Box>
 				</div>
 				<WorkspacesSwitch />
 			</Stack>

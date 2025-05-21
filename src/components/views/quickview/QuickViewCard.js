@@ -16,14 +16,13 @@ import { ArrowSquareOut } from '@phosphor-icons/react';
 // Simple debug helper - only logs in development
 const debug = (label, value) => {
   if (process.env.NODE_ENV === 'development') {
-    console.log(`[QuickViewCard] ${label}:`, value);
+
   }
 };
 
 export const QuickViewCard = ({ config, record }) => {
   // Always log the record structure to help with debugging
-  debug('Record structure', record);
-  debug('Config', config?.quickView);
+
   
   // Guard clause for config
   if (!config?.quickView?.enabled) return null;

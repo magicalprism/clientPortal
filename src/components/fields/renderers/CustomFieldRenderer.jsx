@@ -36,6 +36,18 @@ export const CustomFieldRenderer = ({
     case 'TimeTrackerField':
       return <TimeTrackerField task={record} />;
 
+    case 'ReverseOneToOneField':
+      return (
+        <ReverseOneToOneField
+          record={record}
+          field={field}
+          value={value}
+          onChange={onChange}
+          editable={editable}
+          mode={mode}
+        />
+      );
+
     default:
       return (
         <Typography variant="body2" color="error">

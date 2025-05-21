@@ -86,14 +86,31 @@ export const useMultiRelationOptions = ({ field, record }) => {
       setLoading(false);
       return;
     }
+
+    console.log('[RELATION DEBUG]', {
+  parentId,
+  fieldName: field?.name,
+  relation: field?.relation
+});
     
     setLoading(true);
     setError(null);
+
+    console.log('[RELATION DEBUG]', {
+  parentId,
+  parentTable,
+  fieldName: field?.name,
+  table: relation?.table,
+  labelField,
+  isOneToMany: relation?.isOneToMany,
+  targetKey: relation?.targetKey,
+});
+
     
     try {
       // Start with the base query
       const fields = Array.from(new Set(['id', labelField, 'parent_id', ...tableFields]));
-      let query = supabase.from(table).select(fields.join(', '));
+      let query = supabase.from(table).select(['id', labelField, 'parent_id'].join(', '));
       
       // Apply dynamic filters if applicable
       let dynamicFilters = {};

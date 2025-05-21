@@ -3,6 +3,7 @@
 export const brand = {
   name: 'brand',
   label: 'Brand',
+  singularLabel: 'Project',
   editPathPrefix: '/dashboard/brand',
   brandBoard: { enabled: true },
   showEditButton: true, // ✅ just a UI toggle
@@ -48,22 +49,26 @@ export const brand = {
         filter: { is_client: 'true' }
       }
     },
-    {
-      name: 'project_id',
-      label: 'Project',
-      group: 'Brand Details',
-      tab: 'Details', 
-      type: 'multiRelationship',
-      relation: {
-        table: 'project',
-        labelField: 'title',
-        linkTo: '/dashboard/project',
-        junctionTable: 'brand_project',
-        sourceKey: 'brand_id',
-        targetKey: 'project_id'
-      },
-
-      },
+ {
+ name: 'project_id',
+  label: 'Projects',
+  type: 'multiRelationship',
+  displayMode: 'tags',
+  group: 'General',
+  tab: 'Meta',
+  relation: {
+    table: 'project',
+    labelField: 'title',
+    linkTo: '/dashboard/project',
+    isOneToMany: true,    
+    sourceKey: 'id',             // <- brand.id
+    targetKey: 'brand_id',
+    filterFrom: 'brand',
+    filter: {
+      company_id: '{{record.company_id}}'
+    }
+  }
+},
 
     {
       name: 'brand_board_preview',
@@ -439,7 +444,6 @@ export const brand = {
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: 'todo',
       options: [
         { value: 'primary', label: 'Primary' },
         { value: 'secondary', label: 'Secondary' },
@@ -480,5 +484,30 @@ export const brand = {
     /*
 
     */
+  ],
+    filters: [
+    {
+      name: 'company_id',
+      type: 'relationship',
+      label: 'Company',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        filter: { is_client: true } // optional: filters options
+      }
+    },
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      defaultValue: 'title:asc',
+      options: [
+        { value: 'title:asc', label: 'Title (A–Z)' },
+        { value: 'title:desc', label: 'Title (Z–A)' },
+        { value: 'created_at:desc', label: 'Newest Created' },
+        { value: 'created_at:asc', label: 'Oldest Created' }
+      ]
+    }
+    
   ]
 };

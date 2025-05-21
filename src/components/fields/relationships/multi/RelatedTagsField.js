@@ -27,21 +27,44 @@ export const RelatedTagsField = ({
   const [resolvedFilter, setResolvedFilter] = useState({});
   const [filterError, setFilterError] = useState(null);
   
-  // Fetch related records if we're in read-only mode (no onChange)
-  const relatedItems = !onChange ? useRelatedRecords({ parentId, field }) : null;
-  
-  // Configuration for relationship
+    // Configuration for relationship
   const {
     relation: { 
       table, 
       labelField = 'title', 
       sourceKey, 
       junctionTable, 
+      isOneToMany,
       targetKey,
       filterFrom,
-      filter
+      filter,
+      relatedItems
     } = {} // Add default empty object to prevent null/undefined errors
   } = field || {};
+  // Fetch related records if we're in read-only mode (no onChange)
+  const [fetchedOneToManyItems, setFetchedOneToManyItems] = useState(null);
+
+useEffect(() => {
+  if (onChange && isOneToMany && !junctionTable && parentId && targetKey && table) {
+    const fetchRelated = async () => {
+      const { data, error } = await supabase
+        .from(table)
+        .select(`id, ${labelField}, parent_id`)
+        .eq(targetKey, parentId);
+
+      if (error) {
+        console.error('[RelatedTagsField] Error fetching one-to-many data:', error);
+      } else {
+        setFetchedOneToManyItems(data);
+      }
+    };
+
+    fetchRelated();
+  }
+}, [onChange, isOneToMany, junctionTable, parentId, targetKey, table, labelField, supabase]);
+
+  
+
 
   // Add this right after the start of your component
   useEffect(() => {
@@ -54,6 +77,8 @@ export const RelatedTagsField = ({
       rawValue: value
     });
   }, [field?.name, value]);
+
+  console.log('[RelatedTagsField] parentId:', parentId);
 
   // Resolve dynamic filter
   useEffect(() => {
@@ -203,56 +228,56 @@ export const RelatedTagsField = ({
   useEffect(() => {
     console.log(`[RelatedTagsField] Initializing ${field?.name} with value:`, value);
     
-    if (onChange && value) {
+    if (onChange && value && (value.ids?.length > 0 || value.details?.length > 0)) {
       // Extract IDs from value
-      const normalizedIds = normalizeMultiRelationshipValue(value);
-      console.log(`[RelatedTagsField] Normalized IDs:`, normalizedIds);
-      
-      // Extract details if available
-      let details = [];
-      
-      if (value && typeof value === 'object' && Array.isArray(value.details)) {
-        // Case: { ids: [...], details: [...] }
-        details = value.details;
-        console.log(`[RelatedTagsField] Using provided details:`, details.length);
-      } else if (value && typeof value === 'object' && value.ids && !Array.isArray(value)) {
-        // Case: { ids: [...] } without details
-        // Try to match with allOptions
-        details = allOptions.filter(opt => 
-          normalizedIds.includes(String(opt.id))
-        );
-        console.log(`[RelatedTagsField] Matched IDs with options:`, details.length);
-      } else if (Array.isArray(value)) {
-        // Case: directly passed array of IDs
-        details = allOptions.filter(opt => 
-          normalizedIds.includes(String(opt.id))
-        );
-        console.log(`[RelatedTagsField] Matched array with options:`, details.length);
-      }
-      
-      // Create local selected items for display
-      const selectedItems = details.map(item => ({
-        ...item,
-        id: item.id, // Ensure ID is present
-        [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
-        indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
-      }));
-      
-      console.log(`[RelatedTagsField] Setting local selected items:`, selectedItems.length);
-      setLocalSelectedItems(selectedItems);
-    } else if (relatedItems) {
-      // We're in read-only mode, use the fetched related items
-      const selectedItems = relatedItems.map(item => ({
-        ...item,
-        id: item.id, // Ensure ID is present
-        [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
-        indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
-      }));
-      
-      console.log(`[RelatedTagsField] Setting read-only items:`, selectedItems.length);
-      setLocalSelectedItems(selectedItems);
+     const normalizedIds = normalizeMultiRelationshipValue(value);
+    let details = [];
+
+    if (value && typeof value === 'object' && Array.isArray(value.details)) {
+      details = value.details;
+    } else if (value && typeof value === 'object' && value.ids && !Array.isArray(value)) {
+      details = allOptions.filter(opt => 
+        normalizedIds.includes(String(opt.id))
+      );
+    } else if (Array.isArray(value)) {
+      details = allOptions.filter(opt => 
+        normalizedIds.includes(String(opt.id))
+      );
     }
-  }, [value, relatedItems, allOptions, labelField, onChange, field?.name]);
+
+    const selectedItems = details.map(item => ({
+      ...item,
+      id: item.id,
+      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+      indentedLabel: item.indentedLabel || item[labelField]
+    }));
+
+    setLocalSelectedItems(selectedItems);
+
+  } else if (relatedItems) {
+    // ... read-only logic
+    const selectedItems = relatedItems.map(item => ({
+      ...item,
+      id: item.id,
+      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+      indentedLabel: item.indentedLabel || item[labelField]
+    }));
+
+    setLocalSelectedItems(selectedItems);
+
+  } else if (fetchedOneToManyItems) {
+    // ✅ Your new one-to-many fallback
+    const selectedItems = fetchedOneToManyItems.map(item => ({
+      ...item,
+      id: item.id,
+      [labelField]: item[labelField],
+      indentedLabel: item[labelField]
+    }));
+    console.log('[RelatedTagsField] One-to-many fallback selected items:', selectedItems);
+    setLocalSelectedItems(selectedItems);
+  }
+
+}, [value, relatedItems, allOptions, labelField, onChange, field?.name, fetchedOneToManyItems]);
 
   // Handle selection changes
   const handleChange = async (event, selectedItems) => {

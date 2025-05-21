@@ -70,7 +70,7 @@ export function SignInForm() {
 		globalThis.location.href = data.url;
 	};
 	const onSubmit = async (values) => {
-		console.log("🟡 Form values:", values);
+
 		setIsPending(true);
 	
 		const { data, error } = await supabaseClient.auth.signInWithPassword({

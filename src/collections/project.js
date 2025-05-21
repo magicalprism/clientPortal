@@ -131,6 +131,20 @@ export const project = {
       group: 'Media',
       tab: 'Brand'
     },
+        {
+      name: 'brand_id',
+      label: 'Brand',
+      group: 'Brand',
+      tab: 'Brand',
+      type: 'relationship',
+      showInTable: true,
+  
+      relation: {
+        table: 'brand',
+        labelField: 'title',
+        linkTo: '/dashboard/brand', // or dynamically derive from config
+      }
+    },
     //1 to many but not relationship or multi fields
     {
       name: 'thumbnail_id',
@@ -246,8 +260,8 @@ export const project = {
       group: 'Elements'
     },
     //1 project has many elements but 1 element only has 1 project
-     {
- name: 'element_id',
+{
+  name: 'element_id',
   label: 'Elements',
   type: 'multiRelationship',
   displayMode: 'tags',
@@ -257,16 +271,15 @@ export const project = {
     table: 'element',
     labelField: 'title',
     linkTo: '/dashboard/element',
-    junctionTable: 'element',
-    isOneToMany: true,    
-    sourceKey: 'project_id',
+    isOneToMany: true,
+    sourceKey: 'project_id',  // this is on element table
+    targetKey: 'project_id',  // ✅ add this
     filterFrom: 'project',
     filter: {
-      project_id: '{{record.id}}' //this filter works 
+      project_id: '{{record.id}}'
     }
   }
 },
-    
     // Content
 
 

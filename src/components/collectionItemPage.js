@@ -360,7 +360,7 @@ if (field.type === 'multiRelationship') {
                                 ids: localRecord?.[field.name] || [],
                                 details: localRecord?.[`${field.name}_details`] || []
                               }}
-                              onChange={(val) => handleFieldChange(field, val)}
+                              onChange={(newValue) => handleFieldChange(field, newValue)}
                             />
                           </Grid>
                         );
