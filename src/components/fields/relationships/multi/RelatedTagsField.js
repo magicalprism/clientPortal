@@ -42,6 +42,18 @@ export const RelatedTagsField = ({
       filter
     } = {} // Add default empty object to prevent null/undefined errors
   } = field || {};
+// Add this right after the start of your component
+useEffect(() => {
+  console.log(`[RelatedTagsField] ${field?.name} initialized with:`, {
+    valueType: typeof value,
+    valueIsArray: Array.isArray(value),
+    valueIsObject: typeof value === 'object' && value !== null && !Array.isArray(value),
+    hasIds: value?.ids ? value.ids.length : 'no ids',
+    hasDetails: value?.details ? value.details.length : 'no details',
+    rawValue: value
+  });
+}, [field?.name, value]);
+
 
   // Resolve dynamic filter
   useEffect(() => {
@@ -165,63 +177,102 @@ export const RelatedTagsField = ({
   }, [table, labelField, resolvedFilter, supabase]);
 
   // Initialize from value or related items
-  useEffect(() => {
-    if (onChange && value) {
-      // Extract IDs from value
-      const ids = normalizeMultiRelationshipValue(value);
-      
-      // Extract details if available
-      let details = [];
-      
-      if (value && typeof value === 'object' && Array.isArray(value.details)) {
-        details = value.details;
-      } else if (Array.isArray(value)) {
-        // Try to match with allOptions
-        details = allOptions.filter(opt => 
-          ids.includes(String(opt.id))
-        );
-      }
-      
-      // Create local selected items for display
-      setLocalSelectedItems(
-        details.map(item => ({
-          ...item,
-          indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-        }))
+ useEffect(() => {
+  console.log(`[RelatedTagsField] Initializing ${field?.name} with value:`, value);
+  
+  if (onChange && value) {
+    // Extract IDs from value
+    const normalizedIds = normalizeMultiRelationshipValue(value);
+    console.log(`[RelatedTagsField] Normalized IDs:`, normalizedIds);
+    
+    // Extract details if available
+    let details = [];
+    
+    if (value && typeof value === 'object' && Array.isArray(value.details)) {
+      // Case: { ids: [...], details: [...] }
+      details = value.details;
+      console.log(`[RelatedTagsField] Using provided details:`, details.length);
+    } else if (value && typeof value === 'object' && value.ids && !Array.isArray(value)) {
+      // Case: { ids: [...] } without details
+      // Try to match with allOptions
+      details = allOptions.filter(opt => 
+        normalizedIds.includes(String(opt.id))
       );
-    } else if (relatedItems) {
-      // We're in read-only mode, use the fetched related items
-      setLocalSelectedItems(
-        relatedItems.map(item => ({
-          ...item,
-          indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-        }))
+      console.log(`[RelatedTagsField] Matched IDs with options:`, details.length);
+    } else if (Array.isArray(value)) {
+      // Case: directly passed array of IDs
+      details = allOptions.filter(opt => 
+        normalizedIds.includes(String(opt.id))
       );
+      console.log(`[RelatedTagsField] Matched array with options:`, details.length);
     }
-  }, [value, relatedItems, allOptions, labelField, onChange]);
+    
+    // Create local selected items for display
+    const selectedItems = details.map(item => ({
+      ...item,
+      id: item.id, // Ensure ID is present
+      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+      indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
+    }));
+    
+    console.log(`[RelatedTagsField] Setting local selected items:`, selectedItems.length);
+    setLocalSelectedItems(selectedItems);
+  } else if (relatedItems) {
+    // We're in read-only mode, use the fetched related items
+    const selectedItems = relatedItems.map(item => ({
+      ...item,
+      id: item.id, // Ensure ID is present
+      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+      indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
+    }));
+    
+    console.log(`[RelatedTagsField] Setting read-only items:`, selectedItems.length);
+    setLocalSelectedItems(selectedItems);
+  }
+}, [value, relatedItems, allOptions, labelField, onChange, field?.name]);
 
   // Handle selection changes
   const handleChange = async (event, selectedItems) => {
-    if (!parentId || !Array.isArray(selectedItems)) return;
+  if (!Array.isArray(selectedItems)) {
+    console.log('[RelatedTagsField] Invalid selectedItems, not an array');
+    return;
+  }
 
-    // Prepare the selected items for display
-    const enrichedItems = selectedItems.map(item => ({
-      ...item,
-      indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-    }));
+  console.log(`[RelatedTagsField] Selection changed:`, {
+    previous: localSelectedItems.length,
+    new: selectedItems.length,
+    items: selectedItems.map(i => ({id: i.id, label: i[labelField]}))
+  });
+  
+  // Prepare the selected items for display
+  const enrichedItems = selectedItems.map(item => ({
+    ...item,
+    id: item.id, // Ensure ID is present
+    [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+    indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
+  }));
+  
+  // Update local UI state
+  setLocalSelectedItems(enrichedItems);
+  
+  if (onChange) {
+    // We're in controlled mode with onChange
+    const selectedIds = selectedItems.map(item => item.id);
     
-    // Update local UI state
-    setLocalSelectedItems(enrichedItems);
+    // Create a consistent response format
+    const responseValue = {
+      ids: selectedIds,
+      details: enrichedItems
+    };
     
-    if (onChange) {
-      // We're in controlled mode with onChange
-      const selectedIds = selectedItems.map(item => item.id);
-      
-      onChange({
-        ids: selectedIds,
-        details: enrichedItems
-      });
-    } else {
+    console.log(`[RelatedTagsField] Calling onChange with:`, {
+      idsCount: selectedIds.length,
+      detailsCount: enrichedItems.length
+    });
+    
+    // Call parent onChange with the full structure
+    onChange(responseValue);
+  } else {
       // We're in direct database mode
       const selectedIds = selectedItems.map(item => item.id);
       const currentIds = relatedItems.map(item => item.id);

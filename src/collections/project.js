@@ -247,7 +247,7 @@ export const project = {
     },
     //1 project has many elements but 1 element only has 1 project
      {
- name: 'elements',
+ name: 'element_id',
   label: 'Elements',
   type: 'multiRelationship',
   displayMode: 'tags',
@@ -257,11 +257,12 @@ export const project = {
     table: 'element',
     labelField: 'title',
     linkTo: '/dashboard/element',
-    isOneToMany: true,
+    junctionTable: 'element',
+    isOneToMany: true,    
+        targetKey: 'project_id',
     filterFrom: 'project',
-    sourceKey: 'project_id',
     filter: {
-      project_id: '{{record.id}}'
+      project_id: '{{record.id}}' //this filter works 
     }
   }
 },
