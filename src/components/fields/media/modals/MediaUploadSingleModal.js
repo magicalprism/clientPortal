@@ -12,6 +12,9 @@ import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaReco
 import { useUploadFormState, useUploadHandlers } from '../helpers/useMediaUploadHelpers';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';
+import { MediaManualEntryEditor } from '@/components/fields/media/components/MediaManualEntryEditor';
+import { getInitialMedia } from '@/components/fields/media/data/mediaFieldConfig';
+import { MediaFieldEditor } from '@/components/fields/media/components/MediaFieldEditor';
 
 export const MediaUploadSingleModal = ({
   open,
@@ -60,18 +63,19 @@ export const MediaUploadSingleModal = ({
       if (existingMedia.url) {
         setMode('manual');
         setManualEntries([{
+          ...getInitialMedia('manual'),
           url: existingMedia.url,
           title: existingMedia.title || '',
           altText: existingMedia.alt_text || '',
-          copyright: existingMedia.copyright || ''
+          copyright: existingMedia.copyright || '',
         }]);
       }
     }
   }, [open, existingMedia, selectedFiles.length, manualEntries.length]);
 
-  const addManualEntry = () => {
-    setManualEntries([...manualEntries, { url: '', title: '', altText: '', copyright: '' }]);
-  };
+const addManualEntry = () => {
+  setManualEntries([...manualEntries, getInitialMedia('manual')]);
+};
 
   const removeManualEntry = (index) => {
     const next = [...manualEntries];
@@ -84,107 +88,129 @@ export const MediaUploadSingleModal = ({
     if (!files.length) return;
     
     setSelectedFiles(
-      files.map((file) => ({
-        file,
-        previewUrl: URL.createObjectURL(file),
-        title: file.name.split('.')[0] || '',
-        altText: '',
-        copyright: ''
-      }))
+     files.map((file) =>
+getInitialMedia('file', {
+  file,
+  previewUrl: URL.createObjectURL(file),
+  title: file.name.split('.')[0] || ''
+})
+)
     );
     
     setMode('file');
   };
 
   const handleUpload = async () => {
-    setUploading(true);
-    setError(null);
+  setUploading(true);
+  setError(null);
 
-    // Prepare metadata
-    const resolvedCompanyId = companyId || record?.company_id || (config?.name === 'company' ? record?.id : null);
-    const resolvedProjectId = projectId || record?.project_id || (config?.name === 'project' ? record?.id : null);
-    const metadata = {
-      company_id: resolvedCompanyId,
-      project_id: resolvedProjectId
-    };
-
-    let allMediaIds = [];
-
-    try {
-      // File upload handling
-      if (mode === 'file' && selectedFiles.length > 0) {
-        for (const media of selectedFiles) {
-          if (!media.file) continue;
-          
-          const uploaded = await uploadAndCreateMediaRecord({
-            file: media.file,
-            record,
-            field,
-            baseFolder: field?.baseFolder || '',
-            altText: media.altText,
-            copyright: media.copyright,
-            title: media.title
-          });
-
-          if (uploaded?.id) {
-            // Update with company/project metadata
-            const { error: updateError } = await supabase
-              .from('media')
-              .update(metadata)
-              .eq('id', uploaded.id);
-
-            if (updateError) throw updateError;
-            allMediaIds.push(uploaded.id);
-          }
-        }
-      } 
-      // Manual URL entry handling
-      else if (mode === 'manual' && manualEntries.length > 0) {
-        for (const media of manualEntries) {
-          if (!media.url) continue;
-          
-          const { data, error } = await supabase
-            .from('media')
-            .insert({
-              url: media.url,
-              title: media.title,
-              alt_text: media.altText,
-              copyright: media.copyright,
-              mime_type: getMimeTypeFromUrl(media.url),
-              created_at: new Date().toISOString(),
-              ...metadata
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          if (data?.id) {
-            allMediaIds.push(data.id);
-          }
-        }
-      }
-
-      // Fetch the complete media records with all fields
-      if (allMediaIds.length > 0) {
-        const { data: finalMedia, error: finalError } = await supabase
-          .from('media')
-          .select('*')
-          .in('id', allMediaIds);
-
-        if (finalError) throw finalError;
-
-        // Return media based on field configuration (single or multi)
-        onUploadComplete(finalMedia[0]); // Single field - return just the first item
-      }
-
-      onClose();
-    } catch (err) {
-      console.error('❌ Upload failed:', err);
-      setError(err.message || 'Upload failed. Please try again.');
-    } finally {
-      setUploading(false);
-    }
+  const resolvedCompanyId = companyId || record?.company_id || (config?.name === 'company' ? record?.id : null);
+  const resolvedProjectId = projectId || record?.project_id || (config?.name === 'project' ? record?.id : null);
+  const metadata = {
+    company_id: resolvedCompanyId,
+    project_id: resolvedProjectId
   };
+
+  let allMediaIds = [];
+
+  try {
+    const items = mode === 'file' ? selectedFiles : manualEntries;
+
+    for (const media of items) {
+      const payload = {};
+      const multiRelational = [];
+
+      for (const fieldDef of field?.config?.fields || []) {
+        const { name, type, relation } = fieldDef;
+        const value = media[name];
+
+        if (type === 'multiRelationship') {
+          if (value?.length && relation?.junctionTable && relation?.targetKey) {
+            multiRelational.push({
+              ids: value.map((v) => v.id || v),
+              junctionTable: relation.junctionTable,
+              sourceKey: relation.sourceKey || 'media_id',
+              targetKey: relation.targetKey
+            });
+          }
+        } else {
+          if (name === 'altText') {
+            payload['alt_text'] = value;
+          } else {
+            payload[name] = value;
+          }
+        }
+      }
+
+      const mediaUploadResult =
+        mode === 'file'
+          ? await uploadAndCreateMediaRecord({
+              file: media.file,
+              record,
+              field,
+              baseFolder: field?.baseFolder || '',
+              ...payload
+            })
+          : await supabase
+              .from('media')
+              .insert({
+                ...payload,
+                url: media.url,
+                created_at: new Date().toISOString(),
+                mime_type: media.mime_type || getMimeTypeFromUrl(media.url || media.file?.name),
+                ...metadata
+              })
+              .select()
+              .single()
+              .then(({ data, error }) => {
+                if (error) throw error;
+                return data;
+              });
+
+      if (!mediaUploadResult?.id) continue;
+
+      const mediaId = mediaUploadResult.id;
+      allMediaIds.push(mediaId);
+
+      // Update metadata (for uploaded files)
+      if (mode === 'file') {
+        const { error: updateError } = await supabase
+          .from('media')
+          .update(metadata)
+          .eq('id', mediaId);
+        if (updateError) throw updateError;
+      }
+
+      // Insert tag relations
+      for (const rel of multiRelational) {
+        const relationInsert = rel.ids.map((id) => ({
+          [rel.sourceKey]: mediaId,
+          [rel.targetKey]: id
+        }));
+        const { error: relError } = await supabase.from(rel.junctionTable).insert(relationInsert);
+        if (relError) throw relError;
+      }
+    }
+
+    if (allMediaIds.length > 0) {
+      const { data: finalMedia, error: finalError } = await supabase
+        .from('media')
+        .select('*')
+        .in('id', allMediaIds);
+      if (finalError) throw finalError;
+
+      onUploadComplete(finalMedia[0]);
+    }
+
+    onClose();
+  } catch (err) {
+    console.error('❌ Upload failed:', err);
+    setError(err?.message || JSON.stringify(err) || 'Upload failed. Please try again.');
+  } finally {
+    setUploading(false);
+  }
+};
+
 
   const selectedFile = selectedFiles[0] || {};
   const previewUrl = selectedFile?.previewUrl || existingMedia?.url || manualEntries[0]?.url || '';
@@ -269,79 +295,45 @@ export const MediaUploadSingleModal = ({
           </Button>
         </Box>
 
-        <Box flexGrow={1} display="flex" flexDirection="column" gap={2}>
-          <TextField
-            fullWidth
-            label="URL"
-            value={manualEntries[0]?.url || ''}
-            onChange={(e) => {
-              if (manualEntries.length === 0) {
-                setManualEntries([{ url: e.target.value, title: '', altText: '', copyright: '' }]);
-                setMode('manual');
-              } else {
-                const updated = [...manualEntries];
-                updated[0].url = e.target.value;
-                setManualEntries(updated);
-              }
-            }}
-          />
+       <Box flexGrow={1} display="flex" flexDirection="column" gap={2}>
+          {mode === 'manual' && manualEntries.length > 0 ? (
+            <MediaFieldEditor
+                media={manualEntries[0]}
+                index={0}
+                onChange={(i, updated) => {
+                  const next = [...manualEntries];
+                  next[i] = updated;
+                  setManualEntries(next);
+                }}
+                field={{
+                  ...field,
+                  config // <-- pass config so `MediaFieldEditor` can find `tags` field
+                }}
+              />
+          ) : mode === 'file' && selectedFiles.length > 0 ? (
+            <MediaFieldEditor
+              media={selectedFiles[0]}
+              index={0}
+              onChange={(i, updated) => {
+                const next = [...selectedFiles];
+                next[i] = updated;
+                setSelectedFiles(next);
+              }}
+              field={field}
+            />
+          ) : null}
 
-          <TextField
-            fullWidth
-            label="Title"
-            value={title}
-            onChange={(e) => {
-              if (mode === 'file' && selectedFiles.length > 0) {
-                const updated = [...selectedFiles];
-                updated[0].title = e.target.value;
-                setSelectedFiles(updated);
-              } else if (mode === 'manual' && manualEntries.length > 0) {
-                const updated = [...manualEntries];
-                updated[0].title = e.target.value;
-                setManualEntries(updated);
-              }
-            }}
-          />
 
-          <TextField
-            fullWidth
-            label="Alt Text"
-            value={altText}
-            onChange={(e) => {
-              if (mode === 'file' && selectedFiles.length > 0) {
-                const updated = [...selectedFiles];
-                updated[0].altText = e.target.value;
-                setSelectedFiles(updated);
-              } else if (mode === 'manual' && manualEntries.length > 0) {
-                const updated = [...manualEntries];
-                updated[0].altText = e.target.value;
-                setManualEntries(updated);
-              }
-            }}
-          />
 
-          <TextField
-            fullWidth
-            label="Copyright"
-            value={copyright}
-            onChange={(e) => {
-              if (mode === 'file' && selectedFiles.length > 0) {
-                const updated = [...selectedFiles];
-                updated[0].copyright = e.target.value;
-                setSelectedFiles(updated);
-              } else if (mode === 'manual' && manualEntries.length > 0) {
-                const updated = [...manualEntries];
-                updated[0].copyright = e.target.value;
-                setManualEntries(updated);
-              }
-            }}
-          />
-
-          {/* Company/Project Select */}
+          {/* Company/Project Selects */}
           {!isCompanyContext && (
             <FormControl fullWidth size="small">
               <InputLabel>Company</InputLabel>
-              <Select value={companyId} onChange={(e) => setCompanyId(e.target.value)} label="Company">
+              <Select
+                value={companyId}
+                onChange={(e) => setCompanyId(e.target.value)}
+                label="Company"
+              >
                 <MenuItem value="">None</MenuItem>
                 {companies.map((c) => (
                   <MenuItem key={c.id} value={c.id}>{c.title}</MenuItem>
@@ -349,11 +341,15 @@ export const MediaUploadSingleModal = ({
               </Select>
             </FormControl>
           )}
-          
+
           {!isProjectContext && (
             <FormControl fullWidth size="small">
               <InputLabel>Project</InputLabel>
-              <Select value={projectId} onChange={(e) => setProjectId(e.target.value)} label="Project">
+              <Select
+                value={projectId}
+                onChange={(e) => setProjectId(e.target.value)}
+                label="Project"
+              >
                 <MenuItem value="">None</MenuItem>
                 {projects.map((p) => (
                   <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
@@ -362,8 +358,13 @@ export const MediaUploadSingleModal = ({
             </FormControl>
           )}
 
-          {error && <Typography color="error" variant="caption">{error}</Typography>}
+          {error && (
+            <Typography color="error" variant="caption">
+              {error}
+            </Typography>
+          )}
         </Box>
+
       </DialogContent>
 
       <DialogActions>

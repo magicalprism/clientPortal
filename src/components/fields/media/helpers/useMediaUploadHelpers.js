@@ -98,7 +98,8 @@ export const useUploadHandlers = ({
   projectId
 }) => {
   const addManualEntry = () => {
-    setManualEntries([...manualEntries, { url: '', title: '', altText: '', copyright: '' }]);
+    setManualEntries([...manualEntries, { url: '', title: '', altText: '', copyright: '', description: '', originalTitle: '', tags: [], 
+  mime_type: '', is_folder: false  }]);
   };
 
   const removeManualEntry = (index) => {
@@ -119,7 +120,12 @@ export const useUploadHandlers = ({
         previewUrl: URL.createObjectURL(file),
         title: file.name.split('.')[0] || '',  // Use filename without extension as default title
         altText: '',
-        copyright: ''
+        copyright: '',
+        description: '', 
+        originalTitle: '',
+        tags: [], 
+        mime_type: '', 
+        is_folder: false 
       }))
     ]);
     
@@ -156,7 +162,12 @@ export const useUploadHandlers = ({
             baseFolder: field.baseFolder || '',
             altText: media.altText,
             copyright: media.copyright,
-            title: media.title
+            title: media.title,
+            description: media.description || '',
+            original_title: media.originalTitle || '',
+            mime_type: media.mime_type || getMimeTypeFromUrl(media.url),
+            is_folder: media.is_folder || false,
+            tags: media.tags || [],
           });
 
           if (uploaded?.id) {
@@ -183,7 +194,11 @@ export const useUploadHandlers = ({
               title: media.title,
               alt_text: media.altText,
               copyright: media.copyright,
-              mime_type: getMimeTypeFromUrl(media.url),
+              description: media.description || '',
+              original_title: media.originalTitle || '',
+              tags: media.tags || [],
+              mime_type: media.mime_type || getMimeTypeFromUrl(media.url || media.file?.name),
+              is_folder: media.is_folder || false,
               created_at: new Date().toISOString(),
               ...metadata
             })

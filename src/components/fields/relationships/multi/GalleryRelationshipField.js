@@ -7,7 +7,7 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import { MediaUploadModal } from '@/components/fields/media/MediaUploadModal';
+import { MediaUploadGalleryModal } from '@/components/fields/media/modals/MediaUploadGalleryModal';
 import { MediaLibraryPicker } from '@/components/fields/media/MediaLibraryPicker';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
 import { createClient } from '@/lib/supabase/browser';
@@ -140,14 +140,14 @@ const handleRemove = async (mediaId) => {
           </Stack>
       </Stack>
 
-      <MediaUploadModal
-        open={modalOpen}
-        onClose={() => setModalOpen(false)}
-        onUploadComplete={handleAdd}
-        config={config}
-        field={field}
-        record={record}
-      />
+<MediaUploadGalleryModal
+  open={modalOpen}
+  onClose={() => setModalOpen(false)}
+  onUploadComplete={handleAdd}
+  config={config}
+  field={field}
+  record={record}
+/>
 
       <MediaLibraryPicker
         open={libraryOpen}

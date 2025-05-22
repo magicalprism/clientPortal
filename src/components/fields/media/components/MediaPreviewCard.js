@@ -3,6 +3,8 @@
 import { Box, Card, CardMedia, CardContent, Typography, IconButton, Tooltip } from '@mui/material';
 import { X as XIcon, DownloadSimple, LinkSimple, Copy } from '@phosphor-icons/react';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
+import { getMediaTitle } from '@/components/fields/media/data/mediaFieldConfig';
+
 
 export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }) => {
   if (!media) return null;
@@ -11,7 +13,7 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
   const isImage = media?.mime_type?.startsWith('image');
   const isFolder = media?.is_folder === true;
   const mime = media?.mime_type || '';
-  const title = media?.title || media?.alt_text || 'Unnamed file';
+  const title = getMediaTitle(media);
   
   const FileIcon = media?.is_folder === true || mime === 'folder'
     ? fileTypeIcons.folder

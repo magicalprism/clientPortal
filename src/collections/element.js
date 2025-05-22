@@ -10,8 +10,10 @@ export const element = {
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
-        subtitleField: 'live_url',
-        extraFields: []
+        subtitleField: 'status',
+        descriptionField: 'description',
+        extraFields: ['project_id', 'company_id', 'url'],
+        relatedFields: ['staging_url']
       }, 
   defaultView: 'table',
   views: {
@@ -20,16 +22,7 @@ export const element = {
       component: 'TaskTableView'
     },
   },
-  //Quickview
-      quickView: {
-        enabled: true,
-        imageField: 'thumbnail_id',
-        titleField: 'title',
-        subtitleField: 'status',
-        descriptionField: '',
-        extraFields: [],
-        relatedFields: []
-      }, 
+
   fields: [   
     // Overview
     { 
@@ -37,10 +30,8 @@ export const element = {
       label: 'Title', 
       group: 'Details', 
       clickable: true, 
-      openMode: 'full', 
       tab: 'Overview', 
       showInTable: true,
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
 
 
@@ -52,7 +43,6 @@ export const element = {
       tab: 'Overview', 
       type: 'relationship',
       showInTable: true,
-  
       relation: {
         table: 'company',
         labelField: 'title',
@@ -134,7 +124,6 @@ export const element = {
         labelField: 'title',
         linkTo: '/dashboard/task',
         sourceKey: 'element_id',
-        tableFields: ['title']
     },
       filters: [
          {

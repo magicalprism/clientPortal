@@ -44,17 +44,268 @@ export const project = {
       }, 
   fields: [   
     // Overview
-    { 
+{ 
       name: 'title', 
       label: 'Title', 
+      tab: 'Overview', 
       group: 'Project Info', 
       clickable: true, 
-      openMode: 'full', 
-      tab: 'Overview', 
       showInTable: true,
-      width: 'auto',
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+      width: '50%',
+    
     },
+    { 
+      name: 'url', 
+      label: 'URL', 
+      type: 'link',
+      tab: 'Overview',   
+      group: 'Project Info',
+      
+      },
+    {
+      name: 'content',
+      label: 'General Description',
+      type: 'richText',
+      tab: 'Overview',
+      fullWidth: true,
+
+    },
+    {
+      name: 'company_id',
+      label: 'Company',
+      type: 'relationship',
+      tab: 'Overview',
+      group: 'Project Info', 
+      showInTable: true,
+  
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        linkTo: '/dashboard/company', // or dynamically derive from config
+        filter: { is_client: 'true' }
+      }
+    },
+    {
+      name: 'tasks',
+      label: 'Tasks',
+      type: 'multiRelationship',
+      tab: 'Tasks',
+      component: 'CollectionView',
+      displayMode: 'table',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task',
+        sourceKey: 'project_id',
+        
+      },
+       
+    },
+    {
+      name: 'element_map',
+      label: 'Site Element Map',
+      type: 'custom',
+      tab: 'Site Structure',
+      component: 'ElementMap',
+    },
+{
+  name: 'element_id',
+  label: 'Elements',
+  type: 'multiRelationship',
+  tab: 'Site Structure',
+  group: 'General',
+  displayMode: 'tags',
+  relation: {
+    table: 'element',
+    labelField: 'title',
+    linkTo: '/dashboard/element',
+    isOneToMany: true,
+    sourceKey: 'project_id',
+    filterFrom: 'project',
+    filter: {
+      project_id: '{{record.id}}'
+    }
+  }
+},
+        {
+      name: 'brand_id',
+      label: 'Brand',
+      type: 'relationship',
+      tab: 'Brand',
+  
+      relation: {
+        table: 'brand',
+        labelField: 'title',
+        linkTo: '/dashboard/brand', // or dynamically derive from config
+      }
+    },
+     {
+      name: 'brand_board_preview',
+      label: 'Brand Board Preview',
+      type: 'custom',
+      component: 'BrandBoardPreview',
+      tab: 'Brand',
+    },
+    { 
+      name: 'care_plan_id', 
+      label: 'Care Plan', 
+      tab: 'Deliverables',
+      group: 'Subscriptions',
+      type: 'relationship',
+      relation: {
+        table: 'product',
+        labelField: 'title',
+        linkTo: '/dashboard/product',
+      } 
+    },
+ { 
+      name: 'cloudflare_url', 
+      label: 'Cloudflare URL', 
+      type: 'link',      
+      tab: 'Backend',
+      group: 'Cloudflare', 
+      displayLabel: 'https://dash.cloudflare.com...',   
+    },
+    { 
+      name: 'domain_login_id', 
+      label: 'Domain Login',
+      type: 'relationship',
+      tab: 'Backend',
+      group: 'Hosting',   
+      relation: {
+        table: 'link',
+        labelField: 'title',
+        linkTo: '/dashboard/link',
+        filter: { type: 'domain' }
+      }
+    },
+    { 
+      name: 'cloudflare_zone', 
+      label: 'Cloudflare Zone', 
+      tab: 'Backend',
+      group: 'Cloudflare', 
+
+    },
+{ 
+      name: 'cloudflare_account', 
+      label: 'Cloudflare Account', 
+      tab: 'Backend',
+      group: 'Cloudflare', 
+      
+    },
+{
+      name: 'server_id',
+      label: 'Server',
+      type: 'relationship',
+      tab: 'Backend',
+      group: 'Hosting',
+      relation: {
+        table: 'server',
+        labelField: 'title',
+        linkTo: '/dashboard/server'
+      }
+    },
+  {
+  name: 'deliverables',
+  label: 'Files',
+  type: 'galleryRelationship',
+  tab: 'Files',
+  group: 'Files',
+  showAll: false,
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id',
+    foreignKey: 'project_id',
+    filter: {
+      project_id: '{{record.id}}'
+    }
+  },
+},
+{
+  name: 'media_items',
+  label: 'All Media',
+  type: 'galleryRelationship',
+  tab: 'Files',
+  database: false,
+  showAll: true,
+  filters: [
+    { name: 'mime_type', label: 'File Type' },
+    { name: 'element_id', label: 'Page or Element'  },
+], // 👈 multiple fields used in dropdowns
+  sortOptions: [ // ✅ Add this here
+      { value: 'title:asc', label: 'Title (A–Z)' },
+      { value: 'title:desc', label: 'Title (Z–A)' },
+      { value: 'created_at:desc', label: 'Newest Created' },
+      { value: 'created_at:asc', label: 'Oldest Created' }
+    ],
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_project',
+    sourceKey: 'project_id',
+    targetKey: 'media_id',
+    foreignKey: 'project_id',
+    filter: {
+      project_id: 'record.id'
+    }
+  },
+  
+},
+  {
+      name: 'tags',
+      label: 'Tags',
+      type: 'multiRelationship',
+      tab: 'Meta',
+      group: 'General',
+      displayMode: 'tags',
+      relation: {
+        table: 'category',
+        labelField: 'title',
+        linkTo: '/dashboard/category',
+        junctionTable: 'category_project',
+        sourceKey: 'project_id',
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+    { 
+      name: 'author_id', 
+      label: 'Author', 
+      type: 'relationship',
+      tab: 'Meta',
+      group: 'General',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact' // or dynamically derive from config
+      }, 
+    },
+    { 
+      name: 'created_at', 
+      label: 'Created', 
+      type: 'timestamp',
+       tab: 'Meta',
+      group: 'General', 
+    },
+    { 
+      name: 'updated_at', 
+      label: 'Updated At', 
+      type: 'timestamp' , 
+      tab: 'Meta',
+      group: 'General', 
+    },
+ { 
+      name: 'site_timezone', 
+      label: 'Site Timezone', 
+      group: 'Site', 
+      tab: 'Meta', 
+      type: 'timezone',
+    },
+
     {
       name: 'parent_id',
       label: 'Parent Project',
@@ -68,284 +319,53 @@ export const project = {
 
       }
     },
-
-    
-    
-    { name: 'url', label: 'URL', group: 'Project Info', type: 'link',  tab: 'Overview', },
-
-    //Site Info
-    { name: 'site_name', label: 'Site Name', group: 'Site Info', tab: 'Overview', },
-    { name: 'site_tagline', label: 'Site Tagline', group: 'Site Info', tab: 'Overview', },
-    { 
-      name: 'site_timezone', 
-      label: 'Site Timezone', 
-      group: 'Site Info', 
-      tab: 'Overview', 
-      type: 'timezone',
-    },
-     { name: 'blog_public', label: 'Blog Public', group: 'Site Info', tab: 'Overview', type: 'boolean', },
-    { name: 'admin_email', label: 'Admin Email', group: 'Site Info', tab: 'Overview', },
-
-    //1 project has 1 company but a company has many projects
-    {
-      name: 'company_id',
-      label: 'Company',
-      group: 'Project Info',
-      tab: 'Overview', 
-      type: 'relationship',
-      showInTable: true,
-  
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
-      }
-    },
-  
-
     { 
       name: 'start_date', 
       label: 'Start Date', 
       type: 'date',
-      group: 'Site Info', 
-      tab: 'Overview', 
+      tab: 'Meta', 
+      group: 'Dates', 
+      
     },
-
      { 
       name: 'launch_date', 
       label: 'Projected Launch Date', 
       type: 'date',
-      group: 'Site Info', 
-      tab: 'Overview', 
+      tab: 'Meta', 
+      group: 'Dates',
     },
 
-
-    // Media
-    //Thumbnails
-     {
-      name: 'brand_board_preview',
-      label: 'Brand Board Preview',
-      type: 'custom',
-      component: 'BrandBoardPreview',
-      group: 'Media',
-      tab: 'Brand'
+{ 
+      name: 'blog_public', 
+      label: 'Blog Public', 
+      type: 'boolean', 
+      group: 'Site', 
+      tab: 'Meta', 
     },
-        {
-      name: 'brand_id',
-      label: 'Brand',
-      group: 'Brand',
-      tab: 'Brand',
-      type: 'relationship',
-      showInTable: true,
-  
-      relation: {
-        table: 'brand',
-        labelField: 'title',
-        linkTo: '/dashboard/brand', // or dynamically derive from config
-      }
-    },
-    //1 to many but not relationship or multi fields
-    {
-      name: 'thumbnail_id',
-      label: 'Thumbnail',
-      type: 'media',
-      relation: {
-        table: 'media',
-        labelField: 'url'  // or 'alt' if you want something different
-      },
-      group: 'Media',
-      tab: 'Brand'
-    },
-    {
-      name: 'screenshot_id',
-      label: 'Screenshot',
-      type: 'media',
-      relation: {
-        table: 'media',
-        labelField: 'url'  // or 'alt' if you want something different
-      },
-      group: 'Media',
-      tab: 'Brand'
-    },
-
-    //media folders
-    //Brand board
-
-
-    //Backend
-    //Hosting
-    //1 project has 1 server
-    {
-      name: 'server_id',
-      label: 'Server',
-      tab: 'Backend',
-      group: 'Hosting',
-      type: 'relationship',
-
-      relation: {
-        table: 'server',
-        labelField: 'title',
-        linkTo: '/dashboard/server'
-      }
+ { 
+      name: 'site_tagline', 
+      label: 'Site Tagline', 
+      group: 'Site', 
+      tab: 'Meta', 
     },
     { 
-      name: 'domain_login_id', 
-      label: 'Domain Login',
-      group: 'Hosting',
-      type: 'relationship',
-      tab: 'Backend',
-      relation: {
-        table: 'link',
-        labelField: 'title',
-        linkTo: '/dashboard/link',
-        filter: { type: 'domain' }
-      }
+      name: 'site_name', 
+      label: 'Site Name', 
+      group: 'Site', 
+      tab: 'Meta', 
     },
-    // Cloudflare
-    { name: 'cloudflare_url', label: 'Cloudflare URL', group: 'Cloudflare', type: 'link', displayLabel: 'https://dash.cloudflare.com...', tab: 'Backend' },
-    { name: 'cloudflare_zone', label: 'Cloudflare Zone', group: 'Cloudflare', tab: 'Backend' },
-    { name: 'cloudflare_account', label: 'Cloudflare Account', group: 'Cloudflare', tab: 'Backend' },
-
-    
-    //Deliverables
-
-    //Services
-
-
-  {
-  name: 'file_deliverables',
-  type: 'galleryRelationship',
-  label: 'Files',
-  showAll: false,
-  relation: {
-    table: 'media',
-    labelField: 'title',
-    junctionTable: 'media_project',
-    sourceKey: 'project_id',
-    targetKey: 'media_id',
-    foreignKey: 'project_id',
-    filter: {
-      project_id: '{{record.id}}'
-    }
-  },
-    group: 'Site Deliverables',
-      tab: 'Deliverables',
-},
-//1 project has 1 care plan  but a care plan has many projects
     { 
-      name: 'care_plan_id', 
-      label: 'Care Plan', 
-      group: 'Subscriptions',
-      tab: 'Deliverables',
-      type: 'relationship',
-      relation: {
-        table: 'product',
-        labelField: 'title',
-        linkTo: '/dashboard/product',
-      } 
+      name: 'admin_email', 
+      label: 'Admin Email', 
+      group: 'Site', 
+      tab: 'Meta', 
     },
-
-    //Proposals
-    //Contracts
-    
-    //Site Elements
-
-    {
-      name: 'element_map',
-      label: 'Site Element Map',
-      type: 'custom',
-      component: 'ElementMap',
-      tab: 'Site Structure',
-      group: 'Elements'
-    },
-    //1 project has many elements but 1 element only has 1 project
-{
-  name: 'element_id',
-  label: 'Elements',
-  type: 'multiRelationship',
-  displayMode: 'tags',
-  group: 'General',
-  tab: 'Meta',
-  relation: {
-    table: 'element',
-    labelField: 'title',
-    linkTo: '/dashboard/element',
-    isOneToMany: true,
-    sourceKey: 'project_id',  // this is on element table
- // ✅ add this
-    filterFrom: 'project',
-    filter: {
-      project_id: '{{record.id}}'
-    }
-  }
-},
-    // Content
-
-
-    //Team
-    //don't worry because its component 
-    {
-      name: 'tasks',
-      label: 'Tasks',
-      type: 'multiRelationship',
-      component: 'CollectionView',
-      displayMode: 'table',
-      relation: {
-        table: 'task',
-        labelField: 'title',
-        linkTo: '/dashboard/task',
-        sourceKey: 'project_id',
-        
-      },
-      
-       tab: 'Tasks',
-      group: 'Upcoming'
-    },
-
-//different kind of field
-{
-  name: 'media_items',
-  type: 'galleryRelationship',
-  label: 'All Media',
-  database: false,
-  showAll: true,
-  filters: [
-    { name: 'mime_type', label: 'File Type' },
-  { name: 'element_id', label: 'Page or Element'  },
-], // 👈 multiple fields used in dropdowns
-sortOptions: [ // ✅ Add this here
-    { value: 'title:asc', label: 'Title (A–Z)' },
-    { value: 'title:desc', label: 'Title (Z–A)' },
-    { value: 'created_at:desc', label: 'Newest Created' },
-    { value: 'created_at:asc', label: 'Oldest Created' }
-  ],
-  relation: {
-    table: 'media',
-    labelField: 'title',
-    junctionTable: 'media_project',
-    sourceKey: 'project_id',
-    targetKey: 'media_id',
-    foreignKey: 'project_id',
-    filter: {
-      project_id: 'record.id'
-    }
-  },
-    tab: 'Resources',
-  group: 'Media',
-},
-
-
-    
-    
-    //Meta
-    //a project has many contacts
    {
   name: 'contacts',
   label: 'Contact',
-  type: 'multiRelationship',     
+  type: 'multiRelationship',  
+  tab: 'Meta',   
   group: 'General',
-  tab: 'Meta',
   displayMode: 'tags',
   relation: {
     table: 'contact',
@@ -360,13 +380,12 @@ sortOptions: [ // ✅ Add this here
     }
   }
 },
-   
     {
       name: 'status',
       label: 'Status',
-      group: 'General',
       type: 'select',
       tab: 'Meta',
+      group: 'General',
       showInTable: true,
       width: 'auto',
       options: [
@@ -375,51 +394,6 @@ sortOptions: [ // ✅ Add this here
         { label: 'Maintained', value: 'maintained' },
         { label: 'Archived', value: 'archived' }
       ]
-    },
-    
-    { 
-      name: 'created_at', 
-      label: 'Created', 
-      type: 'timestamp',
-      group: 'General', 
-      tab: 'Meta'
-    },
-    { 
-      name: 'updated_at', 
-      label: 'Updated At', 
-      type: 'timestamp' , 
-      group: 'General', 
-      tab: 'Meta'
-    },
-    //a project has 1 author
-    { 
-      name: 'author_id', 
-      label: 'Author', 
-      type: 'relationship',
-      group: 'General',
-      tab: 'Meta',
-      relation: {
-        table: 'contact',
-        labelField: 'title',
-        linkTo: '/dashboard/contact' // or dynamically derive from config
-      }, 
-    },
-//a project has many tags and tags have many projects
-    {
-      name: 'tags',
-      label: 'Tags',
-      type: 'multiRelationship',
-      displayMode: 'tags',
-      relation: {
-        table: 'category',
-        labelField: 'title',
-        linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
-        targetKey: 'category_id',
-        tableFields: ['title'],
-        filter: {}
-      }
     },
   
   ],

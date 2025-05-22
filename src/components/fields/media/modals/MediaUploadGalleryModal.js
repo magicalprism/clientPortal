@@ -12,6 +12,8 @@ import { useUploadFormState, useUploadHandlers } from '../helpers/useMediaUpload
 import { MediaLibraryPicker } from '@/components/fields/media/MediaLibraryPicker';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';
+import { MediaFieldEditor } from '@/components/fields/media/components/MediaFieldEditor';
+import { getInitialMedia, getMediaAltText, mediaFieldDefaults } from '@/components/fields/media/data/mediaFieldConfig';
 
 export const MediaUploadGalleryModal = ({
   open,
@@ -76,11 +78,11 @@ export const MediaUploadGalleryModal = ({
       case 1:
         setMode('manual');
         if (manualEntries.length === 0) {
-          addManualEntry();
-        }
+        setManualEntries([getInitialMedia('manual')]);
+      }
         break;
       case 2:
-        setChooseFromLibraryOpen(true);
+        setMode('library');
         break;
     }
   };
@@ -160,44 +162,17 @@ export const MediaUploadGalleryModal = ({
                       </Typography>
                     </Box>
                     
-                    <TextField
-                      fullWidth
-                      label="Title"
-                      size="small"
-                      margin="dense"
-                      value={media.title}
-                      onChange={(e) => {
+                    <MediaFieldEditor
+                      media={media}
+                      index={idx}
+                      onChange={(i, updatedMedia) => {
                         const updated = [...selectedFiles];
-                        updated[idx].title = e.target.value;
+                        updated[i] = updatedMedia;
                         setSelectedFiles(updated);
                       }}
+                      field={field}
                     />
-                    
-                    <TextField
-                      fullWidth
-                      label="Alt Text"
-                      size="small"
-                      margin="dense"
-                      value={media.altText}
-                      onChange={(e) => {
-                        const updated = [...selectedFiles];
-                        updated[idx].altText = e.target.value;
-                        setSelectedFiles(updated);
-                      }}
-                    />
-                    
-                    <TextField
-                      fullWidth
-                      label="Copyright"
-                      size="small"
-                      margin="dense"
-                      value={media.copyright}
-                      onChange={(e) => {
-                        const updated = [...selectedFiles];
-                        updated[idx].copyright = e.target.value;
-                        setSelectedFiles(updated);
-                      }}
-                    />
+
                   </Box>
                 </Grid>
               ))}
@@ -239,7 +214,22 @@ export const MediaUploadGalleryModal = ({
             )}
           </>
         )}
-
+{activeTab === 2 && (
+  <MediaLibraryPicker
+    open={true}
+    inline={true}
+    onClose={() => setActiveTab(0)}
+    onSelect={(media) => {
+      onUploadComplete((prev) => {
+        if (!field?.multi) return media;
+        return [...(Array.isArray(prev) ? prev : []), media];
+      });
+      onClose();
+    }}
+    record={record}
+    multi={field?.multi}
+  />
+)}
         {activeTab === 1 && (
           <>
             {manualEntries.map((entry, index) => (
@@ -260,7 +250,7 @@ export const MediaUploadGalleryModal = ({
                   {entry.url?.match(/\.(jpeg|jpg|png|webp|gif)$/i) ? (
                     <img
                       src={entry.url}
-                      alt="Preview"
+                      alt={getMediaAltText(entry)}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   ) : (
@@ -273,50 +263,16 @@ export const MediaUploadGalleryModal = ({
                 </Box>
 
                 <Box flexGrow={1} display="flex" flexDirection="column" gap={1}>
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Image URL"
-                    value={entry.url}
-                    onChange={(e) => {
-                      const updated = [...manualEntries];
-                      updated[index].url = e.target.value;
-                      setManualEntries(updated);
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Title"
-                    value={entry.title}
-                    onChange={(e) => {
-                      const updated = [...manualEntries];
-                      updated[index].title = e.target.value;
-                      setManualEntries(updated);
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Alt Text"
-                    value={entry.altText}
-                    onChange={(e) => {
-                      const updated = [...manualEntries];
-                      updated[index].altText = e.target.value;
-                      setManualEntries(updated);
-                    }}
-                  />
-                  <TextField
-                    fullWidth
-                    size="small"
-                    label="Copyright"
-                    value={entry.copyright}
-                    onChange={(e) => {
-                      const updated = [...manualEntries];
-                      updated[index].copyright = e.target.value;
-                      setManualEntries(updated);
-                    }}
-                  />
+                  <MediaFieldEditor
+                        media={entry}
+                        index={index}
+                        onChange={(i, updatedEntry) => {
+                          const updated = [...manualEntries];
+                          updated[i] = updatedEntry;
+                          setManualEntries(updated);
+                        }}
+                        field={field}
+                      />
                 </Box>
 
                 <IconButton 
@@ -394,21 +350,6 @@ export const MediaUploadGalleryModal = ({
           {uploading ? 'Saving…' : 'Save'}
         </Button>
       </DialogActions>
-
-      <MediaLibraryPicker
-        open={chooseFromLibraryOpen}
-        onClose={() => setChooseFromLibraryOpen(false)}
-        onSelect={(media) => {
-          onUploadComplete((prev) => {
-            if (!field?.multi) return media;
-            return [...(Array.isArray(prev) ? prev : []), media];
-          });
-          setChooseFromLibraryOpen(false);
-          onClose();
-        }}
-        record={record}
-        multi={field?.multi}
-      />
     </Dialog>
   );
 };

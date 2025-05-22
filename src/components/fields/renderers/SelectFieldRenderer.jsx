@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import {
   Typography,
   Select,
-  MenuItem
+  MenuItem,
+  ListSubheader
 } from '@mui/material';
 
 import {
@@ -76,11 +77,21 @@ export const SelectFieldRenderer = ({
       <MenuItem value="">
         <em>None</em>
       </MenuItem>
-      {(field.options || []).map(option => (
-        <MenuItem key={option.value} value={option.value}>
-          {option.label}
-        </MenuItem>
-      ))}
+      {(field.options || []).map((option, idx) => {
+          if (option.heading) {
+            return (
+              <ListSubheader key={`heading-${idx}`}>
+                {option.label}
+              </ListSubheader>
+            );
+          }
+
+          return (
+            <MenuItem key={option.value || option.label} value={option.value}>
+              {option.label}
+            </MenuItem>
+          );
+        })}
     </Select>
   );
 };

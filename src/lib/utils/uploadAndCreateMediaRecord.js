@@ -11,7 +11,12 @@ export const uploadAndCreateMediaRecord = async ({
   field = {},
   baseFolder = '',
   altText = '',
-  copyright = ''
+  copyright = '',
+    originalTitle = '',
+  description = '',
+  mimeTypeOverride = null,
+  isFolder = false,
+  tags = [],
 }) => {
   if (!(file instanceof File)) {
     console.error('❌ Invalid file provided to upload:', file);
@@ -51,19 +56,21 @@ if (!effectiveAltText && !mimeType.startsWith('image/')) {
 }
 
   // Step 2: Insert uploaded file info into 'media' table
-  const mediaPayload = {
-    url: publicUrl,
-    file_path: filePath,
-    size: file.size || null,
-    mime_type: field?.is_folder === true ? 'folder' : (file.type || getMimeTypeFromUrl(file.name)),
-    alt_text: effectiveAltText || '',
-    copyright: copyright || '',
-    width: null,
-    height: null,
-    created_at: new Date().toISOString(),
-    is_folder: field?.is_folder === true,
-    
-  };
+const mediaPayload = {
+  url: publicUrl,
+  file_path: filePath,
+  size: file.size || null,
+  mime_type: mimeType,
+  alt_text: effectiveAltText,
+  copyright,
+  description,
+  original_title: originalTitle,
+  is_folder: isFolder,
+  tags, // JSONB array expected
+  width: null,
+  height: null,
+  created_at: new Date().toISOString()
+};
   mediaPayload.mime_type = field?.is_folder === true
   ? 'folder'
   : (file.type || getMimeTypeFromUrl(file.name));

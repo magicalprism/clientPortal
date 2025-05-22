@@ -84,7 +84,7 @@ export const paths = {
 		element: {
 			list: "/dashboard/element",
 			create: "/dashboard/element/create",
-			details: (elementId) => `/dashboard/element/${elementId}`,
+			details: (elementId) => `/dashboard/element${elementId}`,
 		},
 		onboarding: {
 			list: "/dashboard/onboarding",
