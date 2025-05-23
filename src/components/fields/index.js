@@ -10,7 +10,7 @@ import TimestampFieldRenderer from '@/components/fields/dateTime/timestamp/Times
 import LinkFieldRenderer from '@/components/fields/link/LinkFieldRenderer';
 import ColorFieldRenderer from '@/components/fields/color/ColorFieldRenderer';
 import CustomFieldRenderer from '@/components/fields/custom/CustomFieldRenderer';
-import GalleryRelationshipFieldRenderer from '@/components/fields/relationships/GalleryRelationshipFieldRenderer';
+import GalleryRelationshipFieldRenderer from '@/components/fields/media/GalleryRelationshipFieldRenderer';
 import TimezoneFieldRenderer from '@/components/fields/dateTime/TimezoneFieldRenderer';
 
 const RENDERERS = {

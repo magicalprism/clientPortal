@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Box, IconButton, Typography, Tooltip } from '@mui/material';
 import { Timer as TimerIcon, StopCircle, PlayCircle } from '@phosphor-icons/react';
-import { useTaskTimer } from '@/components/fields/DateTime/timer/TimeTrackerContext';
+import { useTaskTimer } from '@/components/fields/dateTime/timer/TimeTrackerContext';
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
 import { createClient } from '@/lib/supabase/browser';

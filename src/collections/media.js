@@ -26,6 +26,13 @@ export const media = {
         extraFields: ['url', 'company_id', 'projects'],
       }, 
   fields: [
+            { 
+      name: 'url', 
+      label: 'URL', 
+      type: 'link',
+      tab: 'Overview', 
+      
+      },
     { 
       name: 'title', 
       label: 'Title', 
@@ -34,14 +41,6 @@ export const media = {
       showInTable: true,
     
     },
-        { 
-      name: 'url', 
-      label: 'URL', 
-      type: 'link',
-      tab: 'Overview', 
-      showInTable: true,  
-      
-      },
 { 
       name: 'is_folder', 
       label: 'Is Folder', 
@@ -49,10 +48,16 @@ export const media = {
       tab: 'Overview', 
     
     },
+    { 
+      name: 'is_external', 
+      label: 'External File or Folder', 
+      type: 'boolean',
+      tab: 'Overview', 
+    
+    },
 { 
       name: 'description', 
       label: 'Description', 
-      type: 'richText',
       tab: 'Overview', 
     
     },
@@ -168,7 +173,13 @@ export const media = {
     //}
       }
     },
-
+    { 
+      name: 'is_external', 
+      label: 'External File or Folder', 
+      type: 'boolean',
+      tab: 'Meta', 
+    
+    },
 
 
 

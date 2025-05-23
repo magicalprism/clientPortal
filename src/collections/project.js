@@ -209,6 +209,7 @@ export const project = {
   name: 'deliverables',
   label: 'Files',
   type: 'galleryRelationship',
+  database: false,
   tab: 'Files',
   group: 'Files',
   showAll: false,

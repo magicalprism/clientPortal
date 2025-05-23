@@ -7,6 +7,7 @@ import {
   allEditableMediaKeys,
   manualOnlyKeys
 } from '@/components/fields/media/old/components/data/mediaFieldConfig';
+import { createClient } from '@/lib/supabase/browser';
 
 /**
  * Shared form state hook for both single and gallery modals
@@ -82,10 +83,11 @@ export const useUploadFormState = ({ open, record, config, supabase, existingMed
 };
 
 /**
- * Shared handler logic for media upload operations
+ * Shared handler logic for media upload operations - FIXED VERSION
  */
 export const useUploadHandlers = ({
   mode,
+  setMode, // ADDED: Make sure setMode is included
   selectedFiles,
   setSelectedFiles,
   manualEntries,
@@ -102,8 +104,17 @@ export const useUploadHandlers = ({
   projectId
 }) => {
   const addManualEntry = () => {
-    setManualEntries([...manualEntries, { url: '', title: '', altText: '', copyright: '', description: '', originalTitle: '', tags: [], 
-  mime_type: '', is_folder: false  }]);
+    setManualEntries([...manualEntries, { 
+      url: '', 
+      title: '', 
+      altText: '', 
+      copyright: '', 
+      description: '', 
+      originalTitle: '', 
+      tags: [], 
+      mime_type: '', 
+      is_folder: false  
+    }]);
   };
 
   const removeManualEntry = (index) => {
@@ -133,123 +144,140 @@ export const useUploadHandlers = ({
       }))
     ]);
     
-    // Set mode to file if not already set
-    if (!mode) {
+    // Set mode to file if not already set - FIXED: Check if setMode exists
+    if (!mode && setMode) {
       setMode('file');
     }
   };
 
-const handleUpload = async () => {
-  setUploading(true);
-  setError(null);
+  const handleUpload = async () => {
+    if (!setUploading || !setError) {
 
-  const resolvedCompanyId = companyId || record?.company_id || (config?.name === 'company' ? record?.id : null);
-  const resolvedProjectId = projectId || record?.project_id || (config?.name === 'project' ? record?.id : null);
-  const metadata = {
-    company_id: resolvedCompanyId,
-    project_id: resolvedProjectId
-  };
-
-  let allMediaIds = [];
-
-  try {
-    const buildPayload = (media) => {
-      const payload = {};
-      for (const key of allEditableMediaKeys) {
-        payload[key] = media[key] ?? null;
-      }
-      return {
-        ...payload,
-        mime_type: media.mime_type || getMimeTypeFromUrl(media.url || media.file?.name),
-        is_folder: media.is_folder || false,
-        ...metadata
-      };
-    };
-
-    if (mode === 'file' && selectedFiles.length > 0) {
-      for (const media of selectedFiles) {
-        if (!media.file) continue;
-
-        const uploaded = await uploadAndCreateMediaRecord({
-          file: media.file,
-          record,
-          field,
-          baseFolder: field?.baseFolder || '',
-          ...buildPayload(media)
-        });
-
-        if (uploaded?.id) {
-          const { error: updateError } = await supabase
-            .from('media')
-            .update(metadata)
-            .eq('id', uploaded.id);
-
-          if (updateError) throw updateError;
-          allMediaIds.push(uploaded.id);
-        }
-      }
+      return;
     }
 
-    if (mode === 'manual' && manualEntries.length > 0) {
-      for (const media of manualEntries) {
-        if (!media.url) continue;
+    setUploading(true);
+    setError(null);
 
-        const payload = buildPayload(media);
+    const resolvedCompanyId = companyId || record?.company_id || (config?.name === 'company' ? record?.id : null);
+    const resolvedProjectId = projectId || record?.project_id || (config?.name === 'project' ? record?.id : null);
+    const metadata = {
+      company_id: resolvedCompanyId,
+      project_id: resolvedProjectId
+    };
 
-        if (media.id) {
-          // Update existing media
-          const { error: updateError } = await supabase
-            .from('media')
-            .update(payload)
-            .eq('id', media.id);
+    let allMediaIds = [];
 
-          if (updateError) throw updateError;
-          allMediaIds.push(media.id);
-        } else {
-          // Insert new media
-          const { data, error } = await supabase
-            .from('media')
-            .insert({
-              ...payload,
-              url: media.url,
-              created_at: new Date().toISOString()
-            })
-            .select()
-            .single();
+    try {
+      const buildPayload = (media) => {
+        const payload = {};
+        for (const key of allEditableMediaKeys) {
+          payload[key] = media[key] ?? null;
+        }
+        return {
+          ...payload,
+          mime_type: media.mime_type || getMimeTypeFromUrl(media.url || media.file?.name),
+          is_folder: media.is_folder || false,
+          ...metadata
+        };
+      };
 
-          if (error) throw error;
-          if (data?.id) {
-            allMediaIds.push(data.id);
+      if (mode === 'file' && selectedFiles.length > 0) {
+        for (const media of selectedFiles) {
+          if (!media.file) continue;
+
+          const uploaded = await uploadAndCreateMediaRecord({
+            file: media.file,
+            record,
+            field,
+            baseFolder: field?.baseFolder || '',
+            ...buildPayload(media)
+          });
+
+          if (uploaded?.id) {
+            const { error: updateError } = await supabase
+              .from('media')
+              .update(metadata)
+              .eq('id', uploaded.id);
+
+            if (updateError) throw updateError;
+            allMediaIds.push(uploaded.id);
           }
         }
       }
+
+      if (mode === 'manual' && manualEntries.length > 0) {
+        for (const media of manualEntries) {
+          if (!media.url) continue;
+
+          const payload = buildPayload(media);
+
+          if (media.id) {
+            // Update existing media
+            const { error: updateError } = await supabase
+              .from('media')
+              .update(payload)
+              .eq('id', media.id);
+
+            if (updateError) throw updateError;
+            allMediaIds.push(media.id);
+          } else {
+            // Insert new media
+            const { data, error } = await supabase
+              .from('media')
+              .insert({
+                ...payload,
+                url: media.url,
+                created_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (error) throw error;
+            if (data?.id) {
+              allMediaIds.push(data.id);
+            }
+          }
+        }
+      }
+
+      if (allMediaIds.length > 0) {
+        const { data: finalMedia, error: finalError } = await supabase
+          .from('media')
+          .select('*')
+          .in('id', allMediaIds);
+
+        if (finalError) throw finalError;
+
+        // FIXED: Handle onUploadComplete properly
+        if (onUploadComplete) {
+          if (typeof onUploadComplete === 'function') {
+            // If it's a function that expects the media directly
+            onUploadComplete(finalMedia);
+          } else {
+            // Legacy callback style
+            onUploadComplete((prev) => {
+              if (!field?.multi) return finalMedia[0];
+              return [...(Array.isArray(prev) ? prev : []), ...finalMedia];
+            });
+          }
+        }
+      }
+
+      if (onClose) {
+        onClose();
+      }
+    } catch (err) {
+
+      if (setError) {
+        setError(err.message || 'Upload failed. Please try again.');
+      }
+    } finally {
+      if (setUploading) {
+        setUploading(false);
+      }
     }
-
-    if (allMediaIds.length > 0) {
-      const { data: finalMedia, error: finalError } = await supabase
-        .from('media')
-        .select('*')
-        .in('id', allMediaIds);
-
-      if (finalError) throw finalError;
-
-      onUploadComplete((prev) => {
-        if (!field?.multi) return finalMedia[0];
-        return [...(Array.isArray(prev) ? prev : []), ...finalMedia];
-      });
-    }
-
-    onClose();
-  } catch (err) {
-    console.error('❌ Upload failed:', err);
-    setError(err.message || 'Upload failed. Please try again.');
-  } finally {
-    setUploading(false);
-  }
-};
-
-
-
+  };
 
   return {
     addManualEntry,

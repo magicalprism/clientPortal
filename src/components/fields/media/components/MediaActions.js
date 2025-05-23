@@ -26,7 +26,7 @@ export const MediaActions = ({
         <>
           <Button
             variant="outlined"
-            onClick={onMenuClick}
+            onClick={(e) => onMenuClick(e)}
             startIcon={isMulti ? <Plus size={16} /> : null}
             endIcon={<CaretDown size={16} />}
             fullWidth
@@ -48,7 +48,13 @@ export const MediaActions = ({
             {menuOptions.map((option, index) => {
               const IconComponent = option.icon;
               return (
-                <MenuItem key={index} onClick={option.onClick}>
+                <MenuItem
+                  key={index}
+                  onClick={() => {
+                    onMenuClose();        // ✅ closes the dropdown
+                    option.onClick();     // ✅ triggers the action
+                  }}
+                >
                   <IconComponent size={16} style={{ marginRight: 8 }} />
                   {option.label}
                 </MenuItem>

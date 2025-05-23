@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UnifiedMediaField } from '@/components/fields/media/components/UnifiedMediaField';
 
 export const MediaFieldRenderer = ({
@@ -13,37 +13,35 @@ export const MediaFieldRenderer = ({
   onChange,
   isEditing = false
 }) => {
-const normalizedValue = useMemo(() => {
-  if (value === undefined) return null;
-  return value;
-}, [value]);
+  const [localValue, setLocalValue] = useState(value);
 
-  const isModal = isEditing;
-  const [localValue, setLocalValue] = useState(normalizedValue);
-
-  // ✅ Fix: Sync localValue if normalizedValue changes
+  // Sync with incoming value changes
   useEffect(() => {
-    if (JSON.stringify(localValue) !== JSON.stringify(normalizedValue)) {
-      setLocalValue(normalizedValue);
+    if (JSON.stringify(localValue) !== JSON.stringify(value)) {
+      setLocalValue(value);
     }
-  }, [normalizedValue]);
+  }, [value, localValue]);
 
   const handleChange = (newValue) => {
-  setLocalValue(newValue);
+    // Update local state immediately
+    setLocalValue(newValue);
+    
+    // Propagate changes up to parent
+    if (onChange) {
+      onChange(newValue);
+    }
+  };
 
-  // Prevent upstream propagation if editing in modal
-  if (!isModal && onChange) {
-    onChange(newValue);
-  }
-};
+  const isEditable = editable || mode === 'create';
 
-  const isEditable = !isModal && (editable || mode === 'create');
-  console.log(`[MediaFieldRenderer] Render for: ${field?.name}, value:`, value);
-
-    return (
+  return (
     <UnifiedMediaField
-      field={{ ...field, parentId: record?.id, parentTable: config?.name }}
-      value={isModal ? localValue : normalizedValue}
+      field={{ 
+        ...field, 
+        parentId: record?.id, 
+        parentTable: config?.name 
+      }}
+      value={localValue}
       onChange={handleChange}
       record={record}
       config={config}

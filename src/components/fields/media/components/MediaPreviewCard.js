@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Box, Card, CardMedia, CardContent, Typography, IconButton, Tooltip } from '@mui/material';
-import { X as XIcon, DownloadSimple, LinkSimple, Copy, PencilSimple } from '@phosphor-icons/react';
+import { X as XIcon, DownloadSimple, LinkSimple, Copy, PencilSimple, Eye } from '@phosphor-icons/react';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 
 /**
@@ -166,9 +166,9 @@ export const MediaPreviewCard = ({
               <Tooltip title="Edit">
                 <IconButton
                   size="small"
-                 onClick={(event) => {
-            onEdit(media, event.currentTarget); // send anchorEl
-          }}
+                  onClick={(event) => {
+                    onEdit(media, event.currentTarget); // send anchorEl
+                  }}
                   sx={{
                     backgroundColor: 'rgba(255,255,255,0.9)',
                     '&:hover': {
@@ -202,21 +202,22 @@ export const MediaPreviewCard = ({
         )}
       </Box>
 
-      <CardContent sx={{ flexGrow: 1, p: 2 }}>
+      {/* ✅ FIXED: Reduced padding and spacing for content section */}
+      <CardContent sx={{ flexGrow: 1, p: 1.5, pb: 0.5 }}>
         {showTitle && (
-          <Typography variant="subtitle2" fontWeight={500} noWrap>
+          <Typography variant="subtitle2" fontWeight={500} noWrap sx={{ mb: 0.5 }}>
             {title}
           </Typography>
         )}
         
         {showSubtitle && subtitle && (
-          <Typography variant="caption" color="text.secondary" display="block" noWrap>
+          <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mb: 0.5 }}>
             {subtitle}
           </Typography>
         )}
         
         {showStatus && (
-          <Box sx={{ mt: 1 }}>
+          <Box sx={{ mt: 0.5 }}>
             <Typography 
               variant="caption" 
               sx={{ 
@@ -234,30 +235,54 @@ export const MediaPreviewCard = ({
         )}
       </CardContent>
 
+      {/* ✅ FIXED: Reduced padding and added third button */}
       {showControls && (
-        <Box sx={{ display: 'flex', p: 1, pt: 0, justifyContent: 'flex-end', gap: 0.5 }}>
-          <Tooltip title="Copy URL">
-            <IconButton
-              size="small"
-              onClick={copyToClipboard}
-              sx={{ color: 'text.secondary' }}
-            >
-              <Copy size={16} />
-            </IconButton>
-          </Tooltip>
-          
-          <Tooltip title={isFolder ? "Open folder" : isExternal ? "Open link" : "Download file"}>
+        <Box sx={{ display: 'flex', p: 0.5, pt: 0, justifyContent: 'space-between', gap: 0.5 }}>
+          {/* Left side - Open/View button */}
+          <Tooltip title={isFolder ? "Open folder" : isExternal ? "Open link" : "View file"}>
             <IconButton
               component="a"
               href={previewUrl}
               target="_blank"
               rel="noopener noreferrer"
               size="small"
-              sx={{ color: 'primary.main' }}
+              sx={{ 
+                color: 'primary.main',
+                backgroundColor: 'primary.50',
+                '&:hover': {
+                  backgroundColor: 'primary.100'
+                }
+              }}
             >
-              {isFolder || isExternal ? <LinkSimple size={16} /> : <DownloadSimple size={16} />}
+              {isFolder || isExternal ? <LinkSimple size={18} /> : <Eye size={18} />}
             </IconButton>
           </Tooltip>
+
+          {/* Right side - Copy and Download buttons */}
+          <Box sx={{ display: 'flex', gap: 0.5 }}>
+            <Tooltip title="Copy URL">
+              <IconButton
+                size="small"
+                onClick={copyToClipboard}
+                sx={{ color: 'text.secondary' }}
+              >
+                <Copy size={16} />
+              </IconButton>
+            </Tooltip>
+            
+            <Tooltip title={isExternal ? "Open in new tab" : "Download file"}>
+              <IconButton
+                component="a"
+                href={previewUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                size="small"
+                sx={{ color: 'text.secondary' }}
+              >
+                <DownloadSimple size={16} />
+              </IconButton>
+            </Tooltip>
+          </Box>
         </Box>
       )}
     </Card>

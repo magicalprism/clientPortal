@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Box, Button, IconButton, Grid, Typography, Card, CardMedia, CardContent } from '@mui/material';
 import { X as XIcon, DownloadSimple, Plus } from '@phosphor-icons/react';
-import { MediaUploadGalleryModal } from './modals/MediaUploadGalleryModal';
+import { MediaUploadGalleryModal } from './MediaUploadGalleryModal';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 import { createClient } from '@/lib/supabase/browser';
 import { MediaPreviewCard } from '../components/MediaPreviewCard';

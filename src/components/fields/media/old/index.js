@@ -5,7 +5,7 @@ export { MediaPreviewCard } from '../components/MediaPreviewCard';
 
 // Modals
 export { MediaUploadSingleModal } from './modals/MediaUploadSingleModal';
-export { MediaUploadGalleryModal } from './modals/MediaUploadGalleryModal';
+export { MediaUploadGalleryModal } from './MediaUploadGalleryModal';
 
 // Hooks and utilities
-export { useUploadFormState, useUploadHandlers, useMediaPreview } from './helpers/useMediaUploadHelpers';
+export { useUploadFormState, useUploadHandlers, useMediaPreview } from '../hooks/useMediaUploadHelpers';

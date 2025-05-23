@@ -9,7 +9,7 @@ import { X as XIcon } from '@phosphor-icons/react';
 import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
 import { createClient } from '@/lib/supabase/browser';
 import { uploadAndCreateMediaRecord } from '@/lib/utils/uploadAndCreateMediaRecord';
-import { useUploadFormState, useUploadHandlers } from '../helpers/useMediaUploadHelpers';
+import { useUploadFormState, useUploadHandlers } from '../../hooks/useMediaUploadHelpers';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';
 import { MediaManualEntryEditor } from '@/components/fields/media/old/components/MediaManualEntryEditor';

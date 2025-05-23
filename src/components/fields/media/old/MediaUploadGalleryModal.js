@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { X as XIcon, Plus, Upload, Globe, FolderOpen } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
-import { useUploadFormState, useUploadHandlers } from '../helpers/useMediaUploadHelpers';
+import { useUploadFormState, useUploadHandlers } from '.@/hooks/useMediaUploadHelpers';
 import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 import { getMimeTypeFromUrl } from '@/data/fileTypes';

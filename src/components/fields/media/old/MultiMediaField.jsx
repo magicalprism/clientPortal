@@ -18,7 +18,7 @@ import {
   LinkSimple,
   Link as LinkIcon
 } from '@phosphor-icons/react';
-import { MediaUploadGalleryModal } from '../old/modals/MediaUploadGalleryModal';
+import { MediaUploadGalleryModal } from './MediaUploadGalleryModal';
 import { MediaLibraryPicker } from '../MediaLibraryPicker';
 import { ExternalLinkModal } from '../modals/ExternalLinkModal';
 import { MediaPreviewCard } from '../old/components/MediaPreviewCard';

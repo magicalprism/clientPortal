@@ -3,10 +3,10 @@
 import React from 'react';
 import { MediaUploadModal } from '@/components/fields/media/modals/MediaUploadModal';
 import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
-import { CollectionEditPopover } from '@/components/fields/media/modals/CollectionEditPopover'; // Use popover instead
+import { MediaEditModal } from '@/components/fields/media/modals/MediaEditModal';
 
 /**
- * Manages all modals for the media field
+ * Manages all modals for the media field - Simplified version
  */
 export const MediaModals = ({
   modalState,
@@ -15,7 +15,7 @@ export const MediaModals = ({
   record,
   mediaConfig,
   isMulti,
-  editAnchorEl = null // Add anchor element for popover positioning
+  editAnchorEl = null
 }) => {
   const {
     uploadModalOpen,
@@ -31,6 +31,7 @@ export const MediaModals = ({
     handleEditComplete,
     handleExternalLinkComplete
   } = handlers;
+
 
   return (
     <>
@@ -54,38 +55,25 @@ export const MediaModals = ({
         multi={isMulti}
       />
 
-      {/* Edit Popover using CollectionEditPopover - no modal conflicts! */}
-      <CollectionEditPopover
-        open={editModalOpen}
-        anchorEl={editAnchorEl}
-        onClose={() => {
-          handlers.setEditModalOpen?.(false);
-          handlers.setEditingMedia?.(null);
-        }}
-        onComplete={handleEditComplete}
-        config={mediaConfig}
-        record={editingMedia}
-        isEditing={true}
-        title={`Edit ${field?.label || 'Media'}`}
-      />
-
-      {/* External Link Popover using CollectionEditPopover */}
-      <CollectionEditPopover
-        open={externalLinkModalOpen}
-        anchorEl={editAnchorEl}
-        onClose={() => handlers.setExternalLinkModalOpen?.(false)}
-        onComplete={handleExternalLinkComplete}
-        config={mediaConfig}
-        record={null}
-        isEditing={false}
-        defaultValues={{
-          is_external: true,
-          mime_type: 'external/url',
-          status: 'linked',
-          company_id: record?.company_id
-        }}
-        title={`Add External ${field?.label || 'Media'}`}
-      />
+      {/* Edit Modal */}
+      {editModalOpen && editingMedia && (
+        <MediaEditModal
+          open={editModalOpen}
+          onClose={() => {
+            console.log('[MediaModals] Closing edit modal');
+            handlers.setEditModalOpen?.(false);
+            handlers.setEditingMedia?.(null);
+          }}
+          config={mediaConfig}
+          initialMedia={editingMedia}
+          onSave={(updatedMedia) => {
+            console.log('[MediaModals] Edit modal save:', updatedMedia);
+            if (handleEditComplete) {
+              handleEditComplete(updatedMedia);
+            }
+          }}
+        />
+      )}
     </>
   );
 };

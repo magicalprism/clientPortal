@@ -146,19 +146,28 @@ export const MediaUploadModal = ({
         const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `media/${fileName}`;
 
+        console.log(`[MediaUploadModal] Uploading file ${i + 1}/${selectedFiles.length}: ${file.name}`);
+
         // Upload file to Supabase Storage
         const { data: storageData, error: storageError } = await supabase.storage
           .from('media') // Assuming 'media' bucket
           .upload(filePath, file);
 
-        if (storageError) throw storageError;
+        if (storageError) {
+          console.error('❌ Storage upload error:', storageError);
+          throw storageError;
+        }
+
+        console.log('✅ File uploaded to storage:', storageData);
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage
           .from('media')
           .getPublicUrl(filePath);
 
-        // Create media record using config fields and existing multi logic
+        console.log('✅ Public URL generated:', publicUrl);
+
+        // Create media record using config fields
         const mediaRecord = {};
         
         // Set URL - always required
@@ -202,25 +211,38 @@ export const MediaUploadModal = ({
           mediaRecord.author_id = record.user_id;
         }
 
+        console.log('[MediaUploadModal] Creating media record:', mediaRecord);
+
         const { data: mediaData, error: mediaError } = await supabase
           .from('media')
           .insert(mediaRecord)
           .select()
           .single();
 
-        if (mediaError) throw mediaError;
+        if (mediaError) {
+          console.error('❌ Media record creation error:', mediaError);
+          throw mediaError;
+        }
 
+        console.log('✅ Media record created:', mediaData);
         uploadedMedia.push(mediaData);
         
         // Update progress
         setUploadProgress(((i + 1) / selectedFiles.length) * 100);
       }
 
-      onUploadComplete(uploadedMedia);
+      console.log('[MediaUploadModal] All uploads complete, calling onUploadComplete with:', uploadedMedia);
+
+      // ✅ Call the completion handler with the uploaded media
+      if (onUploadComplete) {
+        onUploadComplete(uploadedMedia);
+      }
+
+      // ✅ Close the modal after successful upload
       handleClose();
       
     } catch (err) {
-      console.error('Upload error:', err);
+      console.error('❌ Upload error:', err);
       setError(err.message || 'Failed to upload files');
     } finally {
       setUploading(false);
@@ -228,15 +250,23 @@ export const MediaUploadModal = ({
   };
 
   const handleClose = () => {
-    setSelectedFiles([]);
-    setError('');
-    setUploadProgress(0);
-    setUploading(false);
-    onClose();
+    if (!uploading) {
+      setSelectedFiles([]);
+      setError('');
+      setUploadProgress(0);
+      onClose();
+    }
   };
 
   return (
-    <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
+    <Dialog 
+      open={open} 
+      onClose={handleClose} 
+      maxWidth="md" 
+      fullWidth
+      // ✅ Prevent closing during upload
+      disableEscapeKeyDown={uploading}
+    >
       <DialogTitle>
         <Box display="flex" alignItems="center" gap={1}>
           <Upload size={20} />
@@ -261,18 +291,19 @@ export const MediaUploadModal = ({
               p: 4,
               textAlign: 'center',
               backgroundColor: dragActive ? 'primary.50' : 'grey.50',
-              cursor: 'pointer',
+              cursor: uploading ? 'not-allowed' : 'pointer',
+              opacity: uploading ? 0.6 : 1,
               transition: 'all 0.2s ease-in-out'
             }}
-            onDragEnter={handleDrag}
-            onDragLeave={handleDrag}
-            onDragOver={handleDrag}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input').click()}
+            onDragEnter={!uploading ? handleDrag : undefined}
+            onDragLeave={!uploading ? handleDrag : undefined}
+            onDragOver={!uploading ? handleDrag : undefined}
+            onDrop={!uploading ? handleDrop : undefined}
+            onClick={!uploading ? () => document.getElementById('file-input')?.click() : undefined}
           >
             <Upload size={48} color={dragActive ? 'primary' : 'grey'} />
             <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
-              {dragActive ? 'Drop files here' : 'Click to select or drag files here'}
+              {uploading ? 'Uploading...' : (dragActive ? 'Drop files here' : 'Click to select or drag files here')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {isMulti ? `Upload up to ${maxFiles} files` : 'Upload one file'}
@@ -294,6 +325,7 @@ export const MediaUploadModal = ({
               accept={acceptedFileTypes.join(',')}
               onChange={handleFileInput}
               style={{ display: 'none' }}
+              disabled={uploading}
             />
           </Box>
 
@@ -308,9 +340,10 @@ export const MediaUploadModal = ({
                   <Grid item key={index}>
                     <Chip
                       label={`${file.name} (${Math.round(file.size / 1024)}KB)`}
-                      onDelete={() => removeFile(index)}
-                      deleteIcon={<XIcon size={16} />}
+                      onDelete={!uploading ? () => removeFile(index) : undefined}
+                      deleteIcon={!uploading ? <XIcon size={16} /> : undefined}
                       variant="outlined"
+                      disabled={uploading}
                     />
                   </Grid>
                 ))}

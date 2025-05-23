@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import { useState } from 'react';
 import { Box, Typography, CircularProgress } from '@mui/material';
 import { useMediaField } from '@/components/fields/media/hooks/useMediaField';
 import { MediaDisplay } from '@/components/fields/media/components/MediaDisplay';
@@ -44,16 +44,11 @@ export const UnifiedMediaField = ({
     readOnly
   });
 
-console.log(`[UnifiedMediaField] Render for: ${field?.name}, value:`, value);
-
+  console.log(`[UnifiedMediaField] Render for: ${field?.name}, value:`, value);
+  const [editModalOpen, setEditModalOpen] = useState(false);
 
   return (
     <Box>
-      {!hideLabel && (
-        <Typography variant="subtitle2" gutterBottom>
-          {field.label}
-        </Typography>
-      )}
 
       {filterError && (
         <Typography variant="caption" color="error" sx={{ display: 'block', mb: 1 }}>
