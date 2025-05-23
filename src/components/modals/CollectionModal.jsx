@@ -14,7 +14,7 @@ import {
   CircularProgress
 } from '@mui/material';
 import { X as XIcon } from '@phosphor-icons/react';
-import { CollectionItemPage } from '@/components/CollectionItemPage';
+import { CollectionItemPage } from '@/components/views/collectionItem/CollectionItemPage';
 import { createClient } from '@/lib/supabase/browser';
 import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
 import { parseStringArrayField } from '@/lib/utils/parseStringArrayField';

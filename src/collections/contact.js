@@ -30,7 +30,6 @@ export const contact = {
         tab: 'Overview', 
         clickable: true,  
         showInTable: true,
-        editable: false,
       },
       { 
         name: 'first_name', 
@@ -183,20 +182,22 @@ export const contact = {
       }, 
     },
 
-    {
+     {
       name: 'tags',
       label: 'Tags',
       type: 'multiRelationship',
-      displayMode: 'tags',
-      group: 'General',
       tab: 'Meta',
+      group: 'General',
+      displayMode: 'tags',
       relation: {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_contact',
-        sourceKey: 'contact_id',
-        targetKey: 'category_id'
+        junctionTable: 'category_project',
+        sourceKey: 'project_id',
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
       }
     },
 ],
@@ -228,16 +229,7 @@ export const contact = {
               excludeFromViews: ['calendar', 'checklist']
 
       },
-       {
-      name: 'company_id',
-      label: 'Company',
-      type: 'relationship',
-      relation: {
-        table: 'company', //usually current collection or pivot table
-        labelField: 'title',
-        filter: { is_client: true } //temporary until I add all clients & contractors as users 
-      }
-    },
+    
       
       
     ]

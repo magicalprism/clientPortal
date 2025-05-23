@@ -4,10 +4,10 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
 import { CollectionLayout } from '@/components/views/CollectionLayout';
-import ChecklistView from '@/components/views/ChecklistView';
-import PrimaryTableView from '@/components/views/PrimaryTableView';
-import { CollectionSelectionProvider } from '@/components/CollectionSelectionContext';
-import CalendarView from './CalendarView';
+import ChecklistView from '@/components/views/checklists/ChecklistView';
+import PrimaryTableView from '@/components/views/table/PrimaryTableView';
+import { CollectionSelectionProvider } from '@/components/views/components/CollectionSelectionContext';
+import CalendarView from '@/components/views/calendar/CalendarView';
 import { createClient } from '@/lib/supabase/browser';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { Box } from '@mui/material';

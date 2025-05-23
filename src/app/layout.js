@@ -23,8 +23,8 @@ import { Toaster } from "@/components/core/toaster";
 import { ProtectedRoute } from "@/components/auth/supabase/ProtectedRoute";
 import { ModalProvider } from "@/components/modals/ModalContext";
 import GlobalModals from "@/components/modals/GlobalModals";
-import { TaskTimerProvider } from "@/components/fields/time/timer/TimeTrackerContext";
-import { TaskTimerWidget } from "@/components/fields/time/timer/TaskTimerWidget";
+import { TaskTimerProvider } from "@/components/fields/DateTime/timer/TimeTrackerContext";
+import { TaskTimerWidget } from "@/components/fields/DateTime/timer/TaskTimerWidget";
 
 
 export const metadata = { title: appConfig.name };

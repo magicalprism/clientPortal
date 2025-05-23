@@ -7,7 +7,7 @@ import { FieldRenderer } from '@/components/FieldRenderer';
 import { useRouter, usePathname } from 'next/navigation';
 import { ModalMultiRelationshipField } from '@/components/fields/relationships/multi/ModalMultiRelationshipField';
 import { saveMultiRelationships } from '@/lib/utils/multirelationshipUtils';
-import { extractSelectValue } from '@/components/fields/SelectField';
+import { extractSelectValue } from '@/components/fields/select/SelectField';
 
 const CreateForm = ({ config, initialRecord = {}, onSuccess, disableRedirect = false, refreshRecord }) => {
   const supabase = createClient();

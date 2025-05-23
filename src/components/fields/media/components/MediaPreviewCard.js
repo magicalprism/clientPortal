@@ -1,27 +1,83 @@
 'use client';
 
+import React from 'react';
 import { Box, Card, CardMedia, CardContent, Typography, IconButton, Tooltip } from '@mui/material';
-import { X as XIcon, DownloadSimple, LinkSimple, Copy } from '@phosphor-icons/react';
+import { X as XIcon, DownloadSimple, LinkSimple, Copy, PencilSimple } from '@phosphor-icons/react';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
-import { getMediaTitle } from '@/components/fields/media/data/mediaFieldConfig';
 
+/**
+ * Get media title based on config field priority
+ */
+const getMediaTitle = (media, config) => {
+  // Try to get title field configuration
+  const titleField = config?.fields?.find(f => f.name === 'title');
+  const altTextField = config?.fields?.find(f => f.name === 'alt_text');
+  
+  // Use configured field priority or fallback
+  if (titleField && media?.title) {
+    return media.title;
+  }
+  
+  if (altTextField && media?.alt_text) {
+    return media.alt_text;
+  }
+  
+  // Fallback to any available title-like field
+  return media?.title || media?.alt_text || media?.original_title || `ID: ${media?.id}`;
+};
 
-export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }) => {
+/**
+ * Get media subtitle/description based on config
+ */
+const getMediaSubtitle = (media, config) => {
+  const copyrightField = config?.fields?.find(f => f.name === 'copyright');
+  const descriptionField = config?.fields?.find(f => f.name === 'description');
+  
+  if (copyrightField && media?.copyright) {
+    return `© ${media.copyright}`;
+  }
+  
+  if (descriptionField && media?.description) {
+    return media.description;
+  }
+  
+  return null;
+};
+
+export const MediaPreviewCard = ({ 
+  media, 
+  onRemove, 
+  onEdit,
+  field, 
+  config = {},
+  showControls = true,
+  showTitle = true,
+  showSubtitle = true,
+  aspectRatio = 'auto'
+}) => {
   if (!media) return null;
 
   const previewUrl = media?.url || '';
   const isImage = media?.mime_type?.startsWith('image');
   const isFolder = media?.is_folder === true;
+  const isExternal = media?.is_external === true || media?.mime_type?.startsWith('external/');
   const mime = media?.mime_type || '';
-  const title = getMediaTitle(media);
   
-  const FileIcon = media?.is_folder === true || mime === 'folder'
-    ? fileTypeIcons.folder
-    : fileTypeIcons[mime] || fileTypeIcons.default;
+  const title = getMediaTitle(media, config);
+  const subtitle = getMediaSubtitle(media, config);
+  
+  // Get file type icon based on config or fallback
+  const FileIcon = isFolder 
+    ? fileTypeIcons?.folder 
+    : fileTypeIcons?.[mime] || fileTypeIcons?.default;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(previewUrl);
   };
+
+  // Get display preferences from config
+  const statusField = config?.fields?.find(f => f.name === 'status');
+  const showStatus = statusField && media?.status;
 
   return (
     <Card 
@@ -32,13 +88,31 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
         flexDirection: 'column',
         borderRadius: 2,
         overflow: 'hidden',
-        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        ...(isExternal && {
+          border: '2px solid',
+          borderColor: 'info.main',
+          '&::before': {
+            content: '"External"',
+            position: 'absolute',
+            top: 4,
+            left: 4,
+            backgroundColor: 'info.main',
+            color: 'white',
+            fontSize: '0.75rem',
+            px: 1,
+            py: 0.5,
+            borderRadius: 1,
+            zIndex: 1
+          }
+        })
       }}
     >
       <Box 
         sx={{ 
           position: 'relative',
-          height: 200,
+          height: aspectRatio === 'auto' ? 200 : 0,
+          paddingTop: aspectRatio !== 'auto' ? aspectRatio : 0,
           backgroundColor: '#f9f6ff',
           display: 'flex',
           alignItems: 'center',
@@ -47,26 +121,30 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
       >
         {isFolder ? (
           <Box textAlign="center">
-            <FileIcon size={48} weight="duotone" />
+            {FileIcon && <FileIcon size={48} weight="duotone" />}
             <Typography variant="body2" fontWeight={500}>
               Folder
             </Typography>
           </Box>
-        ) : isImage ? (
+        ) : isImage && !isExternal ? (
           <CardMedia
             component="img"
             image={previewUrl}
             alt={media?.alt_text || field?.label || 'Media preview'}
             sx={{ 
               height: '100%',
-              objectFit: 'cover'
+              width: '100%',
+              objectFit: 'cover',
+              position: aspectRatio !== 'auto' ? 'absolute' : 'static',
+              top: 0,
+              left: 0
             }}
           />
         ) : (
           <Box textAlign="center">
-            <FileIcon size={48} weight="duotone" />
+            {FileIcon && <FileIcon size={48} weight="duotone" />}
             <Typography variant="body2" fontWeight={500}>
-              {title}
+              {isExternal ? 'External Link' : title}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               {mime || 'Unknown type'}
@@ -84,32 +162,75 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
               gap: 0.5,
             }}
           >
-            <Tooltip title="Remove">
-              <IconButton
-                size="small"
-                onClick={onRemove}
-                sx={{
-                  backgroundColor: 'rgba(255,255,255,0.9)',
-                  '&:hover': {
-                    backgroundColor: 'rgba(255,255,255,1)',
-                  }
-                }}
-              >
-                <XIcon size={16} />
-              </IconButton>
-            </Tooltip>
+            {onEdit && (
+              <Tooltip title="Edit">
+                <IconButton
+                  size="small"
+                 onClick={(event) => {
+            onEdit(media, event.currentTarget); // send anchorEl
+          }}
+                  sx={{
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,1)',
+                      color: 'primary.main'
+                    }
+                  }}
+                >
+                  <PencilSimple size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
+            
+            {onRemove && (
+              <Tooltip title="Remove">
+                <IconButton
+                  size="small"
+                  onClick={onRemove}
+                  sx={{
+                    backgroundColor: 'rgba(255,255,255,0.9)',
+                    '&:hover': {
+                      backgroundColor: 'rgba(255,255,255,1)',
+                    }
+                  }}
+                >
+                  <XIcon size={16} />
+                </IconButton>
+              </Tooltip>
+            )}
           </Box>
         )}
       </Box>
 
       <CardContent sx={{ flexGrow: 1, p: 2 }}>
-        <Typography variant="subtitle2" fontWeight={500} noWrap>
-          {title}
-        </Typography>
-        {media?.copyright && (
-          <Typography variant="caption" color="text.secondary" display="block" noWrap>
-            © {media.copyright}
+        {showTitle && (
+          <Typography variant="subtitle2" fontWeight={500} noWrap>
+            {title}
           </Typography>
+        )}
+        
+        {showSubtitle && subtitle && (
+          <Typography variant="caption" color="text.secondary" display="block" noWrap>
+            {subtitle}
+          </Typography>
+        )}
+        
+        {showStatus && (
+          <Box sx={{ mt: 1 }}>
+            <Typography 
+              variant="caption" 
+              sx={{ 
+                backgroundColor: media.status === 'uploaded' ? 'success.light' : 'info.light',
+                color: media.status === 'uploaded' ? 'success.contrastText' : 'info.contrastText',
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                textTransform: 'capitalize'
+              }}
+            >
+              {media.status}
+            </Typography>
+          </Box>
         )}
       </CardContent>
 
@@ -125,7 +246,7 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
             </IconButton>
           </Tooltip>
           
-          <Tooltip title={isFolder ? "Open folder" : "Download file"}>
+          <Tooltip title={isFolder ? "Open folder" : isExternal ? "Open link" : "Download file"}>
             <IconButton
               component="a"
               href={previewUrl}
@@ -134,7 +255,7 @@ export const MediaPreviewCard = ({ media, onRemove, field, showControls = true }
               size="small"
               sx={{ color: 'primary.main' }}
             >
-              {isFolder ? <LinkSimple size={16} /> : <DownloadSimple size={16} />}
+              {isFolder || isExternal ? <LinkSimple size={16} /> : <DownloadSimple size={16} />}
             </IconButton>
           </Tooltip>
         </Box>

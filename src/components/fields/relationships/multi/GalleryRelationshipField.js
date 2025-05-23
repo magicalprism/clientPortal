@@ -7,8 +7,8 @@ import {
   Stack,
   Typography
 } from '@mui/material';
-import { MediaUploadGalleryModal } from '@/components/fields/media/modals/MediaUploadGalleryModal';
-import { MediaLibraryPicker } from '@/components/fields/media/MediaLibraryPicker';
+import { MediaUploadGalleryModal } from '@/components/fields/media/old/modals/MediaUploadGalleryModal';
+import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
 import { createClient } from '@/lib/supabase/browser';
 

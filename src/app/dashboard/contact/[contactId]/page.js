@@ -1,4 +1,4 @@
-import { CollectionDetailLayout } from '@/components/CollectionDetailLayout';
+import { CollectionDetailLayout } from '@/components/views/collectionItem/CollectionDetailLayout';
 
 export default async function ContactDetailPage({ params }) {
   const { contactId } = await params;

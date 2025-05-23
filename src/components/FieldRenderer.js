@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { isIncludedInView } from '@/lib/utils/isIncludedInView';
-import { getRendererForField } from '@/components/fields/renderers/index';
+import { getRendererForField } from '@/components/fields/index';
 
 export const FieldRenderer = ({
   value,

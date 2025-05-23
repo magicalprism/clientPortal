@@ -57,16 +57,18 @@ export const element = {
       name: 'tags',
       label: 'Tags',
       type: 'multiRelationship',
-      displayMode: 'tags',
-      group: 'General',
       tab: 'Meta',
+      group: 'General',
+      displayMode: 'tags',
       relation: {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_element',
-        sourceKey: 'element_id',
-        targetKey: 'category_id'
+        junctionTable: 'category_project',
+        sourceKey: 'project_id',
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
       }
     },
     
@@ -74,7 +76,6 @@ export const element = {
       name: 'url', 
       label: 'Live Url', 
       group: 'Page Info', 
-      type: 'url', 
       type: 'link', 
       tab: 'Overview', 
     },
@@ -83,7 +84,6 @@ export const element = {
       name: 'staging_url', 
       label: 'Staging Url', 
       group: 'Page Info', 
-      type: 'url', 
       type: 'link', 
       tab: 'Overview', 
     },
@@ -111,48 +111,6 @@ export const element = {
       },
       group: 'Details',
       tab: 'Overview'
-    },
-
-    {
-      name: 'tasks',
-      label: 'Tasks',
-      type: 'multiRelationship',
-      component: 'CollectionView',
-      displayMode: 'table',
-      relation: {
-        table: 'task',
-        labelField: 'title',
-        linkTo: '/dashboard/task',
-        sourceKey: 'element_id',
-    },
-      filters: [
-         {
-      name: 'status',
-      type: 'select',
-      label: 'Status',
-      options: [
-        { value: 'not started', label: 'Not Started' },
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'unavailable', label: 'Unavailable' },
-        { value: 'meeting', label: 'Meeting' },
-        { value: 'archived', label: 'Archived' },       
-      ],
-      defaultValue: 'todo',
-    },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc',
-    }
-      ],
-       tab: 'Tasks',
-      group: 'Upcoming'
     },
     
 

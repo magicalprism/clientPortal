@@ -3,8 +3,8 @@
 import { Box, Button, Stack, Typograph, Container } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { ViewSwitcher } from '@/components/ViewSwitcher';
-import { CollectionFilters } from '@/components/CollectionFilters';
+import { ViewSwitcher } from '@/components/views/ViewSwitcher';
+import { CollectionFilters } from '@/components/views/components/CollectionFilters';
 import { TablePagination } from '@mui/material';
 
 export const CollectionLayout = ({

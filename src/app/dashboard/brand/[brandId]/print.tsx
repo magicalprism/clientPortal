@@ -1,6 +1,6 @@
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
-import { BrandBoardPreview } from '@/components/BrandBoardPreview';
+import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
 import { createClient } from '@/lib/supabase/browser';
 
 export default function BrandPrintPage() {

@@ -82,7 +82,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
   // Function to fetch options that can be called manually if needed
   const fetchOptions = useCallback(async () => {
     if (!table || !labelField) {
-      console.warn('[useMultiRelationOptions] Missing table or labelField in field config');
+
       setLoading(false);
       return;
     }
@@ -131,7 +131,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
             parentId,
           });
           
-          console.log('[useMultiRelationOptions] Resolved dynamic filters:', dynamicFilters);
+
           
           // Apply each filter condition to the query
           Object.entries(dynamicFilters).forEach(([key, value]) => {
@@ -148,7 +148,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
             }
           });
         } catch (err) {
-          console.error('[useMultiRelationOptions] Error resolving dynamic filters:', err);
+
         }
       }
       
@@ -160,7 +160,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
       }
       
       if (!data || data.length === 0) {
-        console.log('[useMultiRelationOptions] No options found for', table);
+
         setOptions([]);
         return;
       }
@@ -169,18 +169,14 @@ export const useMultiRelationOptions = ({ field, record }) => {
       const hasParentField = data.some(item => 'parent_id' in item);
       
       if (hasParentField) {
-        console.log('[useMultiRelationOptions] Building hierarchical options');
+
         
         // Use our custom functions instead of the imported ones
         // This ensures proper sorting at each level
         const sortedTree = buildSortedTree(data, null, labelField);
         const flattenedTree = flattenSortedTree(sortedTree, 0, labelField);
         
-        console.log('[useMultiRelationOptions] Generated hierarchical options', {
-          raw: data.length,
-          tree: sortedTree.length,
-          flattened: flattenedTree.length
-        });
+
         
         // Ensure unique options (no duplicates by ID)
         const uniqueOptions = Array.from(
@@ -203,7 +199,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
         setOptions(formattedOptions);
       }
     } catch (err) {
-      console.error('[useMultiRelationOptions] Error fetching options:', err);
+
       setError(err.message || 'Failed to load options');
       setOptions([]);
     } finally {
