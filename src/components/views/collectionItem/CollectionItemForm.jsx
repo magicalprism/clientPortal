@@ -15,6 +15,7 @@ import { Plus } from '@phosphor-icons/react';
 import * as collections from '@/collections';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
+import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 
 export const CollectionItemForm = ({
   config,
@@ -96,10 +97,23 @@ export const CollectionItemForm = ({
     }
   };
 
+  // Check if we're on the timeline tab
+  const isTimelineTab = showTimelineTab && activeTab === baseTabs.tabNames.length;
+
   return (
     <form id={formId} onSubmit={handleSubmit}>
-      <Grid container spacing={5}>
-        {Object.entries(currentTabGroups || {}).map(([groupName, fields]) => (
+      {isTimelineTab ? (
+        // Only render TimelineView if we have actual record data
+        formData?.id ? (
+          <TimelineView projectId={formData.id} config={config} />
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        )
+      ) : (
+        <Grid container spacing={5}>
+          {Object.entries(currentTabGroups || {}).map(([groupName, fields]) => (
           <Grid item xs={12} key={groupName}>
             {groupName !== 'Fields' && (
               <Typography variant="h6" fontWeight="bold" gutterBottom pb={1}>
@@ -292,7 +306,8 @@ export const CollectionItemForm = ({
             </Grid>
           </Grid>
         ))}
-      </Grid>
+        </Grid>
+      )}
     </form>
   );
 };

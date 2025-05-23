@@ -51,7 +51,22 @@ export const element = {
       }
     },
    
-
+{
+      name: 'tasks',
+      label: 'Tasks',
+      type: 'multiRelationship',
+      tab: 'Tasks',
+      component: 'CollectionView',
+      displayMode: 'table',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task',
+        sourceKey: 'element_id',
+        
+      },
+       
+    },
 
     {
       name: 'tags',

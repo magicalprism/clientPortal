@@ -15,10 +15,9 @@ import { useCollectionSave } from '@/hooks/useCollectionSave';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
 import { ElementMap } from '@/components/fields/custom/ElementMap';
-import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
+import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { useRouter } from 'next/navigation';
 import { Plus } from '@phosphor-icons/react';
-import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';
 import { RelatedTagsField } from '@/components/fields/relationships/multi/RelatedTagsField';
 import * as collections from '@/collections';
@@ -336,20 +335,31 @@ if (field.type === 'media') {
               <Tab key={index} label={tabName} />
             ))}
           </Tabs>
-              <CollectionItemForm
-                config={config}
-                record={localRecord}
-                onFieldChange={handleFieldChange}
-                editable
-                isEditingField={editingField}
-                setEditingField={setEditingField}
-                loadingField={loadingField}
-                activeTab={activeTab}
-                isModal={isModal}
-                isSmallScreen={isSmallScreen}
-                tempValue={tempValue}
-                setTempValue={setTempValue}
-              />
+          
+          {/* Show timeline when on timeline tab */}
+          {isTimelineTab ? (
+            showTimelineTab && localRecord?.id && (
+              <Box mt={2}>
+                <TimelineView projectId={localRecord.id} config={config} />
+              </Box>
+            )
+          ) : (
+            /* Show regular form when not on timeline tab */
+            <CollectionItemForm
+              config={config}
+              record={localRecord}
+              onFieldChange={handleFieldChange}
+              editable
+              isEditingField={editingField}
+              setEditingField={setEditingField}
+              loadingField={loadingField}
+              activeTab={activeTab}
+              isModal={isModal}
+              isSmallScreen={isSmallScreen}
+              tempValue={tempValue}
+              setTempValue={setTempValue}
+            />
+          )}
         </CardContent>
       </Card>
       <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
