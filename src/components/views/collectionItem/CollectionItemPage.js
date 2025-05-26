@@ -12,15 +12,9 @@ const CollectionView = dynamic(() => import('@/components/views/CollectionView')
 });
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
 import { useCollectionSave } from '@/hooks/useCollectionSave';
-import { FieldRenderer } from '@/components/FieldRenderer';
-import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
-import { ElementMap } from '@/components/fields/custom/ElementMap';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { useRouter } from 'next/navigation';
-import { Plus } from '@phosphor-icons/react';
-import CollectionGridView from '@/components/views/grid/CollectionGridView';
-import { RelatedTagsField } from '@/components/fields/relationships/multi/RelatedTagsField';
-import * as collections from '@/collections';
+
 import { createClient } from '@/lib/supabase/browser';
 import { CollectionItemForm } from '@/components/views/collectionItem/CollectionItemForm';
 

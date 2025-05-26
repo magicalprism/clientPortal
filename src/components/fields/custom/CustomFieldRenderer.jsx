@@ -4,6 +4,7 @@ import { Box, Typography } from '@mui/material';
 import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
 import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
+import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 
 /**
  * Custom field renderer for handling embedded components.
@@ -23,6 +24,14 @@ export const CustomFieldRenderer = ({
   switch (component) {
     case 'BrandBoardPreview':
       return <BrandBoardPreview brand={record} />;
+
+      case 'CommentThread':
+      return (
+         <CommentThread
+            entity={field.props?.entity}
+            entityId={record?.id}
+          />
+            );
 
     case 'ElementMap':
       return record?.id ? (

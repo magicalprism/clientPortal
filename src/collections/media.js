@@ -154,25 +154,25 @@ export const media = {
         filter: { is_client: 'true' }
       }
     },
-    {
-      name: 'projects',
-      label: 'Project',
-      type: 'multiRelationship',
-      tab: 'Overview',
-      displayMode: 'tags',
-      relation: {
-        table: 'project',
-        labelField: 'title',
-        linkTo: '/dashboard/project', // or dynamically derive from config
-         junctionTable: 'contact_project', //must keep or it breaks
-          sourceKey: 'project_id',
-          targetKey: 'contact_id',
-          filterFrom: 'contact_project',
-    //filter: {
-     // company_id: true
-    //}
-      }
-    },
+{
+  name: 'projects',
+  label: 'Projects',
+  type: 'multiRelationship',
+  tab: 'Overview',
+  displayMode: 'tags',
+  relation: {
+    table: 'project',
+    labelField: 'title',
+    linkTo: '/dashboard/project',
+    junctionTable: 'media_project', // Junction table name
+    sourceKey: 'media_id',          // ✅ FIXED: Media ID column in junction table
+    targetKey: 'project_id',        // ✅ FIXED: Project ID column in junction table
+    tableFields: ['title'],
+    filter: {
+    
+    }
+  }
+},
     { 
       name: 'is_external', 
       label: 'External File or Folder', 

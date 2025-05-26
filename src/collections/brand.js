@@ -3,7 +3,7 @@
 export const brand = {
   name: 'brand',
   label: 'Brand',
-  singularLabel: 'Project',
+  singularLabel: 'Brand',
   editPathPrefix: '/dashboard/brand',
   brandBoard: { enabled: true },
   showEditButton: true, // ✅ just a UI toggle
@@ -49,26 +49,25 @@ export const brand = {
         filter: { is_client: 'true' }
       }
     },
- {
- name: 'project_id',
-  label: 'Projects',
-  type: 'multiRelationship',
-  displayMode: 'tags',
-  group: 'General',
-  tab: 'Meta',
-  relation: {
-    table: 'project',
-    labelField: 'title',
-    linkTo: '/dashboard/project',
-    isOneToMany: true,    
-    sourceKey: 'id',             // <- brand.id
-    targetKey: 'brand_id',
-    filterFrom: 'brand',
-    filter: {
-      company_id: '{{record.company_id}}'
-    }
-  }
-},
+    //use manytomany for one to many to make life easier
+  {
+      name: 'projects',
+      label: 'Projects',
+      type: 'multiRelationship',
+       group: 'Brand Details',
+      tab: 'Details', 
+      displayMode: 'tags',
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project',
+        junctionTable: 'brand_project',
+        sourceKey: 'brand_id',
+        targetKey: 'project_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
 
     {
       name: 'brand_board_preview',
@@ -444,6 +443,7 @@ export const brand = {
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
+      defaultValue: 'primary',
       options: [
         { value: 'primary', label: 'Primary' },
         { value: 'secondary', label: 'Secondary' },
@@ -452,12 +452,12 @@ export const brand = {
       ]
     },
 
-    {
+  {
       name: 'tags',
       label: 'Tags',
-      group: 'General',
-      tab: 'Meta',
       type: 'multiRelationship',
+      tab: 'Meta',
+      group: 'General',
       displayMode: 'tags',
       relation: {
         table: 'category',
@@ -465,7 +465,9 @@ export const brand = {
         linkTo: '/dashboard/category',
         junctionTable: 'brand_category',
         sourceKey: 'brand_id',
-        targetKey: 'category_id'
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
       }
     },
     {
@@ -481,6 +483,24 @@ export const brand = {
         filter: { is_client: 'true' }
       }
     },
+      {
+  name: 'inspiration',
+  label: 'Inspiration',
+  type: 'galleryRelationship',
+  database: false,
+  tab: 'Inspiration',
+  group: 'Website Inspiration',
+  showAll: false,
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'brand_media',
+    sourceKey: 'brand_id',    // ✅ FIXED: Brand ID column in junction table
+    targetKey: 'media_id', 
+    filter: {
+    }
+  },
+},
     /*
 
     */

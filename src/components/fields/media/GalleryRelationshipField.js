@@ -14,7 +14,6 @@ import { createClient } from '@/lib/supabase/browser';
 import { MediaActions } from '@/components/fields/media/components/MediaActions';
 import { MediaPreviewCard } from '@/components/fields/media/components/MediaPreviewCard';
 import * as collections from '@/collections';
-
 // Import the media components properly with error handling
 let MediaUploadModal, MediaLibraryPicker, MediaEditModal;
 
@@ -365,9 +364,26 @@ export const GalleryRelationshipField = ({
 
   const handleEditComplete = (editedItem) => {
     // Update local items
-    setItems(prev => prev.map(item => 
+  setItems(prev => {
+    const updated = prev.map(item => 
       item.id === editedItem.id ? editedItem : item
-    ));
+    );
+    return updated;
+  });
+
+  // If not in the list, add it
+  if (!items.find(item => item.id === editedItem.id)) {
+    setItems(prev => [...prev, editedItem]);
+  }
+
+  // 👇 Call onChange with updated IDs
+  if (onChange && typeof onChange === 'function') {
+    const updatedIds = items.map(m => m.id);
+    if (!updatedIds.includes(editedItem.id)) {
+      updatedIds.push(editedItem.id);
+    }
+    onChange(updatedIds); // ⚠️ This is what actually triggers save
+  }
     
     setModalState(prev => ({ 
       ...prev, 
@@ -494,7 +510,10 @@ export const GalleryRelationshipField = ({
             editingItem: null 
           }))}
           config={mediaConfig}
-          initialMedia={modalState.editingItem}
+          initialMedia={{
+          ...modalState.editingItem,
+          projects: [record.id] // 👈 inject reverse relationship!
+        }}
           onSave={handleEditComplete}
         />
       )}

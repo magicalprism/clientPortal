@@ -41,7 +41,7 @@ export const kepple = {
 };
 
 export const neonBlue = {
-  50:  "#f0f1ff",
+  50:  "#f7f7fa",
   100: "#e0e2ff",
   200: "#c2c5ff",
   300: "#9b9eff",

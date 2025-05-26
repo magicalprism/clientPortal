@@ -1,8 +1,8 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const comment = {
+  name: 'comment',
+  label: 'Comments',
+  singularLabel: 'Comment',
+  editPathPrefix: '/dashboard/comment',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -15,18 +15,7 @@
         label: 'Page View', 
         component: 'PageView' 
       },
-      kanban: {
-         label: 'Kanban View', 
-         component: 'KanbanView' 
-        },
-        checklist: {
-          label: 'Checklist View',
-          component: 'ChecklistView'
-        },
-        calendar: {
-          label: 'Calendar',
-          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
-        },
+
         
   },
       //Quickview
@@ -47,6 +36,14 @@
       openMode: 'modal',  
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+    },
+        {
+      name: 'content',
+      label: 'General Description',
+      type: 'richText',
+      tab: 'Overview',
+      fullWidth: true,
+
     },
      {
       name: 'status',
@@ -69,9 +66,9 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'comment', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/comment', // or dynamically derive from config
         filter: { company_id: '{{record.company_id}}' }
       }
     },
@@ -142,8 +139,8 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
+        junctionTable: 'category_comment',
+        sourceKey: 'comment_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
@@ -157,8 +154,8 @@
       label: 'Status',
       defaultValue: 'todo',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'published', label: 'Published' },
         { value: 'in_progress', label: 'In Progress' },
       ]
     },

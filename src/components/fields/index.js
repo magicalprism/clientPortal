@@ -12,6 +12,17 @@ import ColorFieldRenderer from '@/components/fields/color/ColorFieldRenderer';
 import CustomFieldRenderer from '@/components/fields/custom/CustomFieldRenderer';
 import GalleryRelationshipFieldRenderer from '@/components/fields/media/GalleryRelationshipFieldRenderer';
 import TimezoneFieldRenderer from '@/components/fields/dateTime/TimezoneFieldRenderer';
+import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
+
+const CommentsFieldRenderer = ({ field, record }) => {
+  return (
+    <CommentThread
+      entity={field.props?.entity}
+      entityId={record?.id}
+    />
+  );
+};
+
 
 const RENDERERS = {
   select: SelectFieldRenderer,
@@ -29,6 +40,7 @@ const RENDERERS = {
   default: TextFieldRenderer,
   galleryRelationship: GalleryRelationshipFieldRenderer,
   timezone: TimezoneFieldRenderer,
+  comments: CommentsFieldRenderer, 
 };
 
 export const getRendererForField = (type) => {

@@ -16,6 +16,7 @@ import * as collections from '@/collections';
 import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
+import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 
 export const CollectionItemForm = ({
   config,
@@ -132,7 +133,7 @@ export const CollectionItemForm = ({
                 const isBasicTextField = ![
                   'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                   'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                  'select', 'color', 'custom', 
+                  'select', 'color', 'custom', 'comments',
                 ].includes(field.type);
 
                 if (!field || typeof field !== 'object') {
@@ -155,13 +156,20 @@ export const CollectionItemForm = ({
                   );
                 }
 
-                if (field.type === 'custom' && field.component === 'ElementMap') {
+                if (field.type === 'comments') {
                   return (
                     <Grid item xs={12} key={field.name}>
-                      <ElementMap projectId={formData?.id} />
+                      <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
+                        {field.label}
+                      </Typography>
+                      <CommentThread
+                        entity={field.props?.entity}
+                        entityId={formData?.id}
+                      />
                     </Grid>
                   );
                 }
+
 
                 // Tags multirelationship 
                 if (field.type === 'multiRelationship' && field.displayMode === 'tags') {

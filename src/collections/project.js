@@ -51,7 +51,6 @@ export const project = {
       group: 'Project Info', 
       clickable: true, 
       showInTable: true,
-      width: '50%',
     
     },
     { 
@@ -127,18 +126,6 @@ export const project = {
     }
   }
 },
-        {
-      name: 'brand_id',
-      label: 'Brand',
-      type: 'relationship',
-      tab: 'Brand',
-  
-      relation: {
-        table: 'brand',
-        labelField: 'title',
-        linkTo: '/dashboard/brand', // or dynamically derive from config
-      }
-    },
      {
       name: 'brand_board_preview',
       label: 'Brand Board Preview',
@@ -396,6 +383,16 @@ export const project = {
         { label: 'Archived', value: 'archived' }
       ]
     },
+    {
+      name: 'notes',
+      type: 'comments',
+      label: 'Notes',
+      tab: 'Notes',
+      group: 'General',
+      props: {
+        entity: 'project',
+      }
+    }
   
   ],
   filters: [

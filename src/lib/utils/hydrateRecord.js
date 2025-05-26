@@ -1,3 +1,4 @@
+
 export const hydrateRecord = async (record, config, supabase) => {
   if (!record || !config?.fields) return record;
 
@@ -23,6 +24,19 @@ export const hydrateRecord = async (record, config, supabase) => {
       const value = record[name];
       const label = field.options?.find(opt => opt.value === value)?.label || value;
       hydrated[name] = { value, label };
+    }
+
+    // Handle media fields - THIS IS THE NEW ADDITION
+    if (type === 'media' && field.relation?.table && record[name]) {
+      const { data: mediaRecord } = await supabase
+        .from('media')
+        .select('*')
+        .eq('id', record[name])
+        .single();
+
+      if (mediaRecord) {
+        hydrated[`${name}_details`] = mediaRecord;
+      }
     }
 
     // Handle relationship fields

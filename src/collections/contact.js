@@ -52,7 +52,7 @@ export const contact = {
       relation: {
         relation: {
         table: 'media',
-        labelField: 'alt_text',
+        labelField: 'title',
         linkTo: 'url', // or dynamically derive from config
       },
       }, 

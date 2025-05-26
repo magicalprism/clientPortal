@@ -72,7 +72,7 @@ useEffect(() => {
       valueType: typeof value,
       valueIsArray: Array.isArray(value),
       valueIsObject: typeof value === 'object' && value !== null && !Array.isArray(value),
-      hasIds: value?.ids ? value.ids.length : 'no ids',
+      hasIds: Array.isArray(value) ? value.length : (value?.ids ? value.ids.length : 'no ids'),
       hasDetails: value?.details ? value.details.length : 'no details',
       rawValue: value
     });
@@ -224,60 +224,72 @@ useEffect(() => {
     fetchOptions();
   }, [table, labelField, resolvedFilter, supabase]);
 
-  // Initialize from value or related items
+  // ✅ FIXED: Initialize from value or related items
   useEffect(() => {
     console.log(`[RelatedTagsField] Initializing ${field?.name} with value:`, value);
     
-    if (onChange && value && (value.ids?.length > 0 || value.details?.length > 0)) {
-      // Extract IDs from value
-     const normalizedIds = normalizeMultiRelationshipValue(value);
-    let details = [];
-
-    if (value && typeof value === 'object' && Array.isArray(value.details)) {
-      details = value.details;
-    } else if (value && typeof value === 'object' && value.ids && !Array.isArray(value)) {
-      details = allOptions.filter(opt => 
-        normalizedIds.includes(String(opt.id))
-      );
-    } else if (Array.isArray(value)) {
-      details = allOptions.filter(opt => 
-        normalizedIds.includes(String(opt.id))
-      );
+    if (!allOptions || allOptions.length === 0) {
+      console.log(`[RelatedTagsField] No options available yet, skipping initialization`);
+      return;
     }
-
-    const selectedItems = details.map(item => ({
-      ...item,
-      id: item.id,
-      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
-      indentedLabel: item.indentedLabel || item[labelField]
-    }));
-
+    
+    let selectedItems = [];
+    
+    if (onChange && value) {
+      // ✅ Handle different value formats
+      let targetIds = [];
+      
+      if (Array.isArray(value)) {
+        // Simple array of IDs: [202, 3]
+        targetIds = value.map(id => parseInt(id)).filter(id => !isNaN(id));
+        console.log(`[RelatedTagsField] Using simple array format:`, targetIds);
+      } else if (value && typeof value === 'object') {
+        if (value.ids && Array.isArray(value.ids)) {
+          // Complex object format: {ids: [202], details: [...]}
+          targetIds = value.ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+          console.log(`[RelatedTagsField] Using complex object format:`, targetIds);
+        } else {
+          console.log(`[RelatedTagsField] Unknown object format:`, value);
+        }
+      }
+      
+      // Find matching options
+      if (targetIds.length > 0) {
+        selectedItems = allOptions.filter(opt => 
+          targetIds.includes(parseInt(opt.id))
+        ).map(item => ({
+          ...item,
+          id: item.id,
+          [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+          indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
+        }));
+        
+        console.log(`[RelatedTagsField] Found ${selectedItems.length} selected items:`, selectedItems.map(i => ({ id: i.id, label: i[labelField] })));
+      }
+      
+    } else if (relatedItems) {
+      // Read-only mode with provided related items
+      selectedItems = relatedItems.map(item => ({
+        ...item,
+        id: item.id,
+        [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
+        indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
+      }));
+      
+    } else if (fetchedOneToManyItems) {
+      // One-to-many fallback
+      selectedItems = fetchedOneToManyItems.map(item => ({
+        ...item,
+        id: item.id,
+        [labelField]: item[labelField],
+        indentedLabel: item[labelField]
+      }));
+      console.log('[RelatedTagsField] One-to-many fallback selected items:', selectedItems);
+    }
+    
     setLocalSelectedItems(selectedItems);
 
-  } else if (relatedItems) {
-    // ... read-only logic
-    const selectedItems = relatedItems.map(item => ({
-      ...item,
-      id: item.id,
-      [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
-      indentedLabel: item.indentedLabel || item[labelField]
-    }));
-
-    setLocalSelectedItems(selectedItems);
-
-  } else if (fetchedOneToManyItems) {
-    // ✅ Your new one-to-many fallback
-    const selectedItems = fetchedOneToManyItems.map(item => ({
-      ...item,
-      id: item.id,
-      [labelField]: item[labelField],
-      indentedLabel: item[labelField]
-    }));
-    console.log('[RelatedTagsField] One-to-many fallback selected items:', selectedItems);
-    setLocalSelectedItems(selectedItems);
-  }
-
-}, [value, relatedItems, allOptions, labelField, onChange, field?.name, fetchedOneToManyItems]);
+  }, [value, relatedItems, allOptions, labelField, onChange, field?.name, fetchedOneToManyItems]);
 
   // Handle selection changes
   const handleChange = async (event, selectedItems) => {
@@ -305,26 +317,17 @@ useEffect(() => {
     
     if (onChange) {
       // We're in controlled mode with onChange
-      // FIXED: Define selectedIds here BEFORE using it
       const selectedIds = selectedItems.map(item => item.id);
       
-      // Create a consistent response format
-      const responseValue = {
-        ids: selectedIds,
-        details: enrichedItems
-      };
+      console.log(`[RelatedTagsField] ${field.name} calling onChange with simple array:`, selectedIds);
       
-      console.log(`[RelatedTagsField] ${field.name} calling onChange with:`, {
-        idsCount: selectedIds.length,
-        detailsCount: enrichedItems.length
-      });
+      // ✅ FIXED: Return simple array format to match MediaEditModal expectations
+      onChange(selectedIds);
       
-      // Call parent onChange with the full structure
-      onChange(responseValue);
     } else {
       // We're in direct database mode
       const selectedIds = selectedItems.map(item => item.id);
-      const currentIds = relatedItems.map(item => item.id);
+      const currentIds = relatedItems?.map(item => item.id) || [];
 
       const toAdd = selectedIds.filter(id => !currentIds.includes(id));
       const toRemove = currentIds.filter(id => !selectedIds.includes(id));

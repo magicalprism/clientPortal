@@ -19,6 +19,13 @@ import { getBrandColors, getBrandFonts, getBrandLogos } from '@/data/brandBoardF
 export const BrandBoardPreview = ({ brand }) => {
   if (!brand || typeof brand !== 'object') return null;
 
+    console.log('Brand object:', brand);
+  console.log('Font details check:', {
+    primary_font_details: brand.primary_font_details,
+    secondary_font_details: brand.secondary_font_details,
+    // ... etc
+  });
+
   const [mode, setMode] = useState('light');
   const colors = getBrandColors(brand);
   const fonts = getBrandFonts(brand);
@@ -46,6 +53,7 @@ export const BrandBoardPreview = ({ brand }) => {
   const bgColor = mode === 'primary' ? primaryBg : secondaryBg;
   const textColor = mode === 'primary' ? primaryColor : secondaryColor;
 
+  console.log('Processed fonts:', fonts);
 
   return (
     <Box sx={{ px: 2 }}>
@@ -377,7 +385,7 @@ sx={{
 {fonts.map(({ label, url, name }) => {
   const fontFamily = `'${(name || label).replace(/\s+/g, '-')}'`;
   return (
-    <Grid item xs={12} sm={6} md={3} key={label} textAlign="center">
+    <Grid item xs={12} sm={6} md={6} key={label} textAlign="center">
       <style>
         {`
           @font-face {
@@ -394,7 +402,7 @@ sx={{
         {label}
       </Typography>
       <Box sx={{ fontFamily, fontSize: 28, mb: 1 }}>
-        Aa Bb Cc 1234
+        Aa Bb Cc <br/>1234
       </Box>
       {name && (
         <Typography variant="caption" sx={{ color: textColor, '@media print': {

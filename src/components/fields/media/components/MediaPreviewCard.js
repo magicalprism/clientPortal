@@ -1,19 +1,106 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Card, CardMedia, CardContent, Typography, IconButton, Tooltip } from '@mui/material';
 import { X as XIcon, DownloadSimple, LinkSimple, Copy, PencilSimple, Eye } from '@phosphor-icons/react';
 import { fileTypeIcons } from '@/data/fileTypeIcons';
 
 /**
+ * Hook to fetch meta preview image for external URLs
+ */
+const useMetaPreview = (url, isExternal) => {
+  const [metaImage, setMetaImage] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isExternal || !url) {
+      setMetaImage(null);
+      return;
+    }
+
+    const fetchMetaImage = async () => {
+      setLoading(true);
+      try {
+        // Try screenshot services first, then fallback to meta images
+        const services = [
+          {
+            url: `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=true&meta=false&embed=false&viewport.width=1200&viewport.height=800`,
+            name: 'Microlink Screenshot',
+            extractImage: (data) => data?.data?.screenshot?.url
+          },
+          {
+            url: `https://shot.screenshotapi.net/screenshot?token=YOUR_TOKEN&url=${encodeURIComponent(url)}&width=1200&height=800`,
+            name: 'ScreenshotAPI',
+            extractImage: (data) => data?.screenshot || url // Returns the screenshot URL directly
+          },
+          {
+            url: `https://htmlcsstoimage.com/demo_run?url=${encodeURIComponent(url)}&selector=body&ms_delay=1500&viewport_width=1200&viewport_height=800`,
+            name: 'HTML/CSS to Image',
+            extractImage: (data) => data?.url
+          },
+          // Fallback to meta images if screenshots fail
+          {
+            url: `https://api.microlink.io/?url=${encodeURIComponent(url)}&screenshot=false&meta=true&embed=false`,
+            name: 'Microlink Meta',
+            extractImage: (data) => data?.data?.image?.url
+          }
+        ];
+
+        for (const service of services) {
+          try {
+            console.log(`[MetaPreview] Trying ${service.name} for URL: ${url}`);
+            
+            // Skip services that require API tokens we don't have
+            if (service.url.includes('YOUR_TOKEN')) {
+              console.log(`[MetaPreview] ⏭️ Skipping ${service.name} - requires API token`);
+              continue;
+            }
+            
+            const response = await fetch(service.url);
+            
+            if (response.ok) {
+              const data = await response.json();
+              const image = service.extractImage(data);
+              
+              if (image && image !== url) { // Make sure we got an actual image URL
+                console.log(`[MetaPreview] ✅ Found image via ${service.name}:`, image);
+                setMetaImage(image);
+                return; // Success - exit the loop
+              } else {
+                console.log(`[MetaPreview] ❌ No image found via ${service.name}`);
+              }
+            } else {
+              console.log(`[MetaPreview] ❌ ${service.name} responded with status:`, response.status);
+            }
+          } catch (serviceError) {
+            console.log(`[MetaPreview] ❌ ${service.name} service error:`, serviceError.message);
+            continue;
+          }
+        }
+        
+        console.log(`[MetaPreview] ❌ No preview image found from any service for: ${url}`);
+      } catch (error) {
+        console.log('[MetaPreview] ❌ Preview fetch failed:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce the fetch
+    const timeoutId = setTimeout(fetchMetaImage, 300);
+    return () => clearTimeout(timeoutId);
+  }, [url, isExternal]);
+
+  return { metaImage, loading };
+};
+
+/**
  * Get media title based on config field priority
  */
 const getMediaTitle = (media, config) => {
-  // Try to get title field configuration
   const titleField = config?.fields?.find(f => f.name === 'title');
   const altTextField = config?.fields?.find(f => f.name === 'alt_text');
   
-  // Use configured field priority or fallback
   if (titleField && media?.title) {
     return media.title;
   }
@@ -22,7 +109,6 @@ const getMediaTitle = (media, config) => {
     return media.alt_text;
   }
   
-  // Fallback to any available title-like field
   return media?.title || media?.alt_text || media?.original_title || `ID: ${media?.id}`;
 };
 
@@ -30,15 +116,15 @@ const getMediaTitle = (media, config) => {
  * Get media subtitle/description based on config
  */
 const getMediaSubtitle = (media, config) => {
-  const copyrightField = config?.fields?.find(f => f.name === 'copyright');
   const descriptionField = config?.fields?.find(f => f.name === 'description');
-  
-  if (copyrightField && media?.copyright) {
-    return `© ${media.copyright}`;
-  }
+  const copyrightField = config?.fields?.find(f => f.name === 'copyright');
   
   if (descriptionField && media?.description) {
     return media.description;
+  }
+  
+  if (copyrightField && media?.copyright) {
+    return `© ${media.copyright}`;
   }
   
   return null;
@@ -66,6 +152,9 @@ export const MediaPreviewCard = ({
   const title = getMediaTitle(media, config);
   const subtitle = getMediaSubtitle(media, config);
   
+  // ✅ NEW: Fetch meta preview for external links
+  const { metaImage, loading: metaLoading } = useMetaPreview(previewUrl, isExternal);
+  
   // Get file type icon based on config or fallback
   const FileIcon = isFolder 
     ? fileTypeIcons?.folder 
@@ -79,6 +168,116 @@ export const MediaPreviewCard = ({
   const statusField = config?.fields?.find(f => f.name === 'status');
   const showStatus = statusField && media?.status;
 
+  // ✅ NEW: Determine what to show in preview area
+  const renderPreviewContent = () => {
+    if (isFolder) {
+      return (
+        <Box textAlign="center" sx={{ width: '100%', px: 1 }}>
+          {FileIcon && <FileIcon size={48} weight="duotone" />}
+          <Typography variant="body2" fontWeight={500} noWrap>
+            Folder
+          </Typography>
+        </Box>
+      );
+    }
+
+    if (isImage && !isExternal) {
+      return (
+        <CardMedia
+          component="img"
+          image={previewUrl}
+          alt={media?.alt_text || field?.label || 'Media preview'}
+          sx={{ 
+            height: '100%',
+            width: '100%',
+            objectFit: 'cover',
+            position: aspectRatio !== 'auto' ? 'absolute' : 'static',
+            top: 0,
+            left: 0
+          }}
+        />
+      );
+    }
+
+    if (isExternal && metaImage) {
+      return (
+        <Box sx={{ position: 'relative', width: '100%', height: '100%' }}>
+          <CardMedia
+            component="img"
+            image={metaImage}
+            alt={`Preview of ${title}`}
+            sx={{ 
+              height: '100%',
+              width: '100%',
+              objectFit: 'cover',
+              position: aspectRatio !== 'auto' ? 'absolute' : 'static',
+              top: 0,
+              left: 0
+            }}
+          />
+          {/* Overlay to indicate it's external screenshot */}
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 4,
+              left: 4,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              color: 'white',
+              px: 1,
+              py: 0.5,
+              borderRadius: 1,
+              fontSize: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5
+            }}
+          >
+            <LinkSimple size={12} />
+            Screenshot
+          </Box>
+        </Box>
+      );
+    }
+
+    if (isExternal && metaLoading) {
+      return (
+        <Box textAlign="center" sx={{ width: '100%', px: 1 }}>
+          <Box
+            sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '50%',
+              border: '3px solid #f3f3f3',
+              borderTop: '3px solid #3498db',
+              animation: 'spin 1s linear infinite',
+              margin: '0 auto 8px',
+              '@keyframes spin': {
+                '0%': { transform: 'rotate(0deg)' },
+                '100%': { transform: 'rotate(360deg)' }
+              }
+            }}
+          />
+          <Typography variant="caption" color="text.secondary">
+            Loading preview...
+          </Typography>
+        </Box>
+      );
+    }
+
+    // Fallback to icon
+    return (
+      <Box textAlign="center" sx={{ width: '100%', px: 1 }}>
+        {FileIcon && <FileIcon size={48} weight="duotone" />}
+        <Typography variant="body2" fontWeight={500} noWrap>
+          {isExternal ? 'External Link' : title}
+        </Typography>
+        <Typography variant="caption" color="text.secondary" noWrap>
+          {mime || 'Unknown type'}
+        </Typography>
+      </Box>
+    );
+  };
+
   return (
     <Card 
       sx={{ 
@@ -89,19 +288,22 @@ export const MediaPreviewCard = ({
         borderRadius: 2,
         overflow: 'hidden',
         boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+        width: '100%',
+        maxWidth: '100%',
+        minWidth: 0,
         ...(isExternal && {
           border: '2px solid',
           borderColor: 'info.main',
           '&::before': {
             content: '"External"',
             position: 'absolute',
-            top: 4,
-            left: 4,
-            backgroundColor: 'info.main',
+            top: 8,
+            left: 8,
+            backgroundColor: 'primary.main',
             color: 'white',
             fontSize: '0.75rem',
             px: 1,
-            py: 0.5,
+            py: 0.8,
             borderRadius: 1,
             zIndex: 1
           }
@@ -119,38 +321,7 @@ export const MediaPreviewCard = ({
           justifyContent: 'center'
         }}
       >
-        {isFolder ? (
-          <Box textAlign="center">
-            {FileIcon && <FileIcon size={48} weight="duotone" />}
-            <Typography variant="body2" fontWeight={500}>
-              Folder
-            </Typography>
-          </Box>
-        ) : isImage && !isExternal ? (
-          <CardMedia
-            component="img"
-            image={previewUrl}
-            alt={media?.alt_text || field?.label || 'Media preview'}
-            sx={{ 
-              height: '100%',
-              width: '100%',
-              objectFit: 'cover',
-              position: aspectRatio !== 'auto' ? 'absolute' : 'static',
-              top: 0,
-              left: 0
-            }}
-          />
-        ) : (
-          <Box textAlign="center">
-            {FileIcon && <FileIcon size={48} weight="duotone" />}
-            <Typography variant="body2" fontWeight={500}>
-              {isExternal ? 'External Link' : title}
-            </Typography>
-            <Typography variant="caption" color="text.secondary">
-              {mime || 'Unknown type'}
-            </Typography>
-          </Box>
-        )}
+        {renderPreviewContent()}
 
         {showControls && (
           <Box
@@ -167,7 +338,7 @@ export const MediaPreviewCard = ({
                 <IconButton
                   size="small"
                   onClick={(event) => {
-                    onEdit(media, event.currentTarget); // send anchorEl
+                    onEdit(media, event.currentTarget);
                   }}
                   sx={{
                     backgroundColor: 'rgba(255,255,255,0.9)',
@@ -202,16 +373,54 @@ export const MediaPreviewCard = ({
         )}
       </Box>
 
-      {/* ✅ FIXED: Reduced padding and spacing for content section */}
-      <CardContent sx={{ flexGrow: 1, p: 1.5, pb: 0.5 }}>
+      {/* Content section - unchanged */}
+      <CardContent 
+        sx={{ 
+          flexGrow: 1, 
+          p: 1.5, 
+          pb: 0.5,
+          width: '100%',
+          minWidth: 0,
+          overflow: 'hidden'
+        }}
+      >
         {showTitle && (
-          <Typography variant="subtitle2" fontWeight={500} noWrap sx={{ mb: 0.5 }}>
+          <Typography 
+            variant="subtitle2" 
+            fontWeight={500} 
+            sx={{ 
+              mb: 0.5,
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden'
+            }}
+          >
             {title}
           </Typography>
         )}
         
         {showSubtitle && subtitle && (
-          <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ mb: 0.5 }}>
+          <Typography 
+            variant="caption" 
+            color="text.secondary" 
+            sx={{ 
+              mb: 0.5,
+              display: 'block',
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto',
+              whiteSpace: 'normal',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              lineHeight: 1.4
+            }}
+          >
             {subtitle}
           </Typography>
         )}
@@ -221,12 +430,17 @@ export const MediaPreviewCard = ({
             <Typography 
               variant="caption" 
               sx={{ 
-                backgroundColor: media.status === 'uploaded' ? 'success.light' : 'info.light',
+                backgroundColor: media.status === 'uploaded' ? 'success.light' : 'primary.main',
                 color: media.status === 'uploaded' ? 'success.contrastText' : 'info.contrastText',
                 px: 1,
                 py: 0.5,
                 borderRadius: 1,
-                textTransform: 'capitalize'
+                textTransform: 'capitalize',
+                display: 'inline-block',
+                maxWidth: '100%',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap'
               }}
             >
               {media.status}
@@ -235,10 +449,9 @@ export const MediaPreviewCard = ({
         )}
       </CardContent>
 
-      {/* ✅ FIXED: Reduced padding and added third button */}
+      {/* Action buttons - unchanged */}
       {showControls && (
         <Box sx={{ display: 'flex', p: 0.5, pt: 0, justifyContent: 'space-between', gap: 0.5 }}>
-          {/* Left side - Open/View button */}
           <Tooltip title={isFolder ? "Open folder" : isExternal ? "Open link" : "View file"}>
             <IconButton
               component="a"
@@ -258,7 +471,6 @@ export const MediaPreviewCard = ({
             </IconButton>
           </Tooltip>
 
-          {/* Right side - Copy and Download buttons */}
           <Box sx={{ display: 'flex', gap: 0.5 }}>
             <Tooltip title="Copy URL">
               <IconButton
