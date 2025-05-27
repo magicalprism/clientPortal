@@ -261,4 +261,3 @@ export default function PrimaryTableView({
     </Box>
   );
 }
-git add .Arraygit 
