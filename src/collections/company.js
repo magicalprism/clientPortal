@@ -90,6 +90,13 @@ export const company = {
       tab: 'Meta'
     },
     { 
+      name: 'chip_color', 
+      label: 'Label Background (Chip)', 
+      type: 'color',
+      group: 'General', 
+      tab: 'Meta'
+    },
+    { 
       name: 'author_id', 
       label: 'Author', 
       type: 'relationship',

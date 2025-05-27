@@ -67,6 +67,7 @@ useEffect(() => {
   const fetchDefaults = async () => {
     const contactId = await getCurrentContactId();
     console.log('[fetchDefaults] contactId:', contactId);
+    
     const fieldDefaults = (config.fields || []).reduce((acc, field) => {
       if (field.defaultToCurrentUser && contactId) {
         console.log(`[fetchDefaults] setting field ${field.name} to contactId: ${contactId}`);
@@ -77,16 +78,22 @@ useEffect(() => {
       }
       return acc;
     }, {});
+    
     const filterDefaults = (config.filters || []).reduce((acc, filter) => {
       if (filter.defaultToCurrentUser && contactId) {
         console.log(`[fetchDefaults] setting filter ${filter.name} to contactId: ${contactId}`);
-        acc[filter.name] = contactId;
+        acc[filter.name] = filter.multiple ? [contactId] : contactId;
       } else if (filter.defaultValue !== undefined) {
-        console.log(`[fetchDefaults] setting filter ${filter.name} to defaultValue: ${filter.defaultValue}`);
+        console.log(`[fetchDefaults] setting filter ${filter.name} to defaultValue:`, filter.defaultValue);
+        // ✅ Don't modify the defaultValue - use it as-is since it should already be the correct type
         acc[filter.name] = filter.defaultValue;
+      } else if (filter.multiple) {
+        // Initialize multi-select filters as empty arrays
+        acc[filter.name] = [];
       }
       return acc;
     }, {});
+    
     const mergedDefaults = { ...fieldDefaults, ...filterDefaults };
     console.log('[fetchDefaults] final default values:', mergedDefaults);
     setDefaultValues(mergedDefaults);

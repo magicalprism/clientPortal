@@ -273,6 +273,7 @@ export const task = {
       name: 'status',
       type: 'select',
       label: 'Status',
+      multiple: true,
       options: [
         { value: 'not started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
@@ -282,25 +283,27 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       excludeFromViews: ['calendar'],
-      defaultValue: 'todo',
+      defaultValue: ['todo', 'not started'],
     },
     {
       name: 'task_type',
       type: 'select',
       label: 'Event Type',
+      multiple: true,
       options: [
         { value: 'task', label: 'Task' },
         { value: 'vacation', label: 'Vacation' },
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      defaultValue: 'task',
+      defaultValue: [],
       excludeFromViews: ['table', 'checklist']
     },
      {
       name: 'task_type',
       type: 'select',
       label: 'Event Type',
+      multiple: true,
       options: [
         { value: 'task', label: 'Task' },
         { value: 'vacation', label: 'Vacation' },
@@ -308,18 +311,19 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       excludeFromViews: ['calendar'],
-      defaultValue: '',
+      defaultValue: ['task'],
     },
-    {
-      name: 'assigned_id',
-      label: 'Assigned to',
-      type: 'relationship',
-      relation: {
-        table: 'contact', //usually current collection or pivot table
-        labelField: 'title',
-        filter: { is_assignable: true } //temporary until I add all clients & contractors as users 
-      }
-    },
+     {
+    name: 'assigned_id',
+    label: 'Assigned to',
+    type: 'relationship',
+    multiple: false, // ✅ Single-select for assignment (typically one person)
+    relation: {
+      table: 'contact',
+      labelField: 'title', // ✅ This should show names, not IDs
+      filter: { is_assignable: true }
+    }
+  },
     {
       name: 'sort',
       type: 'select',
