@@ -134,14 +134,6 @@ export const element = {
       group: 'Details',
       tab: 'Overview'
     },
-
-    {
-      name: 'content',
-      label: 'Strategy',
-      type: 'richText',
-      group: 'Details',
-      tab: 'Overview'
-    },
     
         {
       name: 'resource_id',
@@ -203,13 +195,22 @@ export const element = {
     },
 //Sections
     {
+      name: 'content',
+      label: 'Strategy',
+      type: 'richText',
+      group: 'Details',
+      tab: 'Sections'
+    },
+    {
       name: 'sections',
       label: 'Sections',
       type: 'sections', // This will use the SectionsFieldRenderer
       tab: 'Sections',
+      group: 'Details',
       props: {
         entityField: 'element_id', // This should match your entity name for the pivot table
         pivotTable: 'element_section',
+        mediaPivotTable: 'media_section'
       }
     },
 

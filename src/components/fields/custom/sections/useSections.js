@@ -31,8 +31,13 @@ export const useSections = ({ pivotTable, entityField, entityId }) => {
           console.log('[Sections] Raw data:', data);
           const processedSections = data?.map(row => row.section).filter(Boolean) || [];
           
-          // Sort by created_at after processing
-          processedSections.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          // Sort by order_index after processing, fallback to created_at
+          processedSections.sort((a, b) => {
+            if (a.order_index !== undefined && b.order_index !== undefined) {
+              return a.order_index - b.order_index;
+            }
+            return new Date(a.created_at) - new Date(b.created_at);
+          });
           
           console.log('[Sections] Processed sections:', processedSections);
           setSections(processedSections);
@@ -56,7 +61,7 @@ export const useSections = ({ pivotTable, entityField, entityId }) => {
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError || !userData?.user?.id) {
         console.error('Failed to get user:', userError);
-        return;
+        return null;
       }
 
       // Get contact ID from user
@@ -68,42 +73,58 @@ export const useSections = ({ pivotTable, entityField, entityId }) => {
 
       if (contactError || !contact) {
         console.error('Failed to get contact:', contactError);
-        return;
+        return null;
       }
 
       const contactId = contact.id;
 
-      // Insert new section
+      // Insert new section with order_index
+      const maxOrderIndex = sections.length > 0 ? Math.max(...sections.map(s => s.order_index || 0)) : 0;
+      
       const { data: newSections, error: insertError } = await supabase
         .from('section')
         .insert([{ 
           title: title,
           content: content,
-          author_id: contactId
+          author_id: contactId,
+          order_index: maxOrderIndex + 1
         }])
         .select();
 
       if (insertError || !newSections || newSections.length === 0) {
         console.error('Error adding section:', insertError);
-        return;
+        return null;
       }
 
-      const sectionId = newSections[0].id;
+      const newSection = newSections[0];
+      const sectionId = newSection.id;
 
       // Create link between section and entity
+      const linkData = {};
+      linkData[entityField] = entityId;
+      linkData.section_id = sectionId;
+      
+      console.log('[Sections] Creating link with data:', linkData);
+      console.log('[Sections] Pivot table:', pivotTable);
+      
       const { error: linkError } = await supabase
         .from(pivotTable)
-        .insert([{ [entityField]: entityId, section_id: sectionId }]);
+        .insert([linkData]);
 
       if (linkError) {
         console.error('Error creating link:', linkError);
-        return;
+        return null;
       }
 
       // Update local state
-      setSections(prev => [...prev, newSections[0]]);
+      setSections(prev => [...prev, newSection]);
+      
+      // Return the created section so caller can use its ID
+      return newSection;
+      
     } catch (error) {
       console.error('Error in addSection:', error);
+      return null;
     }
   };
 
@@ -166,5 +187,32 @@ export const useSections = ({ pivotTable, entityField, entityId }) => {
     }
   };
 
-  return { sections, addSection, updateSection, deleteSection, loading };
+  const reorderSections = async (newOrderSections) => {
+    try {
+      // Update local state immediately for smooth UX
+      setSections(newOrderSections);
+      
+      // Create updates with new order_index values
+      const updates = newOrderSections.map((section, index) => ({
+        id: section.id,
+        order_index: index
+      }));
+
+      const { error } = await supabase
+        .from('section')
+        .upsert(updates, { onConflict: ['id'] });
+
+      if (error) {
+        console.error('Error reordering sections:', error);
+        // Optionally revert local state on error
+        return;
+      }
+
+      console.log('[Sections] Reordered successfully');
+    } catch (error) {
+      console.error('Error in reorderSections:', error);
+    }
+  };
+
+  return { sections, addSection, updateSection, deleteSection, reorderSections, loading };
 };

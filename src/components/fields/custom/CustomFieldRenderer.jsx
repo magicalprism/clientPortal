@@ -40,6 +40,9 @@ export const CustomFieldRenderer = ({
           pivotTable={field.props?.pivotTable}
           entityField={field.props?.entityField}
           entityId={record?.id}
+          label={field.label}
+          record={record}
+          mediaPivotTable={field.props?.mediaPivotTable || 'media_section'}
         />
       );
 

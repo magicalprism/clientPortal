@@ -174,13 +174,13 @@ export const CollectionItemForm = ({
                    if (field.type === 'sections') {
                   return (
                     <Grid item xs={12} key={field.name}>
-                      <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
-                        {field.label}
-                      </Typography>
                       <SectionThread
                         pivotTable={field.props?.pivotTable}
                         entityField={field.props?.entityField}
                         entityId={formData?.id}
+                        label={field.label}
+                        record={formData}
+                        mediaPivotTable={field.props?.mediaPivotTable || 'media_section'}
                       />
                     </Grid>
                   );
