@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Box,
@@ -32,21 +32,16 @@ export default function PrimaryTableView({
 
   const refresh = () => setRefreshFlag((prev) => prev + 1);
 
-const fetchData = async () => {
-  // Update the related fields selection to include chip_color for company relationships
-  const relatedFields = config.fields
-    .filter(f => f.type === 'relationship' && f.relation?.labelField)
-    .map(f => {
-      const relationTableAlias = f.name.replace('_id', '');
-      
-      // Special handling for company relationships to include chip_color
-      if (f.relation.table === 'company') {
-        return `${relationTableAlias}:${f.name}(${f.relation.labelField}, chip_color)`;
-      }
-      
-      // Regular relationship fields
-      return `${relationTableAlias}:${f.name}(${f.relation.labelField})`;
-    });
+  const fetchData = async () => {
+    const relatedFields = config.fields
+      .filter(f => f.type === 'relationship' && f.relation?.labelField)
+      .map(f => {
+        const alias = f.name.replace('_id', '');
+        if (f.relation.table === 'company') {
+          return `${alias}:${f.name}(${f.relation.labelField}, chip_color)`;
+        }
+        return `${alias}:${f.name}(${f.relation.labelField})`;
+      });
 
     const selectClause = ['*', ...relatedFields].join(', ');
 
@@ -56,24 +51,24 @@ const fetchData = async () => {
     const columnExists = config.fields.some(f => f.name === field);
 
     const defaultFilters = Object.fromEntries(
-        (config.filters || [])
-          .filter(f => f.defaultValue !== undefined)
-          .map(f => [f.name, f.defaultValue])
-      );
+      (config.filters || [])
+        .filter(f => f.defaultValue !== undefined)
+        .map(f => [f.name, f.defaultValue])
+    );
 
     const forcedFilters = config?.forcedFilters || {};
 
     const effectiveFilters = {
       ...defaultFilters,
-      ...filters,         // From user interaction (e.g. dropdown)
-      ...forcedFilters    // From parent view like ProjectItemPage
+      ...filters,
+      ...forcedFilters
     };
+
     console.log('[Effective Filters]', effectiveFilters);
 
     const start = page * rowsPerPage;
     const end = start + rowsPerPage - 1;
 
-    // Count query to get total number of parents
     const { count, error: countError } = await supabase
       .from(config.name)
       .select('*', { count: 'exact', head: true })
@@ -102,43 +97,36 @@ const fetchData = async () => {
       parentQuery = parentQuery.order('created_at', { ascending: false, nullsLast: true });
     }
 
-    // Apply filters to parent query
-    for (const filter of config.filters || []) {
-      if (filter.name === 'sort') continue;
-      const value = filters?.[filter.name];
-      
-      // Skip if no value, empty string, or empty array
+    for (const f of config.filters || []) {
+      if (f.name === 'sort') continue;
+      const value = filters?.[f.name];
       if (!value || value === '' || (Array.isArray(value) && value.length === 0)) continue;
-      
-      console.log(`[Parent Filter Debug] ${filter.name}:`, { 
-        value, 
-        isArray: Array.isArray(value), 
-        multiple: filter.multiple,
-        filterType: filter.type 
+
+      console.log(`[Parent Filter Debug] ${f.name}:`, {
+        value,
+        isArray: Array.isArray(value),
+        multiple: f.multiple,
+        filterType: f.type
       });
-      
-      if (filter.multiple && Array.isArray(value) && value.length > 0) {
-        // Handle multi-select filters - "contains any of these values"
-        console.log(`[Multi Filter] Applying .in(${filter.name}, [${value.join(', ')}])`);
-        if (['select', 'relationship'].includes(filter.type)) {
-          parentQuery = parentQuery.in(filter.name, value);
-        } else if (filter.type === 'text') {
-          // For text filters with multiple values, use OR logic
-          const textConditions = value.map(v => `${filter.name}.ilike.%${v}%`).join(',');
-          parentQuery = parentQuery.or(textConditions);
+
+      if (f.name === 'search') {
+        parentQuery = parentQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+      } else if (f.multiple && Array.isArray(value)) {
+        if (['select', 'relationship'].includes(f.type)) {
+          parentQuery = parentQuery.in(f.name, value);
+        } else if (f.type === 'text') {
+          const conditions = value.map(v => `${f.name}.ilike.%${v}%`).join(',');
+          parentQuery = parentQuery.or(conditions);
         }
-      } else if (!Array.isArray(value) && value !== '' && value !== null && value !== undefined) {
-        // Handle single-select filters (existing logic)
-        console.log(`[Single Filter] Applying .eq(${filter.name}, ${value})`);
-        if (['select', 'relationship'].includes(filter.type)) {
-          parentQuery = parentQuery.eq(filter.name, value);
-        } else if (filter.type === 'text') {
-          parentQuery = parentQuery.ilike(filter.name, `%${value}%`);
+      } else {
+        if (['select', 'relationship'].includes(f.type)) {
+          parentQuery = parentQuery.eq(f.name, value);
+        } else if (f.type === 'text') {
+          parentQuery = parentQuery.ilike(f.name, `%${value}%`);
         }
       }
     }
 
-    // Apply forced filters to parent query
     for (const [key, value] of Object.entries(effectiveFilters)) {
       const alreadyHandled = (config.filters || []).some(f => f.name === key);
       if (!alreadyHandled && value !== undefined && value !== '') {
@@ -148,14 +136,11 @@ const fetchData = async () => {
     }
 
     const { data: parents, error: parentError } = await parentQuery;
-    if (setTotalCount) setTotalCount(count || 0);
-
     if (parentError) {
       console.error('Error fetching parent records:', parentError);
       return;
     }
 
-    // Now create and apply filters to child query
     const parentIds = parents.map(row => row.id);
     let childQuery = supabase
       .from(config.name)
@@ -166,36 +151,35 @@ const fetchData = async () => {
       childQuery = childQuery.order(field, { ascending, nullsLast: true });
     }
 
-    // Apply the same filters to child query
-    for (const filter of config.filters || []) {
-      if (filter.name === 'sort') continue;
-      const value = filters?.[filter.name];
-      
+    for (const f of config.filters || []) {
+      if (f.name === 'sort') continue;
+      const value = filters?.[f.name];
       if (!value || value === '' || (Array.isArray(value) && value.length === 0)) continue;
-      
-      console.log(`[Child Filter Debug] ${filter.name}:`, { 
-        value, 
-        isArray: Array.isArray(value), 
-        multiple: filter.multiple 
+
+      console.log(`[Child Filter Debug] ${f.name}:`, {
+        value,
+        isArray: Array.isArray(value),
+        multiple: f.multiple
       });
-      
-      if (filter.multiple && Array.isArray(value) && value.length > 0) {
-        if (['select', 'relationship'].includes(filter.type)) {
-          childQuery = childQuery.in(filter.name, value);
-        } else if (filter.type === 'text') {
-          const textConditions = value.map(v => `${filter.name}.ilike.%${v}%`).join(',');
-          childQuery = childQuery.or(textConditions);
+
+      if (f.name === 'search') {
+        childQuery = childQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+      } else if (f.multiple && Array.isArray(value)) {
+        if (['select', 'relationship'].includes(f.type)) {
+          childQuery = childQuery.in(f.name, value);
+        } else if (f.type === 'text') {
+          const conditions = value.map(v => `${f.name}.ilike.%${v}%`).join(',');
+          childQuery = childQuery.or(conditions);
         }
-      } else if (!Array.isArray(value) && value !== '' && value !== null && value !== undefined) {
-        if (['select', 'relationship'].includes(filter.type)) {
-          childQuery = childQuery.eq(filter.name, value);
-        } else if (filter.type === 'text') {
-          childQuery = childQuery.ilike(filter.name, `%${value}%`);
+      } else {
+        if (['select', 'relationship'].includes(f.type)) {
+          childQuery = childQuery.eq(f.name, value);
+        } else if (f.type === 'text') {
+          childQuery = childQuery.ilike(f.name, `%${value}%`);
         }
       }
     }
 
-    // Apply forced filters to child query
     for (const [key, value] of Object.entries(effectiveFilters)) {
       const alreadyHandled = (config.filters || []).some(f => f.name === key);
       if (!alreadyHandled && value !== undefined && value !== '') {
@@ -204,7 +188,6 @@ const fetchData = async () => {
     }
 
     const { data: children, error: childError } = await childQuery;
-
     if (childError) {
       console.error('Error fetching child records:', childError);
       return;
@@ -219,7 +202,6 @@ const fetchData = async () => {
     const nestedRows = buildNestedRows(flatRows);
     setData(nestedRows);
 
-    // Auto-expand parents of children
     const autoExpanded = new Set();
     (children || []).forEach(child => {
       if (child.parent_id) autoExpanded.add(child.parent_id);
@@ -279,3 +261,4 @@ const fetchData = async () => {
     </Box>
   );
 }
+git add .Arraygit 

@@ -114,71 +114,65 @@ export const CollectionTable = ({ config, refresh, data, rows, fieldContext = nu
   }
 
   return (
-    <>
-      <DataTable
-  columns={columns}
-  rows={safeRows}
-  selectable
-  selected={selected}
-  onSelectAll={() => selectAll(safeRows.map((r) => r.id))}
-  onDeselectAll={deselectAll}
-  onSelectOne={(_, row) => selectOne(row.id)}
-  onDeselectOne={(_, row) => deselectOne(row.id)}
-  childRenderer={(row) => {
-    const children = row.children || [];
-    const isExpanded = expandedRowIds?.has?.(row.id); // safe check in case prop is missing
-  
-    if (!isExpanded || !children.length) return null;
-        
-    return (
-      <Box
-          sx={{
-            pl: 0,
-            py: 0,
-            m: 0,
-            borderBottom: '1px solid',
-            borderColor: 'divider',
-          
-          }}
->
-
-          <CollectionTable
-            config={config}
-            rows={children}
-            expandedRowIds={expandedRowIds}
-            rowSx={{
-              '& .MuiTableCell-root': { borderBottom: '1px solid #e0e0e0' },
-              '& .MuiTableCell-root > .MuiBox-root': { p: '0 !important', m: 0 }
+  <>
+    <DataTable
+      columns={columns}
+      rows={safeRows}
+      selectable
+      selected={selected}
+      onSelectAll={() => selectAll(safeRows.map((r) => r.id))}
+      onDeselectAll={deselectAll}
+      onSelectOne={(_, row) => selectOne(row.id)}
+      onDeselectOne={(_, row) => deselectOne(row.id)}
+      statusField="status" // ✅ Field to use for row coloring
+      enableRowColors={true} // ✅ Enable status-based row colors
+      childRenderer={(row) => {
+        const children = row.children || [];
+        const isExpanded = expandedRowIds?.has?.(row.id);
+    
+        if (!isExpanded || !children.length) return null;
+            
+        return (
+          <Box
+            sx={{
+              pl: 0,
+              py: 0,
+              m: 0,
+              borderBottom: '1px solid',
+              borderColor: 'divider',
             }}
-            onDeleteSuccess={refresh} // ✅ REFRESH ON DELETE
-            onEditSuccess={refresh}   // ✅ REFRESH ON EDIT (if supported in modals)
-            fieldContext={fieldContext}
-            hideHead
-            indentLevel={5}
-          />
-
-
-      </Box>
-    );
-  }}
-  hideHead={hideHead}
-// 👈 or just `hideHead={hideHead}` if you passed it in
-/>
-
-
-      {safeRows.length === 0 && (
-        <Box sx={{ p: 3 }}>
-          <Typography
-            color="text.secondary"
-            sx={{ textAlign: 'center' }}
-            variant="body2"
           >
-            No records found
-          </Typography>
-        </Box>
-      )}
+            <CollectionTable
+              config={config}
+              rows={children}
+              expandedRowIds={expandedRowIds}
+              rowSx={{
+                '& .MuiTableCell-root': { borderBottom: '1px solid #e0e0e0' },
+                '& .MuiTableCell-root > .MuiBox-root': { p: '0 !important', m: 0 }
+              }}
+              onDeleteSuccess={refresh}
+              onEditSuccess={refresh}
+              fieldContext={fieldContext}
+              hideHead
+              indentLevel={5}
+            />
+          </Box>
+        );
+      }}
+      hideHead={hideHead}
+    />
 
-      
-    </>
+    {safeRows.length === 0 && (
+      <Box sx={{ p: 3 }}>
+        <Typography
+          color="text.secondary"
+          sx={{ textAlign: 'center' }}
+          variant="body2"
+        >
+          No records found
+        </Typography>
+      </Box>
+    )}
+  </>
   );
 };

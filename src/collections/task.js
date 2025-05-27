@@ -245,7 +245,7 @@ export const task = {
         table: 'contact',
         labelField: 'title',
         linkTo: '/dashboard/contact',
-        junctionTable: 'contact_project',
+        junctionTable: 'contact_task',
         sourceKey: 'task_id',
         targetKey: 'contact_id',
         filterFrom: 'contact',
@@ -269,6 +269,12 @@ export const task = {
   
   ],
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'status',
       type: 'select',

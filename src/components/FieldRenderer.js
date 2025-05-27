@@ -34,7 +34,7 @@ function renderCompanyChip(value, field, record, config) {
     
     if (companyData) {
       const companyName = companyData[field.relation.labelField] || companyData.title || companyData.name || 'Unknown Company';
-      const chipColor = companyData.chip_color || '#1976d2'; // Default to blue if no color
+      const chipColor = companyData.chip_color || '#1d1d1e'; // Default to blue if no color
       const textColor = getContrastColor(chipColor);
       
       console.log('[Company Chip]', { companyName, chipColor, companyData });
@@ -51,15 +51,10 @@ function renderCompanyChip(value, field, record, config) {
               fontSize: '0.75rem'
             },
             '&:hover': {
-              backgroundColor: chipColor,
+              backgroundColor: '#1d1d1e',
               color: '#ffffff', // Always use white text on hover
-              opacity: 0.8, // Slightly fade the background on hover
             },
-            '&.MuiChip-clickable:hover': {
-              backgroundColor: chipColor,
-              color: '#ffffff',
-              opacity: 0.8,
-            }
+            
           }}
           clickable={field.relation?.linkTo ? true : false}
           onClick={field.relation?.linkTo ? () => {

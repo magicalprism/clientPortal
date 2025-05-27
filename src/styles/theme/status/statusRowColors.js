@@ -2,11 +2,11 @@
 
 export const STATUS_ROW_COLORS = {
   // Task statuses
-  'not started': '#fef3c7',    // 🟡 Light yellow
-  'todo': '#dbeafe',           // 🔵 Light blue
-  'complete': '#d1fae5',       // 🟢 Light green
-  'unavailable': '#f3e8ff',    // 🟣 Light purple
-  'meeting': '#fed7d7',        // 🔴 Light pink/red
+  'not started': 'white',    // ⚪ white
+  'todo': '#dfe4ff',           // 🔵 Light blue
+  'complete': '#f3eeff',       // 🟢 Light green
+  'unavailable': '#f6edf0',    // 🟣 Light purple
+  'meeting': '#fef9c3',        // 🟡 Light pink/red
   'archived': '#f3f4f6',       // ⚪ Light gray
   
   // Default fallbacks
@@ -22,11 +22,28 @@ export function getStatusRowColor(status) {
   return STATUS_ROW_COLORS[normalizedStatus] || STATUS_ROW_COLORS.default;
 }
 
-// Helper function to get text color that contrasts well with the background
+// Smart function to automatically determine text color based on background luminance
 export function getStatusRowTextColor(backgroundColor) {
-  // Most of our light backgrounds work well with dark text
-  // You can expand this logic if you add darker backgrounds
-  const darkBackgrounds = ['#333333', '#000000', '#1a1a1a'];
+  if (!backgroundColor || backgroundColor === 'transparent') return '#000000';
   
-  return darkBackgrounds.includes(backgroundColor) ? '#ffffff' : '#000000';
+  // Remove # if present
+  const color = backgroundColor.replace('#', '');
+  
+  // Handle 3-digit hex codes by expanding them
+  const hex = color.length === 3 
+    ? color.split('').map(c => c + c).join('')
+    : color;
+  
+  // Convert hex to RGB
+  const r = parseInt(hex.substr(0, 2), 16);
+  const g = parseInt(hex.substr(2, 2), 16);
+  const b = parseInt(hex.substr(4, 2), 16);
+  
+  // Calculate relative luminance using the standard formula
+  // This gives us a value between 0 (black) and 1 (white)
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  
+  // If luminance is less than 0.5, it's a dark background, use white text
+  // If luminance is 0.5 or higher, it's a light background, use black text
+  return luminance < 0.5 ? '#ffffff' : '#000000';
 }
