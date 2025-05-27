@@ -28,65 +28,28 @@ export const element = {
     { 
       name: 'title', 
       label: 'Title', 
-      group: 'Details', 
-      clickable: true, 
+      group: 'Page Info', 
       tab: 'Overview', 
+      clickable: true, 
       showInTable: true,
     },
-
-
-
-     {
-      name: 'company_id',
-      label: 'Company',
+  {
+      name: 'status',
+      label: 'Stage',
       group: 'Details',
       tab: 'Overview', 
-      type: 'relationship',
+      type: 'select',
       showInTable: true,
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
-      }
+      
+      options:  [
+        { label: 'Planning', value: 'plan' },
+        { label: 'Copywriting', value: 'copy' },
+        { label: 'Development', value: 'dev' },
+        { label: 'Edits', value: 'edits' },
+        { label: 'Done', value: 'complete' },
+        { label: 'Archived', value: 'default' },
+      ]
     },
-   
-{
-      name: 'tasks',
-      label: 'Tasks',
-      type: 'multiRelationship',
-      tab: 'Tasks',
-      component: 'CollectionView',
-      displayMode: 'table',
-      relation: {
-        table: 'task',
-        labelField: 'title',
-        linkTo: '/dashboard/task',
-        sourceKey: 'element_id',
-        
-      },
-       
-    },
-
-    {
-      name: 'tags',
-      label: 'Tags',
-      type: 'multiRelationship',
-      tab: 'Meta',
-      group: 'General',
-      displayMode: 'tags',
-      relation: {
-        table: 'category',
-        labelField: 'title',
-        linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
-        targetKey: 'category_id',
-        tableFields: ['title'],
-        filter: {}
-      }
-    },
-    
     { 
       name: 'url', 
       label: 'Live Url', 
@@ -102,6 +65,50 @@ export const element = {
       type: 'link', 
       tab: 'Overview', 
     },
+
+
+        {
+      name: 'type',
+      label: 'Element Type',
+      type: 'select',
+      group: 'Details',
+      tab: 'Overview', 
+      showInTable: true,
+      options: [
+        { label: 'Page', value: 'page' },
+        { label: 'Header', value: 'header' },
+        { label: 'Footer', value: 'footer' },
+        { label: 'Email', value: 'email' },
+        { label: 'Popup', value: 'popup' }
+      ]
+    },  
+
+    {
+      name: 'is_template',
+      label: 'Is this a template?',
+      type: 'boolean',
+      group: 'Details',
+      tab: 'Overview', 
+      options: [
+        { label: 'Custom', value: true },
+        { label: 'Template', value: false }
+      ]
+    }, 
+    
+    {
+      name: 'parent_id',
+      label: 'Parent Page',
+      group: 'Details',
+      tab: 'Overview', 
+      type: 'relationship',
+      relation: {
+        table: 'element', //usually current collection or pivot table
+        labelField: 'title',
+        linkTo: '/dashboard/element', // or dynamically derive from config
+      }
+    },
+      
+  
 
     {
       name: 'folder_id',
@@ -127,72 +134,107 @@ export const element = {
       group: 'Details',
       tab: 'Overview'
     },
-    
 
-
-    
-
-    
-    
-    //Meta
     {
-      name: 'status',
-      label: 'Stage',
-      group: 'General',
-      type: 'select',
-      tab: 'Meta',
-      showInTable: true,
-      
-      options:  [
-        { label: 'Planning', value: 'plan' },
-        { label: 'Copywriting', value: 'copy' },
-        { label: 'Development', value: 'dev' },
-        { label: 'Edits', value: 'edits' },
-        { label: 'Done', value: 'complete' },
-        { label: 'Archived', value: 'default' },
-      ]
+      name: 'content',
+      label: 'Strategy',
+      type: 'richText',
+      group: 'Details',
+      tab: 'Overview'
     },
-
-    {
-      name: 'type',
-      label: 'Page Type',
-      type: 'select',
-      group: 'General', 
-      tab: 'Meta',
-      showInTable: true,
-      options: [
-        { label: 'General Page', value: 'page' },
-        { label: 'Header', value: 'header' },
-        { label: 'Footer', value: 'footer' },
-        { label: 'Email', value: 'email' },
-        { label: 'Popup', value: 'popup' }
-      ]
-    },  
-
-    {
-      name: 'is_template',
-      label: 'Is this a template?',
-      type: 'boolean',
-      group: 'General', 
-      tab: 'Meta',
-      options: [
-        { label: 'Custom', value: true },
-        { label: 'Template', value: false }
-      ]
-    }, 
     
-    {
-      name: 'parent_id',
-      label: 'Parent Page',
-      group: 'General', 
-      tab: 'Meta',
+        {
+      name: 'resource_id',
+      label: 'Learn about this page or element',
+      group: 'Details',
+      tab: 'Overview',
       type: 'relationship',
+      showInTable: true,
       relation: {
-        table: 'element', //usually current collection or pivot table
+        table: 'resource',
         labelField: 'title',
-        linkTo: '/dashboard/element', // or dynamically derive from config
+        linkTo: '/dashboard/resource', // or dynamically derive from config
+      },
+      
+    },
+         {
+      name: 'company_id',
+      label: 'Company',
+      group: 'Project Info',
+      tab: 'Overview', 
+      type: 'relationship',
+      showInTable: true,
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        linkTo: '/dashboard/company', // or dynamically derive from config
+        filter: { is_client: 'true' }
       }
     },
+        {
+      name: 'project_id',
+      type: 'relationship',
+      label: 'Project',
+      group: 'Project Info',
+      tab: 'Overview', 
+      relation: {
+        table: 'project',
+        labelField: 'title',
+
+      }
+    },
+
+
+    {
+      name: 'tasks',
+      label: 'Tasks',
+      type: 'multiRelationship',
+      tab: 'Tasks',
+      component: 'CollectionView',
+      displayMode: 'table',
+      relation: {
+        table: 'task',
+        labelField: 'title',
+        linkTo: '/dashboard/task',
+        sourceKey: 'element_id',
+        
+      },
+       
+    },
+//Sections
+    {
+      name: 'sections',
+      label: 'Sections',
+      type: 'sections', // This will use the SectionsFieldRenderer
+      tab: 'Sections',
+      props: {
+        entityField: 'element_id', // This should match your entity name for the pivot table
+        pivotTable: 'element_section',
+      }
+    },
+
+
+
+    //Meta
+    {
+      name: 'tags',
+      label: 'Tags',
+      type: 'multiRelationship',
+      tab: 'Meta',
+      group: 'General',
+      displayMode: 'tags',
+      relation: {
+        table: 'category',
+        labelField: 'title',
+        linkTo: '/dashboard/category',
+        junctionTable: 'category_project',
+        sourceKey: 'project_id',
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+
     
     { 
       name: 'created_at', 
@@ -222,35 +264,7 @@ export const element = {
     },
 
    
-
-    {
-      name: 'resource_id',
-      label: 'Resource',
-      group: 'Help',
-      tab: 'Meta', 
-      type: 'relationship',
-      showInTable: true,
-      relation: {
-        table: 'resource',
-        labelField: 'title',
-        linkTo: '/dashboard/resource', // or dynamically derive from config
-      },
-      
-    },
-        {
-      name: 'project_id',
-      label: 'Project',
-      group: 'Help',
-      tab: 'Meta', 
-      type: 'relationship',
-      showInTable: true,
-      relation: {
-        table: 'project',
-        labelField: 'title',
-        linkTo: '/dashboard/project', // or dynamically derive from config
-      },
-      
-    },
+        
   
   ],
   filters: [
@@ -286,7 +300,7 @@ export const element = {
         labelField: 'title',
 
       }
-    }
+    },
     
   ]
 };

@@ -5,6 +5,7 @@ import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview'
 import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
+import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 
 /**
  * Custom field renderer for handling embedded components.
@@ -32,6 +33,15 @@ export const CustomFieldRenderer = ({
             entityId={record?.id}
           />
             );
+
+        case 'SectionThread':
+      return (
+        <SectionThread
+          pivotTable={field.props?.pivotTable}
+          entityField={field.props?.entityField}
+          entityId={record?.id}
+        />
+      );
 
     case 'ElementMap':
       return record?.id ? (

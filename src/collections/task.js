@@ -125,7 +125,15 @@ export const task = {
           label: 'Time Tracker',
           includeInViews: ['edit'], 
         },
-        
+      {
+      name: 'ref_link',
+      label: 'Reference Link (email)',
+      type: 'link',
+      group: 'Task', 
+      tab: 'Details',
+      fullWidth: true,
+
+    },      
   
     {
       name: 'content',
@@ -238,9 +246,10 @@ export const task = {
         labelField: 'title',
         linkTo: '/dashboard/contact',
         junctionTable: 'contact_project',
-        sourceKey: 'project_id',
+        sourceKey: 'task_id',
         targetKey: 'contact_id',
-        filterFrom: 'contact'
+        filterFrom: 'contact',
+        filter: { company_id: '{{record.company_id}}' },
 
       }
     },

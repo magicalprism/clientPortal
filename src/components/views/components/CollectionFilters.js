@@ -49,6 +49,7 @@ function FilterPopoverContent({ filter, value, setValue }) {
         onChange={(e) => setValue(e.target.value)}
         displayEmpty
         size="small"
+     
       >
         <MenuItem value="">All</MenuItem>
         {options.map((opt) => (
@@ -169,7 +170,9 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
 
 
   return (
-    <div>
+    <div 
+      
+    >
       {tabFilter && (
         <>
           <Tabs
@@ -186,7 +189,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
         </>
       )}
 
-      <Stack direction="row" spacing={2} sx={{ px: 3, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
+      <Stack direction="row" spacing={2} sx={{ px: 0, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
         {otherFilters.map((filter) => {
   const value = filters[filter.name] || '';

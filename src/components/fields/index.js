@@ -13,6 +13,7 @@ import CustomFieldRenderer from '@/components/fields/custom/CustomFieldRenderer'
 import GalleryRelationshipFieldRenderer from '@/components/fields/media/GalleryRelationshipFieldRenderer';
 import TimezoneFieldRenderer from '@/components/fields/dateTime/TimezoneFieldRenderer';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
+import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 
 const CommentsFieldRenderer = ({ field, record }) => {
   return (
@@ -23,6 +24,15 @@ const CommentsFieldRenderer = ({ field, record }) => {
   );
 };
 
+const SectionsFieldRenderer = ({ field, record }) => {
+  return (
+    <SectionThread
+      pivotTable={field.props?.pivotTable}
+      entityField={field.props?.entityField}
+      entityId={record?.id}
+    />
+  );
+};
 
 const RENDERERS = {
   select: SelectFieldRenderer,
@@ -41,6 +51,7 @@ const RENDERERS = {
   galleryRelationship: GalleryRelationshipFieldRenderer,
   timezone: TimezoneFieldRenderer,
   comments: CommentsFieldRenderer, 
+  sections: SectionsFieldRenderer,
 };
 
 export const getRendererForField = (type) => {

@@ -135,8 +135,14 @@ useEffect(() => {
 
 
 const containerSx = {
-  default: { p: 9 },
-  details: { p: 0, boxShadow: 'none', backgroundColor: 'transparent' },
+  default: { 
+              p: 9, 
+            },
+  details: { 
+              p: 0, 
+              boxShadow: 'none', 
+              backgroundColor: 'transparent' 
+            },
 }[variant] || {};
 
   return (

@@ -39,6 +39,7 @@ export const CollectionLayout = ({
   return (
     <Box 
     sx={{
+      paddingLeft: 0,
     }}
     >
       <Box
@@ -47,7 +48,7 @@ export const CollectionLayout = ({
           justifyContent: 'space-between',
           alignItems: 'center',
           px: 0,
-
+          
           mb: 2,
           flexWrap: 'wrap',
         }}
@@ -59,6 +60,7 @@ export const CollectionLayout = ({
             flexWrap: 'wrap',
             gap: 2,
             flexGrow: 1,
+            paddingLeft: 0,
           }}
         >
           {config.views && Object.keys(config.views).length > 1 && (
@@ -67,6 +69,9 @@ export const CollectionLayout = ({
               onChange={onViewChange}
               views={config.views}
               noLabel
+              sx={{
+              paddingLeft: 0,
+              }}
             />
           )}
 
