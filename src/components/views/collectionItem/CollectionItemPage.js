@@ -149,13 +149,52 @@ useEffect(() => {
 
 
   // FIXED: Add handleSave function
-  const handleSave = () => {
-    console.log('Saving record...');
-    saveRecord(); // Use the saveRecord function from useCollectionSave
+const handleSave = async () => {
+  console.log('Saving record...');
+  const result = await saveRecord();
+  if (config?.name === 'element') {
+  console.log('[Debug] Element localRecord:', JSON.stringify(localRecord, null, 2));
+  console.log('[Debug] Element company_id:', localRecord?.company_id);
+  console.log('[Debug] Element project_id:', localRecord?.project_id);}
+  
+  if (result && (localRecord?.create_folder === true || formData?.create_folder === true)) {
     
-    // After successful save, reset dirty flags
-    setIsDirty(false);
-  };
+    
+    try {
+      const response = await fetch('/api/google-drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: config?.name,
+          payload: localRecord
+        })
+      });
+      
+      // ADD THIS DEBUG LOGGING:
+      console.log('[Debug] Response status:', response.status);
+      console.log('[Debug] Response headers:', response.headers);
+      
+      const responseText = await response.text(); // Get as text first
+      console.log('[Debug] Raw response:', responseText);
+      
+      // Try to parse as JSON
+      let responseData;
+      try {
+        responseData = JSON.parse(responseText);
+        console.log('[Debug] Parsed JSON:', responseData);
+      } catch (parseError) {
+        console.error('[Debug] JSON parse failed:', parseError);
+        console.log('[Debug] Response was probably HTML error page');
+        return;
+      }
+      
+    } catch (error) {
+      console.error('[Google Drive] Error:', error);
+    }
+  }
+  
+  setIsDirty(false);
+};
 
   /**
    * Handles field value changes in the collection item page

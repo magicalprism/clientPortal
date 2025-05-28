@@ -2,6 +2,7 @@ export const company = {
     name: 'company',
     label: 'Companies',
     singularLabel: 'Company',
+    table: 'company',
     editPathPrefix: '/dashboard/company',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',
@@ -32,6 +33,13 @@ export const company = {
         openMode: 'full',  
         showInTable: true,
         description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+      },
+            { 
+        name: 'create_folder', 
+        label: 'Create Folder?', 
+        group: 'Details',
+        tab: 'Overview', 
+        type: "boolean",
       },
       {
       name: 'thumbnail_id',

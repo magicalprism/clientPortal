@@ -2,6 +2,7 @@ export const project = {
   name: 'project',
   label: 'Projects',
   singularLabel: 'Project',
+  table: 'project',
   editPathPrefix: '/dashboard/project',
   showTimelineTab: true,
   showEditButton: true, // ✅ just a UI toggle
@@ -192,26 +193,24 @@ export const project = {
         linkTo: '/dashboard/server'
       }
     },
-  {
-  name: 'deliverables',
-  label: 'Files',
-  type: 'galleryRelationship',
-  database: false,
-  tab: 'Files',
-  group: 'Files',
-  showAll: false,
-  relation: {
-    table: 'media',
-    labelField: 'title',
-    junctionTable: 'media_project',
-    sourceKey: 'project_id',
-    targetKey: 'media_id',
-    foreignKey: 'project_id',
-    filter: {
-      project_id: '{{record.id}}'
-    }
-  },
-},
+                { 
+        name: 'create_folder', 
+        label: 'Create Project Folder?', 
+        group: 'Details',
+        tab: 'Overview', 
+        type: "boolean",
+      },
+    {
+      name: 'project_folder',
+      label: 'Project Folder',
+      type: 'media',
+      relation: {
+        table: 'media',
+        labelField: 'title',
+        linkTo: 'url', // or dynamically derive from config
+      },
+      tab: 'Files',
+    },
 {
   name: 'media_items',
   label: 'All Media',
@@ -297,8 +296,8 @@ export const project = {
     {
       name: 'parent_id',
       label: 'Parent Project',
-      group: 'Project Info',
-      tab: 'Overview', 
+      group: 'General',
+      tab: 'Meta', 
       type: 'relationship',
       relation: {
         table: 'project',

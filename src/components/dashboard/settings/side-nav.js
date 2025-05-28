@@ -13,6 +13,9 @@ import { LockKey as LockKeyIcon } from "@phosphor-icons/react/dist/ssr/LockKey";
 import { PlugsConnected as PlugsConnectedIcon } from "@phosphor-icons/react/dist/ssr/PlugsConnected";
 import { UserCircle as UserCircleIcon } from "@phosphor-icons/react/dist/ssr/UserCircle";
 import { UsersThree as UsersThreeIcon } from "@phosphor-icons/react/dist/ssr/UsersThree";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/browser";
+import { getCurrentContactId } from "@/lib/utils/getCurrentContactId";
 
 import { paths } from "@/paths";
 import { isNavItemActive } from "@/lib/is-nav-item-active";
@@ -56,6 +59,27 @@ const icons = {
 
 export function SideNav() {
 	const pathname = usePathname();
+	const supabase = createClient();
+	const [contact, setContact] = useState(null);
+
+	useEffect(() => {
+  const fetchContact = async () => {
+    const contactId = await getCurrentContactId();
+    if (!contactId) return;
+
+    const { data, error } = await supabase
+      .from("contact")
+      .select("first_name, last_name, email, media:thumbnail_id(url)")
+      .eq("id", contactId)
+      .single();
+
+    if (!error) {
+      setContact(data);
+    }
+  };
+
+  fetchContact();
+}, []);
 
 	return (
 		<div>
@@ -88,13 +112,17 @@ export function SideNav() {
 					))}
 				</Stack>
 				<Stack direction="row" spacing={2} sx={{ alignItems: "center" }}>
-					<Avatar src="/assets/avatar.png">AV</Avatar>
-					<div>
-						<Typography variant="subtitle1">Sofia Rivers</Typography>
-						<Typography color="text.secondary" variant="caption">
-							sofia@devias.io
+					<Avatar src={contact?.media?.url || "/assets/avatar.png"}>
+						{contact?.first_name?.[0] || "?"}
+						</Avatar>
+						<div>
+						<Typography variant="subtitle1">
+							{contact ? `${contact.first_name} ${contact.last_name}` : "Loading..."}
 						</Typography>
-					</div>
+						<Typography color="text.secondary" variant="caption">
+							{contact?.email || ""}
+						</Typography>
+						</div>
 				</Stack>
 			</Stack>
 		</div>

@@ -3,43 +3,30 @@
 import * as React from "react";
 import RouterLink from "next/link";
 import { usePathname } from "next/navigation";
-import Avatar from "@mui/material/Avatar";
-import Badge from "@mui/material/Badge";
 import Box from "@mui/material/Box";
-import Chip from "@mui/material/Chip";
-import Divider from "@mui/material/Divider";
-import IconButton from "@mui/material/IconButton";
 import Stack from "@mui/material/Stack";
-import { useColorScheme } from "@mui/material/styles";
-import Tooltip from "@mui/material/Tooltip";
-import Typography from "@mui/material/Typography";
-import { ArrowSquareOut as ArrowSquareOutIcon } from "@phosphor-icons/react/dist/ssr/ArrowSquareOut";
-import { Bell as BellIcon } from "@phosphor-icons/react/dist/ssr/Bell";
-import { CaretDown as CaretDownIcon } from "@phosphor-icons/react/dist/ssr/CaretDown";
-import { CaretRight as CaretRightIcon } from "@phosphor-icons/react/dist/ssr/CaretRight";
+import IconButton from "@mui/material/IconButton";
+import Divider from "@mui/material/Divider";
+
 import { List as ListIcon } from "@phosphor-icons/react/dist/ssr/List";
-import { MagnifyingGlass as MagnifyingGlassIcon } from "@phosphor-icons/react/dist/ssr/MagnifyingGlass";
-import { Users as UsersIcon } from "@phosphor-icons/react/dist/ssr/Users";
-import { useTranslation } from "react-i18next";
 
 import { paths } from "@/paths";
+import { useColorScheme } from "@mui/material/styles";
+import { Logo } from "@/components/core/logo";
+import { WorkspacesSwitch } from "@/components/dashboard/layout/workspaces-switch";
+import { MobileNav } from "@/components/dashboard/layout/mobile-nav";
+
+import { navColorStyles } from "./styles";
 import { isNavItemActive } from "@/lib/is-nav-item-active";
-import { useDialog } from "@/hooks/use-dialog";
-import { usePopover } from "@/hooks/use-popover";
 import { Dropdown } from "@/components/core/dropdown/dropdown";
 import { DropdownPopover } from "@/components/core/dropdown/dropdown-popover";
 import { DropdownTrigger } from "@/components/core/dropdown/dropdown-trigger";
-import { Logo } from "@/components/core/logo";
-import { SearchDialog } from "@/components/dashboard/layout/search-dialog";
-
-import { ContactsPopover } from "../contacts-popover";
-import { languageFlags, LanguagePopover } from "../language-popover";
-import { MobileNav } from "../mobile-nav";
 import { icons } from "../nav-icons";
-import { NotificationsPopover } from "../notifications-popover";
-import { UserPopover } from "../user-popover";
-import { WorkspacesSwitch } from "../workspaces-switch";
-import { navColorStyles } from "./styles";
+
+import SearchButton from "@/components/dashboard/layout/components/SearchButton";
+import NotificationsButton from "@/components/dashboard/layout/components/NotificationsButton";
+import ContactsButton from "@/components/dashboard/layout/components/ContactsButton";
+import UserButton from "@/components/dashboard/layout/components/UserButton";
 
 const logoColors = {
 	dark: { blend_in: "light", discrete: "light", evident: "light" },
@@ -48,16 +35,14 @@ const logoColors = {
 
 export function MainNav({ color = "evident", items = [] }) {
 	const pathname = usePathname();
-
 	const [openNav, setOpenNav] = React.useState(false);
-
 	const { colorScheme = "light" } = useColorScheme();
 
 	const styles = navColorStyles[colorScheme][color];
 	const logoColor = logoColors[colorScheme][color];
 
 	return (
-		<React.Fragment>
+		<>
 			<Box
 				component="header"
 				sx={{
@@ -81,16 +66,20 @@ export function MainNav({ color = "evident", items = [] }) {
 					}}
 				>
 					<Stack direction="row" spacing={2} sx={{ alignItems: "center", flex: "1 1 auto" }}>
-						<IconButton
-							onClick={() => {
-								setOpenNav(true);
-							}}
-							sx={{ display: { md: "none" } }}
-						>
+						<IconButton onClick={() => setOpenNav(true)} sx={{ display: { md: "none" } }}>
 							<ListIcon color="var(--NavItem-icon-color)" />
 						</IconButton>
-						<Box component={RouterLink} href={paths.home} sx={{ display: { xs: "none", md: "inline-block" }, width: "100%", alignItems: "center", jusitifyContent: "center" }}>
-							<Logo color={logoColor} height={50} width={200} sx={{justifyContent: "center"}} />
+						<Box
+							component={RouterLink}
+							href={paths.home}
+							sx={{
+								display: { xs: "none", md: "inline-block" },
+								width: "100%",
+								alignItems: "center",
+								justifyContent: "center",
+							}}
+						>
+							<Logo color={logoColor} height={50} width={200} />
 						</Box>
 						<Box sx={{ display: { xs: "none", md: "block" } }}>
 							<WorkspacesSwitch />
@@ -109,10 +98,10 @@ export function MainNav({ color = "evident", items = [] }) {
 							orientation="vertical"
 							sx={{ borderColor: "var(--MainNav-divider)", display: { xs: "none", md: "block" } }}
 						/>
-						<LanguageSwitch />
 						<UserButton />
 					</Stack>
 				</Box>
+
 				<Box
 					component="nav"
 					sx={{
@@ -125,163 +114,30 @@ export function MainNav({ color = "evident", items = [] }) {
 					{renderNavGroups({ items, pathname })}
 				</Box>
 			</Box>
-			<MobileNav
-				items={items}
-				onClose={() => {
-					setOpenNav(false);
-				}}
-				open={openNav}
-			/>
-		</React.Fragment>
-	);
-}
 
-function SearchButton() {
-	const dialog = useDialog();
-
-	return (
-		<React.Fragment>
-			<Tooltip title="Search">
-				<IconButton onClick={dialog.handleOpen} sx={{ display: { xs: "none", md: "inline-flex" } }}>
-					<MagnifyingGlassIcon color="var(--NavItem-icon-color)" />
-				</IconButton>
-			</Tooltip>
-			<SearchDialog onClose={dialog.handleClose} open={dialog.open} />
-		</React.Fragment>
-	);
-}
-
-function NotificationsButton() {
-	const popover = usePopover();
-
-	return (
-		<React.Fragment>
-			<Tooltip title="Notifications">
-				<Badge
-					color="error"
-					sx={{ "& .MuiBadge-dot": { borderRadius: "50%", height: "10px", right: "6px", top: "6px", width: "10px" } }}
-					variant="dot"
-				>
-					<IconButton onClick={popover.handleOpen} ref={popover.anchorRef}>
-						<BellIcon color="var(--NavItem-icon-color)" />
-					</IconButton>
-				</Badge>
-			</Tooltip>
-			<NotificationsPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />
-		</React.Fragment>
-	);
-}
-
-function ContactsButton() {
-	const popover = usePopover();
-
-	return (
-		<React.Fragment>
-			<Tooltip title="Contacts">
-				<IconButton onClick={popover.handleOpen} ref={popover.anchorRef}>
-					<UsersIcon color="var(--NavItem-icon-color)" />
-				</IconButton>
-			</Tooltip>
-			<ContactsPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />
-		</React.Fragment>
-	);
-}
-
-function LanguageSwitch() {
-	const { i18n } = useTranslation();
-	const popover = usePopover();
-	const language = i18n.language || "en";
-	const flag = languageFlags[language];
-
-	return (
-		<React.Fragment>
-			<Tooltip title="Language">
-				<IconButton
-					onClick={popover.handleOpen}
-					ref={popover.anchorRef}
-					sx={{ display: { xs: "none", md: "inline-flex" } }}
-				>
-					<Box sx={{ height: "24px", width: "24px" }}>
-						<Box alt={language} component="img" src={flag} sx={{ height: "auto", width: "100%" }} />
-					</Box>
-				</IconButton>
-			</Tooltip>
-			<LanguagePopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />
-		</React.Fragment>
-	);
-}
-
-const user = {
-	id: "USR-000",
-	name: "Sofia Rivers",
-	avatar: "/assets/avatar.png",
-	email: "sofia@devias.io",
-};
-
-function UserButton() {
-	const popover = usePopover();
-
-	return (
-		<React.Fragment>
-			<Box
-				component="button"
-				onClick={popover.handleOpen}
-				ref={popover.anchorRef}
-				sx={{ border: "none", background: "transparent", cursor: "pointer", p: 0 }}
-			>
-				<Badge
-					anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-					color="success"
-					sx={{
-						"& .MuiBadge-dot": {
-							border: "2px solid var(--MainNav-background)",
-							borderRadius: "50%",
-							bottom: "6px",
-							height: "12px",
-							right: "6px",
-							width: "12px",
-						},
-					}}
-					variant="dot"
-				>
-					<Avatar src={user.avatar} />
-				</Badge>
-			</Box>
-			<UserPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />
-		</React.Fragment>
+			<MobileNav items={items} open={openNav} onClose={() => setOpenNav(false)} />
+		</>
 	);
 }
 
 function renderNavGroups({ items = [], pathname }) {
-	const children = items.reduce((acc, curr) => {
-		acc.push(
-			<Box component="li" key={curr.key} sx={{ flex: "0 0 auto" }}>
-				{renderNavItems({ pathname, items: curr.items })}
-			</Box>
-		);
-
-		return acc;
-	}, []);
-
 	return (
 		<Stack component="ul" direction="row" spacing={2} sx={{ listStyle: "none", m: 0, p: "8px 12px" }}>
-			{children}
+			{items.map((group) => (
+				<Box component="li" key={group.key} sx={{ flex: "0 0 auto" }}>
+					{renderNavItems({ pathname, items: group.items })}
+				</Box>
+			))}
 		</Stack>
 	);
 }
 
 function renderNavItems({ items = [], pathname }) {
-	const children = items.reduce((acc, curr) => {
-		const { key, ...item } = curr;
-
-		acc.push(<NavItem key={key} pathname={pathname} {...item} />);
-
-		return acc;
-	}, []);
-
 	return (
 		<Stack component="ul" direction="row" spacing={2} sx={{ listStyle: "none", m: 0, p: 0 }}>
-			{children}
+			{items.map(({ key, ...item }) => (
+				<NavItem key={key} pathname={pathname} {...item} />
+			))}
 		</Stack>
 	);
 }
@@ -291,85 +147,86 @@ function NavItem({ disabled, external, items, href, icon, label, matcher, pathna
 	const Icon = icon ? icons[icon] : null;
 	const isBranch = Boolean(items);
 
+	const baseStyles = {
+		alignItems: "center",
+		borderRadius: 1,
+		color: "var(--NavItem-color)",
+		cursor: "pointer",
+		display: "flex",
+		gap: 1,
+		p: "6px 16px",
+		textDecoration: "none",
+		whiteSpace: "nowrap",
+	};
+
+	const dynamicStyles = {
+		...(disabled && {
+			bgcolor: "var(--NavItem-disabled-background)",
+			color: "var(--NavItem-disabled-color)",
+			cursor: "not-allowed",
+		}),
+		...(active && {
+			bgcolor: "var(--NavItem-active-background)",
+			color: "var(--NavItem-active-color)",
+		}),
+		"&:hover": !disabled && !active
+			? {
+					bgcolor: "var(--NavItem-hover-background)",
+					color: "var(--NavItem-hover-color)",
+				}
+			: {},
+	};
+
 	const element = (
-		<Box component="li" sx={{ userSelect: "none" }}>
+		<Box
+			component="li"
+			sx={{ userSelect: "none" }}
+		>
 			<Box
-				{...(isBranch
-					? { role: "button" }
-					: {
-							...(href
-								? {
-										component: external ? "a" : RouterLink,
-										href,
-										target: external ? "_blank" : undefined,
-										rel: external ? "noreferrer" : undefined,
-									}
-								: { role: "button" }),
-						})}
-				sx={{
-					alignItems: "center",
-					borderRadius: 1,
-					color: "var(--NavItem-color)",
-					cursor: "pointer",
-					display: "flex",
-					flex: "0 0 auto",
-					gap: 1,
-					p: "6px 16px",
-					textDecoration: "none",
-					whiteSpace: "nowrap",
-					...(disabled && {
-						bgcolor: "var(--NavItem-disabled-background)",
-						color: "var(--NavItem-disabled-color)",
-						cursor: "not-allowed",
-					}),
-					...(active && { bgcolor: "var(--NavItem-active-background)", color: "var(--NavItem-active-color)" }),
-					"&:hover": {
-						...(!disabled &&
-							!active && { bgcolor: "var(--NavItem-hover-background)", color: "var(--NavItem-hover-color)" }),
-					},
-				}}
+				{...(href
+					? {
+							component: external ? "a" : RouterLink,
+							href,
+							target: external ? "_blank" : undefined,
+							rel: external ? "noreferrer" : undefined,
+					  }
+					: { role: "button" })}
+				sx={{ ...baseStyles, ...dynamicStyles }}
 				tabIndex={0}
 			>
-				{Icon ? (
-					<Box sx={{ alignItems: "center", display: "flex", justifyContent: "center", flex: "0 0 auto" }}>
+				{Icon && (
+					<Box sx={{ display: "flex", justifyContent: "center" }}>
 						<Icon
 							fill={active ? "var(--NavItem-icon-active-color)" : "var(--NavItem-icon-color)"}
-							fontSize="var(--icon-fontSize-md)"
-							weight={active ? "fill" : undefined}
+							fontSize="var(--icon-fontSize-md)" weight={active ? "fill" : undefined}
 						/>
 					</Box>
-				) : null}
+				)}
 				<Box sx={{ flex: "1 1 auto" }}>
-					<Typography
-						component="span"
-						sx={{ color: "inherit", fontSize: "0.875rem", fontWeight: 500, lineHeight: "28px" }}
-					>
+					<Typography component="span" sx={{ fontSize: "0.875rem", fontWeight: 500 }}>
 						{title}
 					</Typography>
 				</Box>
-				{label ? <Chip color="primary" label={label} size="small" /> : null}
-				{external ? (
-					<Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto" }}>
-						<ArrowSquareOutIcon color="var(--NavItem-icon-color)" fontSize="var(--icon-fontSize-sm)" />
+				{label && <Chip color="primary" label={label} size="small" />}
+				{external && (
+					<Box sx={{ display: "flex" }}>
+						<ArrowSquareOutIcon fontSize="var(--icon-fontSize-sm)" />
 					</Box>
-				) : null}
-				{isBranch ? (
-					<Box sx={{ alignItems: "center", display: "flex", flex: "0 0 auto" }}>
+				)}
+				{isBranch && (
+					<Box sx={{ display: "flex" }}>
 						<CaretDownIcon fontSize="var(--icon-fontSize-sm)" />
 					</Box>
-				) : null}
+				)}
 			</Box>
 		</Box>
 	);
 
-	if (items) {
+	if (isBranch) {
 		return (
 			<Dropdown>
 				<DropdownTrigger>{element}</DropdownTrigger>
-				<DropdownPopover
-					PaperProps={{ sx: { minWidth: "200px", p: 1 } }}
-					anchorOrigin={{ horizontal: "left", vertical: "bottom" }}
-				>
+				<DropdownPopover PaperProps={{ sx: { minWidth: "200px", p: 1 } }}>
 					{renderDropdownItems({ pathname, items })}
 				</DropdownPopover>
 			</Dropdown>
@@ -380,17 +237,11 @@ function NavItem({ disabled, external, items, href, icon, label, matcher, pathna
 }
 
 function renderDropdownItems({ items = [], pathname }) {
-	const children = items.reduce((acc, curr) => {
-		const { key, ...item } = curr;
-
-		acc.push(<DropdownItem key={key} pathname={pathname} {...item} />);
-
-		return acc;
-	}, []);
-
 	return (
 		<Stack component="ul" spacing={1} sx={{ listStyle: "none", m: 0, p: 0 }}>
-			{children}
+			{items.map(({ key, ...item }) => (
+				<DropdownItem key={key} pathname={pathname} {...item} />
+			))}
 		</Stack>
 	);
 }
@@ -399,74 +250,57 @@ function DropdownItem({ disabled, external, items, href, matcher, pathname, titl
 	const active = isNavItemActive({ disabled, external, href, matcher, pathname });
 	const isBranch = Boolean(items);
 
-	const element = (
-		<Box component="li" sx={{ userSelect: "none" }}>
+	const baseStyles = {
+		alignItems: "center",
+		borderRadius: 1,
+		color: "var(--NavItem-color)",
+		cursor: "pointer",
+		display: "flex",
+		p: "6px 16px",
+		whiteSpace: "nowrap",
+	};
+
+	const dynamicStyles = {
+		...(disabled && {
+			bgcolor: "var(--mui-palette-action-disabledBackground)",
+			color: "var(--mui-action-disabled)",
+			cursor: "not-allowed",
+		}),
+		...(active && {
+			bgcolor: "var(--mui-palette-action-selected)",
+			color: "var(--mui-palette-action-active)",
+		}),
+		"&:hover": !disabled && !active
+			? {
+					bgcolor: "var(--mui-palette-action-hover)",
+					color: "var(--mui-palette-action-color)",
+				}
+			: {},
+	};
+
+	return (
+		<Box component="li">
 			<Box
-				{...(isBranch
-					? { role: "button" }
-					: {
-							...(href
-								? {
-										component: external ? "a" : RouterLink,
-										href,
-										target: external ? "_blank" : undefined,
-										rel: external ? "noreferrer" : undefined,
-									}
-								: { role: "button" }),
-						})}
-				sx={{
-					alignItems: "center",
-					borderRadius: 1,
-					color: "var(--NavItem-color)",
-					cursor: "pointer",
-					display: "flex",
-					flex: "0 0 auto",
-					p: "6px 16px",
-					textDecoration: "none",
-					whiteSpace: "nowrap",
-					...(disabled && {
-						bgcolor: "var(--mui-palette-action-disabledBackground)",
-						color: "var(--mui-action-disabled)",
-						cursor: "not-allowed",
-					}),
-					...(active && { bgcolor: "var(--mui-palette-action-selected)", color: "var(--mui-palette-action-active)" }),
-					"&:hover": {
-						...(!disabled &&
-							!active && { bgcolor: "var(--mui-palette-action-hover)", color: "var(--mui-palette-action-color)" }),
-					},
-				}}
+				{...(href
+					? {
+							component: external ? "a" : RouterLink,
+							href,
+							target: external ? "_blank" : undefined,
+							rel: external ? "noreferrer" : undefined,
+					  }
+					: { role: "button" })}
+				sx={{ ...baseStyles, ...dynamicStyles }}
 				tabIndex={0}
 			>
-				<Box sx={{ flex: "1 1 auto" }}>
-					<Typography
-						component="span"
-						sx={{ color: "inherit", fontSize: "0.875rem", fontWeight: 500, lineHeight: "28px" }}
-					>
-						{title}
-					</Typography>
-				</Box>
-				{isBranch ? (
+				<Typography component="span" sx={{ fontSize: "0.875rem", fontWeight: 500 }}>
+					{title}
+				</Typography>
+				{isBranch && (
 					<Box sx={{ flex: "0 0 auto" }}>
 						<CaretRightIcon fontSize="var(--icon-fontSize-sm)" />
 					</Box>
-				) : null}
+				)}
 			</Box>
 		</Box>
 	);
-
-	if (items) {
-		return (
-			<Dropdown>
-				<DropdownTrigger>{element}</DropdownTrigger>
-				<DropdownPopover
-					PaperProps={{ sx: { minWidth: "200px", p: 1 } }}
-					anchorOrigin={{ horizontal: "right", vertical: "top" }}
-				>
-					{renderDropdownItems({ pathname, items })}
-				</DropdownPopover>
-			</Dropdown>
-		);
-	}
-
-	return element;
 }

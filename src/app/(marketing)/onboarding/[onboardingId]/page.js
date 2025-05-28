@@ -27,7 +27,7 @@ import { createClient } from "@/lib/supabase/browser";
 
 
 function uploadFile(file, folder = "uploads") {
-  const supabase = createClient();
+  import { createClient } from "@/lib/supabase/browser";
   const filename = `${folder}/${Date.now()}-${file.name}`;
   return supabase.storage.from("media").upload(filename, file).then(({ error }) => {
     if (error) throw error;

@@ -2,6 +2,7 @@ export const element = {
   name: 'element',
   label: 'Elements',
   editPathPrefix: '/dashboard/element',
+  table: 'element',
   showEditButton: true, // ✅ just a UI toggle
   singularLabel: 'Element',
   subtitleField: 'title',
@@ -108,7 +109,13 @@ export const element = {
       }
     },
       
-  
+  { 
+        name: 'create_folder', 
+        label: 'Create Content Folders?', 
+        group: 'Details',
+        tab: 'Overview', 
+        type: "boolean",
+      },
 
     {
       name: 'folder_id',

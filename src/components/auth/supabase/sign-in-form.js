@@ -19,6 +19,8 @@ import { Eye as EyeIcon } from "@phosphor-icons/react/dist/ssr/Eye";
 import { EyeSlash as EyeSlashIcon } from "@phosphor-icons/react/dist/ssr/EyeSlash";
 import { Controller, useForm } from "react-hook-form";
 import { z as zod } from "zod";
+import { logLoginEvent } from "@/lib/utils/logLoginEvent";
+
 
 import { paths } from "@/paths";
 import { createClient as createSupabaseClient } from "@/lib/supabase/browser";
@@ -91,6 +93,19 @@ export function SignInForm() {
 		}
 	
 		console.log("✅ Sign-in success:", data);
+
+		try {
+		const ipRes = await fetch("https://api.ipify.org?format=json");
+		const ipData = await ipRes.json();
+
+		await logLoginEvent({
+			type: "email_login",
+			ip: ipData.ip,
+			userAgent: window.navigator.userAgent,
+		});
+	} catch (logErr) {
+		console.warn("⚠️ Failed to log login event:", logErr);
+	}
 	
 		// 👇 Instead of just refreshing, redirect the user
 		router.push(paths.dashboard.overview);
