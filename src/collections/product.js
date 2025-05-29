@@ -96,7 +96,7 @@
         linkTo: '/dashboard/feature',
         junctionTable: 'feature_product',
         sourceKey: 'product_id',
-        targetKey: 'features_id',
+        targetKey: 'feature_id',
         tableFields: ['title'],
         filter: {
 

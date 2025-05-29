@@ -38,6 +38,20 @@
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
+         { 
+      name: 'start_date', 
+      label: 'Start Date', 
+      group: 'Primary', 
+      tab: 'Details',
+      type:'date',
+    },
+             { 
+      name: 'due_date', 
+      label: 'Due Date', 
+      group: 'Primary', 
+      tab: 'Details',
+      type:'date',
+    },
      {
       name: 'products',
       label: 'Products',
@@ -52,7 +66,8 @@
         junctionTable: 'contract_product',
         sourceKey: 'contract_id',
         targetKey: 'poduct_id',
-        tableFields: ['title'],
+        foreignKey: 'product_id', 
+        fields: ['title', 'price', 'description'],
         filter: {}
       }
     },

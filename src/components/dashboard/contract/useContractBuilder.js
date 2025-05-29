@@ -48,7 +48,7 @@ export const useContractBuilder = () => {
     }
   };
 
-  // Compile contract content
+  // Compile contract content with template replacement
   const compiledContent = useMemo(() => {
     if (!contractParts.length) return '';
     
@@ -63,6 +63,107 @@ export const useContractBuilder = () => {
       `)
       .join('\n');
   }, [contractParts]);
+
+  // New function to compile content with template variables
+  const compileContentWithData = (contractData, relatedData = {}) => {
+    if (!contractParts.length) return '';
+    
+    const sortedParts = [...contractParts].sort((a, b) => a.order_index - b.order_index);
+    
+    return sortedParts
+      .map(part => {
+        let processedContent = part.content;
+        
+        // FIRST: Handle {{#each array}} loops to avoid conflicts with simple replacements
+        processedContent = processEachBlocks(processedContent, relatedData);
+        
+        // THEN: Replace simple field variables like {{projected_length}}, {{platform}}
+        // But skip if we're inside an {{#each}} block that hasn't been processed yet
+        Object.keys(contractData).forEach(fieldName => {
+          const value = contractData[fieldName];
+          if (value !== null && value !== undefined) {
+            const regex = new RegExp(`{{${fieldName}}}`, 'g');
+            processedContent = processedContent.replace(regex, String(value));
+          }
+        });
+        
+        return `
+          <div class="contract-section" style="margin-bottom: 2rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">${part.title}</h3>
+            <div class="section-content" style="color: #374151; line-height: 1.6;">${processedContent}</div>
+          </div>
+        `;
+      })
+      .join('\n');
+  };
+
+  // Process {{#each array}} blocks
+  const processEachBlocks = (content, relatedData) => {
+    // Handle selectedMilestones
+    if (relatedData.selectedMilestones && Array.isArray(relatedData.selectedMilestones)) {
+      const milestonesRegex = /{{#each selectedMilestones}}([\s\S]*?){{\/each}}/g;
+      content = content.replace(milestonesRegex, (match, template) => {
+        return relatedData.selectedMilestones
+          .map(milestone => {
+            let itemContent = template;
+            // Use specific field references to avoid conflicts
+            itemContent = itemContent.replace(/{{title}}/g, milestone.title || '');
+            itemContent = itemContent.replace(/{{description}}/g, milestone.description || '');
+            return itemContent;
+          })
+          .join('');
+      });
+    }
+    
+    // Handle products with deliverables and pricing
+    if (relatedData.products && Array.isArray(relatedData.products)) {
+      const productsRegex = /{{#each products}}([\s\S]*?){{\/each}}/g;
+      content = content.replace(productsRegex, (match, template) => {
+        // Generate the products HTML
+        let productsHtml = relatedData.products
+          .map(product => {
+            let itemContent = template;
+            // Replace product fields (but NOT price in individual items)
+            itemContent = itemContent.replace(/{{title}}/g, product.title || product.name || '');
+            itemContent = itemContent.replace(/{{description}}/g, product.description || '');
+            // Remove individual price references - don't replace {{price}} here
+            
+            // Handle deliverables list
+            if (product.deliverables && Array.isArray(product.deliverables)) {
+              const deliverablesList = product.deliverables
+                .map(deliverable => `<li>${deliverable.title || deliverable.name || deliverable}</li>`)
+                .join('');
+              itemContent = itemContent.replace(/{{deliverables}}/g, 
+                deliverablesList ? `<ul>${deliverablesList}</ul>` : '');
+            } else {
+              itemContent = itemContent.replace(/{{deliverables}}/g, '');
+            }
+            
+            // Remove any remaining {{price}} references in individual items
+            itemContent = itemContent.replace(/{{price}}/g, '');
+            
+            return itemContent;
+          })
+          .join('');
+        
+        // Calculate total price of all products
+        const totalPrice = relatedData.products
+          .reduce((sum, product) => sum + (parseFloat(product.price) || 0), 0);
+        
+        // Add total price section AFTER all products
+        productsHtml += `
+          <div style="margin-top: 2rem; padding: 1rem; background-color: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px;">
+            <h4 style="margin: 0 0 0.5rem 0; font-weight: 600; color: #0c4a6e;">Total Project Cost</h4>
+            <p style="margin: 0; font-size: 1.5rem; font-weight: bold; color: #0ea5e9;">${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+          </div>
+        `;
+        
+        return productsHtml;
+      });
+    }
+    
+    return content;
+  };
 
   // Handle drag end
   const handleDragEnd = (event) => {
@@ -240,6 +341,7 @@ export const useContractBuilder = () => {
     handleAddExistingPart,
     handleAddCustomPart,
     handleRemovePart,
-    saveContract
+    saveContract,
+    compileContentWithData
   };
 };
