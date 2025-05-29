@@ -1,9 +1,9 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  table:'sample',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const product = {
+  name: 'product',
+  label: 'Products',
+  table:'product',
+  singularLabel: 'Product',
+  editPathPrefix: '/dashboard/product',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -16,18 +16,7 @@
         label: 'Page View', 
         component: 'PageView' 
       },
-      kanban: {
-         label: 'Kanban View', 
-         component: 'KanbanView' 
-        },
-        checklist: {
-          label: 'Checklist View',
-          component: 'ChecklistView'
-        },
-        calendar: {
-          label: 'Calendar',
-          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
-        },
+
         
   },
       //Quickview
@@ -35,19 +24,84 @@
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
-        subtitleField: 'status',
+        subtitleField: 'type',
       }, 
 
   fields: [   
      { 
       name: 'title', 
-      label: 'Sample Name', 
+      label: 'Product Name', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
       openMode: 'modal',  
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+    },
+    {
+      name: 'type',
+      type: 'select',
+      group: 'Primary', 
+      tab: 'Details',
+      label: 'Type',
+      options: [
+        { value: 'website', label: 'Website' },
+        { value: 'maintenance', label: 'Maintenance Plans' },
+        { value: 'app', label: 'App' },
+      ]
+    },
+    { 
+      name: 'price', 
+      label: 'Price', 
+      group: 'Primary', 
+      tab: 'Details',
+    },
+        { 
+      name: 'description', 
+      label: 'Description', 
+      group: 'Primary', 
+      tab: 'Details',
+      type: 'richText',
+    },
+          {
+      name: 'pages',
+      label: 'Pages',
+      type: 'multiRelationship',
+      group: 'Primary', 
+      tab: 'Details',
+      displayMode: 'tags',
+      relation: {
+        table: 'deliverable',
+        labelField: 'title',
+        linkTo: '/dashboard/deliverable',
+        junctionTable: 'deliverable_product',
+        sourceKey: 'product_id',
+        targetKey: 'deliverable_id',
+        tableFields: ['title'],
+        filter: {
+
+        }
+      }
+    },
+     {
+      name: 'features',
+      label: 'Features',
+      type: 'multiRelationship',
+      group: 'Primary', 
+      tab: 'Details',
+      displayMode: 'tags',
+      relation: {
+        table: 'feature',
+        labelField: 'title',
+        linkTo: '/dashboard/feature',
+        junctionTable: 'feature_product',
+        sourceKey: 'product_id',
+        targetKey: 'features_id',
+        tableFields: ['title'],
+        filter: {
+
+        }
+      }
     },
      {
       name: 'status',
@@ -70,39 +124,13 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'product', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/product', // or dynamically derive from config
       }
     },
 
-     {
-      name: 'company_id',
-      label: 'Company',
-      group: 'Details',
-      tab: 'Overview', 
-      type: 'relationship',
-      showInTable: true,
-  
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
-      }
-    },
-     {
-      name: 'project_id',
-      type: 'relationship',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
-      relation: {
-        table: 'project',
-        labelField: 'title',
 
-      }
-    },
     
     { 
       name: 'created_at', 
@@ -142,8 +170,8 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_sample',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_product',
+        sourceKey: 'product_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
@@ -152,26 +180,16 @@
 ],
   filters: [
     {
-      name: 'status',
+      name: 'type',
       type: 'select',
       label: 'Status',
-      defaultValue: 'todo',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'in_progress', label: 'In Progress' },
+        { value: 'website', label: 'Website' },
+        { value: 'maintenance', label: 'Maintenance Plans' },
+        { value: 'app', label: 'App' },
       ]
     },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc'
-    }
+
   ]
 };
 

@@ -29,7 +29,7 @@
   fields: [   
      { 
       name: 'title', 
-      label: 'Task Name', 
+      label: 'Comment Title', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 

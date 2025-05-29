@@ -1,9 +1,9 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  table:'sample',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const contractpart = {
+  name: 'contractpart',
+  label: 'Contract Parts',
+  table:'contractpart',
+  singularLabel: 'Contractpart',
+  editPathPrefix: '/dashboard/contractpart',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -41,7 +41,7 @@
   fields: [   
      { 
       name: 'title', 
-      label: 'Sample Name', 
+      label: 'Contract Part Title', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
@@ -70,39 +70,12 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'contractpart', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/contractpart', // or dynamically derive from config
       }
     },
 
-     {
-      name: 'company_id',
-      label: 'Company',
-      group: 'Details',
-      tab: 'Overview', 
-      type: 'relationship',
-      showInTable: true,
-  
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
-      }
-    },
-     {
-      name: 'project_id',
-      type: 'relationship',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
-      relation: {
-        table: 'project',
-        labelField: 'title',
-
-      }
-    },
     
     { 
       name: 'created_at', 
@@ -142,8 +115,8 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_sample',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_contractpart',
+        sourceKey: 'contractpart_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
@@ -155,23 +128,14 @@
       name: 'status',
       type: 'select',
       label: 'Status',
-      defaultValue: 'todo',
       options: [
         { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
         { value: 'in_progress', label: 'In Progress' },
+        { value: 'complete', label: 'Complete' },
+        { value: 'archived', label: 'Archived' },
       ]
     },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc'
-    }
+   
   ]
 };
 

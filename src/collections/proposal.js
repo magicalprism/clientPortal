@@ -1,9 +1,9 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  table:'sample',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const proposal = {
+  name: 'proposal',
+  label: 'Proposals',
+  table:'proposal',
+  singularLabel: 'Proposal',
+  editPathPrefix: '/dashboard/proposal',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -16,18 +16,7 @@
         label: 'Page View', 
         component: 'PageView' 
       },
-      kanban: {
-         label: 'Kanban View', 
-         component: 'KanbanView' 
-        },
-        checklist: {
-          label: 'Checklist View',
-          component: 'ChecklistView'
-        },
-        calendar: {
-          label: 'Calendar',
-          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
-        },
+
         
   },
       //Quickview
@@ -41,7 +30,7 @@
   fields: [   
      { 
       name: 'title', 
-      label: 'Sample Name', 
+      label: 'Proposal Name', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
@@ -49,18 +38,19 @@
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
+
      {
       name: 'status',
       type: 'select',
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-
+      defaultValue: 'draft',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'archived', label: 'Archived' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'approved', label: 'Approved' },
+        { value: 'sent', label: 'Sent' },
+        { value: 'archive', label: 'Archived' },
       ]
     },
     {
@@ -70,9 +60,9 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'proposal', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/proposal', // or dynamically derive from config
       }
     },
 
@@ -91,18 +81,27 @@
         filter: { is_client: 'true' }
       }
     },
-     {
-      name: 'project_id',
-      type: 'relationship',
-      label: 'Project',
-      group: 'Details',
-      tab: 'Overview', 
+
+      {
+      name: 'projects',
+      label: 'Projects',
+      type: 'multiRelationship',
+      tab: 'Meta',
+      group: 'General',
+      displayMode: 'tags',
       relation: {
         table: 'project',
         labelField: 'title',
-
+        linkTo: '/dashboard/project',
+        junctionTable: 'proposal_project',
+        sourceKey: 'project_id',
+        targetKey: 'category_id',
+        tableFields: ['title'],
+        filter: {}
       }
     },
+
+    
     
     { 
       name: 'created_at', 
@@ -142,8 +141,8 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_sample',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_proposal',
+        sourceKey: 'proposal_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
@@ -151,27 +150,18 @@
     },
 ],
   filters: [
-    {
-      name: 'status',
-      type: 'select',
-      label: 'Status',
-      defaultValue: 'todo',
-      options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'in_progress', label: 'In Progress' },
-      ]
+     {
+      name: 'company_id',
+      type: 'relationship',
+      label: 'Company',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        filter: { is_client: true } // optional: filters options
+      }
     },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc'
-    }
+   
+  
   ]
 };
 

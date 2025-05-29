@@ -8,5 +8,9 @@ export { checklist } from './checklist';
 export { contact } from './contact';
 export { resource } from './resource';
 export { comment } from './comment';
+export { contract } from './contract';
+export { contractpart } from './contractpart';
+export { product } from './product';
+export { deliverable } from './deliverable';
 
 

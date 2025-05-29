@@ -38,6 +38,32 @@ export const dashboardConfig = {
 						{ key: "project:create", title: "Create Project", href: paths.dashboard.project.create },
 						{ key: "element", title: "All Pages", href: paths.dashboard.element.list },
 						{ key: "brand", title: "All Brands", href: paths.dashboard.brand.list },
+						{ 
+							key: "contract", 
+							title: "Contracts", 
+							items: 
+							[
+								{ key: "contract", title: "All Contracts", href: paths.dashboard.contract.list },
+								{ key: "contractpart", title: "All Contract Parts", href: paths.dashboard.contractpart.list },
+							]
+						},
+						
+
+					],
+				},
+				{
+					key: "ecommerce",
+					title: "Shop",
+					icon: "cart",
+					items: [
+						{ 
+							key: "product", 
+							title: "Products", 
+							items: [
+								{ key: "product", title: "Products", href: paths.dashboard.product.list },
+								{ key: "deliverable", title: "Deliverables", href: paths.dashboard.deliverable.list },
+						] },
+						
 
 					],
 				},

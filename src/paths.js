@@ -81,6 +81,22 @@ export const paths = {
 			create: "/dashboard/contact/create",
 			details: (contactId) => `/dashboard/contact/${contactId}`,
 		},
+		contract: {
+			list: "/dashboard/contract",
+			create: "/dashboard/contract/create",
+			details: (contractId) => `/dashboard/contract/${contractId}`,
+		},
+		contractpart: {
+			list: "/dashboard/contractpart",
+			create: "/dashboard/contractpart/create",
+			details: (contractpartId) => `/dashboard/contractpart/${contractpartId}`,
+		},
+		deliverable: {
+			list: "/dashboard/deliverable",
+			create: "/dashboard/deliverable/create",
+			details: (deliverableId) => `/dashboard/deliverable/${deliverableId}`,
+		},
+
 		element: {
 			list: "/dashboard/element",
 			create: "/dashboard/element/create",
@@ -96,6 +112,11 @@ export const paths = {
 			list: "/dashboard/media",
 			create: "/dashboard/media/create",
 			details: (mediaId) => `/dashboard/media/${mediaId}`,
+		},
+		product: {
+			list: "/dashboard/product",
+			create: "/dashboard/product/create",
+			details: (productId) => `/dashboard/product/${productId}`,
 		},
 		project: {
 			list: "/dashboard/project",

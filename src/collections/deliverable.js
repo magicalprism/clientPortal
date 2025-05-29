@@ -1,9 +1,9 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  table:'sample',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const deliverable = {
+  name: 'deliverable',
+  label: 'Deliverables',
+  table:'deliverable',
+  singularLabel: 'Deliverable',
+  editPathPrefix: '/dashboard/deliverable',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -16,18 +16,7 @@
         label: 'Page View', 
         component: 'PageView' 
       },
-      kanban: {
-         label: 'Kanban View', 
-         component: 'KanbanView' 
-        },
-        checklist: {
-          label: 'Checklist View',
-          component: 'ChecklistView'
-        },
-        calendar: {
-          label: 'Calendar',
-          component: 'CalendarView', // Make sure this matches the export name of your dynamic calendar view
-        },
+
         
   },
       //Quickview
@@ -35,13 +24,13 @@
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
-        subtitleField: 'status',
+        subtitleField: 'type',
       }, 
 
   fields: [   
      { 
       name: 'title', 
-      label: 'Sample Name', 
+      label: 'Deliverable Name', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
@@ -49,20 +38,17 @@
       showInTable: true,
       description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
     },
-     {
-      name: 'status',
+      {
+      name: 'type',
       type: 'select',
-      label: 'Status',
-      group: 'Primary', 
-      tab: 'Meta', 
-
+      label: 'Type',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'archived', label: 'Archived' },
+        { value: 'page', label: 'Page' },
+        { value: 'feature', label: 'Feature' },
+        { value: 'strategy', label: 'Strategy' },
       ]
     },
+     
     {
       name: 'parent_id',
       label: 'Parent',
@@ -70,9 +56,9 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'deliverable', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/deliverable', // or dynamically derive from config
       }
     },
 
@@ -142,36 +128,26 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_sample',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_deliverable',
+        sourceKey: 'deliverable_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
       }
     },
 ],
-  filters: [
+     filters: [
     {
-      name: 'status',
+      name: 'type',
       type: 'select',
-      label: 'Status',
-      defaultValue: 'todo',
+      label: 'Type',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'in_progress', label: 'In Progress' },
+        { value: 'page', label: 'Page' },
+        { value: 'feature', label: 'Feature' },
+        { value: 'strategy', label: 'Strategy' },
       ]
     },
-    {
-      name: 'sort',
-      type: 'select',
-      label: 'Sort',
-      options: [
-        { value: 'due_date:asc', label: 'Due date (oldest first)' },
-        { value: 'due_date:desc', label: 'Due date (newest first)' },
-      ],
-      defaultValue: 'due_date:asc'
-    }
+
   ]
 };
 
