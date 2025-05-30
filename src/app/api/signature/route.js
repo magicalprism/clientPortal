@@ -1,129 +1,209 @@
-// /app/api/signature/route.js - Debug version
-import { createClient } from '@/lib/supabase/server';
-import { ESignatureService } from '@/lib/services/eSignatureService';
+// /app/api/signature/route.js - Debug version with better error handling
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
+  console.log('[Signature API] ======== NEW REQUEST ========');
+  console.log('[Signature API] Starting request processing...');
+  
   try {
-    const body = await request.json();
+    // Step 1: Parse request body
+    console.log('[Signature API] Step 1: Parsing request body...');
+    let body;
+    try {
+      body = await request.json();
+      console.log('[Signature API] Request body parsed successfully');
+    } catch (parseError) {
+      console.error('[Signature API] Failed to parse request body:', parseError);
+      return NextResponse.json({ 
+        error: 'Invalid JSON in request body',
+        details: parseError.message 
+      }, { status: 400 });
+    }
+
     const { contractId, platform = 'esignatures', signers = [] } = body;
+    console.log('[Signature API] Request data:', { 
+      contractId, 
+      platform, 
+      signersCount: signers.length 
+    });
     
-    console.log('[Signature API] POST request:', { contractId, platform, signers });
-    
+    // Step 2: Validate input
+    console.log('[Signature API] Step 2: Validating input...');
     if (!contractId) {
+      console.error('[Signature API] Missing contract ID');
       return NextResponse.json({ error: 'Contract ID is required' }, { status: 400 });
     }
 
     if (!signers || signers.length === 0) {
+      console.error('[Signature API] No signers provided');
       return NextResponse.json({ error: 'At least one signer is required' }, { status: 400 });
     }
 
-    // Validate signers
-    const invalidSigners = signers.filter(s => !s.name || !s.email);
-    if (invalidSigners.length > 0) {
-      return NextResponse.json({ error: 'All signers must have name and email' }, { status: 400 });
+    // Step 3: Check environment variables
+    console.log('[Signature API] Step 3: Checking environment variables...');
+    if (!process.env.ESIGNATURES_API_KEY) {
+      console.error('[Signature API] Missing ESIGNATURES_API_KEY');
+      return NextResponse.json({ 
+        error: 'E-signature service not configured properly',
+        details: 'Missing API key'
+      }, { status: 500 });
+    }
+    console.log('[Signature API] Environment variables OK');
+
+    // Step 4: Import Supabase
+    console.log('[Signature API] Step 4: Importing Supabase...');
+    let createClient;
+    try {
+      const supabaseModule = await import('@/lib/supabase/server');
+      createClient = supabaseModule.createClient;
+      console.log('[Signature API] Supabase imported successfully');
+    } catch (supabaseImportError) {
+      console.error('[Signature API] Failed to import Supabase:', supabaseImportError);
+      return NextResponse.json({ 
+        error: 'Failed to import Supabase client',
+        details: supabaseImportError.message 
+      }, { status: 500 });
     }
 
-    // DEBUG: Create and test Supabase client
-    const supabase = await createClient(); // ← ADD AWAIT HERE
-    console.log('[Debug] Supabase client created:', typeof supabase);
-    console.log('[Debug] Supabase from method:', typeof supabase.from);
-    
-    // Test the supabase client with a simple query
+    // Step 5: Create Supabase client
+    console.log('[Signature API] Step 5: Creating Supabase client...');
+    let supabase;
+    try {
+      supabase = await createClient();
+      console.log('[Signature API] Supabase client created');
+    } catch (supabaseCreateError) {
+      console.error('[Signature API] Failed to create Supabase client:', supabaseCreateError);
+      return NextResponse.json({ 
+        error: 'Failed to create Supabase client',
+        details: supabaseCreateError.message 
+      }, { status: 500 });
+    }
+
+    // Step 6: Test Supabase connection
+    console.log('[Signature API] Step 6: Testing Supabase connection...');
     try {
       const { data: testData, error: testError } = await supabase
         .from('contract')
         .select('id')
         .limit(1);
-      console.log('[Debug] Test query result:', { testData, testError });
+      
+      if (testError) {
+        console.error('[Signature API] Supabase test query failed:', testError);
+        return NextResponse.json({ 
+          error: 'Database connection failed',
+          details: testError.message 
+        }, { status: 500 });
+      }
+      console.log('[Signature API] Supabase connection test passed');
     } catch (testErr) {
-      console.error('[Debug] Test query failed:', testErr);
+      console.error('[Signature API] Supabase test exception:', testErr);
       return NextResponse.json({ 
-        error: 'Supabase client test failed',
+        error: 'Database connection test failed',
         details: testErr.message 
       }, { status: 500 });
     }
-    
-    // Fetch contract record
-    const { data: contract, error: contractError } = await supabase
-      .from('contract')
-      .select('*')
-      .eq('id', contractId)
-      .single();
 
-    if (contractError || !contract) {
-      console.error('[Signature API] Contract not found:', contractError);
-      return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
-    }
-
-    // Check if contract is already sent for signature
-    if (contract.signature_status === 'sent') {
+    // Step 7: Import ESignatureService
+    console.log('[Signature API] Step 7: Importing ESignatureService...');
+    let ESignatureService;
+    try {
+      const serviceModule = await import('@/lib/services/eSignatureService');
+      ESignatureService = serviceModule.ESignatureService;
+      console.log('[Signature API] ESignatureService imported successfully');
+      console.log('[Signature API] ESignatureService type:', typeof ESignatureService);
+    } catch (serviceImportError) {
+      console.error('[Signature API] Failed to import ESignatureService:', serviceImportError);
+      console.error('[Signature API] Import error stack:', serviceImportError.stack);
       return NextResponse.json({ 
-        error: 'Contract is already sent for signature',
-        status: contract.signature_status,
-        documentId: contract.signature_document_id
-      }, { status: 400 });
+        error: 'Failed to import signature service',
+        details: serviceImportError.message,
+        stack: serviceImportError.stack
+      }, { status: 500 });
     }
 
-    if (contract.signature_status === 'signed') {
+    // Step 8: Create service instance
+    console.log('[Signature API] Step 8: Creating ESignatureService instance...');
+    let signatureService;
+    try {
+      signatureService = new ESignatureService(platform, supabase);
+      console.log('[Signature API] ESignatureService instance created');
+      console.log('[Signature API] Service methods available:', Object.getOwnPropertyNames(Object.getPrototypeOf(signatureService)));
+    } catch (serviceCreateError) {
+      console.error('[Signature API] Failed to create service instance:', serviceCreateError);
       return NextResponse.json({ 
-        error: 'Contract is already signed',
-        status: contract.signature_status
-      }, { status: 400 });
+        error: 'Failed to create signature service instance',
+        details: serviceCreateError.message 
+      }, { status: 500 });
     }
 
-    // Get contract configuration
-    const config = {
-      fields: [
-        { name: 'title', type: 'text' },
-        { name: 'content', type: 'richText' },
-        { name: 'products', type: 'multiRelationship', relation: { table: 'product' } },
-        { name: 'selectedMilestones', type: 'multiRelationship', relation: { table: 'milestone' } },
-        { name: 'projected_length', type: 'text' },
-        { name: 'platform', type: 'text' },
-        { name: 'total_cost', type: 'number' },
-        { name: 'start_date', type: 'date' },
-        { name: 'due_date', type: 'date' }
-      ]
-    };
+    // Step 9: Fetch contract
+    console.log('[Signature API] Step 9: Fetching contract...');
+    let contract;
+    try {
+      const { data: contractData, error: contractError } = await supabase
+        .from('contract')
+        .select('*')
+        .eq('id', contractId)
+        .single();
 
-    // Store signer information in contract metadata
-    await supabase
-      .from('contract')
-      .update({
-        signature_metadata: {
-          signers: signers,
-          platform: platform,
-          sent_by: 'system',
-          sent_at: new Date().toISOString()
-        }
-      })
-      .eq('id', contractId);
+      if (contractError) {
+        console.error('[Signature API] Contract fetch error:', contractError);
+        return NextResponse.json({ 
+          error: 'Failed to fetch contract',
+          details: contractError.message 
+        }, { status: 500 });
+      }
 
-    // DEBUG: Test ESignatureService creation
-    console.log('[Debug] Creating ESignatureService...');
-    const signatureService = new ESignatureService(platform, supabase);
-    console.log('[Debug] ESignatureService created:', typeof signatureService);
-    
-    // For now, let's just return success without calling the service
-    // to isolate where the issue is
+      if (!contractData) {
+        console.error('[Signature API] Contract not found:', contractId);
+        return NextResponse.json({ error: 'Contract not found' }, { status: 404 });
+      }
+
+      contract = contractData;
+      console.log('[Signature API] Contract fetched successfully:', {
+        id: contract.id,
+        title: contract.title,
+        hasContent: !!contract.content
+      });
+    } catch (fetchError) {
+      console.error('[Signature API] Contract fetch exception:', fetchError);
+      return NextResponse.json({ 
+        error: 'Contract fetch failed',
+        details: fetchError.message 
+      }, { status: 500 });
+    }
+
+    // For now, just return success to test up to this point
+    console.log('[Signature API] All steps completed successfully!');
     return NextResponse.json({
       success: true,
-      message: 'Debug: Contract processing reached this point',
+      message: 'Debug: All validation steps passed',
       contractId: contract.id,
-      platform: platform
+      platform: platform,
+      stepsCompleted: [
+        'Request parsing',
+        'Input validation', 
+        'Environment check',
+        'Supabase import',
+        'Supabase client creation',
+        'Supabase connection test',
+        'Service import',
+        'Service instance creation',
+        'Contract fetch'
+      ]
     });
 
-    // COMMENTED OUT FOR DEBUG:
-    // const result = await signatureService.sendContract(contract, config, signers);
-    // return NextResponse.json(result);
-
   } catch (error) {
-    console.error('[Signature API] Error:', error);
+    console.error('[Signature API] ======== UNEXPECTED ERROR ========');
+    console.error('[Signature API] Error name:', error.name);
+    console.error('[Signature API] Error message:', error.message);
     console.error('[Signature API] Error stack:', error.stack);
+    console.error('[Signature API] Error cause:', error.cause);
+    
     return NextResponse.json({ 
-      error: 'Failed to process signature request',
+      error: 'Unexpected server error',
       details: error.message,
+      errorType: error.name,
       stack: error.stack
     }, { status: 500 });
   }
