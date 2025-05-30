@@ -1,20 +1,30 @@
-// /lib/services/eSignatureService.js - Complete version with all template processing
+// /lib/services/eSignatureService.js - Complete clean version
 import { fetchContractRelatedData } from '@/lib/utils/fetchContractRelatedData';
-import { createClient } from '@/lib/supabase/browser';
+import { createClient } from '@/lib/supabase/server';
 
 export class ESignatureService {
-  constructor(platform = 'esignatures') {
+  constructor(platform = 'esignatures', supabaseClient = null) {
     this.platform = platform;
-    this.supabase = createClient();
+    this.supabaseClient = supabaseClient;
+  }
+
+  // Helper method to get Supabase client
+  async getSupabase() {
+    if (this.supabaseClient) {
+      return this.supabaseClient;
+    }
+    return await createClient();
   }
 
   async sendContract(contractRecord, config, signers = []) {
     try {
+      const supabase = await this.getSupabase();
+      
       // Use your existing fetchContractRelatedData function
       const relatedData = await fetchContractRelatedData(contractRecord, config);
       
       // Get contract parts
-      const { data: contractPartsData } = await this.supabase
+      const { data: contractPartsData } = await supabase
         .from('contract_contractpart')
         .select(`
           order_index,
@@ -32,21 +42,21 @@ export class ESignatureService {
         order_index: cp.order_index
       })) || [];
 
-      // Generate HTML content using the same logic as your useContractBuilder
-      const htmlContent = this.generateHTMLContent(contractRecord, contractParts, relatedData);
+      // Prepare template variables
+      const templateVariables = this.prepareTemplateVariables(contractRecord, contractParts, relatedData);
       
       // Send to the configured platform
       const platformResult = await this.sendToPlatform({
         title: contractRecord.title,
-        content: htmlContent,
         contractId: contractRecord.id,
         signers: signers,
-        webhookUrl: `${process.env.NEXT_PUBLIC_SITE_URL}/api/signature/webhook`
+        templateVariables: templateVariables,
+        webhookUrl: `${process.env.NEXT_PUBLIC_SUPABASE_URL}/functions/v1/esignature-webhook`
       });
 
       if (platformResult.success) {
         // Update contract with signature info
-        await this.supabase
+        await supabase
           .from('contract')
           .update({
             signature_document_id: platformResult.documentId,
@@ -77,7 +87,9 @@ export class ESignatureService {
 
   async getStatus(contractId) {
     try {
-      const { data: contract, error } = await this.supabase
+      const supabase = await this.getSupabase();
+      
+      const { data: contract, error } = await supabase
         .from('contract')
         .select('signature_document_id, signature_platform, signature_status, signature_signed_at, signature_sent_at, signature_metadata')
         .eq('id', contractId)
@@ -104,10 +116,10 @@ export class ESignatureService {
           
           if (platformStatus === 'signed') {
             updateData.signature_signed_at = new Date().toISOString();
-            updateData.status = 'signed'; // Update main contract status too
+            updateData.status = 'signed';
           }
 
-          await this.supabase
+          await supabase
             .from('contract')
             .update(updateData)
             .eq('id', contractId);
@@ -132,55 +144,43 @@ export class ESignatureService {
     }
   }
 
-  generateHTMLContent(contractRecord, contractParts, relatedData) {
-    const sortedParts = contractParts.sort((a, b) => a.order_index - b.order_index);
+  // Prepare template variables for your existing eSignatures template
+  prepareTemplateVariables(contractRecord, contractParts, relatedData) {
+    const variables = {};
     
-    let contentSections = '';
-    
-    for (const part of sortedParts) {
-      let processedContent = part.content;
-      
-      // FIRST: Handle {{#each array}} loops to avoid conflicts with simple replacements
-      processedContent = this.processEachBlocks(processedContent, relatedData);
-      
-      // SECOND: Handle {{payments}} template
-      processedContent = this.processPaymentsTemplate(processedContent, relatedData);
-      
-      // THEN: Replace simple field variables like {{projected_length}}, {{platform}}
-      Object.keys(contractRecord).forEach(fieldName => {
-        const value = contractRecord[fieldName];
-        if (value !== null && value !== undefined) {
-          const regex = new RegExp(`{{${fieldName}}}`, 'g');
-          processedContent = processedContent.replace(regex, String(value));
-        }
-      });
-      
-      contentSections += `
-        <div class="contract-section">
-          <h3>${part.title}</h3>
-          <div>${processedContent}</div>
-        </div>
-      `;
-    }
+    // Basic contract fields
+    Object.keys(contractRecord).forEach(fieldName => {
+      const value = contractRecord[fieldName];
+      if (value !== null && value !== undefined) {
+        variables[fieldName] = String(value);
+      }
+    });
 
-    return `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="UTF-8">
-        <title>${contractRecord.title || 'Contract'}</title>
-        <style>${this.getContractCSS()}</style>
-      </head>
-      <body>
-        <h1>${contractRecord.title || 'Contract'}</h1>
-        ${contentSections}
-        ${this.getSignatureSection()}
-      </body>
-      </html>
-    `;
+    // Process the main contract content
+    let mainContent = contractRecord.content || '';
+    
+    // Process template variables in the content
+    mainContent = this.processEachBlocks(mainContent, relatedData);
+    mainContent = this.processPaymentsTemplate(mainContent, relatedData);
+    
+    // Replace basic contract variables
+    Object.keys(contractRecord).forEach(fieldName => {
+      const value = contractRecord[fieldName];
+      if (value !== null && value !== undefined) {
+        const regex = new RegExp(`{{${fieldName}}}`, 'g');
+        mainContent = mainContent.replace(regex, String(value));
+      }
+    });
+
+    // Set the content variable for your template
+    variables['content'] = mainContent;
+
+    console.log('[ESignatureService] Template variables prepared for existing template');
+    console.log('[ESignatureService] Content processed with initials placeholders');
+    return variables;
   }
 
-  // Process {{#each array}} blocks - exact copy from useContractBuilder
+  // Process {{#each array}} blocks
   processEachBlocks(content, relatedData) {
     // Handle selectedMilestones
     if (relatedData.selectedMilestones && Array.isArray(relatedData.selectedMilestones)) {
@@ -189,7 +189,6 @@ export class ESignatureService {
         return relatedData.selectedMilestones
           .map(milestone => {
             let itemContent = template;
-            // Use specific field references to avoid conflicts
             itemContent = itemContent.replace(/{{title}}/g, milestone.title || '');
             itemContent = itemContent.replace(/{{description}}/g, milestone.description || '');
             return itemContent;
@@ -198,73 +197,47 @@ export class ESignatureService {
       });
     }
     
-    // Handle products with deliverables and pricing
+    // Handle products
     if (relatedData.products && Array.isArray(relatedData.products)) {
       const productsRegex = /{{#each products}}([\s\S]*?){{\/each}}/g;
       content = content.replace(productsRegex, (match, template) => {
-        // Generate the products HTML
-        let productsHtml = relatedData.products
+        return relatedData.products
           .map(product => {
             let itemContent = template;
-            // Replace product fields (but NOT price in individual items)
             itemContent = itemContent.replace(/{{title}}/g, product.title || product.name || '');
             itemContent = itemContent.replace(/{{description}}/g, product.description || '');
-            // Remove individual price references - don't replace {{price}} here
             
-            // Handle deliverables list
             if (product.deliverables && Array.isArray(product.deliverables)) {
               const deliverablesList = product.deliverables
-                .map(deliverable => `<li>${deliverable.title || deliverable.name || deliverable}</li>`)
-                .join('');
-              itemContent = itemContent.replace(/{{deliverables}}/g, 
-                deliverablesList ? `<ul>${deliverablesList}</ul>` : '');
+                .map(deliverable => `- ${deliverable.title || deliverable.name || deliverable}`)
+                .join('\n');
+              itemContent = itemContent.replace(/{{deliverables}}/g, deliverablesList);
             } else {
               itemContent = itemContent.replace(/{{deliverables}}/g, '');
             }
             
-            // Remove any remaining {{price}} references in individual items
-            itemContent = itemContent.replace(/{{price}}/g, '');
-            
             return itemContent;
           })
-          .join('');
-        
-        // Calculate total price of all products
-        const totalPrice = relatedData.products
-          .reduce((sum, product) => sum + (parseFloat(product.price) || 0), 0);
-        
-        // Add total price section AFTER all products
-        productsHtml += `
-          <div class="project-total">
-            <h4>Total Project Cost</h4>
-            <p class="total-price">$${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-        `;
-        
-        return productsHtml;
+          .join('\n\n');
       });
     }
     
     return content;
   }
 
-  // Process {{payments}} template variable - exact copy from useContractBuilder
   processPaymentsTemplate(content, relatedData) {
-    // Handle {{payments}} template variable
     if (relatedData.payments && Array.isArray(relatedData.payments)) {
       const paymentsRegex = /{{payments}}/g;
       
       content = content.replace(paymentsRegex, () => {
         if (relatedData.payments.length === 0) {
-          return '<p><em>No payment schedule defined.</em></p>';
+          return 'No payment schedule defined.';
         }
 
-        // Calculate total
         const total = relatedData.payments.reduce((sum, payment) => 
           sum + (parseFloat(payment.amount) || 0), 0
         );
 
-        // Format currency
         const formatCurrency = (amount) => {
           return new Intl.NumberFormat('en-US', {
             style: 'currency',
@@ -272,68 +245,396 @@ export class ESignatureService {
           }).format(amount || 0);
         };
 
-        // Format date
         const formatDate = (dateString) => {
           if (!dateString) return '';
           return new Date(dateString).toLocaleDateString();
         };
 
-        // Generate table HTML
-        const tableRows = relatedData.payments.map(payment => {
+        let paymentText = 'Payment Schedule:\n';
+        relatedData.payments.forEach(payment => {
           const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
           const altDueDate = payment.alt_due_date || '';
-          
-          // Use either actual due date or alternative text
           const dueDateDisplay = dueDate || altDueDate || 'TBD';
           
-          return `
-            <tr>
-              <td>${payment.title}</td>
-              <td class="amount">${formatCurrency(payment.amount)}</td>
-              <td>${dueDateDisplay}</td>
-              <td>${altDueDate && dueDate ? altDueDate : '—'}</td>
-            </tr>
-          `;
-        }).join('');
-
-        return `
-          <table class="payments-table">
-            <thead>
-              <tr>
-                <th>Payment</th>
-                <th>Amount</th>
-                <th>Due Date</th>
-                <th>Alternative Due Date</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-              <tr class="total-row">
-                <td><strong>Total Project Cost</strong></td>
-                <td class="amount"><strong>${formatCurrency(total)}</strong></td>
-                <td></td>
-                <td></td>
-              </tr>
-            </tbody>
-          </table>
-        `;
+          paymentText += `- ${payment.title}: ${formatCurrency(payment.amount)} - Due: ${dueDateDisplay}\n`;
+        });
+        
+        paymentText += `\nTotal Project Cost: ${formatCurrency(total)}`;
+        
+        return paymentText;
       });
     }
     
     return content;
   }
 
-  async sendToPlatform({ title, content, contractId, signers, webhookUrl }) {
+  async sendToPlatform({ title, contractId, signers, templateVariables, webhookUrl }) {
     switch (this.platform) {
       case 'esignatures':
-        return this.sendToESignatures({ title, content, contractId, signers, webhookUrl });
+        return this.sendToESignatures({ title, contractId, signers, templateVariables, webhookUrl });
       case 'docusign':
-        return this.sendToDocuSign({ title, content, contractId, signers, webhookUrl });
+        return this.sendToDocuSign({ title, contractId, signers, templateVariables, webhookUrl });
       case 'hellosign':
-        return this.sendToHelloSign({ title, content, contractId, signers, webhookUrl });
+        return this.sendToHelloSign({ title, contractId, signers, templateVariables, webhookUrl });
       default:
         throw new Error(`Unsupported platform: ${this.platform}`);
     }
+  }
+
+  // Updated eSignatures.com API call with dynamic template creation
+  async sendToESignatures({ title, contractId, signers, templateVariables, webhookUrl }) {
+    try {
+      console.log('[eSignatures] Creating dynamic template with tables and initials');
+      
+      const content = templateVariables.content || '';
+      
+      // Create document elements by parsing HTML content and handling initials
+      const documentElements = this.parseContentWithInitials(title, content);
+      
+      console.log(`[eSignatures] Created ${documentElements.length} document elements`);
+
+      // Create temporary template
+      const templateResponse = await fetch(`https://esignatures.com/api/templates?token=${process.env.ESIGNATURES_API_KEY}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: "Contract Template", // Same title for all since we delete them
+          labels: ["Temporary"],
+          document_elements: documentElements
+        })
+      });
+
+      if (!templateResponse.ok) {
+        const errorText = await templateResponse.text();
+        throw new Error(`Template creation failed (${templateResponse.status}): ${errorText}`);
+      }
+
+      const templateData = await templateResponse.json();
+      const tempTemplateId = templateData.data[0].template_id;
+
+      console.log(`[eSignatures] Created temporary template: ${tempTemplateId}`);
+
+      try {
+        // Create contract using temporary template
+        const contractResponse = await fetch(`https://esignatures.com/api/contracts?token=${process.env.ESIGNATURES_API_KEY}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            template_id: tempTemplateId,
+            signers: signers.map((signer, index) => ({
+              name: signer.name,
+              email: signer.email,
+              order: index + 1
+            })),
+            webhook_url: webhookUrl,
+            metadata: {
+              contractId: contractId,
+              source: 'dynamic_template'
+            }
+          })
+        });
+
+        if (!contractResponse.ok) {
+          const errorText = await contractResponse.text();
+          throw new Error(`Contract creation failed (${contractResponse.status}): ${errorText}`);
+        }
+        
+        const contractData = await contractResponse.json();
+        console.log('[eSignatures] Contract created successfully');
+
+        // Delete temporary template
+        await this.deleteTemplate(tempTemplateId);
+        
+        return {
+          success: true,
+          documentId: contractData.contract_id || contractData.id,
+          signUrl: contractData.signing_url || contractData.sign_url,
+          metadata: { platformData: contractData }
+        };
+
+      } catch (contractError) {
+        // If contract creation fails, still try to delete the template
+        await this.deleteTemplate(tempTemplateId);
+        throw contractError;
+      }
+
+    } catch (error) {
+      console.error('[eSignatures] Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Delete temporary template
+  async deleteTemplate(templateId) {
+    try {
+      await fetch(`https://esignatures.com/api/templates/${templateId}?token=${process.env.ESIGNATURES_API_KEY}`, {
+        method: 'DELETE'
+      });
+      console.log(`[eSignatures] Deleted temporary template: ${templateId}`);
+    } catch (error) {
+      console.error(`[eSignatures] Failed to delete template ${templateId}:`, error);
+      // Don't throw - template cleanup failure shouldn't break the main flow
+    }
+  }
+
+  // Parse HTML content and create document elements with initial fields
+  parseContentWithInitials(title, content) {
+    const elements = [];
+    
+    // Add title
+    elements.push({
+      "type": "text_header_one",
+      "text": title
+    });
+
+    // Split content by {{initials}} placeholders
+    const contentChunks = content.split('{{initials}}');
+    let initialCounter = 1;
+
+    for (let i = 0; i < contentChunks.length; i++) {
+      const chunk = contentChunks[i].trim();
+      
+      if (chunk) {
+        // Parse this content chunk and add elements
+        const chunkElements = this.parseHTMLContent(chunk);
+        elements.push(...chunkElements);
+      }
+
+      // Add initial field after each chunk (except the last)
+      if (i < contentChunks.length - 1) {
+        elements.push(
+          {
+            "type": "text_normal",
+            "text": "Please initial below to acknowledge you have read and understood the above section:",
+            "text_styles": [
+              {
+                "offset": 0,
+                "length": 76,
+                "style": "bold"
+              }
+            ]
+          },
+          {
+            "type": "signer_field_text",
+            "text": `Required Initial #${initialCounter}`,
+            "signer_field_assigned_to": "first_signer",
+            "signer_field_required": "yes",
+            "signer_field_id": `initial_${initialCounter}`,
+            "signer_field_placeholder_text": "Your initials"
+          },
+          {
+            "type": "text_normal",
+            "text": " "
+          }
+        );
+        initialCounter++;
+      }
+    }
+
+    return elements;
+  }
+
+  // Parse HTML content and convert to eSignatures document elements
+  parseHTMLContent(htmlContent) {
+    const elements = [];
+    
+    // Remove outer div wrappers and extract the main content
+    let content = htmlContent;
+    
+    // Extract content from contract-section divs
+    const sectionRegex = /<div class="contract-section"[^>]*>([\s\S]*?)<\/div>\s*(?=<div class="contract-section"|$)/g;
+    let match;
+    
+    while ((match = sectionRegex.exec(content)) !== null) {
+      const sectionContent = match[1];
+      
+      // Extract section title (h3)
+      const titleMatch = sectionContent.match(/<h3[^>]*>(.*?)<\/h3>/);
+      if (titleMatch) {
+        elements.push({
+          "type": "text_header_two",
+          "text": this.stripHTML(titleMatch[1])
+        });
+      }
+      
+      // Extract section content div
+      const contentMatch = sectionContent.match(/<div class="section-content"[^>]*>([\s\S]*?)<\/div>/);
+      if (contentMatch) {
+        const sectionBody = contentMatch[1];
+        
+        // Check for tables first
+        const tableMatch = sectionBody.match(/<table[^>]*>([\s\S]*?)<\/table>/);
+        if (tableMatch) {
+          const tableElement = this.parseHTMLTable(tableMatch[0]);
+          if (tableElement) {
+            elements.push(tableElement);
+          }
+        } else {
+          // Parse other content (paragraphs, lists, etc.)
+          const contentElements = this.parseTextContent(sectionBody);
+          elements.push(...contentElements);
+        }
+      }
+    }
+    
+    // If no sections found, try to parse the content directly
+    if (elements.length === 0) {
+      const contentElements = this.parseTextContent(content);
+      elements.push(...contentElements);
+    }
+    
+    return elements;
+  }
+
+  // Parse HTML table and convert to eSignatures table format
+  parseHTMLTable(tableHTML) {
+    try {
+      // Extract table rows
+      const rowRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g;
+      const rows = [];
+      let match;
+      
+      while ((match = rowRegex.exec(tableHTML)) !== null) {
+        const rowContent = match[1];
+        const cells = [];
+        
+        // Extract cells (th or td)
+        const cellRegex = /<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/g;
+        let cellMatch;
+        
+        while ((cellMatch = cellRegex.exec(rowContent)) !== null) {
+          const cellContent = this.stripHTML(cellMatch[1]);
+          
+          // Check if this is a header row (has th tags)
+          const isHeader = rowContent.includes('<th');
+          const isRightAlign = cellMatch[0].includes('text-align: right') || cellMatch[0].includes('text-align:right');
+          
+          const cell = {
+            "text": cellContent
+          };
+          
+          if (isHeader) {
+            cell.styles = ["bold"];
+          }
+          
+          if (isRightAlign) {
+            cell.alignment = "right";
+          }
+          
+          cells.push(cell);
+        }
+        
+        if (cells.length > 0) {
+          rows.push(cells);
+        }
+      }
+      
+      if (rows.length > 0) {
+        return {
+          "type": "table",
+          "table_cells": rows
+        };
+      }
+    } catch (error) {
+      console.error('Error parsing table:', error);
+    }
+    
+    return null;
+  }
+
+  // Parse text content (paragraphs, lists, etc.)
+  parseTextContent(htmlContent) {
+    const elements = [];
+    
+    // Split by major HTML elements and process each
+    let content = htmlContent.trim();
+    
+    // Handle paragraphs
+    const paragraphRegex = /<p[^>]*>([\s\S]*?)<\/p>/g;
+    let lastIndex = 0;
+    let match;
+    
+    while ((match = paragraphRegex.exec(content)) !== null) {
+      // Add any content before this paragraph
+      const beforeContent = content.substring(lastIndex, match.index).trim();
+      if (beforeContent) {
+        elements.push({
+          "type": "text_normal",
+          "text": this.stripHTML(beforeContent)
+        });
+      }
+      
+      // Add the paragraph
+      const paragraphText = this.stripHTML(match[1]);
+      if (paragraphText) {
+        elements.push({
+          "type": "text_normal",
+          "text": paragraphText
+        });
+      }
+      
+      lastIndex = match.index + match[0].length;
+    }
+    
+    // Add any remaining content
+    const remainingContent = content.substring(lastIndex).trim();
+    if (remainingContent) {
+      // Handle lists
+      const listRegex = /<ul[^>]*>([\s\S]*?)<\/ul>/g;
+      const listMatch = listRegex.exec(remainingContent);
+      
+      if (listMatch) {
+        const listItems = this.parseList(listMatch[1]);
+        elements.push(...listItems);
+      } else {
+        const cleanText = this.stripHTML(remainingContent);
+        if (cleanText) {
+          elements.push({
+            "type": "text_normal",
+            "text": cleanText
+          });
+        }
+      }
+    }
+    
+    return elements;
+  }
+
+  // Parse HTML list and convert to eSignatures list items
+  parseList(listHTML) {
+    const elements = [];
+    const listItemRegex = /<li[^>]*>([\s\S]*?)<\/li>/g;
+    let match;
+    
+    while ((match = listItemRegex.exec(listHTML)) !== null) {
+      const itemText = this.stripHTML(match[1]);
+      if (itemText) {
+        elements.push({
+          "type": "unordered_list_item",
+          "text": itemText
+        });
+      }
+    }
+    
+    return elements;
+  }
+
+  // Strip HTML tags and decode entities
+  stripHTML(html) {
+    return html
+      .replace(/<[^>]*>/g, '') // Remove HTML tags
+      .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+      .replace(/&amp;/g, '&') // Replace &amp; with &
+      .replace(/&lt;/g, '<') // Replace &lt; with <
+      .replace(/&gt;/g, '>') // Replace &gt; with >
+      .replace(/&quot;/g, '"') // Replace &quot; with "
+      .replace(/&#39;/g, "'") // Replace &#39; with '
+      .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+      .trim();
   }
 
   async checkPlatformStatus(documentId, platform) {
@@ -349,53 +650,9 @@ export class ESignatureService {
     }
   }
 
-  // Platform-specific implementations
-  async sendToESignatures({ title, content, contractId, signers, webhookUrl }) {
-    try {
-      const response = await fetch('https://api.esignatures.com/documents', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${process.env.ESIGNATURES_API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title,
-          content,
-          metadata: { contractId },
-          webhook: { url: webhookUrl, events: ['document.signed', 'document.declined'] },
-          signers
-        })
-      });
-
-      if (!response.ok) throw new Error(`API error: ${response.statusText}`);
-      
-      const data = await response.json();
-      return {
-        success: true,
-        documentId: data.id,
-        signUrl: data.signUrl,
-        metadata: { platformData: data }
-      };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
-  }
-
-  async sendToDocuSign({ title, content, contractId, signers, webhookUrl }) {
-    // TODO: Implement DocuSign API integration
-    return { success: false, error: 'DocuSign integration not implemented yet' };
-  }
-
-  async sendToHelloSign({ title, content, contractId, signers, webhookUrl }) {
-    // TODO: Implement HelloSign/Dropbox Sign API integration
-    return { success: false, error: 'HelloSign integration not implemented yet' };
-  }
-
   async checkESignaturesStatus(documentId) {
     try {
-      const response = await fetch(`https://api.esignatures.com/documents/${documentId}`, {
-        headers: { 'Authorization': `Bearer ${process.env.ESIGNATURES_API_KEY}` }
-      });
+      const response = await fetch(`https://esignatures.com/api/contracts/${documentId}?token=${process.env.ESIGNATURES_API_KEY}`);
       
       if (!response.ok) return null;
       
@@ -403,13 +660,13 @@ export class ESignatureService {
       const statusMap = {
         'pending': 'sent',
         'completed': 'signed',
-        'declined': 'declined',
+        'cancelled': 'declined',
         'expired': 'expired'
       };
       
       return statusMap[data.status] || data.status;
     } catch (error) {
-      console.error('Status check error:', error);
+      console.error('eSignatures status check error:', error);
       return null;
     }
   }
@@ -424,125 +681,12 @@ export class ESignatureService {
     return null;
   }
 
-  getContractCSS() {
-    return `
-      body { 
-        font-family: Arial, sans-serif; 
-        max-width: 800px; 
-        margin: 0 auto; 
-        padding: 20px; 
-        line-height: 1.6; 
-        color: #333; 
-      }
-      h1 { 
-        font-size: 2rem; 
-        text-align: center; 
-        border-bottom: 2px solid #0ea5e9; 
-        padding-bottom: 1rem; 
-        color: #1f2937; 
-      }
-      h3 { 
-        font-size: 1.25rem; 
-        font-weight: 600; 
-        color: #1f2937; 
-        margin-top: 2rem; 
-        margin-bottom: 1rem; 
-      }
-      .contract-section { 
-        margin-bottom: 2rem; 
-      }
-      .payments-table { 
-        border-collapse: collapse; 
-        margin: 2rem 0; 
-        width: 100%; 
-        border: 2px solid #d1d5db; 
-      }
-      .payments-table td, 
-      .payments-table th { 
-        border: 1px solid #e5e7eb; 
-        padding: 12px; 
-        text-align: left; 
-        vertical-align: top; 
-      }
-      .payments-table th { 
-        background-color: #f9fafb; 
-        font-weight: 600; 
-        border-bottom: 2px solid #e5e7eb; 
-      }
-      .payments-table .amount { 
-        text-align: right; 
-        font-weight: 600; 
-        color: #059669; 
-      }
-      .payments-table .total-row { 
-        background-color: #f0f9ff; 
-        border-top: 2px solid #0ea5e9; 
-      }
-      .payments-table .total-row .amount { 
-        color: #0ea5e9; 
-        font-size: 1.125rem; 
-      }
-      .project-total {
-        margin-top: 2rem;
-        padding: 1rem;
-        background-color: #f0f9ff;
-        border: 2px solid #0ea5e9;
-        border-radius: 8px;
-      }
-      .project-total h4 {
-        margin: 0 0 0.5rem 0;
-        font-weight: 600;
-        color: #0c4a6e;
-      }
-      .total-price {
-        margin: 0;
-        font-size: 1.5rem;
-        font-weight: bold;
-        color: #0ea5e9;
-      }
-      .signature-section { 
-        margin-top: 4rem; 
-        border-top: 2px solid #e5e7eb; 
-        padding-top: 2rem; 
-      }
-      .signature-block { 
-        display: inline-block; 
-        width: 300px; 
-        margin: 2rem 2rem 2rem 0; 
-        vertical-align: top; 
-      }
-      .signature-line { 
-        border-bottom: 1px solid #333; 
-        height: 50px; 
-        margin-bottom: 0.5rem; 
-      }
-      .signature-label { 
-        font-size: 0.9rem; 
-        color: #666; 
-      }
-    `;
+  // Placeholder methods for other platforms
+  async sendToDocuSign({ title, contractId, signers, templateVariables, webhookUrl }) {
+    return { success: false, error: 'DocuSign integration not implemented yet' };
   }
 
-  getSignatureSection() {
-    return `
-      <div class="signature-section">
-        <h3>Signatures</h3>
-        <p>By signing below, all parties agree to the terms and conditions outlined in this contract.</p>
-        <div class="signature-block">
-          <div class="signature-line"></div>
-          <div class="signature-label">Client Signature</div>
-          <br>
-          <div class="signature-line"></div>
-          <div class="signature-label">Date</div>
-        </div>
-        <div class="signature-block">
-          <div class="signature-line"></div>
-          <div class="signature-label">Company Representative</div>
-          <br>
-          <div class="signature-line"></div>
-          <div class="signature-label">Date</div>
-        </div>
-      </div>
-    `;
+  async sendToHelloSign({ title, contractId, signers, templateVariables, webhookUrl }) {
+    return { success: false, error: 'HelloSign integration not implemented yet' };
   }
 }
