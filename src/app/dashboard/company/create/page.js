@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import CreateForm from '@/components/CreateForm';
+import CreateForm from '@/components/create/CreateForm';
 import { company } from '@/collections/company';
 
 const CreateCompanyPage = () => {

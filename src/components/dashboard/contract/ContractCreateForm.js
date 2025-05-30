@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   Box,
   Container,
@@ -46,12 +46,17 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
   const [error, setError] = useState(null);
   
   // Initialize form data with default values
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState(() => ({
     title: '',
     status: 'draft',
+    products: [], // Initialize as empty array
+    selectedMilestones: [], // Initialize as empty array
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString()
-  });
+  }));
+
+    console.log('[ContractCreateForm] Render - formData:', formData);
+  console.log('[ContractCreateForm] Render - showPreview:', showPreview);
 
   const {
     contractParts,
@@ -66,6 +71,12 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
     compileContentWithData
   } = useContractBuilder();
 
+    // Add this debugging
+  console.log('[ContractCreateForm] useContractBuilder returned:', {
+    contractPartsLength: contractParts?.length,
+    partsLoading
+  });
+
   // DnD sensors
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -74,7 +85,9 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
   );
 
   // Fetch related data for template compilation
-  const fetchRelatedData = async () => {
+const fetchRelatedData = useCallback(async () => {
+    console.log('[fetchRelatedData] Called with formData:', formData);
+    
     const relatedData = {};
     
     try {
@@ -137,6 +150,10 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
         }
       }
       
+      // For new contracts being created, payments will be empty
+      relatedData.payments = [];
+      console.log('[Fetch Debug] New contract - no payments yet');
+      
       console.log('[Fetch Debug] Final related data:', relatedData);
       return relatedData;
       
@@ -144,10 +161,9 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
       console.error('[Fetch Debug] Error in fetchRelatedData:', error);
       return relatedData;
     }
-  };
-
+  }, [formData, config, supabase]);
   // Handle form field changes
-  const handleChange = (fieldName, value) => {
+ const handleChange = useCallback((fieldName, value) => {
     console.log(`[ContractCreateForm] Field ${fieldName} changed:`, value);
     
     const fieldDef = config?.fields?.find(f => f.name === fieldName);
@@ -172,25 +188,31 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
     } else {
       setFormData(prev => ({ ...prev, [fieldName]: value }));
     }
-  };
+  }, [config]); // Only recreate if config changes
+
+
+
 
   // Handle multiRelationship changes
-  const handleMultiRelationshipChange = (fieldName, value) => {
+    const handleMultiRelationshipChange = useCallback((fieldName, value) => {
     console.log(`[ContractCreateForm] MultiRelationship field ${fieldName} changed:`, value);
     
-    if (Array.isArray(value)) {
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: value.map(String).filter(Boolean)
-      }));
-    } else if (value && (value.ids || value.details)) {
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: (value.ids || []).map(String).filter(Boolean),
-        [`${fieldName}_details`]: value.details || []
-      }));
-    }
-  };
+    setFormData(prev => {
+      if (Array.isArray(value)) {
+        return {
+          ...prev,
+          [fieldName]: value.map(String).filter(Boolean)
+        };
+      } else if (value && (value.ids || value.details)) {
+        return {
+          ...prev,
+          [fieldName]: (value.ids || []).map(String).filter(Boolean),
+          [`${fieldName}_details`]: value.details || []
+        };
+      }
+      return prev;
+    });
+  }, []);
 
   // Handle save
   const handleSave = async () => {
@@ -372,12 +394,13 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
                           ) : (
                             <FieldRenderer
                               field={field}
-                              value={typeof formData[field.name] !== 'undefined' ? formData[field.name] : ''}
+                              value={formData[field.name] || (field.type === 'multiRelationship' ? [] : '')}
                               record={formData}
                               config={config}
                               mode="create"
                               editable
-                              onChange={(value) => handleChange(field.name, value)}
+                              onChange={handleChange}
+                              key={field.name} // Add key to prevent unnecessary re-renders
                             />
                           )}
                         </Box>

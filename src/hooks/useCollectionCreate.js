@@ -25,8 +25,72 @@ const sanitizeRecord = (input, config) => {
   );
 };
 
+// NEW: Function to save multiRelationship data
+const saveMultiRelationshipData = async (supabase, config, recordId, multiRelData) => {
+  console.log('[useCollectionCreate] Saving multiRelationship data:', { recordId, multiRelData });
+  
+  const multiRelFields = config?.fields?.filter(f => f.type === 'multiRelationship' && f.relation?.junctionTable) || [];
+  
+  for (const field of multiRelFields) {
+    const fieldData = multiRelData[field.name];
+    if (!fieldData || !Array.isArray(fieldData) || fieldData.length === 0) {
+      console.log(`[useCollectionCreate] Skipping ${field.name} - no data`);
+      continue;
+    }
 
+    const {
+      relation: {
+        junctionTable,
+        sourceKey,
+        targetKey
+      }
+    } = field;
 
+    if (!junctionTable || !sourceKey || !targetKey) {
+      console.warn(`[useCollectionCreate] Missing junction config for ${field.name}`);
+      continue;
+    }
+
+    try {
+      // Convert to strings and filter
+      const cleanIds = fieldData
+        .map(id => String(id).trim())
+        .filter(id => id && id !== 'undefined' && id !== 'null');
+
+      if (cleanIds.length === 0) {
+        console.log(`[useCollectionCreate] No valid IDs for ${field.name}`);
+        continue;
+      }
+
+      // Delete existing relationships
+      await supabase
+        .from(junctionTable)
+        .delete()
+        .eq(sourceKey, recordId);
+
+      // Insert new relationships
+      const insertData = cleanIds.map(targetId => ({
+        [sourceKey]: recordId,
+        [targetKey]: targetId
+      }));
+
+      console.log(`[useCollectionCreate] Inserting ${field.name}:`, insertData);
+
+      const { error } = await supabase
+        .from(junctionTable)
+        .insert(insertData);
+
+      if (error) {
+        console.error(`[useCollectionCreate] Error saving ${field.name}:`, error);
+      } else {
+        console.log(`[useCollectionCreate] Successfully saved ${cleanIds.length} relationships for ${field.name}`);
+      }
+
+    } catch (error) {
+      console.error(`[useCollectionCreate] Error processing ${field.name}:`, error);
+    }
+  }
+};
 
 export const useCollectionCreate = ({ config, initialRecord = {} }) => {
   const supabase = createClient();
@@ -40,6 +104,10 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [localRecord, setLocalRecord] = useState(cleanInitialRecord);
   const [isCreatingRecord, setIsCreatingRecord] = useState(false);
+  
+  // NEW: Store multiRelationship data separately during creation
+  const [pendingMultiRelData, setPendingMultiRelData] = useState({});
+  
   const hasCreatedRef = useRef(false);
 
   const modal = useMemo(() => searchParams.get('modal'), [searchParams]);
@@ -56,7 +124,6 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
     });
     return allUrlFields;
   };
-  
   
   // Extract only once
   const validFieldsRef = useRef(null);
@@ -88,7 +155,20 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
   
     const now = getPostgresTimestamp();
   
-    const sanitizedFields = sanitizeRecord(rawFields, config); // filter only DB fields
+    // ENHANCED: Separate multiRelationship data from main record data
+    const mainRecordData = {};
+    const multiRelData = {};
+    
+    Object.entries(rawFields).forEach(([key, value]) => {
+      const field = config?.fields?.find(f => f.name === key);
+      if (field?.type === 'multiRelationship') {
+        multiRelData[key] = value;
+      } else {
+        mainRecordData[key] = value;
+      }
+    });
+
+    const sanitizedFields = sanitizeRecord(mainRecordData, config);
   
     const payload = {
       ...sanitizedFields,
@@ -96,7 +176,8 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
       updated_at: now
     };
   
-    console.debug('✅ Sanitized insert payload:', payload);
+    console.debug('✅ Main record payload:', payload);
+    console.debug('✅ MultiRel data to save later:', multiRelData);
   
     const selectFields = config.fields
       .map(f => f.name)
@@ -104,6 +185,7 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
       .join(', ');
   
     try {
+      // Create the main record
       const { data: created, error } = await supabase
         .from(config.name)
         .insert(payload)
@@ -115,30 +197,89 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
         setIsCreatingRecord(false);
         return;
       }
+
+      console.log('✅ Record created:', created);
+
+      // NEW: Save multiRelationship data if we have any
+      if (Object.keys(multiRelData).length > 0) {
+        console.log('🔗 Saving multiRelationship data...');
+        await saveMultiRelationshipData(supabase, config, created.id, multiRelData);
+      }
   
       setLocalRecord(created);
+      setPendingMultiRelData({}); // Clear pending data
       setIsCreatingRecord(false);
   
       const currentParams = new URLSearchParams(window.location.search);
       currentParams.set('modal', 'edit');
       currentParams.set('id', created.id);
+      
+      // Remove multiRelationship params from URL since they're now saved
+      config?.fields?.forEach(field => {
+        if (field.type === 'multiRelationship') {
+          currentParams.delete(field.name);
+        }
+      });
+      
       router.replace(`${window.location.pathname}?${currentParams.toString()}`);
     } catch (err) {
       console.error('❌ Unexpected error:', err.message || err);
       setIsCreatingRecord(false);
     }
   };
-  
 
-  // Create a wrapper for setLocalRecord that sanitizes
+  // NEW: Enhanced setLocalRecord that can handle multiRelationship updates during creation
   const setSanitizedLocalRecord = (value) => {
     if (typeof value === 'function') {
       setLocalRecord(prev => {
         const newValue = value(prev);
+        
+        // If we're still creating and this update includes multiRel data, store it separately
+        if (isCreatingRecord) {
+          const multiRelUpdates = {};
+          const mainUpdates = {};
+          
+          Object.entries(newValue).forEach(([key, val]) => {
+            const field = config?.fields?.find(f => f.name === key);
+            if (field?.type === 'multiRelationship') {
+              multiRelUpdates[key] = val;
+            } else {
+              mainUpdates[key] = val;
+            }
+          });
+          
+          if (Object.keys(multiRelUpdates).length > 0) {
+            setPendingMultiRelData(prevPending => ({ ...prevPending, ...multiRelUpdates }));
+          }
+          
+          return sanitizeRecord(mainUpdates, config);
+        }
+        
         return sanitizeRecord(newValue, config);
       });
     } else {
-      setLocalRecord(sanitizeRecord(value, config));
+      // If we're still creating and this includes multiRel data, store it separately
+      if (isCreatingRecord && value) {
+        const multiRelUpdates = {};
+        const mainUpdates = {};
+        
+        Object.entries(value).forEach(([key, val]) => {
+          const field = config?.fields?.find(f => f.name === key);
+          if (field?.type === 'multiRelationship') {
+            multiRelUpdates[key] = val;
+          } else {
+            mainUpdates[key] = val;
+          }
+        });
+        
+        if (Object.keys(multiRelUpdates).length > 0) {
+          setPendingMultiRelData(prevPending => ({ ...prevPending, ...multiRelUpdates }));
+        }
+        
+        setLocalRecord(sanitizeRecord(mainUpdates, config));
+      } else {
+        setLocalRecord(sanitizeRecord(value, config));
+      }
     }
   };
 
@@ -147,6 +288,7 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
     setModalOpen(false);
     hasCreatedRef.current = false;
     validFieldsRef.current = null;
+    setPendingMultiRelData({}); // Clear pending data
 
     const params = new URLSearchParams(searchParams.toString());
     params.delete('modal');
@@ -155,11 +297,21 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
     router.replace(`${window.location.pathname}?${params.toString()}`);
   };
 
+  // NEW: Function to manually save pending multiRel data (if needed)
+  const savePendingMultiRelData = async () => {
+    if (localRecord?.id && Object.keys(pendingMultiRelData).length > 0) {
+      await saveMultiRelationshipData(supabase, config, localRecord.id, pendingMultiRelData);
+      setPendingMultiRelData({});
+    }
+  };
+
   return {
     modalOpen,
     handleCloseModal,
     localRecord,
     setLocalRecord: setSanitizedLocalRecord,
-    isCreatingRecord
+    isCreatingRecord,
+    pendingMultiRelData, // NEW: Expose pending data
+    savePendingMultiRelData // NEW: Manual save function
   };
 };

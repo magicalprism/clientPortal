@@ -6,6 +6,7 @@ import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
+import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 
 /**
  * Custom field renderer for handling embedded components.
@@ -43,6 +44,18 @@ export const CustomFieldRenderer = ({
           label={field.label}
           record={record}
           mediaPivotTable={field.props?.mediaPivotTable || 'media_section'}
+        />
+      );
+
+          case 'PaymentThread':
+      return (
+        <PaymentThread
+          pivotTable={field.props?.pivotTable || 'contract_payment'}
+          entityField={field.props?.entityField || 'contract_id'}
+          entityId={record?.id}
+          label={field.label || 'Payment Schedule'}
+          record={record}
+          showInvoiceButton={field.props?.showInvoiceButton !== false}
         />
       );
 

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import * as collections from '@/collections';
-import CreateForm from '@/components/CreateForm';
+import CreateForm from '@/components/create/CreateForm';
 import {
   Dialog,
   DialogContent,

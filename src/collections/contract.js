@@ -65,10 +65,20 @@
         linkTo: '/dashboard/product',
         junctionTable: 'contract_product',
         sourceKey: 'contract_id',
-        targetKey: 'poduct_id',
+        targetKey: 'product_id',
         foreignKey: 'product_id', 
         fields: ['title', 'price', 'description'],
         filter: {}
+      }
+    },
+    {
+      name: 'payments',
+      label: 'Payment Schedule',
+      type: 'payments',
+      props: {
+        pivotTable: 'contract_payment',    // Your pivot table
+        entityField: 'contract_id',        // Foreign key field
+        showInvoiceButton: true            // Show/hide invoice button
       }
     },
          {

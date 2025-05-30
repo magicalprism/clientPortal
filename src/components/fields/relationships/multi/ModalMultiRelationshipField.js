@@ -1,203 +1,205 @@
+// Update your ModalMultiRelationshipField to detect create mode and disable auto-save
+
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Box, Typography, CircularProgress } from '@mui/material';
-import { MultiRelationshipField } from '@/components/fields/relationships/multi/MultiRelationshipField';
-// Fix: Import as named export instead of default
-import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
-import { useModalMultiRelationships } from '@/lib/utils/multirelationshipUtils';
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  Button, Box, Typography, Chip, IconButton, Stack
+} from '@mui/material';
+import { Plus, X } from '@phosphor-icons/react';
+import { useMultiRelationshipModal } from '@/components/fields/relationships/multi/useMultiRelationshipModal';
 
-/**
- * Enhanced Modal MultiRelationship Field Component
- * 
- * This component is specifically designed to handle multirelationship fields in modal contexts,
- * ensuring that existing tags are preserved when adding new ones and changes are properly tracked.
- */
-export const ModalMultiRelationshipField = ({ 
-  field, 
-  record, 
-  setRecord, 
-  hideLabel = false,
+export const ModalMultiRelationshipField = ({
+  field,
+  record,
+  setRecord,
   config,
-  onChange // Add onChange prop to propagate changes up
+  onChange,
+  hideLabel = false,
+  refreshRecord
 }) => {
-  // State to keep track of selected values
-  const [selectedIds, setSelectedIds] = useState([]);
-  const [initialized, setInitialized] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [lastChangedTimestamp, setLastChangedTimestamp] = useState(null);
+  const [isOpen, setIsOpen] = useState(false);
   
-  // Use the custom hook for multirelationship handling
-  const { updateMultiRelationship } = useModalMultiRelationships({
-    config,
-    record,
-    setRecord
+  // CRITICAL FIX: Detect create mode
+  const isCreateMode = !record?.id;
+  
+  console.log('[ModalMultiRelationshipField] Mode check:', {
+    fieldName: field?.name,
+    recordId: record?.id,
+    isCreateMode,
+    hasOnChange: !!onChange
   });
-  
-  // On mount and when record changes, initialize with existing values
-  useEffect(() => {
-    if (!record || !field || !field.name) return;
-    
-    // Normalize the value from the record using our utility
-    const normalizedIds = normalizeMultiRelationshipValue(record[field.name]);
-    const hasExistingDetails = Array.isArray(record[`${field.name}_details`]) && 
-      record[`${field.name}_details`].length > 0;
-    
-    console.log(`[ModalMultiRelationshipField] ${field.name} initializing:`, {
-      value: record[field.name],
-      normalizedIds,
-      hasExistingDetails
-    });
 
-    // Set the selected IDs
-    setSelectedIds(normalizedIds);
-    
-    // Ensure the record has the normalized ids and details
-    if (setRecord && !initialized) {
-      setIsLoading(true);
-      
-      setRecord(prev => {
-        const updatedRecord = { ...prev };
-        
-        // Set the normalized ids
-        updatedRecord[field.name] = normalizedIds;
-        
-        // Preserve existing details if available
-        if (hasExistingDetails) {
-          updatedRecord[`${field.name}_details`] = record[`${field.name}_details`];
-        }
-        
-        return updatedRecord;
-      });
-      
-      setInitialized(true);
-      setIsLoading(false);
-    }
-  }, [field, record, initialized, setRecord]);
-  
-  // When selections change
-  const handleChange = (value) => {
-    // Track change timestamp for debugging
-    setLastChangedTimestamp(new Date().toISOString());
-    
-    // Handle different formats of value
-    let newIds = [];
-    let newDetails = [];
-    
-    if (Array.isArray(value)) {
-      // It's just an array of IDs
-      newIds = value.map(String).filter(Boolean);
-    } else if (value && value.ids) {
-      // It's the { ids, details } format
-      newIds = value.ids.map(String).filter(Boolean);
-      newDetails = value.details || [];
-    } else if (value && typeof value === 'object') {
-      // It might be a direct object reference
-      newIds = Object.keys(value).map(String).filter(Boolean);
-    }
-    
-    console.log(`[ModalMultiRelationshipField] ${field.name} changed:`, {
-      newIds,
-      detailsCount: newDetails.length,
-      previousIds: selectedIds
-    });
-    
-    // Update our local state
-    setSelectedIds(newIds);
-    
-    // Instead of directly updating the record, use the specialized update function
-    updateMultiRelationship(field.name, {
-      ids: newIds,
-      details: newDetails
-    });
+  const {
+    selectedItems,
+    availableItems,
+    loading,
+    error,
+    handleSave: originalHandleSave,
+    handleCancel,
+    searchTerm,
+    setSearchTerm,
+    toggleItem
+  } = useMultiRelationshipModal({
+    field,
+    record,
+    // CRITICAL FIX: Disable auto-save in create mode
+    autoSave: !isCreateMode, // Only auto-save when we have a record ID
+    onSuccess: refreshRecord
+  });
 
-    // Enrich details with label field for display
-    const enrichedDetails = newDetails.map(opt => ({
-      id: opt.id,
-      [field.relation.labelField]: opt[field.relation.labelField] || 'Untitled',
-      indentedLabel: opt.indentedLabel || opt[field.relation.labelField] || `ID: ${opt.id}`
-    }));
-    
-    // Call the parent onChange handler if provided
-    // This is CRITICAL for change detection in modal forms
-    if (typeof onChange === 'function') {
-      onChange(field.name, {
-        ids: newIds,
-        details: enrichedDetails
-      });
+  // Handle save differently for create mode
+  const handleSave = async () => {
+    if (isCreateMode) {
+      // In create mode, just update local state via onChange
+      console.log('[ModalMultiRelationshipField] Create mode - updating local state only');
       
-      // Also explicitly set hasChanges if that property exists in onChange
-      if (onChange.setHasChanges) {
-        onChange.setHasChanges(true);
+      if (onChange) {
+        const selectedIds = selectedItems.map(item => String(item.id));
+        onChange(field.name, selectedIds);
       }
+      
+      // Update the record state directly
+      if (setRecord) {
+        setRecord(prev => ({
+          ...prev,
+          [field.name]: selectedItems.map(item => String(item.id)),
+          [`${field.name}_details`]: selectedItems
+        }));
+      }
+      
+      setIsOpen(false);
+    } else {
+      // In edit mode, use the original save logic
+      await originalHandleSave();
+      setIsOpen(false);
     }
   };
-  
-  if (isLoading) {
-    return (
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, p: 2 }}>
-        <CircularProgress size={16} />
-        <Typography variant="body2">Loading tags...</Typography>
-      </Box>
-    );
-  }
-  
+
+  // Get current selection for display
+  const currentSelection = record?.[`${field.name}_details`] || [];
+  const currentCount = Array.isArray(currentSelection) ? currentSelection.length : 0;
+
   return (
-    <Box sx={{ mt: 2, mb: 2 }}>
-     {!hideLabel && (
-      <>
-        {field.label && (
-          <Typography variant="subtitle2" fontWeight={500} mb={1}>
+    <>
+      <Box
+        onClick={() => setIsOpen(true)}
+        sx={{
+          border: '1px solid #e0e0e0',
+          borderRadius: 1,
+          py: 0,
+          px: 2,
+          cursor: 'pointer',
+          minHeight: 56,
+          display: 'flex',
+          alignItems: 'center',
+          '&:hover': {
+            borderColor: 'primary.main',
+          },
+        }}
+      >
+        {!hideLabel && (
+          <Typography variant="body2" sx={{ mb: 1 }}>
             {field.label}
           </Typography>
         )}
-        {field.description && (
-          <Typography variant="caption" color="text.secondary" display="block" mb={1}>
-            {field.description}
-          </Typography>
-        )}
-      </>
-     )}
-      
-      <MultiRelationshipField
-        field={{
-          ...field,
-          parentId: record?.id, // Important for database sync
-          parentTable: config?.name // Important for junction table
-        }}
-        value={selectedIds} // Use our controlled state
-        onChange={handleChange}
-      />
-      
-      {/* Debug info - hidden in production */}
-      {process.env.NODE_ENV === 'development' && (
-        <Box sx={{ 
-          mt: 1, 
-          p: 1, 
-          border: '1px dashed #ccc', 
-          borderRadius: 1,
-          backgroundColor: '#f9f9f9',
-          fontSize: '10px'
-        }}>
-          <Typography variant="caption" fontWeight="bold">
-            Selected Tags: {selectedIds.length}
-          </Typography>
-          <div style={{ 
-            whiteSpace: 'nowrap', 
-            overflow: 'hidden', 
-            textOverflow: 'ellipsis',
-            fontFamily: 'monospace',
-            fontSize: '9px'
-          }}>
-            {selectedIds.join(', ') || '(none)'}
-          </div>
-          {lastChangedTimestamp && (
-            <Typography variant="caption" sx={{ display: 'block', mt: 0.5 }}>
-              Last changed: {lastChangedTimestamp}
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+          {currentSelection.slice(0, 3).map((item) => (
+            <Chip
+              key={item.id}
+              label={item[field.relation.labelField] || item.title || `ID: ${item.id}`}
+              size="small"
+              variant="outlined"
+              sx={{ py:2, px: 1, }}
+            />
+          ))}
+          
+          {currentCount > 3 && (
+            <Chip
+              label={`+${currentCount - 3} more`}
+              size="small"
+              variant="outlined"
+              color="primary"
+              
+            />
+          )}
+          
+          {currentCount === 0 && (
+            <Typography variant="body2" color="text.secondary">
+              Select {field.label.toLowerCase()}...
             </Typography>
           )}
+          
+          <IconButton size="small" sx={{ ml: 'auto' }}>
+            <Plus size={16} />
+          </IconButton>
         </Box>
-      )}
-    </Box>
+      </Box>
+
+      <Dialog open={isOpen} onClose={() => setIsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          Select {field.label}
+          {isCreateMode && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              Changes will be saved when you create the record
+            </Typography>
+          )}
+        </DialogTitle>
+        
+        <DialogContent>
+          {/* Your existing modal content here */}
+          {loading ? (
+            <Box sx={{ p: 2, textAlign: 'center' }}>
+              Loading...
+            </Box>
+          ) : error ? (
+            <Typography color="error">{error}</Typography>
+          ) : (
+            <Box>
+              {/* Search and selection UI */}
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ width: '100%', marginBottom: 16, padding: 8 }}
+              />
+              
+              <Stack spacing={1} sx={{ maxHeight: 400, overflow: 'auto' }}>
+                {availableItems.map((item) => (
+                  <Box
+                    key={item.id}
+                    onClick={() => toggleItem(item)}
+                    sx={{
+                      p: 2,
+                      border: '1px solid #e0e0e0',
+                      borderRadius: 1,
+                      cursor: 'pointer',
+                      backgroundColor: selectedItems.find(s => s.id === item.id) ? 'primary.200' : 'transparent',
+                      '&:hover': {
+                        backgroundColor: 'action.hover',
+                      },
+                    }}
+                  >
+                    <Typography>
+                      {item[field.relation.labelField] || item.title || `ID: ${item.id}`}
+                    </Typography>
+                  </Box>
+                ))}
+              </Stack>
+            </Box>
+          )}
+        </DialogContent>
+        
+        <DialogActions>
+          <Button onClick={handleCancel}>Cancel</Button>
+          <Button onClick={handleSave} variant="contained">
+            {isCreateMode ? 'Apply Selection' : 'Save Changes'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+    </>
   );
 };

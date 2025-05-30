@@ -14,6 +14,7 @@ import GalleryRelationshipFieldRenderer from '@/components/fields/media/GalleryR
 import TimezoneFieldRenderer from '@/components/fields/dateTime/TimezoneFieldRenderer';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
+import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 
 const CommentsFieldRenderer = ({ field, record }) => {
   return (
@@ -36,6 +37,18 @@ const SectionsFieldRenderer = ({ field, record }) => {
     />
   );
 };
+const PaymentsFieldRenderer = ({ field, record }) => {
+  return (
+    <PaymentThread
+      pivotTable={field.props?.pivotTable || 'contract_payment'}
+      entityField={field.props?.entityField || 'contract_id'}
+      entityId={record?.id}
+      label={field.label || 'Payment Schedule'}
+      record={record}
+      showInvoiceButton={field.props?.showInvoiceButton !== false}
+    />
+  );
+};
 
 const RENDERERS = {
   select: SelectFieldRenderer,
@@ -55,6 +68,7 @@ const RENDERERS = {
   timezone: TimezoneFieldRenderer,
   comments: CommentsFieldRenderer, 
   sections: SectionsFieldRenderer,
+  payments: PaymentsFieldRenderer,
 };
 
 export const getRendererForField = (type) => {
