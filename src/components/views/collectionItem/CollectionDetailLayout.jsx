@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { hydrateRecord } from '@/lib/utils/hydrateRecord'; // Import the better hydration function
 import CollectionDetailClient from '@/components/views/collectionItem/CollectionDetailClient';
 
+
 export async function CollectionDetailLayout({ collectionKey, recordId }) {
   const config = collections[collectionKey];
   const supabase = await createClient();

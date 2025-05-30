@@ -89,3 +89,63 @@ body.tiptap-preview {
   align-items: center;
 }
 
+/* Add this to your simple-editor.scss file */
+
+.simple-editor-content table {
+  border-collapse: collapse;
+  margin: 2rem 0;
+  width: 100%;
+  table-layout: fixed;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.simple-editor-content table td,
+.simple-editor-content table th {
+  border: 1px solid #e5e7eb;
+  box-sizing: border-box;
+  min-width: 1em;
+  padding: 12px;
+  position: relative;
+  vertical-align: top;
+}
+
+.simple-editor-content table th {
+  background-color: #f9fafb;
+  font-weight: 600;
+  text-align: left;
+}
+
+.simple-editor-content table th p {
+  margin: 0;
+  font-weight: 600;
+}
+
+.simple-editor-content table td p {
+  margin: 0;
+}
+
+/* Style for total row */
+.simple-editor-content table tr:last-child {
+  background-color: #f3f0ff;
+  border-top: 2px solid #500ee9;
+}
+
+.simple-editor-content table tr:last-child td {
+  font-weight: bold;
+}
+
+.simple-editor-content table tr:last-child td:nth-child(2) {
+  color: #500ee9;
+  font-size: 1.125rem;
+}
+
+/* Hover effect for rows */
+.simple-editor-content table tr:hover {
+  background-color: #f8fafc;
+}
+
+.simple-editor-content table tr:last-child:hover {
+  background-color: #e0f2fe;
+}

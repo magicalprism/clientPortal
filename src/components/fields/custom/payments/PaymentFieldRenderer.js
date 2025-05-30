@@ -29,8 +29,15 @@ export const PaymentFieldRenderer = ({
   } = field.props || {};
 
   if (!record?.id) {
-    return null; // Don't render if we don't have a record ID
-  }
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography variant="body2" color="text.secondary">
+        Save the contract before adding payments.
+      </Typography>
+    </Box>
+  );
+}
+
 
   return (
     <PaymentThread
@@ -40,6 +47,9 @@ export const PaymentFieldRenderer = ({
       label={label}
       record={record}
       showInvoiceButton={showInvoiceButton}
+      onCreatePendingPayment={(payment) =>
+    setPendingPayments(prev => [...prev, payment])
+  }
     />
   );
 };

@@ -169,103 +169,81 @@ export const useContractBuilder = () => {
   };
 
   // Process {{payments}} template variable
-  const processPaymentsTemplate = (content, relatedData) => {
-    // Handle {{payments}} template variable
-    if (relatedData.payments && Array.isArray(relatedData.payments)) {
-      const paymentsRegex = /{{payments}}/g;
-      
-      content = content.replace(paymentsRegex, () => {
-        if (relatedData.payments.length === 0) {
-          return '<p><em>No payment schedule defined.</em></p>';
-        }
-
-        // Calculate total
-        const total = relatedData.payments.reduce((sum, payment) => 
-          sum + (parseFloat(payment.amount) || 0), 0
-        );
-
-        // Format currency
-        const formatCurrency = (amount) => {
-          return new Intl.NumberFormat('en-US', {
-            style: 'currency',
-            currency: 'USD'
-          }).format(amount || 0);
-        };
-
-        // Format date
-        const formatDate = (dateString) => {
-          if (!dateString) return '';
-          return new Date(dateString).toLocaleDateString();
-        };
-
-        // Generate table HTML
-        const tableRows = relatedData.payments.map(payment => {
-          const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
-          const altDueDate = payment.alt_due_date || '';
-          
-          // Use either actual due date or alternative text
-          const dueDateDisplay = dueDate || altDueDate || 'TBD';
-          
-          return `
-            <tr>
-              <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-weight: 500;">
-                ${payment.title}
-              </td>
-              <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; text-align: right; font-weight: 600; color: #059669;">
-                ${formatCurrency(payment.amount)}
-              </td>
-              <td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">
-                ${dueDateDisplay}
-              </td>
-              ${altDueDate && dueDate ? `
-                <td style="padding: 12px; border-bottom: 1px solid #e5e7eb; font-style: italic; color: #6b7280;">
-                  ${altDueDate}
-                </td>
-              ` : '<td style="padding: 12px; border-bottom: 1px solid #e5e7eb;">—</td>'}
-            </tr>
-          `;
-        }).join('');
-
-        return `
-          <div style="margin: 2rem 0;">
-            <table style="width: 100%; border-collapse: collapse; border: 1px solid #d1d5db; border-radius: 8px; overflow: hidden;">
-              <thead>
-                <tr style="background-color: #f9fafb;">
-                  <th style="padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">
-                    Payment
-                  </th>
-                  <th style="padding: 16px 12px; text-align: right; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">
-                    Amount
-                  </th>
-                  <th style="padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">
-                    Due Date
-                  </th>
-                  <th style="padding: 16px 12px; text-align: left; font-weight: 600; color: #374151; border-bottom: 2px solid #e5e7eb;">
-                    Alternative Due Date
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                ${tableRows}
-                <tr style="background-color: #f0f9ff; border-top: 2px solid #0ea5e9;">
-                  <td style="padding: 16px 12px; font-weight: bold; color: #0c4a6e;">
-                    Total Project Cost
-                  </td>
-                  <td style="padding: 16px 12px; text-align: right; font-weight: bold; color: #0ea5e9; font-size: 1.125rem;">
-                    ${formatCurrency(total)}
-                  </td>
-                  <td style="padding: 16px 12px;"></td>
-                  <td style="padding: 16px 12px;"></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        `;
-      });
-    }
+ // Use old-school HTML table attributes that TipTap is more likely to preserve
+const processPaymentsTemplate = (content, relatedData) => {
+  console.log('Processing payments template with old-school attributes...', relatedData?.payments);
+  
+  if (relatedData.payments && Array.isArray(relatedData.payments)) {
+    const paymentsRegex = /{{payments}}/g;
     
-    return content;
-  };
+    content = content.replace(paymentsRegex, () => {
+      if (relatedData.payments.length === 0) {
+        return '<p><em>No payment schedule defined.</em></p>';
+      }
+
+      // Calculate total
+      const total = relatedData.payments.reduce((sum, payment) => 
+        sum + (parseFloat(payment.amount) || 0), 0
+      );
+
+      // Format currency
+      const formatCurrency = (amount) => {
+        return new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: 'USD'
+        }).format(amount || 0);
+      };
+
+      // Format date
+      const formatDate = (dateString) => {
+        if (!dateString) return '';
+        return new Date(dateString).toLocaleDateString();
+      };
+
+      // Generate table rows using old-school attributes
+      const tableRows = relatedData.payments.map(payment => {
+        const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
+        const altDueDate = payment.alt_due_date || '';
+        const dueDateDisplay = dueDate || altDueDate || 'TBD';
+        
+        return `
+          <tr>
+            <td><p>${payment.title}</p></td>
+            <td align="right"><p><b>${formatCurrency(payment.amount)}</b></p></td>
+            <td><p>${dueDateDisplay}</p></td>
+            <td><p>${altDueDate && dueDate ? altDueDate : '—'}</p></td>
+          </tr>
+        `;
+      }).join('');
+
+      // Use old-school table attributes that are preserved by most systems
+      const tableHTML = `
+        <table border="1" cellpadding="12" cellspacing="0" width="100%">
+          <tbody>
+            <tr bgcolor="#f9fafb">
+              <th><p><b>Payment</b></p></th>
+              <th><p><b>Amount</b></p></th>
+              <th><p><b>Due Date</b></p></th>
+              <th><p><b>Alternative Due Date</b></p></th>
+            </tr>
+            ${tableRows}
+            <tr bgcolor="#f0f9ff">
+              <td><p><b>Total Project Cost</b></p></td>
+              <td align="right"><p><b>${formatCurrency(total)}</b></p></td>
+              <td><p></p></td>
+              <td><p></p></td>
+            </tr>
+          </tbody>
+        </table>
+      `;
+      
+      console.log('Generated old-school table HTML:', tableHTML);
+      return tableHTML;
+    });
+  }
+  
+  return content;
+};
 
   // Handle drag end
   const handleDragEnd = (event) => {

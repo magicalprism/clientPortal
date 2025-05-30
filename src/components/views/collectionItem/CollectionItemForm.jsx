@@ -18,6 +18,7 @@ import { useState, useEffect } from 'react';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
+import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 
 export const CollectionItemForm = ({
   config,
@@ -134,7 +135,7 @@ export const CollectionItemForm = ({
                 const isBasicTextField = ![
                   'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                   'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                  'select', 'color', 'custom', 'comments', 'sections',
+                  'select', 'color', 'custom', 'comments', 'sections', 'payments'
                 ].includes(field.type);
 
                 if (!field || typeof field !== 'object') {
@@ -185,6 +186,25 @@ export const CollectionItemForm = ({
                     </Grid>
                   );
                 }
+
+                 if (field.type === 'payments') {
+                    return (
+                      <Grid item xs={12} key={field.name}>
+                        <PaymentThread
+                          pivotTable={field.props?.pivotTable || 'contract_payment'}
+                          entityField={field.props?.entityField || 'contract_id'}
+                          entityId={formData?.id}
+                          label={field.label || 'Payment Schedule'}
+                          record={formData}
+                          showInvoiceButton={field.props?.showInvoiceButton !== false}
+                          onCreatePendingPayment={(payment) =>
+                            setPendingPayments(prev => [...prev, payment])
+                          }
+                        />
+                      </Grid>
+                    );
+                  }
+
 
                 // Tags multirelationship 
                 if (field.type === 'multiRelationship' && field.displayMode === 'tags') {

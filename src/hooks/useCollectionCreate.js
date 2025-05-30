@@ -28,7 +28,7 @@ const sanitizeRecord = (input, config) => {
 // NEW: Function to save multiRelationship data
 const saveMultiRelationshipData = async (supabase, config, recordId, multiRelData) => {
   console.log('[useCollectionCreate] Saving multiRelationship data:', { recordId, multiRelData });
-  
+  const [pendingPayments, setPendingPayments] = useState([]);
   const multiRelFields = config?.fields?.filter(f => f.type === 'multiRelationship' && f.relation?.junctionTable) || [];
   
   for (const field of multiRelFields) {
@@ -104,6 +104,7 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
   const [modalOpen, setModalOpen] = useState(false);
   const [localRecord, setLocalRecord] = useState(cleanInitialRecord);
   const [isCreatingRecord, setIsCreatingRecord] = useState(false);
+  const [pendingPayments, setPendingPayments] = useState([]);
   
   // NEW: Store multiRelationship data separately during creation
   const [pendingMultiRelData, setPendingMultiRelData] = useState({});
@@ -150,83 +151,140 @@ export const useCollectionCreate = ({ config, initialRecord = {} }) => {
     }
   }, [isCreating, isEditing, recordId, initialRecord?.id, localRecord?.id, isCreatingRecord]);
 
-  const createNewRecord = async (rawFields) => {
-    setIsCreatingRecord(true);
-  
-    const now = getPostgresTimestamp();
-  
-    // ENHANCED: Separate multiRelationship data from main record data
-    const mainRecordData = {};
-    const multiRelData = {};
-    
-    Object.entries(rawFields).forEach(([key, value]) => {
-      const field = config?.fields?.find(f => f.name === key);
-      if (field?.type === 'multiRelationship') {
-        multiRelData[key] = value;
-      } else {
-        mainRecordData[key] = value;
-      }
-    });
+const createNewRecord = async (rawFields) => {
+  setIsCreatingRecord(true);
 
-    const sanitizedFields = sanitizeRecord(mainRecordData, config);
-  
-    const payload = {
-      ...sanitizedFields,
-      created_at: now,
-      updated_at: now
-    };
-  
-    console.debug('✅ Main record payload:', payload);
-    console.debug('✅ MultiRel data to save later:', multiRelData);
-  
-    const selectFields = config.fields
-      .map(f => f.name)
-      .filter(name => !name.startsWith('ui-'))
-      .join(', ');
-  
-    try {
-      // Create the main record
-      const { data: created, error } = await supabase
-        .from(config.name)
-        .insert(payload)
-        .select(selectFields)
-        .single();
-  
-      if (error) {
-        console.error('❌ Supabase error:', error.message || error);
-        setIsCreatingRecord(false);
+  const now = getPostgresTimestamp();
+
+  const mainRecordData = {};
+  const multiRelData = {};
+
+  Object.entries(rawFields).forEach(([key, value]) => {
+    const field = config?.fields?.find(f => f.name === key);
+    if (field?.type === 'multiRelationship') {
+      multiRelData[key] = value;
+    } else {
+      mainRecordData[key] = value;
+    }
+  });
+
+  const sanitizedFields = sanitizeRecord(mainRecordData, config);
+
+  const payload = {
+    ...sanitizedFields,
+    created_at: now,
+    updated_at: now
+  };
+
+  console.debug('✅ Main record payload:', payload);
+  console.debug('✅ MultiRel data to save later:', multiRelData);
+
+  const selectFields = config.fields
+    .map(f => f.name)
+    .filter(name => !name.startsWith('ui-'))
+    .join(', ');
+
+  try {
+    // Create the main contract record
+    const { data: created, error } = await supabase
+      .from(config.name)
+      .insert(payload)
+      .select(selectFields)
+      .single();
+
+    if (error) {
+      console.error('❌ Supabase error:', error.message || error);
+      setIsCreatingRecord(false);
+      return;
+    }
+
+    console.log('✅ Record created:', created);
+
+    // 🔗 Save multiRelationship data
+    if (Object.keys(multiRelData).length > 0) {
+      await saveMultiRelationshipData(supabase, config, created.id, multiRelData);
+    }
+
+    // 💳 Save pending payments after record exists
+    if (pendingPayments.length > 0) {
+      console.log('💳 Saving pending payments:', pendingPayments);
+
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData?.user?.email) {
+        console.error('Error getting current user for payment auth_id');
         return;
       }
 
-      console.log('✅ Record created:', created);
+      const { data: contact, error: contactError } = await supabase
+        .from('contact')
+        .select('id')
+        .eq('email', userData.user.email)
+        .single();
 
-      // NEW: Save multiRelationship data if we have any
-      if (Object.keys(multiRelData).length > 0) {
-        console.log('🔗 Saving multiRelationship data...');
-        await saveMultiRelationshipData(supabase, config, created.id, multiRelData);
+      if (contactError || !contact?.id) {
+        console.error('Error getting contact for current user:', contactError);
+        return;
       }
-  
-      setLocalRecord(created);
-      setPendingMultiRelData({}); // Clear pending data
-      setIsCreatingRecord(false);
-  
-      const currentParams = new URLSearchParams(window.location.search);
-      currentParams.set('modal', 'edit');
-      currentParams.set('id', created.id);
-      
-      // Remove multiRelationship params from URL since they're now saved
-      config?.fields?.forEach(field => {
-        if (field.type === 'multiRelationship') {
-          currentParams.delete(field.name);
+
+      const contactId = contact.id;
+
+      for (const payment of pendingPayments) {
+        const { title, amount, due_date, alt_due_date } = payment;
+
+        const { data: paymentData, error: paymentError } = await supabase
+          .from('payment')
+          .insert([{
+            title,
+            amount,
+            due_date,
+            alt_due_date,
+            author_id: contactId,
+            order_index: 0
+          }])
+          .select()
+          .single();
+
+        if (paymentError || !paymentData?.id) {
+          console.error('Error saving payment:', paymentError);
+          continue;
         }
-      });
-      
-      router.replace(`${window.location.pathname}?${currentParams.toString()}`);
-    } catch (err) {
-      console.error('❌ Unexpected error:', err.message || err);
-      setIsCreatingRecord(false);
+
+        const { error: linkError } = await supabase
+          .from('contract_payment')
+          .insert([{
+            contract_id: created.id,
+            payment_id: paymentData.id
+          }]);
+
+        if (linkError) {
+          console.error('Error linking payment to contract:', linkError);
+        }
+      }
     }
-  };
+
+    setLocalRecord(created);
+    setPendingMultiRelData({});
+    setPendingPayments([]);
+    setIsCreatingRecord(false);
+
+    const currentParams = new URLSearchParams(window.location.search);
+    currentParams.set('modal', 'edit');
+    currentParams.set('id', created.id);
+
+    config?.fields?.forEach(field => {
+      if (field.type === 'multiRelationship') {
+        currentParams.delete(field.name);
+      }
+    });
+
+    router.replace(`${window.location.pathname}?${currentParams.toString()}`);
+  } catch (err) {
+    console.error('❌ Unexpected error during record creation:', err.message || err);
+    setIsCreatingRecord(false);
+  }
+
+
+};
 
   // NEW: Enhanced setLocalRecord that can handle multiRelationship updates during creation
   const setSanitizedLocalRecord = (value) => {

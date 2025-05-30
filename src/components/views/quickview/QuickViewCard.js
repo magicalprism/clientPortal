@@ -8,21 +8,29 @@ import {
   Divider,
   Stack,
   Chip,
-  IconButton
+  IconButton,
+  Button,
+  CircularProgress
 } from '@mui/material';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { ArrowSquareOut } from '@phosphor-icons/react';
+import SignatureButton from '@/components/dashboard/contract/parts/SignatureButton';
+import { useState } from 'react';
+import { createClient } from '@/lib/supabase/browser';
+import { fetchContractRelatedData } from '@/lib/utils/fetchContractRelatedData';
+import { compileContractContent } from '@/lib/utils/contractContentCompiler';
 
 // Simple debug helper - only logs in development
 const debug = (label, value) => {
   if (process.env.NODE_ENV === 'development') {
-
+    // console.log(label, value);
   }
 };
 
 export const QuickViewCard = ({ config, record }) => {
+  const [regenerating, setRegenerating] = useState(false);
+  const supabase = createClient();
   // Always log the record structure to help with debugging
-
   
   // Guard clause for config
   if (!config?.quickView?.enabled) return null;
@@ -35,6 +43,13 @@ export const QuickViewCard = ({ config, record }) => {
     extraFields = [],
     relatedFields = []
   } = config.quickView || {};
+
+  // Check if this is a contract - multiple detection methods
+  const isContract = 
+    config?.name === 'contract' || 
+    config?.label?.toLowerCase().includes('contract') ||
+    config?.singularLabel?.toLowerCase().includes('contract') ||
+    record?.hasOwnProperty('content') && record?.hasOwnProperty('signature_status'); // Contract-specific fields
 
   // --- Smart image handling ---
   // Try each possible image source path
@@ -85,6 +100,43 @@ export const QuickViewCard = ({ config, record }) => {
   
   const description = descriptionField ? record?.[descriptionField] : null;
 
+  // Contract regenerate content function
+  const handleRegenerateContent = async () => {
+    if (!isContract || !record?.id) return;
+    
+    setRegenerating(true);
+    try {
+      // Fetch the latest related data
+      const relatedData = await fetchContractRelatedData(record, config);
+      
+      // Compile the content with the latest data using the standalone utility
+      const compiledContent = await compileContractContent(record, relatedData);
+      
+      // Update the contract in the database
+      const { error } = await supabase
+        .from('contract')
+        .update({ 
+          content: compiledContent, 
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', record.id);
+
+      if (error) {
+        console.error('[RegenerateContent] Update failed:', error);
+        alert('Failed to regenerate contract content.');
+      } else {
+        alert('Contract content regenerated successfully!');
+        // Optionally refresh the page or update the record
+        window.location.reload();
+      }
+    } catch (err) {
+      console.error('[RegenerateContent] Unexpected error:', err);
+      alert('An unexpected error occurred while regenerating content.');
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
   return (
     <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
@@ -128,6 +180,42 @@ export const QuickViewCard = ({ config, record }) => {
           >
             {description}
           </Typography>
+        )}
+
+        {/* Add Contract-Specific Actions Section */}
+        {isContract && record?.id && (
+          <>
+            <Divider sx={{ my: 2 }} />
+            <Box sx={{ mb: 2 }}>
+              <Typography 
+                variant="caption" 
+                color="text.secondary" 
+                sx={{ display: 'block', mb: 1 }}
+              >
+                Contract Actions
+              </Typography>
+              <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 1 }}>
+                <SignatureButton 
+                  contractRecord={record}
+                  onStatusUpdate={(status, data) => {
+                    console.log('Signature status updated:', status);
+                  }}
+                />
+                
+                {/* Regenerate Content Button */}
+                <Button
+                sx={{ width: '100%',}}
+                  variant="outlined"
+                  size="medium"
+                  onClick={handleRegenerateContent}
+                  disabled={regenerating}
+                  startIcon={regenerating ? <CircularProgress size={16} /> : null}
+                >
+                  {regenerating ? 'Regenerating...' : 'Regenerate Content'}
+                </Button>
+              </Stack>
+            </Box>
+          </>
         )}
 
         {extraFields && extraFields.length > 0 && (

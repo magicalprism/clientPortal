@@ -62,7 +62,8 @@ export const PaymentThread = ({
   entityId, 
   label = 'Payment Schedule',
   record,
-  showInvoiceButton = true
+  showInvoiceButton = true,
+  onCreatePendingPayment
 }) => {
   // Creation states
   const [creationStep, setCreationStep] = useState('none'); // 'none', 'form'
@@ -99,31 +100,42 @@ export const PaymentThread = ({
 
   // Create new payment
   const handleCreatePayment = async () => {
-    if (!newPaymentData.title.trim() || !newPaymentData.amount || !contact?.id) return;
+  if (!newPaymentData.title.trim() || !newPaymentData.amount) return;
 
-    const amount = parseFloat(newPaymentData.amount);
-    if (isNaN(amount) || amount <= 0) return;
+  const amount = parseFloat(newPaymentData.amount);
+  if (isNaN(amount) || amount <= 0) return;
 
-    const dueDate = newPaymentData.due_date ? new Date(newPaymentData.due_date).toISOString() : null;
-
-    const newPayment = await addPayment(
-      newPaymentData.title.trim(),
-      amount,
-      dueDate,
-      newPaymentData.alt_due_date.trim()
-    );
-    
-    if (newPayment?.id) {
-      // Reset creation state
-      setCreationStep('none');
-      setNewPaymentData({
-        title: '',
-        amount: '',
-        due_date: '',
-        alt_due_date: ''
-      });
-    }
+  const paymentPayload = {
+    title: newPaymentData.title.trim(),
+    amount,
+    due_date: newPaymentData.due_date ? new Date(newPaymentData.due_date).toISOString() : null,
+    alt_due_date: newPaymentData.alt_due_date.trim()
   };
+
+  if (!record?.id && typeof onCreatePendingPayment === 'function') {
+    console.log('[PaymentThread] Deferring payment creation until record is saved.');
+    onCreatePendingPayment(paymentPayload);
+  } else {
+    const newPayment = await addPayment(
+      paymentPayload.title,
+      paymentPayload.amount,
+      paymentPayload.due_date,
+      paymentPayload.alt_due_date
+    );
+
+    if (!newPayment?.id) return;
+  }
+
+  // Reset creation state
+  setCreationStep('none');
+  setNewPaymentData({
+    title: '',
+    amount: '',
+    due_date: '',
+    alt_due_date: ''
+  });
+};
+
 
   // Cancel creation process
   const handleCancelCreation = () => {

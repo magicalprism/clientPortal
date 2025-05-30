@@ -56,6 +56,9 @@ export const CustomFieldRenderer = ({
           label={field.label || 'Payment Schedule'}
           record={record}
           showInvoiceButton={field.props?.showInvoiceButton !== false}
+          onCreatePendingPayment={(payment) =>
+    setPendingPayments(prev => [...prev, payment])
+  }
         />
       );
 

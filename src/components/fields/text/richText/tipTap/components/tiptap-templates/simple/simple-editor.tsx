@@ -14,6 +14,12 @@ import { Subscript } from "@tiptap/extension-subscript";
 import { Superscript } from "@tiptap/extension-superscript";
 import { Underline } from "@tiptap/extension-underline";
 
+// --- ADD TABLE EXTENSIONS ---
+import { Table } from "@tiptap/extension-table";
+import { TableRow } from "@tiptap/extension-table-row";
+import { TableCell } from "@tiptap/extension-table-cell";
+import { TableHeader } from "@tiptap/extension-table-header";
+
 // --- Custom Extensions ---
 import { Link } from "@/components/fields/text/richText/tipTap/components/tiptap-extension/link-extension";
 import { Selection } from "@/components/fields/text/richText/tipTap/components/tiptap-extension/selection-extension";
@@ -101,6 +107,29 @@ export function SimpleEditor({
       Superscript,
       Subscript,
       Selection,
+      // Configure Table extensions to allow inline styles
+      Table.configure({
+        resizable: true,
+        HTMLAttributes: {
+          // Allow style attributes
+          style: null,
+        },
+      }),
+      TableRow.configure({
+        HTMLAttributes: {
+          style: null,
+        },
+      }),
+      TableHeader.configure({
+        HTMLAttributes: {
+          style: null,
+        },
+      }),
+      TableCell.configure({
+        HTMLAttributes: {
+          style: null,
+        },
+      }),
       ImageUploadNode.configure({
         accept: "image/*",
         maxSize: MAX_FILE_SIZE,
@@ -112,15 +141,21 @@ export function SimpleEditor({
       Link.configure({ openOnClick: false }),
     ],
     editorProps: {
-      
       attributes: {
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
-         immediatelyRender: "false",
-        
+        immediatelyRender: "false",
         "aria-label": "Main content area, start typing to enter text.",
       },
+      // Add this to preserve HTML attributes and styles
+      transformPastedHTML(html) {
+        return html; // Don't strip any HTML
+      },
+    },
+    // Add parsing options to preserve styles
+    parseOptions: {
+      preserveWhitespace: 'full',
     },
     onUpdate: ({ editor }) => {
       const html = editor.getHTML();
@@ -176,7 +211,6 @@ export function SimpleEditor({
 
         <div className="content-wrapper">
           <EditorContent editor={editor} className="simple-editor-content" style={{ minHeight: 400 }} />
-          
         </div>
       </div>
     </EditorContext.Provider>

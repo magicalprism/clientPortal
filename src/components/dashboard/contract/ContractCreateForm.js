@@ -36,6 +36,8 @@ import { FieldRenderer } from '@/components/FieldRenderer';
 import { ModalMultiRelationshipField } from '@/components/fields/relationships/multi/ModalMultiRelationshipField';
 import { createClient } from '@/lib/supabase/browser';
 import { extractSelectValue } from '@/components/fields/select/SelectField';
+import { ContractSectionsTab } from '@/components/dashboard/contract/ContractSectionsTab';
+
 
 const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) => {
   const supabase = createClient();
@@ -411,105 +413,16 @@ const fetchRelatedData = useCallback(async () => {
             </Box>
           ) : (
             /* Contract Sections Tab */
-            <Grid container spacing={3}>
-              {/* Main Content */}
-              <Grid item xs={12} md={8}>
-                <Box>
-                  {/* Preview Button */}
-                  <Box mb={3}>
-                    <Button
-                      variant="outlined"
-                      startIcon={<Eye />}
-                      onClick={() => setShowPreview(true)}
-                      disabled={!formData.title || contractParts.length === 0}
-                    >
-                      Preview Contract
-                    </Button>
-                  </Box>
-
-                  {/* Contract Sections */}
-                  <Box mb={4}>
-                    <Typography variant="h6" gutterBottom>
-                      Contract Sections ({contractParts.length})
-                    </Typography>
-                    
-                    <DndContext
-                      sensors={sensors}
-                      collisionDetection={closestCenter}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEndWrapper}
-                    >
-                      <SortableContext
-                        items={contractParts.map(part => `part-${part.id}`)}
-                        strategy={verticalListSortingStrategy}
-                      >
-                        {contractParts.map((part) => (
-                          <ContractPartCard
-                            key={part.id}
-                            part={part}
-                            onRemove={handleRemovePart}
-                            showContent={true}
-                          />
-                        ))}
-                      </SortableContext>
-
-                      <DragOverlay>
-                        {activeItem ? (
-                          <Card
-                            elevation={4}
-                            sx={{
-                              opacity: 0.9,
-                              transform: 'rotate(3deg)',
-                              backgroundColor: '#f5f5f5',
-                              border: '2px dashed #1976d2'
-                            }}
-                          >
-                            <CardContent sx={{ py: 2 }}>
-                              <Typography variant="body1" fontWeight="medium">
-                                {activeItem.title}
-                              </Typography>
-                              <Typography variant="body2" color="text.secondary">
-                                Moving section...
-                              </Typography>
-                            </CardContent>
-                          </Card>
-                        ) : null}
-                      </DragOverlay>
-                    </DndContext>
-
-                    {contractParts.length === 0 && (
-                      <Paper
-                        variant="outlined"
-                        sx={{
-                          textAlign: 'center',
-                          py: 8,
-                          backgroundColor: '#f9f9f9',
-                          border: '2px dashed #e0e0e0'
-                        }}
-                      >
-                        <Typography variant="h6" color="text.secondary" gutterBottom>
-                          No sections added yet
-                        </Typography>
-                        <Typography variant="body2" color="text.secondary">
-                          Add sections from the sidebar to build your contract
-                        </Typography>
-                      </Paper>
-                    )}
-                  </Box>
-                </Box>
-              </Grid>
-
-              {/* Sidebar */}
-              <Grid item xs={12} md={4}>
-                <AvailablePartsSidebar
-                  availableParts={availableParts.filter(part => 
-                    !contractParts.find(cp => cp.id === part.id)
-                  )}
-                  onAddPart={handleAddExistingPart}
-                  onAddCustomPart={handleAddCustomPart}
-                />
-              </Grid>
-            </Grid>
+            <ContractSectionsTab
+                contractParts={contractParts}
+                availableParts={availableParts}
+                activeId={activeId}
+                handleDragStart={handleDragStart}
+                handleDragEndWrapper={handleDragEndWrapper}
+                handleRemovePart={handleRemovePart}
+                handleAddExistingPart={handleAddExistingPart}
+                handleAddCustomPart={handleAddCustomPart}
+              />
           )}
 
           {/* Action Buttons */}
@@ -529,6 +442,30 @@ const fetchRelatedData = useCallback(async () => {
             >
               {loading ? 'Saving...' : 'Save Contract'}
             </Button>
+            <Button
+                variant="outlined"
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  try {
+                    const relatedData = await fetchRelatedData();
+                    const regeneratedContent = compileContentWithData(formData, relatedData);
+                    setFormData(prev => ({
+                      ...prev,
+                      content: regeneratedContent
+                    }));
+                  } catch (err) {
+                    console.error('[Regenerate] Failed:', err);
+                    setError('Failed to regenerate content. See console for details.');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+              >
+                Regenerate Content
+              </Button>
+
           </Stack>
         </CardContent>
       </Card>
