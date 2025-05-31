@@ -24,7 +24,7 @@
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
-        subtitleField: 'status',
+        subtitleField: 'signature_status',
       }, 
 
   fields: [   
@@ -136,6 +136,20 @@
       options: [
         { value: 'draft', label: 'Draft' },
         { value: 'approved', label: 'Approved' },
+        { value: 'sent', label: 'Sent' },
+        { value: 'signed', label: 'Signed' },
+      ]
+    },
+         {
+      name: 'signature_status',
+      type: 'select',
+      label: 'Status',
+      group: 'Primary', 
+      tab: 'Meta', 
+      editable: false,
+      defaultValue: 'draft',
+      options: [
+        { value: 'draft', label: 'Draft' },
         { value: 'sent', label: 'Sent' },
         { value: 'signed', label: 'Signed' },
       ]

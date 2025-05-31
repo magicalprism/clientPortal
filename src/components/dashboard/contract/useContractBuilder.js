@@ -1,9 +1,10 @@
+// useContractBuilder.js - Updated with better form field handling
 import { useState, useEffect, useMemo } from 'react';
 import { arrayMove } from '@dnd-kit/sortable';
 import { createClient } from '@/lib/supabase/browser';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 
-export const useContractBuilder = () => {
+export const useContractBuilder = (contractId = null) => {
   const supabase = createClient();
   
   const [contractTitle, setContractTitle] = useState('');
@@ -16,7 +17,7 @@ export const useContractBuilder = () => {
   // Load initial data
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [contractId]);
 
   const loadInitialData = async () => {
     try {
@@ -31,15 +32,21 @@ export const useContractBuilder = () => {
 
       setAvailableParts(parts || []);
       
-      // Auto-include required parts in their sort order
-      const requiredParts = (parts || [])
-        .filter(part => part.is_required)
-        .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-        
-      setContractParts(requiredParts.map((part, index) => ({
-        ...part,
-        order_index: index
-      })));
+      // IMPORTANT: Only auto-include required parts for NEW contracts (when contractId is null)
+      if (!contractId) {
+        console.log('[useContractBuilder] New contract - auto-including required parts');
+        const requiredParts = (parts || [])
+          .filter(part => part.is_required)
+          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          
+        setContractParts(requiredParts.map((part, index) => ({
+          ...part,
+          order_index: index
+        })));
+      } else {
+        console.log('[useContractBuilder] Existing contract - NOT auto-including required parts');
+        setContractParts([]);
+      }
 
     } catch (error) {
       console.error('Error loading contract parts:', error);
@@ -64,13 +71,17 @@ export const useContractBuilder = () => {
       .join('\n');
   }, [contractParts]);
 
-  // New function to compile content with template variables
+  // New function to compile content with template variables - includes header and footer
   const compileContentWithData = (contractData, relatedData = {}) => {
     if (!contractParts.length) return '';
     
     const sortedParts = [...contractParts].sort((a, b) => a.order_index - b.order_index);
     
-    return sortedParts
+    // Create header with client form fields
+    const headerContent = createContractHeader(contractData);
+    
+    // Process main content sections
+    const mainContent = sortedParts
       .map(part => {
         let processedContent = part.content;
         
@@ -81,7 +92,6 @@ export const useContractBuilder = () => {
         processedContent = processPaymentsTemplate(processedContent, relatedData);
         
         // THEN: Replace simple field variables like {{projected_length}}, {{platform}}
-        // But skip if we're inside an {{#each}} block that hasn't been processed yet
         Object.keys(contractData).forEach(fieldName => {
           const value = contractData[fieldName];
           if (value !== null && value !== undefined) {
@@ -98,6 +108,89 @@ export const useContractBuilder = () => {
         `;
       })
       .join('\n');
+    
+    // Create footer with signature fields
+    const footerContent = createContractFooter();
+    
+    // Combine all parts
+    return headerContent + '\n\n' + mainContent + '\n\n' + footerContent;
+  };
+
+  // Create contract header with form field template variables
+  const createContractHeader = (contractData) => {
+    const formattedStartDate = contractData.start_date ? 
+      new Date(contractData.start_date).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long', 
+        day: 'numeric'
+      }) : '';
+    
+    return `
+<div class="contract-header">
+  <h2>Agreement/Contract Details</h2>
+  
+  <div class="contract-date-section">
+    <p><strong>This agreement is made as of:</strong></p>
+    <p><strong>Today's Date:</strong></p>
+    <p>{{today}}</p>
+    ${formattedStartDate ? `<p><strong>Project Start Date:</strong> ${formattedStartDate}</p>` : ''}
+  </div>
+
+  <div class="parties-section">
+    <p><strong>This agreement is made between:</strong></p>
+    
+    <div class="client-details">
+      <h3><strong>Client Details</strong></h3>
+      <p><strong>Full Name (First and Last):</strong></p>
+      <p>{{client_name}}</p>
+      <p><strong>Business or Company Name:</strong></p>
+      <p>{{client_business}}</p>
+      <p><strong>Company or Personal Address:</strong></p>
+      <p>{{company_address}}</p>
+      <p><strong>Email Address:</strong></p>
+      <p>{{company_email}}</p>
+      <p>(hereinafter "Client" or "I")</p>
+    </div>
+
+    <div class="business-owner-details">
+      <h3><strong>Business Owner</strong></h3>
+      <p><strong>Name:</strong> Lena Forrey</p>
+      <p><strong>Business:</strong> Lena Forrey, Inc.</p>
+      <p><strong>Address:</strong> 10 Kings Hill Terrace, Wallkill, NY 12589</p>
+      <p>(hereinafter "Business owner" or "We")</p>
+    </div>
+  </div>
+</div>`;
+  };
+
+  // Create contract footer with signature fields and template variables
+  const createContractFooter = () => {
+    return `
+<div class="contract-footer">
+  <div class="signature-section">
+    <h3>Agreement Acknowledgment</h3>
+    <p>By signing below, both parties acknowledge that they have read, understood, and agree to be bound by the terms and conditions outlined in this contract.</p>
+    
+    <div class="signature-block">
+      <p><strong>Client Signature:</strong> _________________________ <strong>Date:</strong> _____________</p>
+      <p><strong>Print Name:</strong> _________________________</p>
+    </div>
+    
+    <div class="signature-block">
+      <p><strong>Business Owner Signature:</strong> _________________________ <strong>Date:</strong> _____________</p>
+      <p><strong>Print Name:</strong> Lena Forrey</p>
+    </div>
+  </div>
+
+  <div class="terms-section">
+    <h3>Additional Terms</h3>
+    <p>This contract represents the entire agreement between the parties and supersedes all prior negotiations, representations, or agreements relating to the subject matter herein. Any modifications to this contract must be made in writing and signed by both parties.</p>
+    
+    <p>If any provision of this contract is deemed invalid or unenforceable, the remaining provisions shall continue to be valid and enforceable.</p>
+    
+    <p>This contract shall be governed by the laws of New York State.</p>
+  </div>
+</div>`;
   };
 
   // Process {{#each array}} blocks
@@ -109,7 +202,6 @@ export const useContractBuilder = () => {
         return relatedData.selectedMilestones
           .map(milestone => {
             let itemContent = template;
-            // Use specific field references to avoid conflicts
             itemContent = itemContent.replace(/{{title}}/g, milestone.title || '');
             itemContent = itemContent.replace(/{{description}}/g, milestone.description || '');
             return itemContent;
@@ -126,10 +218,9 @@ export const useContractBuilder = () => {
         let productsHtml = relatedData.products
           .map(product => {
             let itemContent = template;
-            // Replace product fields (but NOT price in individual items)
+            // Replace product fields
             itemContent = itemContent.replace(/{{title}}/g, product.title || product.name || '');
             itemContent = itemContent.replace(/{{description}}/g, product.description || '');
-            // Remove individual price references - don't replace {{price}} here
             
             // Handle deliverables list
             if (product.deliverables && Array.isArray(product.deliverables)) {
@@ -147,103 +238,89 @@ export const useContractBuilder = () => {
             
             return itemContent;
           })
-          .join('');
+      
         
-        // Calculate total price of all products
-        const totalPrice = relatedData.products
-          .reduce((sum, product) => sum + (parseFloat(product.price) || 0), 0);
-        
-        // Add total price section AFTER all products
-        productsHtml += `
-          <div style="margin-top: 2rem; padding: 1rem; background-color: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px;">
-            <h4 style="margin: 0 0 0.5rem 0; font-weight: 600; color: #0c4a6e;">Total Project Cost</h4>
-            <p style="margin: 0; font-size: 1.5rem; font-weight: bold; color: #0ea5e9;">${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-          </div>
-        `;
-        
-        return productsHtml;
+       
       });
     }
     
     return content;
   };
 
-  // Process {{payments}} template variable
- // Use old-school HTML table attributes that TipTap is more likely to preserve
-const processPaymentsTemplate = (content, relatedData) => {
-  console.log('Processing payments template with old-school attributes...', relatedData?.payments);
-  
-  if (relatedData.payments && Array.isArray(relatedData.payments)) {
-    const paymentsRegex = /{{payments}}/g;
+  // Process {{payments}} template variable with proper table formatting
+  const processPaymentsTemplate = (content, relatedData) => {
+    console.log('Processing payments template...', relatedData?.payments);
     
-    content = content.replace(paymentsRegex, () => {
-      if (relatedData.payments.length === 0) {
-        return '<p><em>No payment schedule defined.</em></p>';
-      }
-
-      // Calculate total
-      const total = relatedData.payments.reduce((sum, payment) => 
-        sum + (parseFloat(payment.amount) || 0), 0
-      );
-
-      // Format currency
-      const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-US', {
-          style: 'currency',
-          currency: 'USD'
-        }).format(amount || 0);
-      };
-
-      // Format date
-      const formatDate = (dateString) => {
-        if (!dateString) return '';
-        return new Date(dateString).toLocaleDateString();
-      };
-
-      // Generate table rows using old-school attributes
-      const tableRows = relatedData.payments.map(payment => {
-        const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
-        const altDueDate = payment.alt_due_date || '';
-        const dueDateDisplay = dueDate || altDueDate || 'TBD';
-        
-        return `
-          <tr>
-            <td><p>${payment.title}</p></td>
-            <td align="right"><p><b>${formatCurrency(payment.amount)}</b></p></td>
-            <td><p>${dueDateDisplay}</p></td>
-            <td><p>${altDueDate && dueDate ? altDueDate : '—'}</p></td>
-          </tr>
-        `;
-      }).join('');
-
-      // Use old-school table attributes that are preserved by most systems
-      const tableHTML = `
-        <table border="1" cellpadding="12" cellspacing="0" width="100%">
-          <tbody>
-            <tr bgcolor="#f9fafb">
-              <th><p><b>Payment</b></p></th>
-              <th><p><b>Amount</b></p></th>
-              <th><p><b>Due Date</b></p></th>
-              <th><p><b>Alternative Due Date</b></p></th>
-            </tr>
-            ${tableRows}
-            <tr bgcolor="#f0f9ff">
-              <td><p><b>Total Project Cost</b></p></td>
-              <td align="right"><p><b>${formatCurrency(total)}</b></p></td>
-              <td><p></p></td>
-              <td><p></p></td>
-            </tr>
-          </tbody>
-        </table>
-      `;
+    if (relatedData.payments && Array.isArray(relatedData.payments)) {
+      const paymentsRegex = /{{payments}}/g;
       
-      console.log('Generated old-school table HTML:', tableHTML);
-      return tableHTML;
-    });
-  }
-  
-  return content;
-};
+      content = content.replace(paymentsRegex, () => {
+        if (relatedData.payments.length === 0) {
+          return '<p><em>No payment schedule defined.</em></p>';
+        }
+
+        // Calculate total
+        const total = relatedData.payments.reduce((sum, payment) => 
+          sum + (parseFloat(payment.amount) || 0), 0
+        );
+
+        // Format currency
+        const formatCurrency = (amount) => {
+          return new Intl.NumberFormat('en-US', {
+            style: 'currency',
+            currency: 'USD'
+          }).format(amount || 0);
+        };
+
+        // Format date
+        const formatDate = (dateString) => {
+          if (!dateString) return '';
+          return new Date(dateString).toLocaleDateString();
+        };
+
+        // Generate table rows
+        const tableRows = relatedData.payments.map(payment => {
+          const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
+          const altDueDate = payment.alt_due_date || '';
+          const dueDateDisplay = dueDate || altDueDate || 'TBD';
+          
+          return `
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${payment.title}</td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: right;"><strong>${formatCurrency(payment.amount)}</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${dueDateDisplay}</td>
+            </tr>
+          `;
+        }).join('');
+
+        // Create complete table with proper styling
+        const tableHTML = `
+          <table style="width: 100%; border-collapse: collapse; margin: 1rem 0;">
+            <thead>
+              <tr style="background-color: #f9fafb;">
+                <th style="padding: 12px; border: 1px solid #e0e0e0; text-align: left;"><strong>Payment</strong></th>
+                <th style="padding: 12px; border: 1px solid #e0e0e0; text-align: right;"><strong>Amount</strong></th>
+                <th style="padding: 12px; border: 1px solid #e0e0e0; text-align: left;"><strong>Due Date</strong></th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tableRows}
+              <tr style="background-color: #f0f9ff;">
+                <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Total Project Cost</strong></td>
+                <td style="padding: 12px; border: 1px solid #e0e0e0; text-align: right;"><strong>${formatCurrency(total)}</strong></td>
+                <td style="padding: 12px; border: 1px solid #e0e0e0;"></td>
+              </tr>
+            </tbody>
+          </table>
+        `;
+        
+        console.log('Generated payment table HTML');
+        return tableHTML;
+      });
+    }
+    
+    return content;
+  };
 
   // Handle drag end
   const handleDragEnd = (event) => {
@@ -403,6 +480,55 @@ const processPaymentsTemplate = (content, relatedData) => {
     }
   };
 
+  // Add all required parts that aren't already in the contract
+  const handleAddAllRequired = () => {
+    console.log('[useContractBuilder] ========== ADDING ALL REQUIRED PARTS ==========');
+    
+    // Get IDs of parts already in the contract
+    const usedPartIds = contractParts.map(p => p.id);
+    console.log('[useContractBuilder] Currently used part IDs:', usedPartIds);
+    
+    // Find required parts that aren't already added
+    const requiredParts = availableParts.filter(part => 
+      part.is_required && !usedPartIds.includes(part.id)
+    );
+    
+    console.log('[useContractBuilder] Required parts to add:', requiredParts.map(p => ({
+      id: p.id,
+      title: p.title
+    })));
+    
+    if (requiredParts.length === 0) {
+      console.log('[useContractBuilder] No required parts to add');
+      return;
+    }
+    
+    // Sort required parts by their original sort_order
+    const sortedRequiredParts = requiredParts.sort((a, b) => 
+      (a.sort_order || 0) - (b.sort_order || 0)
+    );
+    
+    // Add them to the contract with appropriate order_index
+    const newParts = sortedRequiredParts.map((part, index) => ({
+      ...part,
+      order_index: contractParts.length + index
+    }));
+    
+    console.log('[useContractBuilder] New parts with order indices:', newParts.map(p => ({
+      id: p.id,
+      title: p.title,
+      order_index: p.order_index
+    })));
+    
+    setContractParts(prev => {
+      const updated = [...prev, ...newParts];
+      console.log('[useContractBuilder] Updated contract parts total:', updated.length);
+      return updated;
+    });
+    
+    console.log('[useContractBuilder] ========== ADDED ALL REQUIRED PARTS ==========');
+  };
+
   return {
     // State
     contractTitle,
@@ -422,6 +548,7 @@ const processPaymentsTemplate = (content, relatedData) => {
     handleAddCustomPart,
     handleRemovePart,
     saveContract,
-    compileContentWithData
+    compileContentWithData,
+    handleAddAllRequired,
   };
 };

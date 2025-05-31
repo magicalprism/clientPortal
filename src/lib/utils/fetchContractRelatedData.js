@@ -4,13 +4,14 @@ export const fetchContractRelatedData = async (record, config) => {
   const supabase = createClient();
   const relatedData = {};
 
-  if (record.selectedMilestones?.length) {
-    const { data } = await supabase
-      .from('milestone')
-      .select('id, title, description')
-      .in('id', record.selectedMilestones);
-    relatedData.selectedMilestones = data || [];
-  }
+if (record.selectedMilestones?.length) {
+  const { data } = await supabase
+    .from('milestone')
+    .select('id, title, description, sort_order') // ✅ added
+    .in('id', record.selectedMilestones);
+
+  relatedData.selectedMilestones = data || [];
+}
 
   if (record.products?.length) {
     const { data: products } = await supabase

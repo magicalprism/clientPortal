@@ -1,10 +1,12 @@
 export const resource = {
     name: 'resource',
-    label: 'Resources',
-    editPathPrefix: '/dashboard/resource',
-    showEditButton: true, // ✅ just a UI toggle
-    subtitleField: 'title',
-    defaultView: 'table',
+  label: 'Resources',
+  singularLabel: 'Resource',
+  table: 'resource',
+  editPathPrefix: '/dashboard/resource',
+  showEditButton: true, // ✅ just a UI toggle
+  subtitleField: 'title',
+  defaultView: 'table',
         views: {
           table: {
             label: 'Table View',
@@ -33,13 +35,51 @@ export const resource = {
       { 
         name: 'title', 
         label: 'Title', 
-        group: 'Company Info', 
+        group: 'Oerview', 
+        tab: 'Details',
         clickable: true, 
         openMode: 'full', 
-        tab: 'Overview', 
+         
         showInTable: true,
         description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
       },
+       { 
+        name: 'content', 
+        label: 'Content', 
+        group: 'Content', 
+        tab: 'Details',
+        type:'richText',
+      },
+      {
+  name: 'media_items',
+  label: 'Downloads & Files',
+  type: 'galleryRelationship',
+  group: 'Content', 
+        tab: 'Details',
+  database: false,
+  filters: [
+    { name: 'mime_type', label: 'File Type' },
+
+], // 👈 multiple fields used in dropdowns
+  sortOptions: [ // ✅ Add this here
+      { value: 'title:asc', label: 'Title (A–Z)' },
+      { value: 'title:desc', label: 'Title (Z–A)' },
+      { value: 'created_at:desc', label: 'Newest Created' },
+      { value: 'created_at:asc', label: 'Oldest Created' }
+    ],
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_resource',
+    sourceKey: 'resource_id',
+    targetKey: 'media_id',
+    foreignKey: 'resource_id',
+    filter: {
+      resource_id: 'record.id'
+    }
+  },
+  
+},
         //Meta
     {
       name: 'status',

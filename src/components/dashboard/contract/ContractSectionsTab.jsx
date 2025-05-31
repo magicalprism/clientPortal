@@ -14,6 +14,8 @@ import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable'
 import { ContractPartCard } from './parts/ContractPartCard';
 import { AvailablePartsSidebar } from './parts/AvailablePartsSidebar';
 
+// Update your ContractSectionsTab.jsx to pass the new props
+
 export const ContractSectionsTab = ({
   contractParts,
   availableParts,
@@ -22,7 +24,8 @@ export const ContractSectionsTab = ({
   handleDragEndWrapper,
   handleRemovePart,
   handleAddExistingPart,
-  handleAddCustomPart
+  handleAddCustomPart,
+  handleAddAllRequired // Add this new prop
 }) => {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -111,14 +114,16 @@ export const ContractSectionsTab = ({
         </Box>
       </Grid>
 
-      {/* Sidebar */}
+      {/* Enhanced Sidebar */}
       <Grid item xs={12} md={4}>
         <AvailablePartsSidebar
           availableParts={availableParts.filter(part =>
             !contractParts.find(cp => cp.id === part.id)
           )}
+          contractParts={contractParts}
           onAddPart={handleAddExistingPart}
           onAddCustomPart={handleAddCustomPart}
+          onAddAllRequired={handleAddAllRequired} // Pass the new handler
         />
       </Grid>
     </Grid>

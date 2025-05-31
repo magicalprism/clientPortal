@@ -1,6 +1,8 @@
 // /lib/utils/contractContentCompiler.js
 import { createClient } from '@/lib/supabase/browser';
 
+
+
 export const compileContractContent = async (contractRecord, relatedData = {}) => {
   const supabase = createClient();
   
@@ -23,55 +25,68 @@ export const compileContractContent = async (contractRecord, relatedData = {}) =
     order_index: cp.order_index
   })) || [];
 
-  if (!contractParts.length) return '';
+  // Generate the main contract content
+  let contractContent = '';
   
-  const sortedParts = contractParts.sort((a, b) => a.order_index - b.order_index);
+  if (contractParts.length > 0) {
+    const sortedParts = contractParts.sort((a, b) => a.order_index - b.order_index);
+    
+    contractContent = sortedParts
+      .map(part => {
+        let processedContent = part.content;
+        
+        // FIRST: Handle {{#each array}} loops
+        processedContent = processEachBlocks(processedContent, relatedData);
+        
+        // SECOND: Handle {{payments}} template
+        processedContent = processPaymentsTemplate(processedContent, relatedData);
+        
+        // THEN: Replace simple field variables
+        Object.keys(contractRecord).forEach(fieldName => {
+          const value = contractRecord[fieldName];
+          if (value !== null && value !== undefined) {
+            const regex = new RegExp(`{{${fieldName}}}`, 'g');
+            processedContent = processedContent.replace(regex, String(value));
+          }
+        });
+        
+        return `
+          <div class="contract-section" style="margin-bottom: 2rem;">
+            <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">${part.title}</h3>
+            <div class="section-content" style="color: #374151; line-height: 1.6;">${processedContent}</div>
+          </div>
+        `;
+      })
+      .join('\n');
+  }
   
-  return sortedParts
-    .map(part => {
-      let processedContent = part.content;
-      
-      // FIRST: Handle {{#each array}} loops
-      processedContent = processEachBlocks(processedContent, relatedData);
-      
-      // SECOND: Handle {{payments}} template
-      processedContent = processPaymentsTemplate(processedContent, relatedData);
-      
-      // THEN: Replace simple field variables
-      Object.keys(contractRecord).forEach(fieldName => {
-        const value = contractRecord[fieldName];
-        if (value !== null && value !== undefined) {
-          const regex = new RegExp(`{{${fieldName}}}`, 'g');
-          processedContent = processedContent.replace(regex, String(value));
-        }
-      });
-      
-      return `
-        <div class="contract-section" style="margin-bottom: 2rem;">
-          <h3 style="font-size: 1.25rem; font-weight: 600; margin-bottom: 1rem; color: #1f2937;">${part.title}</h3>
-          <div class="section-content" style="color: #374151; line-height: 1.6;">${processedContent}</div>
-        </div>
-      `;
-    })
-    .join('\n');
+  // Always append the legal footer, whether there are contract parts or not
+  return contractContent;
 };
 
 // Process {{#each array}} blocks
 const processEachBlocks = (content, relatedData) => {
   // Handle selectedMilestones
-  if (relatedData.selectedMilestones && Array.isArray(relatedData.selectedMilestones)) {
-    const milestonesRegex = /{{#each selectedMilestones}}([\s\S]*?){{\/each}}/g;
-    content = content.replace(milestonesRegex, (match, template) => {
-      return relatedData.selectedMilestones
-        .map(milestone => {
-          let itemContent = template;
-          itemContent = itemContent.replace(/{{title}}/g, milestone.title || '');
-          itemContent = itemContent.replace(/{{description}}/g, milestone.description || '');
-          return itemContent;
-        })
-        .join('');
-    });
-  }
+ if (relatedData.selectedMilestones && Array.isArray(relatedData.selectedMilestones)) {
+  const milestonesRegex = /{{#each selectedMilestones}}([\s\S]*?){{\/each}}/g;
+
+  // ✅ Sort the milestones before mapping
+  const sortedMilestones = relatedData.selectedMilestones
+    .slice()
+    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+  content = content.replace(milestonesRegex, (match, template) => {
+    return sortedMilestones
+      .map(milestone => {
+        let itemContent = template;
+        itemContent = itemContent.replace(/{{title}}/g, milestone.title || '');
+        itemContent = itemContent.replace(/{{description}}/g, milestone.description || '');
+        return itemContent;
+      })
+      .join('');
+  });
+}
+
   
   // Handle products with deliverables and pricing
   if (relatedData.products && Array.isArray(relatedData.products)) {
@@ -105,10 +120,7 @@ const processEachBlocks = (content, relatedData) => {
       
       // Add total price section AFTER all products
       productsHtml += `
-        <div style="margin-top: 2rem; padding: 1rem; background-color: #f0f9ff; border: 2px solid #0ea5e9; border-radius: 8px;">
-          <h4 style="margin: 0 0 0.5rem 0; font-weight: 600; color: #0c4a6e;">Total Project Cost</h4>
-          <p style="margin: 0; font-size: 1.5rem; font-weight: bold; color: #0ea5e9;">$${totalPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
-        </div>
+
       `;
       
       return productsHtml;
@@ -118,7 +130,7 @@ const processEachBlocks = (content, relatedData) => {
   return content;
 };
 
-// Process {{payments}} template variable
+// Process {{payments}} template variable - FIXED VERSION
 const processPaymentsTemplate = (content, relatedData) => {
   if (relatedData.payments && Array.isArray(relatedData.payments)) {
     const paymentsRegex = /{{payments}}/g;
@@ -147,7 +159,7 @@ const processPaymentsTemplate = (content, relatedData) => {
         return new Date(dateString).toLocaleDateString();
       };
 
-      // Generate table HTML
+      // Generate table HTML - REMOVED Alternative Due Date column
       const tableRows = relatedData.payments.map(payment => {
         const dueDate = payment.due_date ? formatDate(payment.due_date) : '';
         const altDueDate = payment.alt_due_date || '';
@@ -158,7 +170,6 @@ const processPaymentsTemplate = (content, relatedData) => {
             <td style="border: 1px solid #e5e7eb; padding: 12px;">${payment.title}</td>
             <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: 600; color: #059669;">${formatCurrency(payment.amount)}</td>
             <td style="border: 1px solid #e5e7eb; padding: 12px;">${dueDateDisplay}</td>
-            <td style="border: 1px solid #e5e7eb; padding: 12px;">${altDueDate && dueDate ? altDueDate : '—'}</td>
           </tr>
         `;
       }).join('');
@@ -170,7 +181,6 @@ const processPaymentsTemplate = (content, relatedData) => {
               <th style="border: 1px solid #e5e7eb; padding: 12px; font-weight: 600; text-align: left;">Payment</th>
               <th style="border: 1px solid #e5e7eb; padding: 12px; font-weight: 600; text-align: left;">Amount</th>
               <th style="border: 1px solid #e5e7eb; padding: 12px; font-weight: 600; text-align: left;">Due Date</th>
-              <th style="border: 1px solid #e5e7eb; padding: 12px; font-weight: 600; text-align: left;">Alternative Due Date</th>
             </tr>
           </thead>
           <tbody>
@@ -178,7 +188,6 @@ const processPaymentsTemplate = (content, relatedData) => {
             <tr style="background-color: #f0f9ff; border-top: 2px solid #0ea5e9;">
               <td style="border: 1px solid #e5e7eb; padding: 12px; font-weight: bold; color: #0c4a6e;">Total Project Cost</td>
               <td style="border: 1px solid #e5e7eb; padding: 12px; text-align: right; font-weight: bold; color: #0ea5e9; font-size: 1.125rem;">${formatCurrency(total)}</td>
-              <td style="border: 1px solid #e5e7eb; padding: 12px;"></td>
               <td style="border: 1px solid #e5e7eb; padding: 12px;"></td>
             </tr>
           </tbody>

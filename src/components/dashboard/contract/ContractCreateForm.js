@@ -87,83 +87,89 @@ const ContractCreateForm = ({ config, onSave = () => {}, onCancel = () => {} }) 
   );
 
   // Fetch related data for template compilation
+// Fetch related data for template compilation
 const fetchRelatedData = useCallback(async () => {
-    console.log('[fetchRelatedData] Called with formData:', formData);
+  console.log('[fetchRelatedData] Called with formData:', formData);
+  
+  const relatedData = {};
+  
+  try {
+    console.log('[Fetch Debug] Starting to fetch related data...');
     
-    const relatedData = {};
-    
-    try {
-      console.log('[Fetch Debug] Starting to fetch related data...');
+    // Fetch selectedMilestones if the field exists and has values
+    const milestonesField = config?.fields?.find(f => f.name === 'selectedMilestones');
+    if (milestonesField?.relation && formData.selectedMilestones?.length > 0) {
+      const { data: milestones, error: milestonesError } = await supabase
+        .from(milestonesField.relation.table)
+        .select('id, title, description, sort_order') // Added sort_order
+        .in('id', formData.selectedMilestones)
+        .order('sort_order', { ascending: true }); // Added ordering
       
-      // Fetch selectedMilestones if the field exists and has values
-      const milestonesField = config?.fields?.find(f => f.name === 'selectedMilestones');
-      if (milestonesField?.relation && formData.selectedMilestones?.length > 0) {
-        const { data: milestones, error: milestonesError } = await supabase
-          .from(milestonesField.relation.table)
-          .select('id, title, description')
-          .in('id', formData.selectedMilestones);
-        
-        if (!milestonesError && milestones) {
-          relatedData.selectedMilestones = milestones;
-        }
+      if (!milestonesError && milestones) {
+        relatedData.selectedMilestones = milestones;
       }
-      
-      // Fetch products with deliverables if the field exists and has values
-      const productsField = config?.fields?.find(f => f.name === 'products');
-      if (productsField?.relation && formData.products?.length > 0) {
-        const { data: products, error: productsError } = await supabase
-          .from(productsField.relation.table)
-          .select('id, title, description, price')
-          .in('id', formData.products);
-        
-        if (!productsError && products?.length > 0) {
-          // Fetch deliverables for each product
-          const productsWithDeliverables = await Promise.all(
-            products.map(async (product) => {
-              try {
-                // Query the junction table (alphabetical naming: deliverable_product)
-                const { data: junctionData, error: junctionError } = await supabase
-                  .from('deliverable_product')
-                  .select('deliverable_id')
-                  .eq('product_id', product.id);
-                
-                if (!junctionError && junctionData?.length > 0) {
-                  const deliverableIds = junctionData.map(item => item.deliverable_id);
-                  
-                  const { data: deliverables, error: deliverablesError } = await supabase
-                    .from('deliverable')
-                    .select('id, title')
-                    .in('id', deliverableIds);
-                  
-                  if (!deliverablesError) {
-                    return { ...product, deliverables: deliverables || [] };
-                  }
-                }
-                
-                return { ...product, deliverables: [] };
-              } catch (error) {
-                console.error('[Fetch Debug] Error fetching deliverables for product', product.id, ':', error);
-                return { ...product, deliverables: [] };
-              }
-            })
-          );
-          
-          relatedData.products = productsWithDeliverables;
-        }
-      }
-      
-      // For new contracts being created, payments will be empty
-      relatedData.payments = [];
-      console.log('[Fetch Debug] New contract - no payments yet');
-      
-      console.log('[Fetch Debug] Final related data:', relatedData);
-      return relatedData;
-      
-    } catch (error) {
-      console.error('[Fetch Debug] Error in fetchRelatedData:', error);
-      return relatedData;
     }
-  }, [formData, config, supabase]);
+    
+    // Fetch products with deliverables if the field exists and has values
+    const productsField = config?.fields?.find(f => f.name === 'products');
+    if (productsField?.relation && formData.products?.length > 0) {
+      const { data: products, error: productsError } = await supabase
+        .from(productsField.relation.table)
+        .select('id, title, description, price')
+        .in('id', formData.products);
+      
+      if (!productsError && products?.length > 0) {
+        // Fetch deliverables for each product
+        const productsWithDeliverables = await Promise.all(
+          products.map(async (product) => {
+            try {
+              // Query the junction table (alphabetical naming: deliverable_product)
+              const { data: junctionData, error: junctionError } = await supabase
+                .from('deliverable_product')
+                .select('deliverable_id')
+                .eq('product_id', product.id);
+              
+              if (!junctionError && junctionData?.length > 0) {
+                const deliverableIds = junctionData.map(item => item.deliverable_id);
+                
+                const { data: deliverables, error: deliverablesError } = await supabase
+                  .from('deliverable')
+                  .select('id, title')
+                  .in('id', deliverableIds);
+                
+                if (!deliverablesError) {
+                  return { ...product, deliverables: deliverables || [] };
+                }
+              }
+              
+              return { ...product, deliverables: [] };
+            } catch (error) {
+              console.error('[Fetch Debug] Error fetching deliverables for product', product.id, ':', error);
+              return { ...product, deliverables: [] };
+            }
+          })
+        );
+        
+        relatedData.products = productsWithDeliverables;
+      }
+    }
+    
+    // For new contracts being created, payments will be empty
+    relatedData.payments = [];
+    console.log('[Fetch Debug] New contract - no payments yet');
+    
+    console.log('[Fetch Debug] Final related data:', relatedData);
+    return relatedData;
+    
+  } catch (error) {
+    console.error('[Fetch Debug] Error in fetchRelatedData:', error);
+    return relatedData;
+  }
+}, [formData, config, supabase]);
+
+
+
+
   // Handle form field changes
  const handleChange = useCallback((fieldName, value) => {
     console.log(`[ContractCreateForm] Field ${fieldName} changed:`, value);
