@@ -48,7 +48,7 @@ export const CollectionTable = ({ config, refresh, data, rows, fieldContext = nu
     );
   } else {
     collectionFields = config.fields.filter((f) =>
-      f.showInTable || ['title', 'status', 'id'].includes(f.name)
+      f.showInTable || ['title',  'id'].includes(f.name)
     );
 
     if (!collectionFields.length && config.fields.length) {

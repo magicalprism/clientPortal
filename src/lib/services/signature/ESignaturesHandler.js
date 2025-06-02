@@ -1,16 +1,17 @@
-// /lib/services/signature/ESignaturesHandler.js - Corrected for eSignatures.com API
+// /lib/services/signature/ESignaturesHandler.js - Fixed with Correct Redirect URL Implementation
 import { DocumentElementsParser } from './DocumentElementsParser.js';
 
 export class ESignaturesHandler {
   
   // Send contract to eSignatures platform
-  static async sendContract({ title, contractId, signers, content, webhookUrl }) {
+  static async sendContract({ title, contractId, signers, content, webhookUrl, redirectUrl }) {
     try {
       console.log('[ESignaturesHandler] Starting eSignatures API call');
       console.log('[ESignaturesHandler] Contract ID:', contractId);
       console.log('[ESignaturesHandler] Title:', title);
       console.log('[ESignaturesHandler] Signers:', signers.length);
       console.log('[ESignaturesHandler] Content length:', content.length);
+      console.log('[ESignaturesHandler] Redirect URL:', redirectUrl || 'None provided');
       console.log('[ESignaturesHandler] Content preview:', content.substring(0, 500));
       
       // Create document elements with form fields properly detected
@@ -124,14 +125,24 @@ export class ESignaturesHandler {
       console.log('[ESignaturesHandler] Template created successfully:', tempTemplateId);
 
       try {
-        // Create contract using temporary template
+        // FIXED: Create contract using temporary template with redirect_url per signer
         const contractPayload = {
           template_id: tempTemplateId,
-          signers: signers.map((signer, index) => ({
-            name: signer.name,
-            email: signer.email,
-            signing_order: (index + 1).toString() // FIXED: eSignatures uses signing_order, not order
-          })),
+          signers: signers.map((signer, index) => {
+            const signerPayload = {
+              name: signer.name,
+              email: signer.email,
+              signing_order: (index + 1).toString()
+            };
+            
+            // FIXED: Add redirect_url to each signer, not at contract level
+            if (redirectUrl) {
+              signerPayload.redirect_url = redirectUrl;
+              console.log(`[ESignaturesHandler] Added redirect URL to signer ${signer.name}:`, redirectUrl);
+            }
+            
+            return signerPayload;
+          }),
           webhook_url: webhookUrl,
           metadata: {
             contractId: contractId,
@@ -172,17 +183,25 @@ export class ESignaturesHandler {
 
         console.log('[ESignaturesHandler] Contract created successfully:', contractData);
 
-        // Extract the contract data - FIXED based on actual API response structure
+        // Extract the contract data - based on actual API response structure
         const contract = contractData.data?.contract || contractData.contract || contractData;
         const firstSigner = contract.signers?.[0];
+
+        // Verify redirect URL was set correctly
+        if (redirectUrl && firstSigner?.redirect_url) {
+          console.log('[ESignaturesHandler] ✅ Redirect URL confirmed in API response:', firstSigner.redirect_url);
+        } else if (redirectUrl) {
+          console.log('[ESignaturesHandler] ⚠️ Redirect URL was sent but not confirmed in response');
+        }
 
         // Delete temporary template
         await this.deleteTemplate(tempTemplateId);
         
         return {
           success: true,
-          documentId: contract.id, // FIXED: use contract.id not contract_id
-          signUrl: firstSigner?.sign_page_url, // FIXED: use sign_page_url not signing_url
+          documentId: contract.id, // use contract.id not contract_id
+          signUrl: firstSigner?.sign_page_url, // use sign_page_url not signing_url
+          redirectUrl: firstSigner?.redirect_url || redirectUrl, // Include actual redirect URL from response
           metadata: { 
             platformData: contractData,
             contract: contract,
@@ -331,10 +350,10 @@ export class ESignaturesHandler {
   static async deleteTemplate(templateId) {
     try {
       console.log('[ESignaturesHandler] Deleting temporary template:', templateId);
-      // FIXED: Use POST method with /delete endpoint as per eSignatures API
+      // Use POST method with /delete endpoint as per eSignatures API
       const deleteUrl = `https://esignatures.com/api/templates/${templateId}/delete?token=${process.env.ESIGNATURES_API_KEY}`;
       const response = await fetch(deleteUrl, { 
-        method: 'POST', // FIXED: eSignatures uses POST for deletion
+        method: 'POST', // eSignatures uses POST for deletion
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json'
@@ -356,7 +375,7 @@ export class ESignaturesHandler {
       const data = await response.json();
       const contract = data.data?.contract || data.contract || data;
       
-      // FIXED: Map eSignatures.com status to our standard status
+      // Map eSignatures.com status to our standard status
       const statusMap = {
         'sent': 'sent',
         'signed': 'signed',

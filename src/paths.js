@@ -123,6 +123,13 @@ export const paths = {
 			create: "/dashboard/project/create",
 			details: (projectId) => `/dashboard/project/${projectId}`,
 		},
+		proposal: {
+		list: "/dashboard/proposal",
+		create: "/dashboard/proposal/create",
+		details: (proposalId) => `/dashboard/proposal/${proposalId}`,
+		preview: (proposalId) => `/dashboard/proposal/${proposalId}/preview`, // ✅ Likely this
+		},
+
 		
 
 		

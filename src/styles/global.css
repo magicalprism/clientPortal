@@ -236,3 +236,88 @@ html {
   background-color: #2196f3 !important; /* default blue */
   color: #fff;
 }
+
+/*Proposal*/
+/* global.css or your theme CSS */
+.proposal-bg {
+  background-color: #f4f6f8;
+  padding: 4rem 0;
+}
+
+.proposal-container {
+  background-color: #fff;
+  padding: 3rem;
+  border-radius: 1rem;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+}
+
+.proposal-headline {
+  font-weight: bold;
+  margin-bottom: 1rem;
+}
+
+.proposal-subheadline {
+  color: #666;
+  margin-bottom: 2rem;
+}
+
+.proposal-video {
+  border-radius: 0.75rem;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  margin-bottom: 2rem;
+}
+
+.proposal-cta {
+  margin-top: 1rem;
+}
+
+.proposal-summary {
+  margin-top: 4rem;
+}
+
+.proposal-note {
+  margin-top: 1rem;
+  line-height: 1.6;
+}
+
+.proposal-signature {
+  margin-top: 2rem;
+  font-style: italic;
+}
+
+.proposal-problems,
+.proposal-testimonials,
+.proposal-features,
+.proposal-pricing,
+.proposal-faq {
+  margin-top: 4rem;
+}
+
+.problem-card,
+.feature-card,
+.testimonial-card,
+.pricing-card {
+  padding: 1.5rem;
+}
+
+.pricing-card.highlighted {
+  border: 2px solid #1976d2;
+  box-shadow: 0 4px 12px rgba(25, 118, 210, 0.2);
+}
+
+.proposal-pricing-subhead {
+  margin-bottom: 2rem;
+}
+
+.testimonial-author {
+  margin-top: 1rem;
+}
+
+.solution-item {
+  padding-left: 0;
+}
+
+.faq-item {
+  margin-bottom: 1rem;
+}

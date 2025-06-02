@@ -1,4 +1,4 @@
-// /lib/services/eSignatureService.js - Simplified main service
+// /lib/services/eSignatureService.js - Enhanced with Sign URL Saving
 import { createClient } from '@/lib/supabase/server';
 import { ContentProcessor } from './signature/ContentProcessor.js';
 import { PlatformHandlerFactory } from './signature/PlatformHandlerFactory.js';
@@ -21,6 +21,45 @@ export class ESignatureService {
       return this.supabaseClient;
     }
     return await createClient();
+  }
+
+  // Fetch payment URL from the first payment associated with the contract
+  async getContractPaymentUrl(contractId) {
+    try {
+      console.log('[ESignatureService] Fetching payment URL for contract:', contractId);
+      const supabase = await this.getSupabase();
+      
+      // Query to get the payment_url from the first payment associated with this contract
+      const { data, error } = await supabase
+        .from('contract_payment')
+        .select(`
+          payment_id,
+          payment:payment_id (
+            id,
+            payment_url
+          )
+        `)
+        .eq('contract_id', contractId)
+        .order('id', { ascending: true }) // Get the first payment chronologically
+        .limit(1)
+        .single();
+
+      if (error) {
+        console.log('[ESignatureService] No payment found for contract (this is ok):', error.message);
+        return null;
+      }
+
+      if (data?.payment?.payment_url) {
+        console.log('[ESignatureService] Found payment URL:', data.payment.payment_url);
+        return data.payment.payment_url;
+      }
+
+      console.log('[ESignatureService] No payment URL found in payment record');
+      return null;
+    } catch (error) {
+      console.error('[ESignatureService] Error fetching payment URL:', error);
+      return null; // Don't fail the entire signature process if payment URL fetch fails
+    }
   }
 
   // Main method to send contract for signature
@@ -48,6 +87,10 @@ export class ESignatureService {
         await this.resetSignatureStatus(supabase, contractRecord.id);
       }
       
+      // Fetch payment URL for redirect after signing
+      const paymentUrl = await this.getContractPaymentUrl(contractRecord.id);
+      console.log('[ESignatureService] Payment URL for redirect:', paymentUrl || 'None');
+      
       // Process content for signature platform
       console.log('[ESignatureService] Processing content for signature...');
       const processedContent = ContentProcessor.processContentForSignature(contractRecord, signers);
@@ -60,12 +103,14 @@ export class ESignatureService {
         contractId: contractRecord.id,
         signers: signers,
         content: processedContent,
-        webhookUrl: this.getWebhookUrl()
+        webhookUrl: this.getWebhookUrl(),
+        redirectUrl: paymentUrl
       });
 
       console.log('[ESignatureService] Platform result:', {
         success: platformResult.success,
         documentId: platformResult.documentId,
+        signUrl: platformResult.signUrl, // Log the sign URL
         error: platformResult.error
       });
 
@@ -78,6 +123,7 @@ export class ESignatureService {
           documentId: platformResult.documentId,
           signUrl: platformResult.signUrl,
           platform: this.platform,
+          redirectUrl: paymentUrl,
           message: 'Contract sent for signature successfully'
         };
       } else {
@@ -97,7 +143,7 @@ export class ESignatureService {
       
       const { data: contract, error } = await supabase
         .from('contract')
-        .select('signature_document_id, signature_platform, signature_status, signature_signed_at, signature_sent_at, signature_metadata')
+        .select('signature_document_id, signature_platform, signature_status, signature_signed_at, signature_sent_at, signature_metadata, signed_document_url')
         .eq('id', contractId)
         .single();
 
@@ -126,6 +172,7 @@ export class ESignatureService {
         status: currentStatus,
         sentAt: contract.signature_sent_at,
         signedAt: contract.signature_signed_at,
+        signUrl: contract.signed_document_url, // Include the sign URL
         metadata: contract.signature_metadata
       };
 
@@ -241,35 +288,104 @@ export class ESignatureService {
 
   async resetSignatureStatus(supabase, contractId) {
     console.log('[ESignatureService] Force resending - resetting signature status');
-    await supabase
+    const { error } = await supabase
       .from('contract')
       .update({
         signature_status: null,
         signature_document_id: null,
         signature_sent_at: null,
         signature_metadata: null,
+        signed_document_url: null, // Also reset the document URL
         updated_at: new Date().toISOString()
       })
       .eq('id', contractId);
+
+    if (error) {
+      console.error('[ESignatureService] ❌ Error resetting signature status:', error);
+      throw new Error(`Failed to reset signature status: ${error.message}`);
+    }
+    console.log('[ESignatureService] ✅ Signature status reset successfully');
   }
 
+  // ENHANCED: Save the sign URL to signed_document_url field
   async updateContractWithSignatureInfo(supabase, contractId, platformResult) {
     console.log('[ESignatureService] Updating contract with signature info...');
-    await supabase
-      .from('contract')
-      .update({
-        signature_document_id: platformResult.documentId,
-        signature_platform: this.platform,
-        signature_status: 'sent',
-        signature_sent_at: new Date().toISOString(),
-        signature_metadata: platformResult.metadata || {},
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', contractId);
-    console.log('[ESignatureService] Contract updated successfully');
+    console.log('[ESignatureService] Contract ID:', contractId);
+    console.log('[ESignatureService] Platform result:', {
+      documentId: platformResult.documentId,
+      signUrl: platformResult.signUrl, // Log the sign URL being saved
+      platform: this.platform,
+      metadata: platformResult.metadata ? 'present' : 'missing'
+    });
+
+    const updateData = {
+      signature_document_id: platformResult.documentId,
+      signature_platform: this.platform,
+      signature_status: 'sent',
+      signature_sent_at: new Date().toISOString(),
+      signature_metadata: platformResult.metadata || {},
+      updated_at: new Date().toISOString()
+    };
+
+    // FIXED: Save the signing URL to signed_document_url
+    // This field will initially contain the signing URL, and later be updated
+    // with the final signed document URL when the contract is completed
+    if (platformResult.signUrl) {
+      updateData.signed_document_url = platformResult.signUrl;
+      console.log('[ESignatureService] ✅ Saving sign URL to signed_document_url:', platformResult.signUrl);
+    } else {
+      console.log('[ESignatureService] ⚠️ No sign URL provided in platform result');
+    }
+
+    console.log('[ESignatureService] Update payload:', updateData);
+
+    try {
+      const { data, error } = await supabase
+        .from('contract')
+        .update(updateData)
+        .eq('id', contractId)
+        .select(); // Add select to see what was actually updated
+
+      if (error) {
+        console.error('[ESignatureService] ❌ Database update error:', error);
+        console.error('[ESignatureService] Error details:', {
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          code: error.code
+        });
+        throw new Error(`Failed to update contract: ${error.message}`);
+      }
+
+      if (!data || data.length === 0) {
+        console.error('[ESignatureService] ❌ No rows were updated. Contract ID may not exist:', contractId);
+        throw new Error(`No contract found with ID ${contractId} to update`);
+      }
+
+      console.log('[ESignatureService] ✅ Contract updated successfully');
+      console.log('[ESignatureService] Updated contract data:', data[0]);
+      
+      // Verify the update worked by checking the specific fields
+      const updatedContract = data[0];
+      if (updatedContract.signature_document_id !== platformResult.documentId) {
+        console.error('[ESignatureService] ⚠️ Document ID mismatch after update!');
+      }
+      if (updatedContract.signature_status !== 'sent') {
+        console.error('[ESignatureService] ⚠️ Status not set to "sent" after update!');
+      }
+      if (platformResult.signUrl && updatedContract.signed_document_url !== platformResult.signUrl) {
+        console.error('[ESignatureService] ⚠️ Sign URL not saved correctly!');
+      } else if (platformResult.signUrl) {
+        console.log('[ESignatureService] ✅ Sign URL confirmed saved:', updatedContract.signed_document_url);
+      }
+      
+    } catch (err) {
+      console.error('[ESignatureService] ❌ Unexpected error during database update:', err);
+      throw err;
+    }
   }
 
-  async updateContractStatus(supabase, contractId, newStatus) {
+  async updateContractStatus(supabase, contractId, newStatus, additionalData = {}) {
     const updateData = {
       signature_status: newStatus,
       updated_at: new Date().toISOString()
@@ -278,13 +394,31 @@ export class ESignatureService {
     if (newStatus === 'signed') {
       updateData.signature_signed_at = new Date().toISOString();
       updateData.status = 'signed';
+      
+      // ENHANCED: When contract is signed, update signed_document_url with final signed document URL
+      // This overwrites the initial signing URL with the final signed document URL
+      if (additionalData.signed_document_url) {
+        updateData.signed_document_url = additionalData.signed_document_url;
+        console.log('[ESignatureService] ✅ Updating signed_document_url with final signed document:', additionalData.signed_document_url);
+      } else {
+        console.log('[ESignatureService] ℹ️ No final signed document URL provided, keeping existing URL');
+      }
     }
 
-    await supabase
+    // Include any other additional data
+    Object.assign(updateData, additionalData);
+
+    const { error } = await supabase
       .from('contract')
       .update(updateData)
       .eq('id', contractId);
 
+    if (error) {
+      console.error('[ESignatureService] Error updating contract status:', error);
+      throw error;
+    }
+
+    console.log('[ESignatureService] Contract status updated successfully:', newStatus);
     return newStatus;
   }
 
@@ -293,11 +427,19 @@ export class ESignatureService {
     return `${baseUrl}/functions/v1/esignature-webhook`;
   }
 
-  async sendToPlatform({ title, contractId, signers, content, webhookUrl }) {
+  async sendToPlatform({ title, contractId, signers, content, webhookUrl, redirectUrl }) {
     console.log('[ESignatureService] Delegating to platform handler:', this.platform);
+    console.log('[ESignatureService] Redirect URL:', redirectUrl || 'None provided');
     
     const handler = PlatformHandlerFactory.createHandler(this.platform);
-    return await handler.sendContract({ title, contractId, signers, content, webhookUrl });
+    return await handler.sendContract({ 
+      title, 
+      contractId, 
+      signers, 
+      content, 
+      webhookUrl, 
+      redirectUrl
+    });
   }
 
   async checkPlatformStatus(documentId, platform) {

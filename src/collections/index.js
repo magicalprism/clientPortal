@@ -12,5 +12,6 @@ export { contract } from './contract';
 export { contractpart } from './contractpart';
 export { product } from './product';
 export { deliverable } from './deliverable';
+export { proposal } from './proposal';
 
 

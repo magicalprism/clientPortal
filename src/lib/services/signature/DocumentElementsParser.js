@@ -557,23 +557,39 @@ export class DocumentElementsParser {
     const pRegex = /<p[^>]*>([\s\S]*?)<\/p>/gi;
     let pMatch;
     while ((pMatch = pRegex.exec(content)) !== null) {
-      const isProcessed = processedRanges.some(range => 
-        pMatch.index >= range.start && pMatch.index < range.end
-      );
-      
-      if (!isProcessed) {
-        const paragraphText = ContentProcessor.cleanText(pMatch[1]);
-        if (paragraphText && paragraphText.trim()) {
-          elements.push({
-            index: pMatch.index,
-            element: {
-              type: 'text_normal',
-              text: paragraphText
-            }
-          });
-        }
-      }
+  const start = pMatch.index;
+  const end = start + pMatch[0].length;
+
+  const isOverlapping = processedRanges.some(range =>
+    (start >= range.start && start < range.end) ||
+    (end > range.start && end <= range.end) ||
+    (start <= range.start && end >= range.end)
+  );
+
+  if (!isOverlapping) {
+    const innerHTML = pMatch[1];
+
+    // ✅ Skip if this <p> wraps a <ul> or <ol>
+    const isWrappedList = /<(ul|ol)[^>]*>[\s\S]*?<\/\1>/.test(innerHTML);
+    if (isWrappedList) {
+      console.log('[DocumentElementsParser] Skipping paragraph that wraps a list');
+      continue;
     }
+
+    const paragraphText = ContentProcessor.cleanText(innerHTML);
+    if (paragraphText && paragraphText.trim()) {
+      elements.push({
+        index: start,
+        element: {
+          type: 'text_normal',
+          text: paragraphText
+        }
+      });
+
+      processedRanges.push({ start, end });
+    }
+  }
+}
 
     // 4. Process unordered lists
     const ulRegex = /<ul[^>]*>([\s\S]*?)<\/ul>/gi;

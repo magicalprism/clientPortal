@@ -1,7 +1,7 @@
  export const contract = {
   name: 'contract',
   label: 'Contracts',
-  table:'contract',
+  table: 'contract',
   singularLabel: 'Contract',
   editPathPrefix: '/dashboard/contract',
   showEditButton: true, // ✅ just a UI toggle
@@ -12,31 +12,37 @@
       label: 'Table View',
       component: 'PrimaryTableView'
     },
-      page: { 
-        label: 'Page View', 
-        component: 'PageView' 
-      },
+     
 
         
   },
       //Quickview
-      quickView: {
+     quickView: {
         enabled: true,
         imageField: 'thumbnail_id',
         titleField: 'title',
         subtitleField: 'signature_status',
+        descriptionField: 'signature_document_url',
+        extraFields: ['company_id'],
+        relatedFields: ['project_id']
       }, 
 
   fields: [   
      { 
       name: 'title', 
-      label: 'Contract Name', 
+      label: 'Contract Title', 
       group: 'Primary', 
       tab: 'Details',
-      clickable: true, 
-      openMode: 'modal',  
+      clickable: true,  
       showInTable: true,
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+    },
+     { 
+      name: 'signed_document_url', 
+      label: 'Document Link', 
+      group: 'Primary', 
+      tab: 'Details',
+      type:'link',
+
     },
          { 
       name: 'start_date', 
@@ -78,7 +84,8 @@
       props: {
         pivotTable: 'contract_payment',    // Your pivot table
         entityField: 'contract_id',        // Foreign key field
-        showInvoiceButton: true            // Show/hide invoice button
+        showInvoiceButton: true,
+        filter: {}         
       }
     },
          {
@@ -110,7 +117,6 @@
       label: 'Projected Project Length', 
       group: 'Primary', 
       tab: 'Details',
-      type: 'text',
     },
     {
       name: 'platform',
@@ -118,7 +124,7 @@
       label: 'Platform',
       group: 'Primary', 
       tab: 'Details',
-      defaultValue: 'Wordpress',
+      defaultValue: 'wordpress',
       options: [
         { value: 'wordpress', label: 'WordPress' },
         { value: 'webStudio', label: 'WebStudio' },
@@ -135,23 +141,27 @@
       defaultValue: 'draft',
       options: [
         { value: 'draft', label: 'Draft' },
-        { value: 'approved', label: 'Approved' },
-        { value: 'sent', label: 'Sent' },
+        { value: 'sent', label: 'Ready' },
         { value: 'signed', label: 'Signed' },
+        { value: 'archived', label: 'Archived' },
       ]
     },
          {
       name: 'signature_status',
       type: 'select',
-      label: 'Status',
+      label: 'Signature Status',
       group: 'Primary', 
-      tab: 'Meta', 
-      editable: false,
+      tab: 'Details',
+      showInTable: true,  
       defaultValue: 'draft',
       options: [
         { value: 'draft', label: 'Draft' },
         { value: 'sent', label: 'Sent' },
+         { value: 'viewed', label: 'Viewed' },
         { value: 'signed', label: 'Signed' },
+        { value: 'declined', label: 'Declined' },
+        { value: 'expired', label: 'Expired' },
+        { value: 'cancelled', label: 'Cancelled' },
       ]
     },
     {
@@ -164,6 +174,7 @@
         table: 'contract', //usually current collection or pivot table
         labelField: 'title',
         linkTo: '/dashboard/contract', // or dynamically derive from config
+        filter: {},
       }
     },
 
@@ -173,13 +184,12 @@
       group: 'Details',
       tab: 'Overview', 
       type: 'relationship',
-      showInTable: true,
-  
+      showInTable: true,  
       relation: {
         table: 'company',
         labelField: 'title',
         linkTo: '/dashboard/company', // or dynamically derive from config
-        filter: { is_client: 'true' }
+        filter: { is_client: true }
       }
     },
      {
@@ -191,6 +201,7 @@
       relation: {
         table: 'proposal',
         labelField: 'title',
+        filter: {},
 
       }
     },
@@ -236,7 +247,8 @@
       relation: {
         table: 'contact',
         labelField: 'title',
-        linkTo: '/dashboard/contact' // or dynamically derive from config
+        linkTo: '/dashboard/contact', // or dynamically derive from config
+        filter: {}
       }, 
     },
 
@@ -260,16 +272,34 @@
     },
 ],
   filters: [
-     {
-      name: 'company_id',
-      type: 'relationship',
-      label: 'Company',
-      relation: {
-        table: 'company',
-        labelField: 'title',
-        filter: { is_client: true } // optional: filters options
-      }
+      {
+      name: 'signature_status',
+      type: 'select',
+      label: 'Signature Status',
+      multiple: true,
+      defaultValue: [],
+      options: [
+        { value: 'draft', label: 'Draft' },
+        { value: 'sent', label: 'Sent' },
+         { value: 'viewed', label: 'Viewed' },
+        { value: 'signed', label: 'Signed' },
+        { value: 'declined', label: 'Declined' },
+        { value: 'expired', label: 'Expired' },
+        { value: 'cancelled', label: 'Cancelled' },
+      ]
     },
+     {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      defaultValue: 'title:asc',
+      options: [
+        { value: 'title:asc', label: 'Title (A–Z)' },
+        { value: 'title:desc', label: 'Title (Z–A)' },
+        { value: 'created_at:desc', label: 'Newest Created' },
+        { value: 'created_at:asc', label: 'Oldest Created' }
+      ]
+    }
    
   
   ]

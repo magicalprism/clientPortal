@@ -38,6 +38,7 @@ export const dashboardConfig = {
 						{ key: "project:create", title: "Create Project", href: paths.dashboard.project.create },
 						{ key: "element", title: "All Pages", href: paths.dashboard.element.list },
 						{ key: "brand", title: "All Brands", href: paths.dashboard.brand.list },
+						{ key: "proposal", title: "All Proposals", href: paths.dashboard.proposal.list },
 						{ 
 							key: "contract", 
 							title: "Contracts", 
