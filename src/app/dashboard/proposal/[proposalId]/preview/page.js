@@ -5,13 +5,11 @@ import { useParams } from 'next/navigation';
 import {
   Box, Container, Typography, Grid, Button, Card, CardContent,
   Avatar, List, ListItem, ListItemText,
-  Accordion, AccordionSummary, AccordionDetails,
-  Table, TableBody, TableCell, TableHead, TableRow, Paper
+  Accordion, AccordionSummary, AccordionDetails
 } from '@mui/material';
 import { CaretDown as CaretDownIcon } from '@phosphor-icons/react';
 import ProposalPricingCards from '@/components/dashboard/proposals/ProposalPricingCards';
-
-
+import UnifiedComparisonTable from '@/components/dashboard/proposals/UnifiedComparisonTable';
 
 const AVATARS = [
   '/avatars/avatar1.png',
@@ -21,14 +19,12 @@ const AVATARS = [
   '/avatars/avatar5.png',
 ];
 
-
-
 export default function ProposalPreviewPage() {
   const { proposalId } = useParams();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({});
   const [error, setError] = useState(null);
-const [activeProductId, setActiveProductId] = useState(null);
+  const [activeProductId, setActiveProductId] = useState(null);
 
   useEffect(() => {
     if (!proposalId) return;
@@ -65,199 +61,62 @@ const [activeProductId, setActiveProductId] = useState(null);
     testimonials = {}
   } = data ?? {};
 
+  const getUniqueItems = (products, key) => {
+    const seen = new Set();
+    const all = [];
 
-
-const getUniqueItems = (products, key) => {
-  const seen = new Set();
-  const all = [];
-
-  products.forEach(product => {
-    (product[key] || []).forEach(item => {
-      if (item && !seen.has(item.id)) {
-        seen.add(item.id);
-        all.push(item);
-      }
+    products.forEach(product => {
+      (product[key] || []).forEach(item => {
+        if (item && !seen.has(item.id)) {
+          seen.add(item.id);
+          all.push(item);
+        }
+      });
     });
-  });
 
-  return all;
-};
+    return all;
+  };
 
-const groupFeaturesByType = (features = []) => {
-  const groups = {};
-  features.forEach((f) => {
-    const type = f.type || 'Other';
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(f);
-  });
-  return groups;
-};
+  const groupFeaturesByType = (features = []) => {
+    const groups = {};
+    features.forEach((f) => {
+      const type = f.type || 'Other';
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(f);
+    });
+    return groups;
+  };
 
-const groupByType = (items = []) => {
-  const groups = {};
-  items.forEach(item => {
-    const type = item.type || 'Other';
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(item);
-  });
-  return groups;
-};
+  const groupByType = (items = []) => {
+    const groups = {};
+    items.forEach(item => {
+      const type = item.type || 'Other';
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(item);
+    });
+    return groups;
+  };
 
+  const groupDeliverablesByType = (deliverables = []) => {
+    const groups = {};
+    deliverables.forEach((d) => {
+      const type = d.type || 'Other';
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(d);
+    });
+    return groups;
+  };
 
-const renderGroupedFeatureTable = (label, groupedFeatures, itemKey, products) => (
-  <>
-    <Typography variant="h6" sx={{ mt: 6, mb: 2 }}>{label}</Typography>
-    <Paper sx={{ mb: 6 }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{label}</TableCell>
-            {products.map(p => (
-              <TableCell key={p.id} align="center">{p.title}</TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {Object.entries(groupedFeatures).map(([type, features]) => (
-            <React.Fragment key={type}>
-              {/* Type Header Row */}
-              <TableRow>
-                <TableCell colSpan={products.length + 1} sx={{ backgroundColor: '#f5f5f5', fontWeight: 600 }}>
-                  {type}
-                </TableCell>
-              </TableRow>
-
-              {/* Feature Rows */}
-              {features.map((f) => (
-                <TableRow key={f.id}>
-                  <TableCell>{f.title}</TableCell>
-                  {products.map((p) => {
-                    const included = (p[itemKey] || []).some(i => i.id === f.id);
-                    return (
-                      <TableCell key={`cell-${f.id}-${p.id}`} align="center" sx={{color: 'primary.500', fontSize: '1.5rem'}}>
-                        {included ? '✓' : ''}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </React.Fragment>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
-  </>
-);
-
-
-
-const groupDeliverablesByType = (deliverables = []) => {
-  const groups = {};
-  deliverables.forEach((d) => {
-    const type = d.type || 'Other';
-    if (!groups[type]) groups[type] = [];
-    groups[type].push(d);
-  });
-  return groups;
-};
-const renderGroupedDeliverableTable = (label, groupedDeliverables, itemKey, products) => (
-  <>
-    <Typography variant="h6" sx={{ mt: 6, mb: 2 }}>{label}</Typography>
-    <Paper sx={{ mb: 6 }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{label}</TableCell>
-            {products.map(p => (
-              <TableCell key={p.id} align="center">{p.title}</TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {Object.entries(groupedDeliverables).map(([type, deliverables]) => (
-            <React.Fragment key={type}>
-              {/* Type Header Row */}
-              <TableRow>
-                <TableCell colSpan={products.length + 1} sx={{ backgroundColor: '#f5f5f5', fontWeight: 600 }}>
-                  {type}
-                </TableCell>
-              </TableRow>
-
-              {/* Deliverable Rows */}
-              {deliverables.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell>{d.title}</TableCell>
-                  {products.map((p) => {
-                    const included = (p[itemKey] || []).some(i => i.id === d.id);
-                    return (
-                      <TableCell key={`cell-${d.id}-${p.id}`} align="center" sx={{ color: 'primary.500', fontSize: '1.5rem' }}>
-                        {included ? '✓' : ''}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))}
-            </React.Fragment>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
-  </>
-);
-
-
-
-
-
-const coreProducts = products;
-const allDeliverables = getUniqueItems(coreProducts, 'deliverables');
-const addOnProducts = products.filter(p => p.type === 'addon');
-const allAddOns = addOns;
-const allFeatures = getUniqueItems(coreProducts, 'features');
-
-
-
-
+  const coreProducts = products.filter(p => p.type !== 'addon');
+  const allDeliverables = getUniqueItems(coreProducts, 'deliverables');
+  const addOnProducts = products.filter(p => p.type === 'addon');
+  const allAddOns = addOns;
+  const allFeatures = getUniqueItems(coreProducts, 'features');
 
   if (loading) return <Box sx={{ p: 6, textAlign: 'center' }}>Loading proposal...</Box>;
   if (error) return <Box sx={{ p: 6, textAlign: 'center', color: 'error.main' }}>{error}</Box>;
 
-console.log('[DATA] proposal:', proposal);
-
-const renderComparisonTable = (label, items, itemKey, products) => (
-  <>
-    <Typography variant="h6" sx={{ mt: 6, mb: 2 }}>{label}</Typography>
-    <Paper sx={{ mb: 6 }}>
-      <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{label}</TableCell>
-            {products.map(p => (
-              <TableCell key={p.id} align="center">{p.title}</TableCell>
-            ))}
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {items.map(item => (
-            <TableRow key={item.id}>
-              <TableCell>{item.title}</TableCell>
-              {products.map(p => {
-                const included = (p[itemKey] || []).some(i => i.id === item.id);
-                return (
-                  <TableCell key={`cell-${item.id}-${p.id}`} align="center" sx={{color: 'primary.500', fontSize: '1.5rem'}}>
-                    {included ? '✓' : ''}
-                  </TableCell>
-                );
-              })}
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </Paper>
-  </>
-);
-
-
+  console.log('[DATA] proposal:', proposal);
 
   return (
     <Grid>
@@ -320,7 +179,7 @@ const renderComparisonTable = (label, items, itemKey, products) => (
         <Grid container spacing={4}>
           <Grid item xs={12} md={8}>
             <Typography variant="h5" sx={{ mb: 2 }}>
-              Dear {contact?.title ?? '[Client’s Name]'},
+              Dear {contact?.name ?? contact?.title ?? '[Client\'s Name]'},
             </Typography>
             <Typography variant="body1" sx={{ lineHeight: 1.8 }}>
               {proposal?.note_from_me ??
@@ -351,131 +210,116 @@ const renderComparisonTable = (label, items, itemKey, products) => (
           const solutions = Array.isArray(p?.solutions) ? p.solutions : [];
 
           return (
-        <Container key={p?.id ?? `problem-${idx}`} maxWidth="md" sx={{ py: 8 }}>
-          
-          <Grid container spacing={4}>
-            <Grid container>
-            <Typography variant="h2" sx={{ mb: 5 }}>
-                The Challenge
-              </Typography>
-              </Grid>
-               <Grid container>
-              <Typography variant="h4" sx={{ mb: 5, color: 'primary.500', fontSize: 'medium' }}>
-                Key Priorities
-              </Typography>
-              <Typography variant="h4" sx={{ mb: 5, color: 'primary.500', fontSize: 'medium' }}>
-                {p.challenges_description}
-              </Typography>
-              </Grid>
-            <Card sx={{ p: 5, mb: 2 }}>
-              <Typography variant="h5" fontWeight="600" sx={{ mb: 1 }}>
-                {p.title}
-              </Typography>
-
-              <Typography variant="body1" sx={{ my: 2 }}>
-                {p.description}
-              </Typography>
-              </Card>
-               <Typography variant="h4" sx={{ my: 5, color: 'primary.500', fontSize: 'medium' }}>
-                Solutions
-              </Typography>
-              {solutions.length > 0 ? (
-                <List>
-                  {solutions.map((s, sIdx) => (                   
-                   <ListItem key={s?.id ?? `solution-${sIdx}`} disableGutters sx={{ mb: 4 }}>
-                    <Grid container spacing={3}>
-                      
-                      {/* Left: Solution info */}
-                      <Grid item xs={12} md={5}>
-                        <Box display="flex" alignItems="flex-start">
-                          <Typography color="primary" fontSize="1.7rem" sx={{ mr: 2, mt: -1.5 }}>
-                            →
-                          </Typography>
-                          <Box>
-                            <Typography variant="h6" fontWeight="600" sx={{ mb: 0.5 }}>
-                              {s?.title || `[Untitled Solution ${sIdx + 1}]`}
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary">
-                              {s?.description || 'No description available.'}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Grid>
-
-                      {/* Right: Features */}
-                      <Grid item xs={12} md={7}>
-                        {Array.isArray(s.features) && s.features.length > 0 ? (
-                         <Grid container spacing={2}>
-                            {s.features.map((f, fIdx) => (
-                              <Grid item key={f.id ?? `feature-${idx}`} xs={{alignContent: 'start'}}>
-                                <Accordion
-                                  sx={{               
-                                    borderRadius: 0,
-                                    border: '1px solid #00000010'
-                                  }}
-                                >
-                                  <AccordionSummary
-                                    expandIcon={
-                                    <CaretDownIcon 
-                                    size={16} 
-                                    color='black'
-                                      
-                                    />
-                                  }
-                                    sx={{
-                                     alignItems: 'flex-start',
-                                      fontWeight: 600,
-                                      py: '20px',
-                                      '& .MuiAccordionSummary-content': {
-                                      marginY: 0,
-                                      padding: 0,        // ✅ remove padding
-                                      margin: 0,         // ✅ remove margin
-                                    },
-                                    '& .MuiAccordionSummary-contentGutters': {
-                                      padding: 0,        // ✅ handles extra gutter padding
-                                    },
-                                      
-                                    }}
-                                  >
-                                    <Typography fontWeight="600"  mr= "15px" color='primary.500' mt="0">
-                                       ✓
-                                    </Typography>
-                                   
-                                    <Typography fontWeight="600"  mr= "10px">
-                                      {f.title || `Feature ${fIdx + 1}`}
-                                    </Typography>
-                                  </AccordionSummary>
-                                  <AccordionDetails>
-                                    <Typography variant="body2">
-                                      {f.description || 'No description available.'}
-                                    </Typography>
-                                  </AccordionDetails>
-                                </Accordion>
-                              </Grid>
-                            ))}
+            <Container key={p?.id ?? `problem-${idx}`} maxWidth="md" sx={{ py: 8 }}>
+              <Box>
+                <Typography variant="h2" sx={{ mb: 5 }}>
+                  The Challenge
+                </Typography>
+                <Typography variant="h4" sx={{ mb: 5, color: 'primary.500', fontSize: 'medium' }}>
+                  Key Priorities
+                </Typography>
+                <Typography variant="h4" sx={{ mb: 5, color: 'primary.500', fontSize: 'medium' }}>
+                  {p.challenges_description}
+                </Typography>
+                <Card sx={{ p: 5, mb: 2 }}>
+                  <Typography variant="h5" fontWeight="600" sx={{ mb: 1 }}>
+                    {p.title}
+                  </Typography>
+                  <Typography variant="body1" sx={{ my: 2 }}>
+                    {p.description}
+                  </Typography>
+                </Card>
+                <Typography variant="h4" sx={{ my: 5, color: 'primary.500', fontSize: 'medium' }}>
+                  Solutions
+                </Typography>
+                {solutions.length > 0 ? (
+                  <List>
+                    {solutions.map((s, sIdx) => (
+                      <ListItem key={s?.id ?? `solution-${sIdx}`} disableGutters sx={{ mb: 4 }}>
+                        <Grid container spacing={3}>
+                          {/* Left: Solution info */}
+                          <Grid item xs={12} md={5}>
+                            <Box display="flex" alignItems="flex-start">
+                              <Typography color="primary" fontSize="1.7rem" sx={{ mr: 2, mt: -1.5 }}>
+                                →
+                              </Typography>
+                              <Box>
+                                <Typography variant="h6" fontWeight="600" sx={{ mb: 0.5 }}>
+                                  {s?.title || `[Untitled Solution ${sIdx + 1}]`}
+                                </Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                  {s?.description || 'No description available.'}
+                                </Typography>
+                              </Box>
+                            </Box>
                           </Grid>
 
-
-                          ) : (
-                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                              No features linked to this solution.
-                            </Typography>
-                          )}
+                          {/* Right: Features */}
+                          <Grid item xs={12} md={7}>
+                            {Array.isArray(s.features) && s.features.length > 0 ? (
+                              <Grid container spacing={2}>
+                                {s.features.map((f, fIdx) => (
+                                  <Grid item key={f.id ?? `feature-${fIdx}`} xs={12}>
+                                    <Accordion
+                                      sx={{
+                                        borderRadius: 0,
+                                        border: '1px solid #00000010'
+                                      }}
+                                    >
+                                      <AccordionSummary
+                                        expandIcon={
+                                          <CaretDownIcon
+                                            size={16}
+                                            color='black'
+                                          />
+                                        }
+                                        sx={{
+                                          alignItems: 'flex-start',
+                                          fontWeight: 600,
+                                          py: '20px',
+                                          '& .MuiAccordionSummary-content': {
+                                            marginY: 0,
+                                            padding: 0,
+                                            margin: 0,
+                                          },
+                                          '& .MuiAccordionSummary-contentGutters': {
+                                            padding: 0,
+                                          },
+                                        }}
+                                      >
+                                        <Typography fontWeight="600" mr="15px" color='primary.500' mt="0">
+                                          ✓
+                                        </Typography>
+                                        <Typography fontWeight="600" mr="10px">
+                                          {f.title || `Feature ${fIdx + 1}`}
+                                        </Typography>
+                                      </AccordionSummary>
+                                      <AccordionDetails>
+                                        <Typography variant="body2">
+                                          {f.description || 'No description available.'}
+                                        </Typography>
+                                      </AccordionDetails>
+                                    </Accordion>
+                                  </Grid>
+                                ))}
+                              </Grid>
+                            ) : (
+                              <Typography variant="body2" color="text.secondary" fontStyle="italic">
+                                No features linked to this solution.
+                              </Typography>
+                            )}
+                          </Grid>
                         </Grid>
-                      </Grid>
-                    </ListItem>
-
-                  ))}
-                </List>
-              ) : (
-                <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                  No solutions provided for this problem.
-                </Typography>
-              )}
- 
-            </Grid>
+                      </ListItem>
+                    ))}
+                  </List>
+                ) : (
+                  <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
+                    No solutions provided for this problem.
+                  </Typography>
+                )}
+              </Box>
             </Container>
-
           );
         })
       ) : (
@@ -484,112 +328,120 @@ const renderComparisonTable = (label, items, itemKey, products) => (
         </Typography>
       )}
 
-{products?.length > 0 && (
-  <Container maxWidth="lg" sx={{ py: 8 }}>
-    <Typography variant="h4" sx={{ mb: 4 }}>Compare Packages</Typography>
-    {renderGroupedDeliverableTable(
-  'Deliverables',
-  groupDeliverablesByType(allDeliverables),
-  'deliverables',
-  coreProducts
-)}
+      {/* Comparison Tables Section */}
+      {coreProducts?.length > 0 && (
+        <Box sx={{ py: 8 }}>
+          <UnifiedComparisonTable
+            label="Deliverables"
+            data={groupDeliverablesByType(allDeliverables)}
+            products={coreProducts}
+            itemKey="deliverables"
+            isGrouped={true}
+          />
 
-    {renderGroupedFeatureTable('Features', groupFeaturesByType(allFeatures), 'features', coreProducts)}
+          <UnifiedComparisonTable
+            label="Features"
+            data={groupFeaturesByType(allFeatures)}
+            products={coreProducts}
+            itemKey="features"
+            isGrouped={true}
+          />
 
-    {renderComparisonTable('Add-ons', allAddOns, 'deliverables', addOnProducts)}
-  </Container>
-)}
+          {addOnProducts.length > 0 && (
+            <UnifiedComparisonTable
+              label="Add-ons"
+              data={allAddOns}
+              products={addOnProducts}
+              itemKey="deliverables"
+              isGrouped={false}
+            />
+          )}
+        </Box>
+      )}
 
-{addOns.length > 0 && (
-  <Container maxWidth="lg" sx={{ py: 8 }}>
-    <Typography variant="h4" sx={{ mb: 4 }}>Optional Add-ons</Typography>
-    <Grid container spacing={4}>
-      {addOns.map(addOn => {
-        const groupedDeliverables = groupByType(addOn.deliverables);
-        const groupedFeatures = groupByType(addOn.features);
+      {/* Optional Add-ons Cards */}
+      {addOns.length > 0 && (
+        <Container maxWidth="lg" sx={{ py: 8 }}>
+          <Typography variant="h4" sx={{ mb: 4 }}>Optional Add-ons</Typography>
+          <Grid container spacing={4}>
+            {addOns.map(addOn => {
+              const groupedDeliverables = groupByType(addOn.deliverables);
+              const groupedFeatures = groupByType(addOn.features);
 
-        return (
-          <Grid item xs={12} md={6} key={addOn.id}>
-            <Card
-              sx={{
-                p: 4,
-                border: '1px solid',
-                borderColor: 'grey.200',
-                borderRadius: 3,
-                boxShadow: 3,
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                height: '100%',
-                transition: '0.3s ease',
-                '&:hover': {
-                  boxShadow: 6,
-                  borderColor: 'primary.main',
-                }
-              }}
-            >
-              <Box sx={{ mb: 2 }}>
-                <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.500', mb: 1 }}>
-                  {addOn.title}
-                </Typography>
-                <Typography sx={{ color: 'text.secondary', mb: 2 }}>
-                  {addOn.description}
-                </Typography>
-
-                <Typography variant="h5" fontWeight="bold" sx={{ color: 'primary.700' }}>
-                  {addOn.price ? `$${addOn.price}` : 'Pricing TBD'}
-                </Typography>
-              </Box>
-
-             {Object.keys(groupedDeliverables).length > 0 && (
-              <Box sx={{ mt: 3 }}>
-                <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1, color: 'primary.700' }}>
-                  Deliverables
-                </Typography>
-                {Object.entries(groupedDeliverables).map(([type, items]) => (
-                  <Box key={type} sx={{ mb: 1 }}>
-                    <Typography fontSize="0.85rem" fontWeight="600" sx={{ color: 'grey.600', mb: 0.5 }}>
-                      {type}
-                    </Typography>
-                    <Typography variant="body2" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
-                      {items.map(d => d.title).join(', ')}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
-            )}
-
-
-             {Object.keys(groupedFeatures).length > 0 && (
-                <Box sx={{ mt: 3 }}>
-                  <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1, color: 'primary.700' }}>
-                    Features
-                  </Typography>
-                  {Object.entries(groupedFeatures).map(([type, items]) => (
-                    <Box key={type} sx={{ mb: 1 }}>
-                      <Typography fontSize="0.85rem" fontWeight="600" sx={{ color: 'grey.600', mb: 0.5 }}>
-                        {type}
+              return (
+                <Grid item xs={12} md={6} key={addOn.id}>
+                  <Card
+                    sx={{
+                      p: 4,
+                      border: '1px solid',
+                      borderColor: 'grey.200',
+                      borderRadius: 3,
+                      boxShadow: 3,
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'space-between',
+                      height: '100%',
+                      transition: '0.3s ease',
+                      '&:hover': {
+                        boxShadow: 6,
+                        borderColor: 'primary.main',
+                      }
+                    }}
+                  >
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="h6" sx={{ fontWeight: 700, color: 'primary.500', mb: 1 }}>
+                        {addOn.title}
                       </Typography>
-                      <Typography variant="body2" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
-                        {items.map(f => f.title).join(', ')}
+                      <Typography sx={{ color: 'text.secondary', mb: 2 }}>
+                        {addOn.description}
+                      </Typography>
+                      <Typography variant="h5" fontWeight="bold" sx={{ color: 'primary.700' }}>
+                        {addOn.price ? `$${addOn.price}` : 'Pricing TBD'}
                       </Typography>
                     </Box>
-                  ))}
-                </Box>
-              )}
 
-            </Card>
+                    {Object.keys(groupedDeliverables).length > 0 && (
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1, color: 'primary.700' }}>
+                          Deliverables
+                        </Typography>
+                        {Object.entries(groupedDeliverables).map(([type, items]) => (
+                          <Box key={type} sx={{ mb: 1 }}>
+                            <Typography fontSize="0.85rem" fontWeight="600" sx={{ color: 'grey.600', mb: 0.5 }}>
+                              {type}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+                              {items.map(d => d.title).join(', ')}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+
+                    {Object.keys(groupedFeatures).length > 0 && (
+                      <Box sx={{ mt: 3 }}>
+                        <Typography variant="subtitle2" fontWeight="600" sx={{ mb: 1, color: 'primary.700' }}>
+                          Features
+                        </Typography>
+                        {Object.entries(groupedFeatures).map(([type, items]) => (
+                          <Box key={type} sx={{ mb: 1 }}>
+                            <Typography fontSize="0.85rem" fontWeight="600" sx={{ color: 'grey.600', mb: 0.5 }}>
+                              {type}
+                            </Typography>
+                            <Typography variant="body2" sx={{ fontSize: '0.875rem', color: 'text.secondary' }}>
+                              {items.map(f => f.title).join(', ')}
+                            </Typography>
+                          </Box>
+                        ))}
+                      </Box>
+                    )}
+                  </Card>
+                </Grid>
+              );
+            })}
           </Grid>
-
-        );
-      })}
-    </Grid>
-  </Container>
-)}
-
-
-
-
+        </Container>
+      )}
 
       {/* FAQ */}
       {faqs?.length > 0 && (
@@ -608,38 +460,15 @@ const renderComparisonTable = (label, items, itemKey, products) => (
         </Container>
       )}
 
-{products?.length > 0 && (
-  <Container maxWidth="lg" sx={{ py: 8 }}>
-    <Typography variant="h4" sx={{ mb: 4 }}>Compare Packages</Typography>
-    {renderGroupedDeliverableTable(
-      'Deliverables',
-      groupDeliverablesByType(allDeliverables),
-      'deliverables',
-      coreProducts
-    )}
+      {/* Pricing Cards Component */}
+      <ProposalPricingCards
+        products={products}
+        proposal={proposal}
+        addOns={addOns}
+        setActiveProductId={setActiveProductId}
+        activeProductId={activeProductId}
 
-    {renderGroupedFeatureTable(
-      'Features',
-      groupFeaturesByType(allFeatures),
-      'features',
-      coreProducts
-    )}
-
-    {renderComparisonTable(
-      'Add-ons',
-      allAddOns,
-      'deliverables',
-      addOnProducts
-    )}
-  </Container>
-)}
-
-{/* Add the new pricing card component here */}
-<ProposalPricingCards products={products} setActiveProductId={setActiveProductId} activeProductId={activeProductId} />
-
-
-
-
+      />
     </Grid>
   );
 }
