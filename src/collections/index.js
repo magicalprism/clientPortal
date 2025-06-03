@@ -12,6 +12,8 @@ export { contract } from './contract';
 export { contractpart } from './contractpart';
 export { product } from './product';
 export { deliverable } from './deliverable';
+export { payment } from './payment';
 export { proposal } from './proposal';
-
-
+export { milestone } from './milestone';
+export { feature } from './feature';
+export { login } from './login';

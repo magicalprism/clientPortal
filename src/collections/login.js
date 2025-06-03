@@ -1,9 +1,9 @@
- export const sample = {
-  name: 'sample',
-  label: 'Samples',
-  table:'sample',
-  singularLabel: 'Sample',
-  editPathPrefix: '/dashboard/sample',
+ export const login = {
+  name: 'login',
+  label: 'Logins',
+  table:'login',
+  singularLabel: 'Login',
+  editPathPrefix: '/dashboard/login',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   defaultView: 'table',
@@ -25,7 +25,7 @@
   fields: [   
      { 
       name: 'title', 
-      label: 'Sample Name', 
+      label: 'Login Name', 
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
@@ -52,9 +52,9 @@
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'sample', //usually current collection or pivot table
+        table: 'login', //usually current collection or pivot table
         labelField: 'title',
-        linkTo: '/dashboard/sample', // or dynamically derive from config
+        linkTo: '/dashboard/login', // or dynamically derive from config
       }
     },
 
@@ -124,8 +124,8 @@
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_sample',
-        sourceKey: 'sample_id',
+        junctionTable: 'category_login',
+        sourceKey: 'login_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}

@@ -14,11 +14,53 @@ import { FieldRenderer } from '@/components/FieldRenderer';
 import { Plus } from '@phosphor-icons/react';
 import * as collections from '@/collections';
 import { useRouter } from 'next/navigation';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
+
+// NEW: Import Google Drive components
+import { GoogleDriveFolderStatus } from '@/components/google/GoogleDriveFolderStatus';
+import { GoogleDriveRenameStatus } from '@/components/google/GoogleDriveRenameStatus';
+
+// Helper function to ensure all field values are defined (never undefined)
+const normalizeFormValue = (value, field) => {
+  if (value === undefined || value === null) {
+    // Return appropriate default based on field type
+    switch (field?.type) {
+      case 'multiRelationship':
+        return [];
+      case 'boolean':
+        return false;
+      case 'select':
+      case 'status':
+        return field.defaultValue || '';
+      case 'richText':
+        return '';
+      case 'date':
+        return null; // Date fields can be null
+      case 'number':
+        return 0;
+      default:
+        return ''; // String fields
+    }
+  }
+  return value;
+};
+
+// Helper to normalize entire record
+const normalizeRecord = (record, config) => {
+  if (!record || !config?.fields) return {};
+  
+  const normalized = { ...record };
+  
+  config.fields.forEach(field => {
+    normalized[field.name] = normalizeFormValue(record[field.name], field);
+  });
+  
+  return normalized;
+};
 
 export const CollectionItemForm = ({
   config,
@@ -30,30 +72,35 @@ export const CollectionItemForm = ({
   activeTab = 0,
   isModal = false,
   isSmallScreen = false,
-  tempValue,
+  tempValue = '', // Ensure this is never undefined
   setTempValue,
-  localRecord, // This might be passed in some cases
-  onSave, // For modal save handling
-  onCancel, // For modal cancel handling
-  edit = false, // Edit mode flag
-  formId // For form submission
+  localRecord,
+  onSave,
+  onCancel,
+  edit = false,
+  formId
 }) => {
   const router = useRouter();
   
-  // Use localRecord if provided, otherwise use record
-  const workingRecord = localRecord || record;
+  // Use localRecord if provided, otherwise use record, with proper normalization
+  const workingRecord = useMemo(() => {
+    const baseRecord = localRecord || record || {};
+    return normalizeRecord(baseRecord, config);
+  }, [localRecord, record, config]);
   
-  // Local state for form data in modal mode
-  const [formData, setFormData] = useState(workingRecord || {});
-  
+  // Initialize formData with normalized values - NEVER undefined
+  const [formData, setFormData] = useState(() => workingRecord);
+  const [pendingPayments, setPendingPayments] = useState([]);
 
-  
-  // Sync formData when record changes
+  // Sync formData when workingRecord changes - with proper undefined checking
   useEffect(() => {
-    if (workingRecord) {
+    if (workingRecord && Object.keys(workingRecord).length > 0) {
       setFormData(prev => {
-        // Only update if actually different to avoid unnecessary re-renders
-        if (JSON.stringify(prev) !== JSON.stringify(workingRecord)) {
+        // Compare stringified versions, but avoid setting if truly identical
+        const prevString = JSON.stringify(prev);
+        const newString = JSON.stringify(workingRecord);
+        
+        if (prevString !== newString) {
           return workingRecord;
         }
         return prev;
@@ -71,23 +118,43 @@ export const CollectionItemForm = ({
   const startEdit = (fieldName, value) => {
     if (setEditingField && setTempValue) {
       setEditingField(fieldName);
-      setTempValue(value);
+      // Ensure tempValue is never undefined
+      setTempValue(value !== undefined && value !== null ? String(value) : '');
     }
   };
 
-  // Handle field changes - update both local state and propagate up
+  // Handle field changes with proper undefined handling
   const handleFieldChange = (field, value) => {
     const fieldName = typeof field === 'string' ? field : field.name;
+    const fieldConfig = typeof field === 'object' ? field : config?.fields?.find(f => f.name === fieldName);
+    
+    // Normalize the value to ensure it's never undefined
+    const normalizedValue = normalizeFormValue(value, fieldConfig);
     
     // Update local form data
     setFormData(prev => ({
       ...prev,
-      [fieldName]: value
+      [fieldName]: normalizedValue
     }));
     
     // Propagate change up if handler provided
     if (onFieldChange) {
-      onFieldChange(field, value);
+      onFieldChange(field, normalizedValue);
+    }
+  };
+
+  // NEW: Handle record updates from Google Drive components
+  const handleRecordUpdate = (updatedRecord) => {
+    setFormData(prev => ({
+      ...prev,
+      ...updatedRecord
+    }));
+    
+    // If there's a parent update handler, call it too
+    if (onFieldChange) {
+      Object.entries(updatedRecord).forEach(([key, value]) => {
+        onFieldChange(key, value);
+      });
     }
   };
 
@@ -103,8 +170,31 @@ export const CollectionItemForm = ({
   // Check if we're on the timeline tab
   const isTimelineTab = showTimelineTab && activeTab === baseTabs.tabNames.length;
 
+  // NEW: Check if this collection supports Google Drive
+  const supportsGoogleDrive = config?.create_folder === true;
+
   return (
     <form id={formId} onSubmit={handleSubmit}>
+      {/* NEW: Google Drive Integration - Only show if config supports it */}
+      {supportsGoogleDrive && formData?.id && (
+        <Box sx={{ mb: 3 }}>
+          <GoogleDriveFolderStatus
+            record={formData}
+            config={config}
+            onRecordUpdate={handleRecordUpdate}
+            variant={isModal ? "compact" : "full"}
+          />
+          
+          <GoogleDriveRenameStatus
+            record={formData}
+            config={config}
+            onRecordUpdate={handleRecordUpdate}
+            variant={isModal ? "compact" : "full"}
+            showActions={!isModal} // Only show action buttons in full view
+          />
+        </Box>
+      )}
+
       {isTimelineTab ? (
         // Only render TimelineView if we have actual record data
         formData?.id ? (
@@ -126,7 +216,8 @@ export const CollectionItemForm = ({
             <Divider sx={{ mb: 2 }} />
             <Grid container spacing={3}>
               {fields.map((field) => {
-                const value = formData?.[field.name];
+                // Get value with proper defaulting - NEVER undefined
+                const value = normalizeFormValue(formData?.[field.name], field);
                 const isSystemReadOnly = ['updated_at', 'created_at'].includes(field.name);
                 const fieldIsEditable = !isSystemReadOnly && field.editable !== false;
                 const isEditing = isEditingField === field.name;
@@ -172,7 +263,7 @@ export const CollectionItemForm = ({
                   );
                 }
 
-                   if (field.type === 'sections') {
+                if (field.type === 'sections') {
                   return (
                     <Grid item xs={12} key={field.name}>
                       <SectionThread
@@ -187,24 +278,23 @@ export const CollectionItemForm = ({
                   );
                 }
 
-                 if (field.type === 'payments') {
-                    return (
-                      <Grid item xs={12} key={field.name}>
-                        <PaymentThread
-                          pivotTable={field.props?.pivotTable || 'contract_payment'}
-                          entityField={field.props?.entityField || 'contract_id'}
-                          entityId={formData?.id}
-                          label={field.label || 'Payment Schedule'}
-                          record={formData}
-                          showInvoiceButton={field.props?.showInvoiceButton !== false}
-                          onCreatePendingPayment={(payment) =>
-                            setPendingPayments(prev => [...prev, payment])
-                          }
-                        />
-                      </Grid>
-                    );
-                  }
-
+                if (field.type === 'payments') {
+                  return (
+                    <Grid item xs={12} key={field.name}>
+                      <PaymentThread
+                        pivotTable={field.props?.pivotTable || 'contract_payment'}
+                        entityField={field.props?.entityField || 'contract_id'}
+                        entityId={formData?.id}
+                        label={field.label || 'Payment Schedule'}
+                        record={formData}
+                        showInvoiceButton={field.props?.showInvoiceButton !== false}
+                        onCreatePendingPayment={(payment) =>
+                          setPendingPayments(prev => [...prev, payment])
+                        }
+                      />
+                    </Grid>
+                  );
+                }
 
                 // Tags multirelationship 
                 if (field.type === 'multiRelationship' && field.displayMode === 'tags') {
@@ -214,8 +304,8 @@ export const CollectionItemForm = ({
                         field={field} 
                         parentId={formData?.id} 
                         value={{
-                          ids: formData?.[field.name] || [],
-                          details: formData?.[`${field.name}_details`] || []
+                          ids: Array.isArray(formData?.[field.name]) ? formData[field.name] : [],
+                          details: Array.isArray(formData?.[`${field.name}_details`]) ? formData[`${field.name}_details`] : []
                         }}
                         onChange={(newValue) => handleFieldChange(field, newValue)}
                       />
@@ -298,7 +388,7 @@ export const CollectionItemForm = ({
                           <TextField
                             fullWidth
                             size="medium"
-                            value={tempValue}
+                            value={tempValue || ''} // Ensure never undefined
                             autoFocus
                             onChange={(e) => setTempValue && setTempValue(e.target.value)}
                             onBlur={() => handleFieldChange(field, tempValue)}

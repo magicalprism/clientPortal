@@ -3,11 +3,21 @@ import { getOrCreateFolder } from '@/app/api/lib/driveUtils';
 export async function handleElementFolder(element) {
   console.log('[Element] Received payload:', JSON.stringify(element, null, 2));
   
-  const { create_folder, title: elementTitle } = element;
+  const { create_folder, title: elementTitle, id: elementId } = element;
 
   if (!create_folder || !elementTitle) {
     console.log('[Element] Skipped: Missing create_folder or title');
     return new Response('No action taken', { status: 204 });
+  }
+
+  if (!elementId) {
+    console.error('[Element] Missing element ID');
+    return new Response(JSON.stringify({
+      error: 'Missing element ID'
+    }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 
   // ✅ FIXED: Get company and project titles from the correct fields
@@ -21,6 +31,7 @@ export async function handleElementFolder(element) {
     companyTitle,
     projectTitle,
     elementTitle,
+    elementId,
     company_id_details: element?.company_id_details,
     project_id_details: element?.project_id_details
   });
@@ -41,7 +52,7 @@ export async function handleElementFolder(element) {
   }
 
   try {
-    console.log(`[Element] Creating page element folder for: ${companyTitle} / ${projectTitle} / pages / ${elementTitle}`);
+    console.log(`[Element] Creating page element folder for: ${companyTitle} / ${projectTitle} / pages / ${elementTitle} (ID: ${elementId})`);
 
     // Get folder structure
     const companyDrive = await getOrCreateFolder(companyTitle);
@@ -56,8 +67,13 @@ export async function handleElementFolder(element) {
     const pagesFolder = await getOrCreateFolder('pages', projectFolder.id);
     console.log('[Element] Pages folder:', pagesFolder.id);
     
-    // Main element folder
-    const elementFolder = await getOrCreateFolder(elementTitle, pagesFolder.id);
+    // ✅ FIXED: Main element folder WITH record tracking
+    const elementFolder = await getOrCreateFolder(
+      elementTitle, 
+      pagesFolder.id,
+      elementId,      // Record ID for database saving
+      'element'       // Record type for database saving
+    );
     console.log('[Element] Element folder:', elementFolder.id);
 
     // Create subfolders
@@ -73,10 +89,24 @@ export async function handleElementFolder(element) {
 
     return new Response(JSON.stringify({
       message: 'Element folder structure created',
+      folder: {
+        id: elementFolder.id,
+        name: elementFolder.name,
+        url: `https://drive.google.com/drive/folders/${elementFolder.id}`
+      },
       folders: {
-        main: elementFolder,
-        copyDrafts: copyDraftsFolder,
-        finalDeliverables: finalDeliverablesFolder
+        main: {
+          id: elementFolder.id,
+          name: elementFolder.name
+        },
+        copyDrafts: {
+          id: copyDraftsFolder.id,
+          name: copyDraftsFolder.name
+        },
+        finalDeliverables: {
+          id: finalDeliverablesFolder.id,
+          name: finalDeliverablesFolder.name
+        }
       },
       structure: `${companyTitle}/Projects/${projectTitle}/pages/${elementTitle}/`
     }), { 

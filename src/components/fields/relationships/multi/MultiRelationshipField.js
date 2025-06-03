@@ -29,18 +29,19 @@ export const MultiRelationshipField = ({
   onChange, 
   record,
   config,
-
   refreshRecord, 
   debug = false 
 }) => {
   const router = useRouter();
+  
+  // CRITICAL: Always initialize with arrays to prevent controlled/uncontrolled switching
   const [internalValue, setInternalValue] = useState([]);
   const [debugInfo, setDebugInfo] = useState({});
   const [showDebug, setShowDebug] = useState(false);
   
   // Enhanced options hook with proper filtering
   const { 
-    options, 
+    options = [], // Default to empty array
     loading, 
     setOptions, 
     refresh: refreshOptions,
@@ -62,29 +63,33 @@ export const MultiRelationshipField = ({
   const parentId = field.parentId || record?.id;
   const hasCreateAccess = !!field.relation?.linkTo;
 
-  // Normalize value to handle different formats
+  // Normalize value to handle different formats - ALWAYS return array
   const normalizedValue = useMemo(() => {
     const normalized = normalizeMultiRelationshipValue(value);
+    
+    // Ensure we always have an array
+    const safeNormalized = Array.isArray(normalized) ? normalized : [];
     
     // Update debug info
     setDebugInfo(prev => ({
       ...prev,
-      normalizedValue: normalized,
+      normalizedValue: safeNormalized,
       rawValue: value
     }));
     
-    return normalized;
+    return safeNormalized;
   }, [value]);
   
-  // Initialize internal value from props
+  // Initialize internal value from props - ALWAYS array
   useEffect(() => {
-    setInternalValue(normalizedValue);
+    const safeValue = Array.isArray(normalizedValue) ? normalizedValue : [];
+    setInternalValue(safeValue);
     
     // Extended debug info if enabled
     if (debug) {
       console.log(`[MultiRelationshipField] ${field.name} initialized:`, { 
         rawValue: value, 
-        normalizedValue,
+        normalizedValue: safeValue,
         options: options.length,
         parentId
       });
@@ -96,8 +101,8 @@ export const MultiRelationshipField = ({
     const ids = new Set(normalizedValue.map(String));
     
     // First try to find options in the fetched options
-    let enriched = options
-      .filter(opt => ids.has(String(opt.id)))
+    let enriched = (options || [])
+      .filter(opt => opt && opt.id && ids.has(String(opt.id)))
       .map(opt => ({
         ...opt,
         indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
@@ -135,21 +140,25 @@ export const MultiRelationshipField = ({
     return enriched;
   }, [options, normalizedValue, labelField, field.name, record]);
 
-  // Handle selection changes
+  // Handle selection changes with proper array handling
   const handleChange = useCallback(async (_, selectedOptionObjects) => {
-    if (!selectedOptionObjects) return;
+    // CRITICAL: Ensure selectedOptionObjects is always an array
+    const safeSelected = Array.isArray(selectedOptionObjects) ? selectedOptionObjects : [];
     
     // Extract IDs from the selected options
-    const selectedIds = selectedOptionObjects
+    const selectedIds = safeSelected
+      .filter(opt => opt && opt.id) // Filter out invalid options
       .map(opt => String(opt.id))
       .filter(Boolean);
     
     // Create details array for UI updates
-    const selectedDetails = selectedOptionObjects.map(opt => ({
-      id: opt.id,
-      [labelField]: opt[labelField] || opt.indentedLabel || 'Untitled',
-      indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
-    }));
+    const selectedDetails = safeSelected
+      .filter(opt => opt && opt.id) // Filter out invalid options
+      .map(opt => ({
+        id: opt.id,
+        [labelField]: opt[labelField] || opt.indentedLabel || 'Untitled',
+        indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
+      }));
     
     // Log change info
     console.log(`[MultiRelationshipField] ${field.name} selection changed:`, {
@@ -190,7 +199,7 @@ export const MultiRelationshipField = ({
           field,
           parentId,
           selectedIds,
-          options,
+          options: options || [],
           onChange: () => {} // Avoid duplicate callbacks
         });
         
@@ -204,7 +213,8 @@ export const MultiRelationshipField = ({
 
           // Update options with any new data
           setOptions(prev => {
-            const map = new Map([...prev, ...enriched].map(item => [item.id, item]));
+            const prevArray = Array.isArray(prev) ? prev : [];
+            const map = new Map([...prevArray, ...enriched].map(item => [item.id, item]));
             return Array.from(map.values());
           });
         }
@@ -230,25 +240,25 @@ export const MultiRelationshipField = ({
   };
 
   // Add this to your component that edits records
-useEffect(() => {
-  if (!config) return;
-  console.log('Current record state:', record);
-  
-  // Check multi fields specifically
-  const multiFields = config.fields
-    .filter(f => f.type === 'multiRelationship')
-    .map(f => f.name);
+  useEffect(() => {
+    if (!config) return;
+    console.log('Current record state:', record);
     
-  multiFields.forEach(fieldName => {
-    console.log(`Field ${fieldName}:`, {
-      value: record[fieldName],
-      details: record[`${fieldName}_details`]
+    // Check multi fields specifically
+    const multiFields = config.fields
+      .filter(f => f.type === 'multiRelationship')
+      .map(f => f.name);
+      
+    multiFields.forEach(fieldName => {
+      console.log(`Field ${fieldName}:`, {
+        value: record[fieldName],
+        details: record[`${fieldName}_details`]
+      });
     });
-  });
-}, [record]);
+  }, [record]);
 
-console.log('Raw value:', value);
-console.log('Normalized:', normalizeMultiRelationshipValue(value));
+  console.log('Raw value:', value);
+  console.log('Normalized:', normalizeMultiRelationshipValue(value));
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
@@ -256,20 +266,25 @@ console.log('Normalized:', normalizeMultiRelationshipValue(value));
         <Autocomplete
           multiple
           loading={loading}
-          options={options}
-          value={selectedObjects}
+          options={options || []} // CRITICAL: Always provide array
+          value={selectedObjects || []} // CRITICAL: Always provide array
           onChange={handleChange}
           getOptionLabel={(option) => {
             if (typeof option === 'string') return option;
+            if (!option) return '';
             return option.indentedLabel || option[labelField] || `ID: ${option.id}`;
           }}
-          isOptionEqualToValue={(option, value) => String(option.id) === String(value.id)}
+          isOptionEqualToValue={(option, value) => {
+            if (!option || !value) return false;
+            return String(option.id) === String(value.id);
+          }}
           renderTags={(selected, getTagProps) =>
-            selected.map((option, index) => {
+            (selected || []).map((option, index) => {
+              if (!option) return null;
               const { key, ...restChipProps } = getTagProps({ index });
               return (
                 <Chip
-                  key={`chip-${option.id}`}
+                  key={`chip-${option.id || index}`}
                   label={option.indentedLabel || option[labelField] || `ID: ${option.id}`}
                   {...restChipProps}
                   size="small"
@@ -277,13 +292,16 @@ console.log('Normalized:', normalizeMultiRelationshipValue(value));
               );
             })
           }
-          renderOption={(props, option) => (
-            <li {...props} key={`opt-${option.id}`} style={{ 
-              paddingLeft: option.depth ? `${(option.depth * 16) + 16}px` : undefined 
-            }}>
-              {option.indentedLabel || option[labelField] || `ID: ${option.id}`}
-            </li>
-          )}
+          renderOption={(props, option) => {
+            if (!option) return null;
+            return (
+              <li {...props} key={`opt-${option.id}`} style={{ 
+                paddingLeft: option.depth ? `${(option.depth * 16) + 16}px` : undefined 
+              }}>
+                {option.indentedLabel || option[labelField] || `ID: ${option.id}`}
+              </li>
+            );
+          }}
           renderInput={(params) => (
             <TextField
               {...params}
@@ -298,6 +316,8 @@ console.log('Normalized:', normalizeMultiRelationshipValue(value));
                   </>
                 ),
               }}
+              // CRITICAL: Ensure input value is never undefined
+              value={params.inputProps.value || ''}
             />
           )}
           sx={{ flexGrow: 1, minWidth: 300 }}
@@ -372,8 +392,8 @@ console.log('Normalized:', normalizeMultiRelationshipValue(value));
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, mt: 1 }}>
             <Typography variant="caption">
-              <strong>Selected:</strong> {selectedObjects.length} items | 
-              <strong>Available:</strong> {options.length} options
+              <strong>Selected:</strong> {(selectedObjects || []).length} items | 
+              <strong>Available:</strong> {(options || []).length} options
             </Typography>
             
             <Typography variant="caption">
@@ -421,10 +441,10 @@ console.log('Normalized:', normalizeMultiRelationshipValue(value));
                 onClick={() => {
                   // Force selection update
                   if (typeof onChange === 'function') {
-                    const selectedIds = selectedObjects.map(opt => String(opt.id));
+                    const selectedIds = (selectedObjects || []).map(opt => String(opt.id));
                     onChange({
                       ids: selectedIds,
-                      details: selectedObjects
+                      details: selectedObjects || []
                     });
                     console.log(`[DEBUG] ${field.name} force update triggered with:`, selectedIds);
                   }

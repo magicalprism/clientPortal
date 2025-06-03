@@ -22,7 +22,7 @@ async function listFolders(name, parentId = null) {
   return data.files || [];
 }
 
-// NEW: Rename folder function
+// Rename folder function
 export async function renameFolder(folderId, newName) {
   console.log(`[Drive] Renaming folder ${folderId} to: ${newName}`);
   
@@ -52,19 +52,27 @@ export async function renameFolder(folderId, newName) {
 // Enhanced getOrCreateFolder with ID tracking
 export async function getOrCreateFolder(name, parentId = null, recordId = null, recordType = null) {
   console.log(`[Drive] Creating or finding folder: ${name}, parent: ${parentId || 'ROOT'}`);
+  
+  // ✅ IMPROVED: Add debug logging for database saving parameters
+  if (recordId && recordType) {
+    console.log(`[Drive] Will save folder ID to database: ${recordType}.${recordId}`);
+  }
 
   const existing = await listFolders(name, parentId);
   if (existing.length > 0) {
     console.log(`[Drive] Folder already exists: ${existing[0].id}`);
     
-    // Save folder ID to database if provided
+    // Save folder ID to database if provided (even for existing folders)
     if (recordId && recordType) {
+      console.log(`[Drive] Saving existing folder ID to database: ${existing[0].id}`);
       await saveFolderIdToDatabase(recordType, recordId, existing[0].id);
     }
     
     return existing[0];
   }
 
+  console.log(`[Drive] Creating new folder: ${name}`);
+  
   const accessToken = await getAccessToken();
   const body = {
     name,
@@ -84,34 +92,89 @@ export async function getOrCreateFolder(name, parentId = null, recordId = null, 
     body: JSON.stringify(body),
   });
 
+  if (!res.ok) {
+    const error = await res.json();
+    console.error('[Drive] Failed to create folder:', error);
+    throw new Error(`Failed to create folder: ${error.error?.message || 'Unknown error'}`);
+  }
+
   const json = await res.json();
-  console.log('[Drive] Created folder:', json);
+  console.log('[Drive] ✅ Created folder:', json);
   
   // Save folder ID to database if provided
   if (recordId && recordType && json.id) {
+    console.log(`[Drive] Saving new folder ID to database: ${json.id}`);
     await saveFolderIdToDatabase(recordType, recordId, json.id);
   }
   
   return json;
 }
 
-// NEW: Save folder ID to database
+// ✅ IMPROVED: Enhanced database saving with better error handling and logging
 async function saveFolderIdToDatabase(recordType, recordId, folderId) {
+  console.log(`[Drive] 🔄 Attempting to save folder ID to database:`, {
+    recordType,
+    recordId,
+    folderId
+  });
+
   try {
+    // ✅ IMPROVED: Use dynamic import to avoid server/client import issues
     const { createClient } = await import('@/lib/supabase/server');
-    const supabase = createClient();
+    const supabase = await createClient();
     
-    const { error } = await supabase
+    console.log(`[Drive] 📝 Updating ${recordType} table, record ${recordId} with folder ID ${folderId}`);
+    
+    const { data, error } = await supabase
       .from(recordType)
-      .update({ drive_folder_id: folderId })
-      .eq('id', recordId);
-    
+      .update({ 
+        drive_folder_id: folderId,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', recordId)
+      .select(); // ✅ IMPROVED: Return the updated data for verification
+
     if (error) {
-      console.error(`[Drive] Failed to save folder ID to ${recordType}:`, error);
+      console.error(`[Drive] ❌ Failed to save folder ID to ${recordType}:`, error);
+      console.error(`[Drive] Error details:`, {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+        hint: error.hint
+      });
     } else {
-      console.log(`[Drive] ✅ Saved folder ID ${folderId} to ${recordType} ${recordId}`);
+      console.log(`[Drive] ✅ Successfully saved folder ID ${folderId} to ${recordType} ${recordId}`);
+      if (data && data.length > 0) {
+        console.log(`[Drive] 📊 Updated record:`, data[0]);
+      }
     }
   } catch (error) {
-    console.error('[Drive] Error saving folder ID:', error);
+    console.error('[Drive] ❌ Unexpected error saving folder ID:', error);
+    console.error('[Drive] Error stack:', error.stack);
+  }
+}
+
+// ✅ NEW: Get folder info function for debugging
+export async function getFolderInfo(folderId) {
+  try {
+    const accessToken = await getAccessToken();
+    
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${folderId}?supportsAllDrives=true&fields=id,name,parents,mimeType,createdTime,modifiedTime`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(`Failed to get folder info: ${error.error?.message || 'Unknown error'}`);
+    }
+
+    const result = await response.json();
+    console.log(`[Drive] Folder info for ${folderId}:`, result);
+    return result;
+  } catch (error) {
+    console.error('[Drive] Error getting folder info:', error);
+    throw error;
   }
 }

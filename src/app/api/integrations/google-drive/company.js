@@ -12,33 +12,70 @@ export async function handleCompanyDrive(company) {
     return new Response('No action taken', { status: 204 });
   }
 
-  try {
-    console.log(`[Company] Processing drive for company: ${company.title}`);
+  if (!company?.id) {
+    console.error('[Company] Missing company ID');
+    return new Response(JSON.stringify({
+      error: 'Missing company ID'
+    }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
-    // Create or get root shared drive folder (fake "shared drive" as folder under root)
-    const companyDrive = await getOrCreateFolder(company.title);
-    console.log('[Drive] Created folder:', JSON.stringify(companyDrive, null, 2));
+  try {
+    console.log(`[Company] Processing drive for company: ${company.title} (ID: ${company.id})`);
+
+    // Create or get root shared drive folder - NOW WITH RECORD TRACKING
+    const companyDrive = await getOrCreateFolder(
+      company.title, 
+      null,           // No parent (root level)
+      company.id,     // Record ID for database saving
+      'company'       // Record type for database saving
+    );
+    console.log('[Company] Company folder created/found:', companyDrive.id);
 
     // Ensure subfolders exist
-    await Promise.all([
+    const [projectsFolder, brandFolder] = await Promise.all([
       getOrCreateFolder('Projects', companyDrive.id),
       getOrCreateFolder('Brand', companyDrive.id)
     ]);
     
+    console.log('[Company] Subfolders created:', {
+      projects: projectsFolder.id,
+      brand: brandFolder.id
+    });
 
-    console.log(`[Company] Folders created or reused for "${company.title}"`);
+    console.log(`[Company] ✅ Folders created or reused for "${company.title}"`);
 
-    // ✅ FIXED: Return JSON instead of plain text
+    // ✅ FIXED: Return consistent format that matches client expectations
     return new Response(JSON.stringify({
       message: 'Company drive folders handled',
-      companyFolder: companyDrive
+      folder: {
+        id: companyDrive.id,
+        name: companyDrive.name,
+        url: `https://drive.google.com/drive/folders/${companyDrive.id}`
+      },
+      folders: {
+        main: {
+          id: companyDrive.id,
+          name: companyDrive.name
+        },
+        projects: {
+          id: projectsFolder.id,
+          name: projectsFolder.name
+        },
+        brand: {
+          id: brandFolder.id,
+          name: brandFolder.name
+        }
+      },
+      structure: `${company.title}/`
     }), { 
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('[Company] Error:', error);
-    // ✅ FIXED: Return JSON error instead of plain text
     return new Response(JSON.stringify({
       error: 'Failed to process company drive',
       details: error.message

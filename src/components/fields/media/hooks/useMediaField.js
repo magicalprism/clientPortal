@@ -7,12 +7,7 @@ import * as collections from '@/collections';
 import { MediaEditModal } from '@/components/fields/media/modals/MediaEditModal';
 
 export const useMediaField = ({ field, parentId, value, onChange, record, config, readOnly }) => {
-  console.log(`🔧 [useMediaField] ${field?.name} HOOK INIT:`, {
-    value,
-    hasOnChange: !!onChange,
-    readOnly,
-    recordId: record?.id || 'new'
-  });
+
   
   const mediaConfig = collections.media;
   const isMulti = field?.relation?.isMulti || false;
@@ -31,7 +26,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
   // Sync value changes from parent
   useEffect(() => {
     if (JSON.stringify(currentValue) !== JSON.stringify(value)) {
-      console.log(`🔄 [useMediaField] ${field?.name} syncing value:`, { from: currentValue, to: value });
+     
       setCurrentValue(value);
     }
   }, [value, field?.name]);
@@ -41,7 +36,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
     const hydrateMediaItems = async () => {
       const workingValue = currentValue !== undefined ? currentValue : value;
       
-      console.log(`💧 [useMediaField] ${field?.name} hydrating:`, workingValue);
+
       
       if (!workingValue || (!Array.isArray(workingValue) && typeof workingValue !== 'object' && typeof workingValue !== 'string' && typeof workingValue !== 'number')) {
         setHydratedItems([]);
@@ -57,7 +52,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
             workingValue[0].url;
             
           if (hasFullObjects) {
-            console.log(`📦 [useMediaField] ${field?.name} already hydrated objects`);
+
             setHydratedItems(workingValue);
             return;
           } else {
@@ -68,7 +63,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
         }
       } else {
         if (typeof workingValue === 'object' && workingValue?.url) {
-          console.log(`📦 [useMediaField] ${field?.name} already hydrated single object`);
+ 
           setHydratedItems([workingValue]);
           return;
         } else if (typeof workingValue === 'object' && workingValue?.id) {
@@ -79,14 +74,14 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
       }
 
       if (itemsToHydrate.length === 0) {
-        console.log(`🚫 [useMediaField] ${field?.name} no items to hydrate`);
+
         setHydratedItems([]);
         return;
       }
 
       setIsHydrating(true);
       try {
-        console.log(`🔍 [useMediaField] ${field?.name} fetching media:`, itemsToHydrate);
+
         
         const { data, error } = await supabase
           .from('media')
@@ -94,14 +89,14 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
           .in('id', itemsToHydrate);
 
         if (error) {
-          console.error(`❌ [useMediaField] ${field?.name} fetch error:`, error);
+
           setHydratedItems(itemsToHydrate.map(id => ({ id, title: `Item ${id}` })));
         } else {
-          console.log(`✅ [useMediaField] ${field?.name} hydrated ${data?.length || 0} items:`, data);
+   
           setHydratedItems(data || []);
         }
       } catch (err) {
-        console.error(`💥 [useMediaField] ${field?.name} hydration error:`, err);
+
         setHydratedItems(itemsToHydrate.map(id => ({ id, title: `Item ${id}` })));
       } finally {
         setIsHydrating(false);
@@ -131,40 +126,34 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
 
   // ✅ CRITICAL: Enhanced value change handler with better logging
   const handleValueChange = useCallback((newValue) => {
-    console.log(`🎯 [useMediaField] ${field?.name} VALUE CHANGE:`, {
-      oldValue: currentValue,
-      newValue: newValue,
-      fieldType: field?.type,
-      isMulti: isMulti,
-      hasOnChange: !!onChangeRef.current
-    });
+   ;
     
     // Update local state immediately
     setCurrentValue(newValue);
     
     // CRITICAL: Call parent onChange with extensive logging
     if (onChangeRef.current) {
-      console.log(`📤 [useMediaField] ${field?.name} CALLING PARENT onChange...`);
+
       
       try {
         // Use setTimeout to ensure the call happens in the next tick
         // This helps with React's batching and change detection
         setTimeout(() => {
           onChangeRef.current(newValue);
-          console.log(`✅ [useMediaField] ${field?.name} onChange completed successfully`);
+    
         }, 0);
         
       } catch (error) {
-        console.error(`💥 [useMediaField] ${field?.name} onChange error:`, error);
+
       }
     } else {
-      console.error(`❌ [useMediaField] ${field?.name} NO onChange handler available!`);
+
     }
   }, [field?.name, field?.type, isMulti, currentValue]);
 
   // ✅ Upload completion handler
   const handleUploadComplete = useCallback((uploadedMedia) => {
-    console.log(`📁 [useMediaField] ${field?.name} UPLOAD COMPLETE:`, uploadedMedia);
+
     
     const mediaArray = Array.isArray(uploadedMedia) ? uploadedMedia : [uploadedMedia];
     
@@ -174,11 +163,11 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
       const existingIds = Array.isArray(currentValue) ? currentValue : [];
       const newIds = mediaArray.map(m => parseInt(m.id));
       newValue = [...existingIds, ...newIds];
-      console.log(`📊 [useMediaField] ${field?.name} multi upload result:`, { existingIds, newIds, newValue });
+     
     } else {
       // Single mode - use first uploaded item ID
       newValue = parseInt(mediaArray[0].id);
-      console.log(`📊 [useMediaField] ${field?.name} single upload result:`, newValue);
+      
     }
     
     // Update value and close modal
@@ -188,7 +177,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
 
   // ✅ Library selection handler
   const handleLibrarySelect = useCallback((selectedMedia) => {
-    console.log(`📚 [useMediaField] ${field?.name} LIBRARY SELECTION:`, selectedMedia);
+
     
     const mediaArray = Array.isArray(selectedMedia) ? selectedMedia : [selectedMedia];
     
@@ -198,11 +187,11 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
       const existingIds = Array.isArray(currentValue) ? currentValue : [];
       const selectedIds = mediaArray.map(m => parseInt(m.id));
       newValue = [...existingIds, ...selectedIds];
-      console.log(`📊 [useMediaField] ${field?.name} multi library result:`, { existingIds, selectedIds, newValue });
+      
     } else {
       // Single mode - use selected item ID
       newValue = parseInt(mediaArray[0].id);
-      console.log(`📊 [useMediaField] ${field?.name} single library result:`, newValue);
+
     }
     
     // Update value and close modal
@@ -211,10 +200,10 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
   }, [isMulti, field?.type, field?.name, currentValue, handleValueChange]);
 
   const handleRemove = useCallback((mediaId) => {
-    console.log(`🗑️ [useMediaField] ${field?.name} REMOVE:`, mediaId);
+
     
     if (!canEdit) {
-      console.log(`🚫 [useMediaField] ${field?.name} remove blocked - not editable`);
+
       return;
     }
     
@@ -223,18 +212,18 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
       // Multi relationship - filter out the removed ID
       const currentIds = Array.isArray(currentValue) ? currentValue : [];
       newValue = currentIds.filter(id => parseInt(id) !== parseInt(mediaId));
-      console.log(`📊 [useMediaField] ${field?.name} multi remove result:`, { currentIds, removed: mediaId, newValue });
+      
     } else {
       // Single relationship - set to null
       newValue = null;
-      console.log(`📊 [useMediaField] ${field?.name} single remove result: null`);
+
     }
     
     handleValueChange(newValue);
   }, [field?.name, field?.type, isMulti, currentValue, canEdit, handleValueChange]);
 
   const handleEditClick = useCallback((media, anchorEl) => {
-    console.log(`✏️ [useMediaField] ${field?.name} EDIT CLICK:`, media?.id);
+
     setModalState(prev => ({
       ...prev,
       editModalOpen: true,
@@ -244,7 +233,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
   }, [field?.name]);
 
   const handleMenuClick = useCallback((event) => {
-    console.log(`📋 [useMediaField] ${field?.name} MENU CLICK`);
+
     setModalState(prev => ({
       ...prev,
       menuAnchor: event.currentTarget
@@ -252,13 +241,13 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
   }, [field?.name]);
 
   const handleMenuClose = useCallback(() => {
-    console.log(`📋 [useMediaField] ${field?.name} MENU CLOSE`);
+
     setModalState(prev => ({ ...prev, menuAnchor: null }));
   }, [field?.name]);
 
   // ✅ Edit completion handler
   const handleEditComplete = useCallback((editedMedia) => {
-    console.log(`✏️ [useMediaField] ${field?.name} EDIT COMPLETE:`, editedMedia);
+
     
     if (isMulti || field?.type === 'multiRelationship') {
       // Multi mode - update existing item or add new one
@@ -267,18 +256,18 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
       
       if (existingIds.includes(editedId)) {
         // Already exists - force re-hydration by updating state
-        console.log(`📊 [useMediaField] ${field?.name} refreshing existing item`);
+
         setCurrentValue([...existingIds]); // Trigger re-hydration
       } else {
         // New item - add to array
         const newValue = [...existingIds, editedId];
-        console.log(`📊 [useMediaField] ${field?.name} adding new item:`, { existingIds, editedId, newValue });
+        
         handleValueChange(newValue);
       }
     } else {
       // Single mode - set to edited item ID
       const newValue = parseInt(editedMedia.id);
-      console.log(`📊 [useMediaField] ${field?.name} single edit result:`, newValue);
+
       handleValueChange(newValue);
     }
     
@@ -311,7 +300,7 @@ export const useMediaField = ({ field, parentId, value, onChange, record, config
     setUploadModalOpen: (isOpen) => setModalState(prev => ({ ...prev, uploadModalOpen: isOpen })),
     setLibraryModalOpen: (isOpen) => setModalState(prev => ({ ...prev, libraryModalOpen: isOpen })),
     openExternalLinkEditor: () => {
-      console.log(`🔗 [useMediaField] ${field?.name} EXTERNAL LINK EDITOR`);
+
       setModalState(prev => ({
         ...prev,
         editModalOpen: true,
@@ -404,7 +393,7 @@ const MediaModals = ({
         label: 'Upload File',
         icon: Upload,
         onClick: () => {
-          console.log(`📤 [useMediaField] ${field?.name} opening upload modal`);
+
           handlers.setUploadModalOpen(true);
         }
       },
@@ -412,7 +401,7 @@ const MediaModals = ({
         label: 'Choose from Library',
         icon: LinkIcon,
         onClick: () => {
-          console.log(`📚 [useMediaField] ${field?.name} opening library modal`);
+
           handlers.setLibraryModalOpen(true);
         }
       },
@@ -438,13 +427,6 @@ const MediaModals = ({
     handlers
   };
 
-  console.log(`🔧 [useMediaField] ${field?.name} HOOK RESULT:`, {
-    loading: hookResult.loading,
-    itemCount: localSelectedItems.length,
-    canEdit: hookResult.canEdit,
-    canAddMore: hookResult.canAddMore,
-    modalStates: Object.entries(modalState).filter(([k, v]) => v === true).map(([k]) => k)
-  });
 
   return hookResult;
 };

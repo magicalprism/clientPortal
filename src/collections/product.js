@@ -1,10 +1,10 @@
- export const product = {
+export const product = {
   name: 'product',
   label: 'Products',
-  table:'product',
+  table: 'product',
   singularLabel: 'Product',
   editPathPrefix: '/dashboard/product',
-  showEditButton: true, // ✅ just a UI toggle
+  showEditButton: true,
   subtitleField: 'title',
   defaultView: 'table',
   views: {
@@ -12,23 +12,20 @@
       label: 'Table View',
       component: 'PrimaryTableView'
     },
-      page: { 
-        label: 'Page View', 
-        component: 'PageView' 
-      },
-
-        
+    page: { 
+      label: 'Page View', 
+      component: 'PageView' 
+    },
   },
-      //Quickview
-      quickView: {
-        enabled: true,
-        imageField: 'thumbnail_id',
-        titleField: 'title',
-        subtitleField: 'type',
-      }, 
+  quickView: {
+    enabled: true,
+    imageField: 'thumbnail_id',
+    titleField: 'title',
+    subtitleField: 'type',
+  }, 
 
   fields: [   
-     { 
+    { 
       name: 'title', 
       label: 'Product Name', 
       group: 'Primary', 
@@ -36,7 +33,7 @@
       clickable: true, 
       openMode: 'modal',  
       showInTable: true,
-      description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
+      description: 'Product title for display and contracts'
     },
     {
       name: 'type',
@@ -44,30 +41,66 @@
       group: 'Primary', 
       tab: 'Details',
       label: 'Type',
+      showInTable: true,
       options: [
         { value: 'website', label: 'Website' },
         { value: 'maintenance', label: 'Maintenance Plans' },
         { value: 'app', label: 'App' },
+        { value: 'addon', label: 'Add-on Service' },
+        { value: 'consulting', label: 'Consulting' },
       ]
     },
     { 
       name: 'price', 
-      label: 'Price', 
-      group: 'Primary', 
+      label: 'Monthly Price', 
+      group: 'Pricing', 
       tab: 'Details',
+      type: 'number',
+      showInTable: true,
+      description: 'Base monthly price for this product'
     },
-        { 
+    { 
+      name: 'yearly_price', 
+      label: 'Yearly Price', 
+      group: 'Pricing', 
+      tab: 'Details',
+      type: 'number',
+      description: 'Optional yearly pricing (usually discounted)'
+    },
+    { 
+      name: 'payment_split_count', 
+      label: 'Payment Split Count', 
+      group: 'Pricing', 
+      tab: 'Details',
+      type: 'number',
+      description: 'Number of payments for one-time purchases (e.g., 3 for quarterly payments)'
+    },
+    { 
       name: 'description', 
       label: 'Description', 
       group: 'Primary', 
       tab: 'Details',
       type: 'richText',
+      description: 'Detailed description for proposals and contracts'
     },
-          {
-      name: 'pages',
-      label: 'Pages',
+    {
+      name: 'category_id',
+      label: 'Category',
+      group: 'Classification',
+      tab: 'Details',
+      type: 'relationship',
+      relation: {
+        table: 'category',
+        labelField: 'title',
+        linkTo: '/dashboard/category',
+        filter: {}
+      }
+    },
+    {
+      name: 'deliverables',
+      label: 'Deliverables',
       type: 'multiRelationship',
-      group: 'Primary', 
+      group: 'Content', 
       tab: 'Details',
       displayMode: 'tags',
       relation: {
@@ -78,16 +111,14 @@
         sourceKey: 'product_id',
         targetKey: 'deliverable_id',
         tableFields: ['title'],
-        filter: {
-
-        }
+        filter: {}
       }
     },
-     {
+    {
       name: 'features',
       label: 'Features',
       type: 'multiRelationship',
-      group: 'Primary', 
+      group: 'Content', 
       tab: 'Details',
       displayMode: 'tags',
       relation: {
@@ -98,40 +129,53 @@
         sourceKey: 'product_id',
         targetKey: 'feature_id',
         tableFields: ['title'],
-        filter: {
-
-        }
+        filter: {}
       }
     },
-     {
+    {
+      name: 'proposals',
+      label: 'Proposals Using This Product',
+      type: 'multiRelationship',
+      group: 'Usage',
+      tab: 'Usage',
+      displayMode: 'table',
+      relation: {
+        table: 'proposal',
+        labelField: 'title',
+        linkTo: '/dashboard/proposal',
+        junctionTable: 'product_proposal',
+        sourceKey: 'product_id',
+        targetKey: 'proposal_id',
+        tableFields: ['title', 'status', 'tier'],
+        filter: {}
+      }
+    },
+    {
       name: 'status',
       type: 'select',
       label: 'Status',
-      group: 'Primary', 
-      tab: 'Meta', 
-
+      group: 'Meta', 
+      tab: 'Meta',
+      defaultValue: 'active',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
+        { value: 'active', label: 'Active' },
+        { value: 'deprecated', label: 'Deprecated' },
+        { value: 'draft', label: 'Draft' },
         { value: 'archived', label: 'Archived' },
       ]
     },
     {
       name: 'parent_id',
-      label: 'Parent',
-      group: 'General', 
+      label: 'Parent Product',
+      group: 'Hierarchy', 
       tab: 'Meta',
       type: 'relationship',
       relation: {
-        table: 'product', //usually current collection or pivot table
+        table: 'product',
         labelField: 'title',
-        linkTo: '/dashboard/product', // or dynamically derive from config
+        linkTo: '/dashboard/product',
       }
     },
-
-
-    
     { 
       name: 'created_at', 
       label: 'Created', 
@@ -155,11 +199,10 @@
       relation: {
         table: 'contact',
         labelField: 'title',
-        linkTo: '/dashboard/contact' // or dynamically derive from config
+        linkTo: '/dashboard/contact'
       }, 
     },
-
-      {
+    {
       name: 'tags',
       label: 'Tags',
       type: 'multiRelationship',
@@ -177,19 +220,54 @@
         filter: {}
       }
     },
-],
+  ],
+  
   filters: [
     {
       name: 'type',
       type: 'select',
-      label: 'Status',
+      label: 'Type',
       options: [
         { value: 'website', label: 'Website' },
         { value: 'maintenance', label: 'Maintenance Plans' },
         { value: 'app', label: 'App' },
+        { value: 'addon', label: 'Add-on Service' },
+        { value: 'consulting', label: 'Consulting' },
       ]
     },
-
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      options: [
+        { value: 'active', label: 'Active' },
+        { value: 'deprecated', label: 'Deprecated' },
+        { value: 'draft', label: 'Draft' },
+        { value: 'archived', label: 'Archived' },
+      ]
+    },
+    {
+      name: 'category_id',
+      type: 'relationship',
+      label: 'Category',
+      relation: {
+        table: 'category',
+        labelField: 'title'
+      }
+    },
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      defaultValue: 'title:asc',
+      options: [
+        { value: 'title:asc', label: 'Title (A–Z)' },
+        { value: 'title:desc', label: 'Title (Z–A)' },
+        { value: 'price:asc', label: 'Price (Low to High)' },
+        { value: 'price:desc', label: 'Price (High to Low)' },
+        { value: 'created_at:desc', label: 'Newest Created' },
+        { value: 'created_at:asc', label: 'Oldest Created' }
+      ]
+    }
   ]
 };
-

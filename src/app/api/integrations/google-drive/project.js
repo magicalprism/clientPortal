@@ -12,13 +12,22 @@ export async function handleProjectFolder(project) {
     return new Response('No action taken', { status: 204 });
   }
 
+  if (!project?.id) {
+    console.error('[Project] Missing project ID');
+    return new Response(JSON.stringify({
+      error: 'Missing project ID'
+    }), { 
+      status: 400,
+      headers: { 'Content-Type': 'application/json' }
+    });
+  }
+
   const companyTitle = project?.company_id?.title || 
                       project?.company_id_details?.title ||
                       project?.companyTitle;
 
   if (!companyTitle) {
     console.error('[Project] Missing company title');
-    // ✅ FIXED: Return JSON error instead of plain text
     return new Response(JSON.stringify({
       error: 'Missing company title',
       received: {
@@ -33,33 +42,42 @@ export async function handleProjectFolder(project) {
   }
 
   try {
-    console.log(`[Project] Processing project folder for: ${companyTitle} / ${project.title}`);
-
-    // ✅ REMOVED: Advanced rename functionality that doesn't exist yet
-    // if (project.drive_folder_id && project.original_title && project.original_title !== project.title) {
-    //   await renameFolder(project.drive_folder_id, project.title);
-    // }
+    console.log(`[Project] Processing project folder for: ${companyTitle} / ${project.title} (ID: ${project.id})`);
 
     // Get folder structure (using basic getOrCreateFolder)
     const companyDrive = await getOrCreateFolder(companyTitle);
     const projectsFolder = await getOrCreateFolder('Projects', companyDrive.id);
     
-    // ✅ FIXED: Use basic getOrCreateFolder without extra parameters
-    const projectFolder = await getOrCreateFolder(project.title, projectsFolder.id);
+    // ✅ FIXED: Create project folder WITH record tracking
+    const projectFolder = await getOrCreateFolder(
+      project.title, 
+      projectsFolder.id,
+      project.id,     // Record ID for database saving
+      'project'       // Record type for database saving
+    );
 
     console.log(`[Project] ✅ Project folder created: ${projectFolder.id}`);
 
-    // ✅ ALREADY CORRECT: JSON response format
     return new Response(JSON.stringify({
       message: 'Project folder processed',
-      folder: projectFolder
+      folder: {
+        id: projectFolder.id,
+        name: projectFolder.name,
+        url: `https://drive.google.com/drive/folders/${projectFolder.id}`
+      },
+      folders: {
+        main: {
+          id: projectFolder.id,
+          name: projectFolder.name
+        }
+      },
+      structure: `${companyTitle}/Projects/${project.title}/`
     }), { 
       status: 200,
       headers: { 'Content-Type': 'application/json' }
     });
   } catch (error) {
     console.error('[Project] Error:', error);
-    // ✅ FIXED: Return JSON error instead of plain text
     return new Response(JSON.stringify({
       error: 'Failed to process project folder',
       details: error.message

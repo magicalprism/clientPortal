@@ -156,11 +156,7 @@ export default function PrimaryTableView({
       const value = filters?.[f.name];
       if (!value || value === '' || (Array.isArray(value) && value.length === 0)) continue;
 
-      console.log(`[Child Filter Debug] ${f.name}:`, {
-        value,
-        isArray: Array.isArray(value),
-        multiple: f.multiple
-      });
+
 
       if (f.name === 'search') {
         childQuery = childQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);

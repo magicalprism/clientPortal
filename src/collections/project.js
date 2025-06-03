@@ -29,7 +29,7 @@ export const project = {
         titleField: 'title',
         subtitleField: 'status',
         descriptionField: 'site_tagline',
-        extraFields: ['url', 'cloudflare_url', 'company_id', 'contacts'],
+        extraFields: ['url', 'logins', 'cloudflare_url', 'company_id', 'contacts'],
         relatedFields: ['contacts']
       }, 
   fields: [   
@@ -73,6 +73,30 @@ export const project = {
         linkTo: '/dashboard/company', // or dynamically derive from config
         filter: { is_client: 'true' }
       }
+    },
+        // Google Drive integration
+    {
+      name: 'create_folder',
+      type: 'boolean',
+      label: 'Google Drive Project Folders',
+      group: 'Details',
+      tab: 'Overview', 
+      variant: 'full',
+      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+    },
+    
+    // Hidden database fields for Drive integration
+    {
+      name: 'drive_folder_id',
+      type: 'text',
+      database: true,
+      includeInViews: ['none'] // Hidden from all UI views
+    },
+    {
+      name: 'drive_original_name',
+      type: 'text', 
+      database: true,
+      includeInViews: ['none'] // Hidden from all UI views
     },
     {
       name: 'tasks',
@@ -150,9 +174,9 @@ export const project = {
       tab: 'Backend',
       group: 'Hosting',   
       relation: {
-        table: 'link',
+        table: 'login',
         labelField: 'title',
-        linkTo: '/dashboard/link',
+        linkTo: '/dashboard/login',
         filter: { type: 'domain' }
       }
     },
@@ -182,13 +206,7 @@ export const project = {
         linkTo: '/dashboard/server'
       }
     },
-                { 
-        name: 'create_folder', 
-        label: 'Create Project Folder?', 
-        group: 'Details',
-        tab: 'Overview', 
-        type: "boolean",
-      },
+
     {
       name: 'project_folder',
       label: 'Project Folder',
@@ -227,9 +245,26 @@ export const project = {
     filter: {
       project_id: 'record.id'
     }
-  },
-  
+  }, 
 },
+{
+      name: 'logins',
+      label: 'Logins',
+      type: 'multiRelationship',
+      tab: 'Links',
+      group: 'Logins',
+      displayMode: 'tags',
+      relation: {
+        table: 'login',
+        labelField: 'title',
+        linkTo: '/dashboard/login',
+        junctionTable: 'login_project',
+        sourceKey: 'project_id',
+        targetKey: 'login_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
   {
       name: 'tags',
       label: 'Tags',

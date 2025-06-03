@@ -328,13 +328,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
   const value = filters[filter.name] || (filter.multiple ? [] : '');
   let displayValue = '';
 
-  console.log(`[Display Debug] ${filter.name}:`, { 
-    value, 
-    isArray: Array.isArray(value), 
-    multiple: filter.multiple,
-    type: typeof value,
-    filterType: filter.type 
-  });
+
 
   // Handle multi-select arrays
   if (filter.multiple && Array.isArray(value)) {

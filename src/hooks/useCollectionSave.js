@@ -17,7 +17,132 @@ const extractSelectValue = (value) => {
   return value;
 };
 
-// IMPORTANT: This is a simplified version focused on fixing multi-relationship saving
+// Helper function to get the name field for a collection
+const getNameField = (collectionName) => {
+  const nameFieldMap = {
+    'company': 'title',
+    'project': 'title', 
+    'element': 'title'
+  };
+  return nameFieldMap[collectionName] || 'title';
+};
+
+// Helper function to detect if a name change occurred
+const detectNameChange = (config, oldRecord, newRecord) => {
+  const nameField = getNameField(config.name);
+  const oldName = oldRecord?.[nameField];
+  const newName = newRecord?.[nameField];
+  
+  // Only consider it a change if both values exist and are different
+  return oldName && newName && oldName !== newName;
+};
+
+// Helper function to trigger Google Drive folder creation
+const triggerDriveFolderCreation = async (config, record) => {
+  // Only trigger for supported collection types
+  const supportedTypes = ['company', 'project', 'element'];
+  if (!supportedTypes.includes(config.name)) {
+    return { success: true, message: 'Collection type not supported for Drive folders' };
+  }
+
+  // Only trigger if create_folder is true
+  if (!record.create_folder) {
+    return { success: true, message: 'Folder creation not enabled for this record' };
+  }
+
+  // Skip if folders already created
+  if (record.drive_folder_id) {
+    return { success: true, message: 'Folders already exist' };
+  }
+
+  try {
+    console.log(`[useCollectionSave] Triggering Drive folder creation for ${config.name}:`, record.id);
+
+    const response = await fetch('/api/google-drive', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: config.name,
+        payload: record
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    console.log(`[useCollectionSave] Drive folders created successfully:`, result);
+    return { success: true, result };
+
+  } catch (error) {
+    console.error(`[useCollectionSave] Drive folder creation failed:`, error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Helper function to trigger Google Drive folder rename
+const triggerDriveFolderRename = async (config, record, oldRecord) => {
+  // Only trigger for supported collection types
+  const supportedTypes = ['company', 'project', 'element'];
+  if (!supportedTypes.includes(config.name)) {
+    return { success: true, message: 'Collection type not supported for Drive folders' };
+  }
+
+  // Only rename if we have a folder ID
+  if (!record.drive_folder_id) {
+    return { success: true, message: 'No folder to rename' };
+  }
+
+  // Check if name actually changed
+  if (!detectNameChange(config, oldRecord, record)) {
+    return { success: true, message: 'No name change detected' };
+  }
+
+  try {
+    const nameField = getNameField(config.name);
+    const newName = record[nameField];
+    const oldName = oldRecord[nameField];
+
+    console.log(`[useCollectionSave] Triggering Drive folder rename for ${config.name}:`, {
+      id: record.id,
+      oldName,
+      newName
+    });
+
+    const response = await fetch('/api/google-drive/rename', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        type: config.name,
+        folderId: record.drive_folder_id,
+        newName: newName,
+        oldName: oldName,
+        recordId: record.id
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error || `HTTP ${response.status}`);
+    }
+
+    console.log(`[useCollectionSave] Drive folder renamed successfully:`, result);
+    return { success: true, result };
+
+  } catch (error) {
+    console.error(`[useCollectionSave] Drive folder rename failed:`, error);
+    return { success: false, error: error.message };
+  }
+};
+
+// ENHANCED: useCollectionSave with rename detection and handling
 export const useCollectionSave = ({ config, record, setRecord, startEdit, mode = 'edit' }) => {
   if (!record) {
     return {
@@ -37,6 +162,7 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
   const supabase = createClient();
   const isCreateMode = mode === 'create';
   const lastRecordIdRef = useRef(record?.id);
+  const originalRecordRef = useRef(record); // Track original record for rename detection
 
   const [editingField, setEditingField] = useState(null);
   const [tempValue, setTempValue] = useState('');
@@ -46,6 +172,7 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
   const [dirtyFields] = useState(new Set()); // Track which fields have changed
   const [multiRelChanges, setMultiRelChanges] = useState({}); // Track multi-relationship changes
   const [mediaFieldsChanged, setMediaFieldsChanged] = useState(new Set()); // Track media field changes
+  const [driveOperationStatus, setDriveOperationStatus] = useState(null); // Track Drive operations
 
   const suppressAutosaveRef = useRef(isCreateMode || !record?.id);
 
@@ -58,11 +185,20 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
   useEffect(() => {
     if (record?.id !== lastRecordIdRef.current) {
       lastRecordIdRef.current = record?.id;
+      originalRecordRef.current = { ...record }; // Store original state
       setHasChanges(false);
       setMultiRelChanges({});
       setMediaFieldsChanged(new Set());
+      setDriveOperationStatus(null);
     }
   }, [record?.id]);
+
+  // Update original record ref when record changes (but preserve for rename detection)
+  useEffect(() => {
+    if (!hasChanges) {
+      originalRecordRef.current = { ...record };
+    }
+  }, [record, hasChanges]);
 
   const updateLocalValue = (fieldName, newValue) => {
     if (suppressAutosaveRef.current) return;
@@ -197,8 +333,12 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
 
     console.log(`[useCollectionSave] Starting save process...`);
     setIsSaving(true);
+    setDriveOperationStatus(null);
     
     try {
+      // Store the current record state for rename detection
+      const recordBeforeSave = { ...record };
+      
       // Only include fields defined in the config for the update payload
       const dbFieldNames = config.fields
         .filter((f) => f.database !== false)
@@ -354,18 +494,81 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
           allMultiSaved = false;
         }
       }
+
+      // Step 3: Handle Google Drive folder operations
+      let driveResult = { success: true, message: 'No Drive operation needed' };
+      
+      // First check if we need to rename an existing folder
+      if (record.drive_folder_id && detectNameChange(config, originalRecordRef.current, recordBeforeSave)) {
+        setDriveOperationStatus('renaming');
+        console.log('[useCollectionSave] Name change detected, triggering rename');
+        driveResult = await triggerDriveFolderRename(config, recordBeforeSave, originalRecordRef.current);
+        
+        if (driveResult.success) {
+          // Update the original name tracking
+          const nameField = getNameField(config.name);
+          const driveUpdateData = {
+            drive_original_name: recordBeforeSave[nameField],
+            updated_at: getPostgresTimestamp()
+          };
+
+          const { error: driveUpdateError } = await supabase
+            .from(config.name)
+            .update(driveUpdateData)
+            .eq('id', record.id);
+
+          if (!driveUpdateError) {
+            setRecord(prev => ({
+              ...prev,
+              ...driveUpdateData
+            }));
+          }
+        }
+      }
+      // Otherwise check if we need to create new folders
+      else if (record.create_folder && !record.drive_folder_id) {
+        setDriveOperationStatus('creating');
+        driveResult = await triggerDriveFolderCreation(config, recordBeforeSave);
+        
+        if (driveResult.success && driveResult.result?.folder?.id) {
+          // Update record with drive folder ID and original name
+          const nameField = getNameField(config.name);
+          const driveUpdateData = {
+            drive_folder_id: driveResult.result.folder.id,
+            drive_original_name: recordBeforeSave[nameField],
+            updated_at: getPostgresTimestamp()
+          };
+
+          const { error: driveUpdateError } = await supabase
+            .from(config.name)
+            .update(driveUpdateData)
+            .eq('id', record.id);
+
+          if (!driveUpdateError) {
+            setRecord(prev => ({
+              ...prev,
+              ...driveUpdateData
+            }));
+          }
+        }
+      }
       
       // Clear state
       setMultiRelChanges({});
       setHasChanges(false);
       setMediaFieldsChanged(new Set());
       setIsSaving(false);
+      setDriveOperationStatus(driveResult.success ? 'completed' : 'failed');
       
-      console.log(`[useCollectionSave] ✅ Save completed. Multi fields success: ${allMultiSaved}`);
+      // Update original record ref with the saved state
+      originalRecordRef.current = { ...recordBeforeSave };
+      
+      console.log(`[useCollectionSave] ✅ Save completed. Multi fields success: ${allMultiSaved}, Drive operation: ${driveResult.success ? 'success' : driveResult.error}`);
       return true;
     } catch (err) {
       console.error('[useCollectionSave] ❌ Unexpected error saving record:', err);
       setIsSaving(false);
+      setDriveOperationStatus('failed');
       return false;
     }
   };
@@ -382,10 +585,13 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
     hasChanges,
     setHasChanges,
     isSaving,
-    // Expose for debugging
+    driveOperationStatus,
+    // Expose for debugging and rename detection
     dirtyFields,
     multiRelChanges,
     mediaFieldsChanged,
+    originalRecord: originalRecordRef.current,
+    nameChangeDetected: detectNameChange(config, originalRecordRef.current, record),
     forceAddMultiChange: (fieldName) => {
       if (!fieldName) return;
       

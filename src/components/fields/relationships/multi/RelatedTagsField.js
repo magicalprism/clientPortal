@@ -23,11 +23,11 @@ export const RelatedTagsField = ({
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [allOptions, setAllOptions] = useState([]);
-  const [localSelectedItems, setLocalSelectedItems] = useState([]);
+  const [localSelectedItems, setLocalSelectedItems] = useState([]); // Always initialized as array
   const [resolvedFilter, setResolvedFilter] = useState({});
   const [filterError, setFilterError] = useState(null);
   
-    // Configuration for relationship
+  // Configuration for relationship
   const {
     relation: { 
       table, 
@@ -41,30 +41,29 @@ export const RelatedTagsField = ({
       relatedItems
     } = {} // Add default empty object to prevent null/undefined errors
   } = field || {};
-  // Fetch related records if we're in read-only mode (no onChange)
-  const [fetchedOneToManyItems, setFetchedOneToManyItems] = useState(null);
-
-useEffect(() => {
-  if (onChange && isOneToMany && !junctionTable && parentId && targetKey && table) {
-    const fetchRelated = async () => {
-      const { data, error } = await supabase
-        .from(table)
-        .select(`id, ${labelField}, parent_id`)
-        .eq(targetKey, parentId);
-
-      if (error) {
-        console.error('[RelatedTagsField] Error fetching one-to-many data:', error);
-      } else {
-        setFetchedOneToManyItems(data);
-      }
-    };
-
-    fetchRelated();
-  }
-}, [onChange, isOneToMany, junctionTable, parentId, targetKey, table, labelField, supabase]);
-
   
+  // Fetch related records if we're in read-only mode (no onChange)
+  const [fetchedOneToManyItems, setFetchedOneToManyItems] = useState([]);
 
+  useEffect(() => {
+    if (onChange && isOneToMany && !junctionTable && parentId && targetKey && table) {
+      const fetchRelated = async () => {
+        const { data, error } = await supabase
+          .from(table)
+          .select(`id, ${labelField}, parent_id`)
+          .eq(targetKey, parentId);
+
+        if (error) {
+          console.error('[RelatedTagsField] Error fetching one-to-many data:', error);
+          setFetchedOneToManyItems([]);
+        } else {
+          setFetchedOneToManyItems(data || []);
+        }
+      };
+
+      fetchRelated();
+    }
+  }, [onChange, isOneToMany, junctionTable, parentId, targetKey, table, labelField, supabase]);
 
   // Add this right after the start of your component
   useEffect(() => {
@@ -224,7 +223,7 @@ useEffect(() => {
     fetchOptions();
   }, [table, labelField, resolvedFilter, supabase]);
 
-  // ✅ FIXED: Initialize from value or related items
+  // ✅ FIXED: Initialize from value or related items with proper undefined handling
   useEffect(() => {
     console.log(`[RelatedTagsField] Initializing ${field?.name} with value:`, value);
     
@@ -235,18 +234,24 @@ useEffect(() => {
     
     let selectedItems = [];
     
-    if (onChange && value) {
-      // ✅ Handle different value formats
+    if (onChange && value !== undefined && value !== null) {
+      // ✅ Handle different value formats with proper undefined checking
       let targetIds = [];
       
       if (Array.isArray(value)) {
         // Simple array of IDs: [202, 3]
-        targetIds = value.map(id => parseInt(id)).filter(id => !isNaN(id));
+        targetIds = value
+          .filter(id => id !== null && id !== undefined)
+          .map(id => parseInt(id))
+          .filter(id => !isNaN(id));
         console.log(`[RelatedTagsField] Using simple array format:`, targetIds);
       } else if (value && typeof value === 'object') {
         if (value.ids && Array.isArray(value.ids)) {
           // Complex object format: {ids: [202], details: [...]}
-          targetIds = value.ids.map(id => parseInt(id)).filter(id => !isNaN(id));
+          targetIds = value.ids
+            .filter(id => id !== null && id !== undefined)
+            .map(id => parseInt(id))
+            .filter(id => !isNaN(id));
           console.log(`[RelatedTagsField] Using complex object format:`, targetIds);
         } else {
           console.log(`[RelatedTagsField] Unknown object format:`, value);
@@ -267,7 +272,7 @@ useEffect(() => {
         console.log(`[RelatedTagsField] Found ${selectedItems.length} selected items:`, selectedItems.map(i => ({ id: i.id, label: i[labelField] })));
       }
       
-    } else if (relatedItems) {
+    } else if (relatedItems && Array.isArray(relatedItems)) {
       // Read-only mode with provided related items
       selectedItems = relatedItems.map(item => ({
         ...item,
@@ -276,7 +281,7 @@ useEffect(() => {
         indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
       }));
       
-    } else if (fetchedOneToManyItems) {
+    } else if (fetchedOneToManyItems && Array.isArray(fetchedOneToManyItems)) {
       // One-to-many fallback
       selectedItems = fetchedOneToManyItems.map(item => ({
         ...item,
@@ -287,37 +292,36 @@ useEffect(() => {
       console.log('[RelatedTagsField] One-to-many fallback selected items:', selectedItems);
     }
     
-    setLocalSelectedItems(selectedItems);
+    // Always ensure selectedItems is an array
+    setLocalSelectedItems(Array.isArray(selectedItems) ? selectedItems : []);
 
   }, [value, relatedItems, allOptions, labelField, onChange, field?.name, fetchedOneToManyItems]);
 
-  // Handle selection changes
+  // Handle selection changes with proper error handling
   const handleChange = async (event, selectedItems) => {
-    if (!Array.isArray(selectedItems)) {
-      console.log('[RelatedTagsField] Invalid selectedItems, not an array');
-      return;
-    }
+    // Ensure selectedItems is always an array - CRITICAL for controlled input
+    const safeSelectedItems = Array.isArray(selectedItems) ? selectedItems : [];
 
     console.log(`[RelatedTagsField] ${field.name} handleChange triggered`, {
-      selectedItemsCount: selectedItems.length,
+      selectedItemsCount: safeSelectedItems.length,
       originalItemsCount: localSelectedItems.length,
       onChange: typeof onChange === 'function' ? 'defined' : 'undefined'
     });
     
     // Prepare the selected items for display
-    const enrichedItems = selectedItems.map(item => ({
+    const enrichedItems = safeSelectedItems.map(item => ({
       ...item,
       id: item.id, // Ensure ID is present
       [labelField]: item[labelField] || item.title || item.name || `ID: ${item.id}`,
       indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
     }));
     
-    // Update local UI state
+    // Update local UI state - ALWAYS set to array
     setLocalSelectedItems(enrichedItems);
     
     if (onChange) {
       // We're in controlled mode with onChange
-      const selectedIds = selectedItems.map(item => item.id);
+      const selectedIds = safeSelectedItems.map(item => item.id).filter(id => id !== null && id !== undefined);
       
       console.log(`[RelatedTagsField] ${field.name} calling onChange with simple array:`, selectedIds);
       
@@ -326,7 +330,7 @@ useEffect(() => {
       
     } else {
       // We're in direct database mode
-      const selectedIds = selectedItems.map(item => item.id);
+      const selectedIds = safeSelectedItems.map(item => item.id);
       const currentIds = relatedItems?.map(item => item.id) || [];
 
       const toAdd = selectedIds.filter(id => !currentIds.includes(id));
@@ -396,8 +400,8 @@ useEffect(() => {
         <Autocomplete
           multiple
           size="small"
-          options={allOptions}
-          value={localSelectedItems}
+          options={allOptions || []} // Ensure options is never undefined
+          value={localSelectedItems || []} // Ensure value is never undefined
           getOptionLabel={option =>
             option.indentedLabel || option[labelField] || `ID: ${option.id}`
           }
@@ -419,11 +423,13 @@ useEffect(() => {
               {...params} 
               variant="outlined" 
               size="small" 
-              placeholder={`Add ${field.label || 'tags'}`} 
+              placeholder={`Add ${field.label || 'tags'}`}
+              // Ensure input is always controlled
+              value={params.inputProps.value || ''}
             />
           )}
           renderTags={(tagValues, getTagProps) =>
-            tagValues.map((option, index) => {
+            (tagValues || []).map((option, index) => {
               const { key, ...tagPropsWithoutKey } = getTagProps({ index });
               
               return (

@@ -59,13 +59,7 @@ export function DataTable({
     if (enableRowColors && statusField && row[statusField]) {
       const backgroundColor = getStatusRowColor(row[statusField]);
       const textColor = getStatusRowTextColor(backgroundColor);
-      
-      console.log('[Row Color Debug]', {
-        status: row[statusField],
-        backgroundColor,
-        textColor,
-        rowId: row.id
-      });
+
       
       styling = {
         ...styling,
