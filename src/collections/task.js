@@ -280,6 +280,7 @@ export const task = {
       type: 'select',
       label: 'Status',
       multiple: true,
+      defaultValue: [],
       options: [
         { value: 'not started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
@@ -310,6 +311,7 @@ export const task = {
       type: 'select',
       label: 'Event Type',
       multiple: true,
+      defaultValue: [],
       options: [
         { value: 'task', label: 'Task' },
         { value: 'vacation', label: 'Vacation' },

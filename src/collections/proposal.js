@@ -12,10 +12,6 @@ export const proposal = {
       label: 'Table View',
       component: 'PrimaryTableView'
     },
-    page: { 
-      label: 'Page View', 
-      component: 'PageView' 
-    },
   },
   quickView: {
     enabled: true,
@@ -31,7 +27,6 @@ export const proposal = {
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
-      openMode: 'modal',  
       showInTable: true,
       description: 'A descriptive name for this proposal'
     },
@@ -203,6 +198,7 @@ export const proposal = {
       name: 'status',
       type: 'select',
       label: 'Status',
+      defaultValue: [],
       options: [
         { value: 'draft', label: 'Draft' },
         { value: 'sent', label: 'Sent' },

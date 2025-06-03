@@ -4,7 +4,12 @@ import { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { Upload, LinkSimple, Link as LinkIcon } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import * as collections from '@/collections';
-import { MediaEditModal } from '@/components/fields/media/modals/MediaEditModal';
+import dynamic from 'next/dynamic';
+
+const MediaEditModal = dynamic(
+  () => import('@/components/fields/media/modals/MediaEditModal'),
+  { ssr: false }
+);
 
 export const useMediaField = ({ field, parentId, value, onChange, record, config, readOnly }) => {
 

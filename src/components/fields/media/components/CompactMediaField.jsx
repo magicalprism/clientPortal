@@ -8,21 +8,15 @@ import { CompactMediaPreview } from './CompactMediaPreview';
 import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
 
 // Import the media modals with error handling
-let MediaUploadModal, MediaEditModal;
+import dynamic from 'next/dynamic';
 
-try {
-  const mediaUploadModule = require('@/components/fields/media/modals/MediaUploadModal');
-  MediaUploadModal = mediaUploadModule.MediaUploadModal;
-} catch (e) {
-  console.warn('MediaUploadModal not found:', e.message);
-}
+const MediaUploadModal = dynamic(
+  () => import('@/components/fields/media/modals/MediaUploadModal'),
+  { ssr: false }
+);
 
-try {
-  const editModule = require('@/components/fields/media/modals/MediaEditModal');
-  MediaEditModal = editModule.MediaEditModal;
-} catch (e) {
-  console.warn('MediaEditModal not found:', e.message);
-}
+
+
 
 const supabase = createClient();
 

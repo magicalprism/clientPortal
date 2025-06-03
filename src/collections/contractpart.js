@@ -128,6 +128,7 @@
       name: 'status',
       type: 'select',
       label: 'Status',
+      defaultValue: [],
       options: [
         { value: 'todo', label: 'To do' },
         { value: 'in_progress', label: 'In Progress' },

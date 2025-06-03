@@ -423,6 +423,7 @@ export const project = {
       name: 'status',
       type: 'select',
       label: 'Status',
+      defaultValue: [],
       options: [
         { label: 'Pending', value: 'pending' },
         { label: 'In Progress', value: 'in_progress' },

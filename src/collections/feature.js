@@ -185,6 +185,7 @@ export const feature = {
       name: 'is_active',
       type: 'select',
       label: 'Status',
+      defaultValue: [],
       options: [
         { value: true, label: 'Active' },
         { value: false, label: 'Inactive' },

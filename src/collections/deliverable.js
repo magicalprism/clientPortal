@@ -141,6 +141,7 @@
       name: 'type',
       type: 'select',
       label: 'Type',
+      defaultValue: [],
       options: [
         { value: 'page', label: 'Page' },
         { value: 'feature', label: 'Feature' },

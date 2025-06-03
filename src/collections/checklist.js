@@ -143,7 +143,7 @@ export const checklist = {
       name: 'status',
       type: 'select',
       label: 'Status',
-      defaultValue: 'todo',
+      defaultValue: ['todo'],
       options: [
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },

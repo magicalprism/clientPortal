@@ -301,6 +301,7 @@ export const contract = {
       name: 'status',
       type: 'select',
       label: 'Contract Status',
+      defaultValue: [],
       options: [
         { value: 'draft', label: 'Draft' },
         { value: 'pending_signature', label: 'Pending Signature' },

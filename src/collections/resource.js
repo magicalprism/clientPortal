@@ -182,7 +182,7 @@ export const resource = {
       type: 'select',
       tab: 'Meta',
       showInTable: true,
-      
+      defaultValue: [],
       options:  [
         { label: 'Draft', value: 'draft' },
         { label: 'Published', value: 'published' },

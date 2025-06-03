@@ -207,12 +207,13 @@ export const contact = {
         name: 'status',
         type: 'select',
         label: 'Status',
+        defaultValue: ['client', 'team'],
         options: [  
           { value: 'client', label: 'Client' },
           { value: 'team', label: 'Team' },
+          { value: 'active', label: 'Active' },
           { value: 'archived', label: 'Archived' },
       ],
-      defaultValue: 'client',
       },
       {
         name: 'sort',

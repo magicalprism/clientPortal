@@ -143,7 +143,7 @@
       name: 'status',
       type: 'select',
       label: 'Status',
-      defaultValue: 'todo',
+      defaultValue: [],
       options: [
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },

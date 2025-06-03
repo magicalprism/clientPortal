@@ -152,7 +152,7 @@
       name: 'status',
       type: 'select',
       label: 'Status',
-      defaultValue: 'todo',
+      defaultValue: [],
       options: [
         { value: 'draft', label: 'Draft' },
         { value: 'published', label: 'Published' },

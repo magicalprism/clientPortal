@@ -239,6 +239,7 @@ export const product = {
       name: 'status',
       type: 'select',
       label: 'Status',
+      defaultValue: [],
       options: [
         { value: 'active', label: 'Active' },
         { value: 'deprecated', label: 'Deprecated' },

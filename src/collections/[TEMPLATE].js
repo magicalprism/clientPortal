@@ -37,7 +37,7 @@
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-
+      defaultValue: [],
       options: [
         { value: 'todo', label: 'To do' },
         { value: 'in_progress', label: 'In Progress' },

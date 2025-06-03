@@ -140,7 +140,7 @@ export const company = {
         name: 'status',
         type: 'select',
         label: 'Status',
-        defaultValue: '',
+        defaultValue: [],
         options: [
            { value: 'maintained', label: 'Maintained' },
         { value: 'active', label: 'Active' },

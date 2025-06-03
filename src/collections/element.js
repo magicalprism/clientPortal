@@ -280,6 +280,7 @@ export const element = {
       name: 'status',
       type: 'select',
       label: 'Stage',
+      defaultValue: [],
       options: [
         { label: 'Planning', value: 'plan' },
         { label: 'Copywriting', value: 'copy' },

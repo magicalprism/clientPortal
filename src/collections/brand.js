@@ -443,7 +443,7 @@ export const brand = {
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: 'primary',
+      defaultValue: [],
       options: [
         { value: 'primary', label: 'Primary' },
         { value: 'secondary', label: 'Secondary' },
