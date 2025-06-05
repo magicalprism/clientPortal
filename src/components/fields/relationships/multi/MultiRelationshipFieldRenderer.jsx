@@ -135,7 +135,7 @@ export const MultiRelationshipFieldRenderer = ({
       }
     }
   };
-  console.log('[RelatedTagsField] PARENT ID', parentId);
+
 
   return (
     <MultiRelationshipField

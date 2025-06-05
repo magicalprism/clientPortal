@@ -54,7 +54,7 @@ export const RelatedTagsField = ({
           .eq(targetKey, parentId);
 
         if (error) {
-          console.error('[RelatedTagsField] Error fetching one-to-many data:', error);
+    
           setFetchedOneToManyItems([]);
         } else {
           setFetchedOneToManyItems(data || []);
@@ -67,24 +67,17 @@ export const RelatedTagsField = ({
 
   // Add this right after the start of your component
   useEffect(() => {
-    console.log(`[RelatedTagsField] ${field?.name} initialized with:`, {
-      valueType: typeof value,
-      valueIsArray: Array.isArray(value),
-      valueIsObject: typeof value === 'object' && value !== null && !Array.isArray(value),
-      hasIds: Array.isArray(value) ? value.length : (value?.ids ? value.ids.length : 'no ids'),
-      hasDetails: value?.details ? value.details.length : 'no details',
-      rawValue: value
-    });
+
   }, [field?.name, value]);
 
-  console.log('[RelatedTagsField] parentId:', parentId);
+
 
   // Resolve dynamic filter
   useEffect(() => {
     const resolveFilter = async () => {
       // Skip if missing required fields
       if (!filterFrom || !filter || !parentId) {
-        console.log('[RelatedTagsField] Skipping filter resolution - missing required fields');
+
         return;
       }
       
@@ -100,10 +93,10 @@ export const RelatedTagsField = ({
           parentId
         });
         
-        console.log('[RelatedTagsField] Resolved filter:', result);
+
         setResolvedFilter(result);
       } catch (err) {
-        console.error('[RelatedTagsField] Error resolving filter:', err);
+   
         setFilterError(err.message || 'Error resolving filter');
       }
     };
@@ -153,7 +146,7 @@ export const RelatedTagsField = ({
   useEffect(() => {
     const fetchOptions = async () => {
       if (!table) {
-        console.log('[RelatedTagsField] No table specified, skipping options fetch');
+
         setLoading(false);
         return;
       }
@@ -181,24 +174,20 @@ export const RelatedTagsField = ({
         const { data, error } = await query;
 
         if (error) {
-          console.error('[RelatedTagsField] Failed to load options:', error);
+
           setAllOptions([]);
         } else {
           // Check if we have a parent_id field for hierarchical display
           const hasParentField = data.some(item => 'parent_id' in item);
           
           if (hasParentField) {
-            console.log('[RelatedTagsField] Using hierarchical display for options');
+   
             
             // Use our custom sorted tree builder
             const sortedTree = buildSortedTree(data, null);
             const flattenedTree = flattenSortedTree(sortedTree);
             
-            console.log('[RelatedTagsField] Built hierarchical options:', {
-              rawCount: data.length,
-              rootCount: sortedTree.length,
-              flattenedCount: flattenedTree.length
-            });
+
             
             setAllOptions(flattenedTree);
           } else {
@@ -214,7 +203,7 @@ export const RelatedTagsField = ({
           }
         }
       } catch (err) {
-        console.error('[RelatedTagsField] Error fetching options:', err);
+
       } finally {
         setLoading(false);
       }
@@ -225,10 +214,10 @@ export const RelatedTagsField = ({
 
   // ✅ FIXED: Initialize from value or related items with proper undefined handling
   useEffect(() => {
-    console.log(`[RelatedTagsField] Initializing ${field?.name} with value:`, value);
+
     
     if (!allOptions || allOptions.length === 0) {
-      console.log(`[RelatedTagsField] No options available yet, skipping initialization`);
+
       return;
     }
     
@@ -244,7 +233,7 @@ export const RelatedTagsField = ({
           .filter(id => id !== null && id !== undefined)
           .map(id => parseInt(id))
           .filter(id => !isNaN(id));
-        console.log(`[RelatedTagsField] Using simple array format:`, targetIds);
+
       } else if (value && typeof value === 'object') {
         if (value.ids && Array.isArray(value.ids)) {
           // Complex object format: {ids: [202], details: [...]}
@@ -252,9 +241,9 @@ export const RelatedTagsField = ({
             .filter(id => id !== null && id !== undefined)
             .map(id => parseInt(id))
             .filter(id => !isNaN(id));
-          console.log(`[RelatedTagsField] Using complex object format:`, targetIds);
+
         } else {
-          console.log(`[RelatedTagsField] Unknown object format:`, value);
+
         }
       }
       
@@ -269,7 +258,7 @@ export const RelatedTagsField = ({
           indentedLabel: item.indentedLabel || item[labelField] || item.title || item.name || `ID: ${item.id}`
         }));
         
-        console.log(`[RelatedTagsField] Found ${selectedItems.length} selected items:`, selectedItems.map(i => ({ id: i.id, label: i[labelField] })));
+        
       }
       
     } else if (relatedItems && Array.isArray(relatedItems)) {
@@ -289,7 +278,7 @@ export const RelatedTagsField = ({
         [labelField]: item[labelField],
         indentedLabel: item[labelField]
       }));
-      console.log('[RelatedTagsField] One-to-many fallback selected items:', selectedItems);
+
     }
     
     // Always ensure selectedItems is an array
@@ -302,11 +291,7 @@ export const RelatedTagsField = ({
     // Ensure selectedItems is always an array - CRITICAL for controlled input
     const safeSelectedItems = Array.isArray(selectedItems) ? selectedItems : [];
 
-    console.log(`[RelatedTagsField] ${field.name} handleChange triggered`, {
-      selectedItemsCount: safeSelectedItems.length,
-      originalItemsCount: localSelectedItems.length,
-      onChange: typeof onChange === 'function' ? 'defined' : 'undefined'
-    });
+
     
     // Prepare the selected items for display
     const enrichedItems = safeSelectedItems.map(item => ({
@@ -322,8 +307,7 @@ export const RelatedTagsField = ({
     if (onChange) {
       // We're in controlled mode with onChange
       const selectedIds = safeSelectedItems.map(item => item.id).filter(id => id !== null && id !== undefined);
-      
-      console.log(`[RelatedTagsField] ${field.name} calling onChange with simple array:`, selectedIds);
+ 
       
       // ✅ FIXED: Return simple array format to match MediaEditModal expectations
       onChange(selectedIds);
@@ -346,7 +330,7 @@ export const RelatedTagsField = ({
         const { error } = await supabase.from(junctionTable).insert(insertData);
         
         if (error) {
-          console.error('[RelatedTagsField] Error adding relationships:', error);
+   
         }
       }
 
@@ -359,7 +343,7 @@ export const RelatedTagsField = ({
             .match({ [sourceKey]: parentId, [targetKey]: id });
             
           if (error) {
-            console.error('[RelatedTagsField] Error removing relationship:', error);
+            
           }
         }
       }

@@ -30,7 +30,10 @@ export const project = {
         subtitleField: 'status',
         descriptionField: 'site_tagline',
         extraFields: ['url', 'logins', 'cloudflare_url', 'company_id', 'contacts'],
-        relatedFields: ['contacts']
+        relatedFields: ['contacts'],
+         linkOverrides: {
+            logins: 'link_id_details.url',        // In QuickView only, use project.url field for links
+    },
       }, 
   fields: [   
     // Overview
@@ -51,9 +54,19 @@ export const project = {
       group: 'Project Info',
       
       },
+              // Google Drive integration
+    {
+      name: 'create_folder',
+      type: 'boolean',
+      label: 'Google Drive Project Folders',
+      group: 'Details',
+      tab: 'Overview', 
+      variant: 'full',
+      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+    },
     {
       name: 'content',
-      label: 'General Description',
+      label: 'Strategy',
       type: 'richText',
       tab: 'Overview',
       fullWidth: true,
@@ -74,30 +87,21 @@ export const project = {
         filter: { is_client: 'true' }
       }
     },
-        // Google Drive integration
-    {
-      name: 'create_folder',
-      type: 'boolean',
-      label: 'Google Drive Project Folders',
-      group: 'Details',
-      tab: 'Overview', 
-      variant: 'full',
-      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+        { 
+      name: 'care_plan_id', 
+      label: 'Care Plan', 
+      tab: 'Overview',
+      group: 'Deliverables', 
+      type: 'relationship',
+      relation: {
+        table: 'product',
+        labelField: 'title',
+        linkTo: '/dashboard/product',
+      } 
     },
+
     
-    // Hidden database fields for Drive integration
-    {
-      name: 'drive_folder_id',
-      type: 'text',
-      database: true,
-      includeInViews: ['none'] // Hidden from all UI views
-    },
-    {
-      name: 'drive_original_name',
-      type: 'text', 
-      database: true,
-      includeInViews: ['none'] // Hidden from all UI views
-    },
+
     {
       name: 'tasks',
       label: 'Tasks',
@@ -140,25 +144,33 @@ export const project = {
     }
   }
 },
-     {
+ {
       name: 'brand_board_preview',
       label: 'Brand Board Preview',
       type: 'custom',
       component: 'BrandBoardPreview',
-      tab: 'Brand',
+      tab: 'Brand', // You can place this in any tab or group you like
+      group: 'Brand Details'
     },
-    { 
-      name: 'care_plan_id', 
-      label: 'Care Plan', 
-      tab: 'Deliverables',
-      group: 'Subscriptions',
-      type: 'relationship',
+    {
+      name: 'logins',
+      label: 'Logins',
+      type: 'multiRelationship',
+      tab: 'Backend',
+      group: 'Logins',
+      displayMode: 'tags',
       relation: {
-        table: 'product',
+        table: 'login',
         labelField: 'title',
-        linkTo: '/dashboard/product',
-      } 
+        linkTo: '/dashboard/login',
+        junctionTable: 'login_project',
+        sourceKey: 'project_id',
+        targetKey: 'login_id',
+        tableFields: ['title', 'link_id', 'link_id_details.url'],
+        filter: {}
+      }
     },
+
  { 
       name: 'cloudflare_url', 
       label: 'Cloudflare URL', 
@@ -167,19 +179,7 @@ export const project = {
       group: 'Cloudflare', 
       displayLabel: 'https://dash.cloudflare.com...',   
     },
-    { 
-      name: 'domain_login_id', 
-      label: 'Domain Login',
-      type: 'relationship',
-      tab: 'Backend',
-      group: 'Hosting',   
-      relation: {
-        table: 'login',
-        labelField: 'title',
-        linkTo: '/dashboard/login',
-        filter: { type: 'domain' }
-      }
-    },
+
     { 
       name: 'cloudflare_zone', 
       label: 'Cloudflare Zone', 
@@ -210,19 +210,14 @@ export const project = {
     {
       name: 'project_folder',
       label: 'Project Folder',
-      type: 'media',
-      relation: {
-        table: 'media',
-        labelField: 'title',
-        linkTo: 'url', // or dynamically derive from config
-      },
-      tab: 'Files',
+      type: 'link',
+      tab: 'Content',
     },
 {
   name: 'media_items',
   label: 'All Media',
   type: 'galleryRelationship',
-  tab: 'Files',
+  tab: 'Content',
   database: false,
   showAll: true,
   filters: [
@@ -247,24 +242,7 @@ export const project = {
     }
   }, 
 },
-{
-      name: 'logins',
-      label: 'Logins',
-      type: 'multiRelationship',
-      tab: 'Links',
-      group: 'Logins',
-      displayMode: 'tags',
-      relation: {
-        table: 'login',
-        labelField: 'title',
-        linkTo: '/dashboard/login',
-        junctionTable: 'login_project',
-        sourceKey: 'project_id',
-        targetKey: 'login_id',
-        tableFields: ['title'],
-        filter: {}
-      }
-    },
+
   {
       name: 'tags',
       label: 'Tags',
@@ -415,10 +393,35 @@ export const project = {
       props: {
         entity: 'project',
       }
-    }
+    },
+        // Hidden database fields for Drive integration
+    {
+      name: 'drive_folder_id',
+      type: 'text',
+      tab: 'meta', 
+      group: 'General',
+      database: true,
+      editable: false,
+      includeInViews: ['none'] // Hidden from all UI views
+    },
+    {
+      name: 'drive_original_name',
+      type: 'text', 
+      tab: 'meta', 
+      group: 'General',
+      database: true,
+      editable: false,
+      includeInViews: ['none'] // Hidden from all UI views
+    },
   
   ],
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'status',
       type: 'select',

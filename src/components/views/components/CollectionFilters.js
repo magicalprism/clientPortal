@@ -339,7 +339,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
       const labels = value.map(val => {
         const option = filter.options.find(opt => (opt.value || opt) === val);
         const label = option ? (option.label || option) : val;
-        console.log(`[Label Lookup] ${val} -> ${label}`);
+       
         return label;
       });
       displayValue = labels.join(', ');
@@ -388,7 +388,7 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
     ? displayValue.substring(0, maxDisplayLength) + '...' 
     : displayValue;
 
-  console.log(`[Final Display] ${filter.name}: "${truncatedDisplayValue}"`);
+
 
   return (
     <FilterButton

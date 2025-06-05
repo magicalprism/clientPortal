@@ -19,8 +19,18 @@ import { createClient } from '@/lib/supabase/browser';
 import { CollectionItemForm } from '@/components/views/collectionItem/CollectionItemForm';
 import { ContractSectionsTab } from '@/components/dashboard/contract/ContractSectionsTab';
 import { useContractBuilder } from '@/components/dashboard/contract/useContractBuilder';
+import { generateSupabaseSelect } from '@/lib/supabase/generateSupabaseSelect';
+import { ViewButtons } from '@/components/buttons/ViewButtons';
 
-export const CollectionItemPage = ({ config, record, isModal = false }) => {
+
+
+export const CollectionItemPage = ({ 
+  config, 
+  record, 
+  isModal = false, 
+  onRefresh,
+  onClose
+ }) => {
   const theme = useTheme();
   const isSmallScreen = useMediaQuery(theme.breakpoints.down('sm'));
   const router = useRouter();
@@ -742,7 +752,37 @@ const handleRemovePartWithDirty = (partId) => {
 
         </CardContent>
       </Card>
-      <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
+
+      <Box sx={{ display: 'flex', justifyContent: 'end', alignItems: 'center', mt: 2 }}>
+        {/* ViewButtons - only show if we have a record with an ID */}
+        {localRecord?.id && (
+          <ViewButtons 
+            config={config}
+            id={localRecord.id}
+            record={localRecord}
+            onRefresh={() => {
+              console.log('Record updated, refresh triggered');
+              
+              // If in modal, close it first (if onClose callback provided)
+              if (isModal && onClose) {
+                onClose();
+              }
+              
+              // Then trigger parent refresh
+              if (onRefresh) {
+                // Small delay to ensure modal closes first
+                setTimeout(() => {
+                  onRefresh();
+                }, 100);
+              }
+            }}
+            showModal={!isModal} // Hide modal button if already in modal
+            showFullView={true} // Always show full view option
+            isInModal={isModal} // Pass modal context to ViewButtons
+          />
+        )}
+                
+        {/* Save button on the right */}
         <Button 
           disabled={!isDirty && !hasChanges}
           onClick={handleSave}
@@ -754,4 +794,5 @@ const handleRemovePartWithDirty = (partId) => {
       </Box>
     </>
   );
+
 };

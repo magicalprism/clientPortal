@@ -34,13 +34,30 @@ export const company = {
         showInTable: true,
         description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
       },
-            { 
-        name: 'create_folder', 
-        label: 'Create Folder?', 
-        group: 'Details',
-        tab: 'Overview', 
-        type: "boolean",
-      },
+               // Google Drive integration
+    {
+      name: 'create_folder',
+      type: 'boolean',
+      label: 'Google Drive Project Folders',
+      group: 'Details',
+      tab: 'Overview', 
+      variant: 'full',
+      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+    },
+    
+    // Hidden database fields for Drive integration
+    {
+      name: 'drive_folder_id',
+      type: 'text',
+      database: true,
+      includeInViews: ['none'] // Hidden from all UI views
+    },
+    {
+      name: 'drive_original_name',
+      type: 'text', 
+      database: true,
+      includeInViews: ['none'] // Hidden from all UI views
+    },
       {
       name: 'thumbnail_id',
       label: 'Logo Mark',

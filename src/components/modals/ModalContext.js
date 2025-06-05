@@ -14,8 +14,22 @@ export const ModalProvider = ({ children }) => {
     setModal(null);
   };
 
+  // New function to close modal and trigger refresh
+  const closeModalWithRefresh = () => {
+    // Trigger refresh callback if provided
+    if (modal?.props?.onRefresh) {
+      modal.props.onRefresh();
+    }
+    setModal(null);
+  };
+
   return (
-    <ModalContext.Provider value={{ modal, openModal, closeModal }}>
+    <ModalContext.Provider value={{ 
+      modal, 
+      openModal, 
+      closeModal,
+      closeModalWithRefresh 
+    }}>
       {children}
     </ModalContext.Provider>
   );

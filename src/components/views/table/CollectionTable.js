@@ -109,7 +109,11 @@ export const CollectionTable = ({ config, refresh, data, rows, fieldContext = nu
       field: 'actions',
       align: 'right',
       width: '80px',
-      formatter: (row) => <ViewButtons config={config} id={row.id} />
+      formatter: (row) => 
+      <ViewButtons 
+      config={config} 
+      id={row.id}
+      showDelete={false} />
     });
   }
 

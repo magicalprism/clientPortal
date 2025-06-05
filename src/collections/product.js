@@ -223,6 +223,12 @@ export const product = {
   ],
   
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'type',
       type: 'select',

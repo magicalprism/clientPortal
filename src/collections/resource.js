@@ -96,6 +96,13 @@ export const resource = {
         { label: 'Archived', value: 'default' },
       ]
     },
+     {
+      name: 'internal_only',
+      label: 'Internal Use Only',
+      group: 'General',
+      type: 'boolean',
+      tab: 'Meta',
+     },
 
     {
       name: 'type',
@@ -175,6 +182,12 @@ export const resource = {
   
   ],
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'status',
       label: 'Status',

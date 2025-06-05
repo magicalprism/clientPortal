@@ -109,38 +109,42 @@ export const element = {
       }
     },
       
-  { 
-        name: 'create_folder', 
-        label: 'Create Content Folders?', 
-        group: 'Details',
-        tab: 'Overview', 
-        type: "boolean",
-      },
+    // Google Drive integration
+    {
+      name: 'create_folder',
+      type: 'boolean',
+      label: 'Google Drive Project Folders',
+      group: 'Details',
+      tab: 'Overview', 
+      variant: 'full',
+      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+    },
+    
+    // Hidden database fields for Drive integration
+    {
+      name: 'drive_folder_id',
+      type: 'text',
+      database: true,
+      tab: 'Meta', 
+      includeInViews: ['none'] // Hidden from all UI views
+    },
+    {
+      name: 'drive_original_name',
+      type: 'text', 
+      database: true,
+      tab: 'Meta', 
+      includeInViews: ['none'] // Hidden from all UI views
+    },
 
     {
-      name: 'folder_id',
-      is_folder: true,
+      name: 'element_folder',
       label: 'Primary Content Folder',
-      type: 'media',
-      relation: {
-        table: 'media',
-        labelField: 'url'  // or 'alt' if you want something different
-      },
+      type: 'link',
       group: 'Details',
       tab: 'Overview'
     },
 
-    {
-      name: 'final_copy_id',
-      label: 'Final Copy',
-      type: 'media',
-      relation: {
-        table: 'media',
-        labelField: 'url'  // or 'alt' if you want something different
-      },
-      group: 'Details',
-      tab: 'Overview'
-    },
+
     
         {
       name: 'resource_id',

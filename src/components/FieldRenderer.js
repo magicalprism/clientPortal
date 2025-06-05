@@ -37,7 +37,7 @@ function renderCompanyChip(value, field, record, config) {
       const chipColor = companyData.chip_color || '#1d1d1e'; // Default to blue if no color
       const textColor = getContrastColor(chipColor);
       
-      console.log('[Company Chip]', { companyName, chipColor, companyData });
+
       
       return (
         <Chip

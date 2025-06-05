@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import * as collections from '@/collections';
-import CreateForm from '@/components/create/CreateForm';
+import SimpleCreateForm from '@/components/create/SimpleCreateForm';
 import {
   Dialog,
   DialogContent,
@@ -11,7 +11,8 @@ import {
   Typography,
   useMediaQuery,
   useTheme,
-  CircularProgress
+  CircularProgress,
+  Button
 } from '@mui/material';
 import { X as XIcon } from '@phosphor-icons/react';
 import { CollectionItemPage } from '@/components/views/collectionItem/CollectionItemPage';
@@ -191,13 +192,16 @@ const extendedRecord = useMemo(() => {
               </Typography>
             )}
           </Box>
+          
+
           <IconButton onClick={onClose}>
             <XIcon />
           </IconButton>
+          
         </Box>
 
         {isCreating ? (
-          <CreateForm
+          <SimpleCreateForm
             config={config}
             initialRecord={extendedRecord}
             disableRedirect
@@ -216,21 +220,23 @@ const extendedRecord = useMemo(() => {
                 <CircularProgress />
               </Box>
             ) : (
-              <CollectionItemPage
-                config={config}
-                record={extendedRecord}
-                isModal
-                onClose={onClose}
-                onUpdate={async (updatedRecord) => {
-                  if (updatedRecord?.id) {
-                    await saveMultiRelationships({ config, record: updatedRecord });
-                  }
-                  if (onUpdate) onUpdate(updatedRecord);
-                }}
-                onDelete={onDelete}
-                onRefresh={onRefresh}
-                singleColumn
-              />
+              
+              // In CollectionModal.jsx, update the CollectionItemPage call:
+                <CollectionItemPage
+                  config={config}
+                  record={extendedRecord}
+                  isModal
+                  onClose={onClose}
+                  onUpdate={async (updatedRecord) => {
+                    if (updatedRecord?.id) {
+                      await saveMultiRelationships({ config, record: updatedRecord });
+                    }
+                    if (onUpdate) onUpdate(updatedRecord);
+                  }}
+                  onDelete={onDelete} // This now comes from GlobalModals
+                  onRefresh={onRefresh}
+                  singleColumn
+                />
             )}
           </>
         )}

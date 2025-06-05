@@ -15,22 +15,121 @@ import {
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { ArrowSquareOut } from '@phosphor-icons/react';
 import SignatureButton from '@/components/dashboard/contract/parts/SignatureButton';
-import { useState } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { fetchContractRelatedData } from '@/lib/utils/fetchContractRelatedData';
 import { compileContractContent } from '@/lib/utils/contractContentCompiler';
+import { DeleteRecordButton } from '@/components/buttons/DeleteRecordButton.jsx';
 
 // Simple debug helper - only logs in development
 const debug = (label, value) => {
   if (process.env.NODE_ENV === 'development') {
-    // console.log(label, value);
+    console.log(label, value);
   }
+};
+
+// Helper function to get nested value using dot notation
+const getNestedValue = (obj, path) => {
+  if (!obj || !path) return null;
+  
+  return path.split('.').reduce((current, key) => {
+    if (current === null || current === undefined) return null;
+    return current[key];
+  }, obj);
+};
+
+// Helper function to get the appropriate URL for a multi-relationship item
+const getItemUrl = (item, relationConfig, fieldName, quickViewConfig) => {
+  const { table } = relationConfig || {};
+  
+  // Priority 1: Check for QuickView-specific link override
+  const linkOverrides = quickViewConfig?.linkOverrides || {};
+  const overrideField = linkOverrides[fieldName];
+  
+
+  
+  if (overrideField && item) {
+    let url = null;
+    
+    // Support dot notation for nested relationships (e.g., 'link_id_details.url')
+    if (overrideField.includes('.')) {
+      url = getNestedValue(item, overrideField);
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔗 [${fieldName}] Dot notation result:`, { path: overrideField, url });
+      }
+    } else {
+      // Simple field access
+      url = item[overrideField];
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`🔗 [${fieldName}] Simple field result:`, { field: overrideField, url });
+      }
+    }
+    
+    if (url) {
+      // Ensure external URLs have proper protocol
+      if (typeof url === 'string') {
+        if (url.includes('://') || url.startsWith('/')) {
+          return url;
+        } else {
+          // Add https:// for URLs that don't have a protocol
+          return `https://${url}`;
+        }
+      }
+    }
+  }
+  
+  // Priority 2: Use linkField if specified and item has that field (only if no QuickView override)
+  const { linkField, linkTo } = relationConfig || {};
+  if (!overrideField && linkField && item[linkField]) {
+    const url = item[linkField];
+    // Ensure external URLs have proper protocol
+    if (url.includes('://') || url.startsWith('/')) {
+      return url;
+    } else {
+      // Add https:// for URLs that don't have a protocol
+      return `https://${url}`;
+    }
+  }
+  
+  // Priority 3: Use linkTo field (legacy support, only if no QuickView override)
+  if (!overrideField && linkTo && item[linkTo]) {
+    const url = item[linkTo];
+    if (url.includes('://') || url.startsWith('/')) {
+      return url;
+    } else {
+      return `https://${url}`;
+    }
+  }
+  
+  // Priority 4: Check for common URL field names (only if no QuickView override)
+  if (!overrideField) {
+    const urlFields = ['url', 'link', 'website', 'href'];
+    for (const field of urlFields) {
+      if (item[field]) {
+        const url = item[field];
+        if (url.includes('://') || url.startsWith('/')) {
+          return url;
+        } else {
+          return `https://${url}`;
+        }
+      }
+    }
+  }
+  
+  // Fallback: Use collection page URL
+  return `/dashboard/${table}/${item.id}`;
+};
+
+// Helper function to determine if URL should open in new tab
+const shouldOpenInNewTab = (url) => {
+  return url.includes('://') && !url.startsWith(window.location.origin);
 };
 
 export const QuickViewCard = ({ config, record }) => {
   const [regenerating, setRegenerating] = useState(false);
+  const [resolvedImageUrl, setResolvedImageUrl] = useState(null);
+  const [imageLoading, setImageLoading] = useState(false);
   const supabase = createClient();
-  // Always log the record structure to help with debugging
   
   // Guard clause for config
   if (!config?.quickView?.enabled) return null;
@@ -41,39 +140,366 @@ export const QuickViewCard = ({ config, record }) => {
     subtitleField,
     descriptionField,
     extraFields = [],
-    relatedFields = []
+    relatedFields = [],
+    linkOverrides = {} // NEW: QuickView-specific link field overrides
   } = config.quickView || {};
+
+  // ✅ DEBUG: Add global debug function for troubleshooting (development only)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development' && record) {
+      window.debugQuickViewRecord = () => {
+        console.log('🐛 QuickView Debug - Full Record:', record);
+        console.log('🐛 Company-related fields:', {
+          company_id: record?.company_id,
+          company_id_details: record?.company_id_details,
+          companies: record?.companies,
+          companies_details: record?.companies_details,
+        });
+        console.log('🐛 Image-related fields:', {
+          [imageField]: record?.[imageField],
+          [`${imageField}_details`]: record?.[`${imageField}_details`],
+        });
+        console.log('🐛 All keys containing "thumbnail":', 
+          Object.keys(record).filter(key => key.includes('thumbnail'))
+        );
+        console.log('🐛 All keys containing "company":', 
+          Object.keys(record).filter(key => key.includes('company'))
+        );
+        return record;
+      };
+    }
+  }, [record, imageField]);
 
   // Check if this is a contract - multiple detection methods
   const isContract = 
     config?.name === 'contract' || 
     config?.label?.toLowerCase().includes('contract') ||
     config?.singularLabel?.toLowerCase().includes('contract') ||
-    record?.hasOwnProperty('content') && record?.hasOwnProperty('signature_status'); // Contract-specific fields
+    record?.hasOwnProperty('content') && record?.hasOwnProperty('signature_status');
 
-  // --- Smart image handling ---
-  // Try each possible image source path
-  const imageSources = {
-    // Direct image field
-    directImageDetail: imageField && record?.[`${imageField}_details`]?.url,
-    directImage: imageField && record?.[imageField],
+  // ✅ FIXED: Stabilized dependencies to prevent useEffect array size changes
+  const recordId = record?.id;
+  const configName = config?.name;
+  const fieldValue = record?.[imageField];
+  
+  // Memoize the field config to prevent re-fetching when config object changes reference
+  const imageFieldConfig = useMemo(() => {
+    return config.fields?.find(f => f.name === imageField);
+  }, [config.fields, imageField]);
+  
+  // Memoize the relation config to stabilize the dependency
+  const relationConfig = useMemo(() => {
+    if (imageFieldConfig?.type !== 'media') return null;
+    return imageFieldConfig.relation?.relation || imageFieldConfig.relation;
+  }, [imageFieldConfig]);
+
+  // ✅ ENHANCED: Company thumbnail fallback fetching
+  useEffect(() => {
+    const fetchCompanyThumbnail = async () => {
+      // Only try to fetch company thumbnail if we don't have a resolved image
+      if (resolvedImageUrl || imageLoading) return;
+      
+      let companyId = null;
+      let companyData = null;
+      
+      // Method 1: Direct company_id foreign key
+      if (record?.company_id) {
+        companyId = record.company_id;
+        companyData = record.company_id_details;
+      }
+      
+      // Method 2: Multi-relationship companies (take first one)
+      if (!companyId && record?.companies_details?.length > 0) {
+        companyData = record.companies_details[0];
+        companyId = companyData?.id;
+      }
+      
+      // Method 3: Companies array of IDs
+      if (!companyId && record?.companies?.length > 0) {
+        companyId = record.companies[0];
+      }
+      
+      if (!companyId) {
+        return;
+      }
+      
+      // If we have company data but no thumbnail info, fetch it
+      if (!companyData?.thumbnail_id && !companyData?.thumbnail_id_details) {
+        setImageLoading(true);
+        
+        try {
+          const { data: company, error } = await supabase
+            .from('company')
+            .select('id, title, thumbnail_id')
+            .eq('id', companyId)
+            .single();
+            
+          if (!error && company?.thumbnail_id) {
+            // Now fetch the actual media
+            const { data: media, error: mediaError } = await supabase
+              .from('media')
+              .select('*')
+              .eq('id', company.thumbnail_id)
+              .single();
+              
+            if (!mediaError && media?.url) {
+              setResolvedImageUrl(media.url);
+            }
+          }
+        } catch (err) {
+          // Silently handle error
+        } finally {
+          setImageLoading(false);
+        }
+      } else if (companyData?.thumbnail_id_details?.url) {
+        // We have resolved company thumbnail data
+        setResolvedImageUrl(companyData.thumbnail_id_details.url);
+      } else if (companyData?.thumbnail_id) {
+        // We have company thumbnail ID but not resolved data
+        setImageLoading(true);
+        
+        try {
+          const { data: media, error } = await supabase
+            .from('media')
+            .select('*')
+            .eq('id', companyData.thumbnail_id)
+            .single();
+            
+          if (!error && media?.url) {
+            setResolvedImageUrl(media.url);
+          }
+        } catch (err) {
+          // Silently handle error
+        } finally {
+          setImageLoading(false);
+        }
+      }
+    };
     
-    // Company logo paths
-    companyLogo: record?.company?.media?.url,
-    companyThumbnail: record?.company_thumbnail_url,
-    companyDetailsThumb: record?.company_id_details?.thumbnail_id_details?.url
+    // Only run company thumbnail fallback if main image fetch failed
+    const timeoutId = setTimeout(fetchCompanyThumbnail, 100);
+    return () => clearTimeout(timeoutId);
+  }, [resolvedImageUrl, imageLoading, record, supabase]);
+
+  useEffect(() => {
+    const fetchMediaData = async () => {
+      if (!imageField || !recordId) {
+        return;
+      }
+      
+      if (!imageFieldConfig || imageFieldConfig.type !== 'media') {
+        return;
+      }
+      
+      if (!relationConfig) {
+        return;
+      }
+      
+      const { table, linkTo, junctionTable, sourceKey, targetKey } = relationConfig;
+      
+      // Check if we already have resolved URL
+      const detailsKey = `${imageField}_details`;
+      const resolvedDetails = record?.[detailsKey];
+      
+      if (resolvedDetails?.[linkTo] || resolvedDetails?.url) {
+        setResolvedImageUrl(resolvedDetails[linkTo] || resolvedDetails.url);
+        return;
+      }
+      
+      setImageLoading(true);
+      
+      try {
+        let mediaData = null;
+        
+        // ✅ Handle junction table relationships (many-to-many)
+        if (junctionTable) {
+          const effectiveSourceKey = sourceKey || `${configName}_id`;
+          const effectiveTargetKey = targetKey || `${table}_id`;
+          
+          // First, get the relationship from junction table
+          const { data: junctionData, error: junctionError } = await supabase
+            .from(junctionTable)
+            .select(`${effectiveTargetKey}`)
+            .eq(effectiveSourceKey, recordId)
+            .limit(1);
+            
+          if (junctionError) {
+            return;
+          }
+          
+          if (junctionData && junctionData.length > 0) {
+            const mediaId = junctionData[0][effectiveTargetKey];
+            
+            // Now fetch the actual media record
+            const { data: media, error: mediaError } = await supabase
+              .from(table)
+              .select('*')
+              .eq('id', mediaId)
+              .single();
+              
+            if (!mediaError && media) {
+              mediaData = media;
+            }
+          }
+        } else {
+          // ✅ Handle direct foreign key relationships (one-to-one/many-to-one)
+          const mediaId = fieldValue;
+          
+          if (mediaId && (typeof mediaId === 'number' || typeof mediaId === 'string')) {
+            const { data: media, error: mediaError } = await supabase
+              .from(table)
+              .select('*')
+              .eq('id', mediaId)
+              .single();
+              
+            if (!mediaError && media) {
+              mediaData = media;
+            }
+          }
+        }
+        
+        if (mediaData) {
+          const mediaUrl = mediaData[linkTo] || mediaData.url;
+          setResolvedImageUrl(mediaUrl);
+        }
+      } catch (err) {
+        // Silently handle error
+      } finally {
+        setImageLoading(false);
+      }
+    };
+    
+    fetchMediaData();
+    // ✅ FIXED: Use only primitive values and memoized objects in dependencies
+  }, [imageField, recordId, configName, fieldValue, imageFieldConfig, relationConfig]);
+
+  // ✅ ENHANCED: Smart image handling with improved resolution and fallbacks
+  const getImageSource = () => {
+    if (!imageField) {
+      return '/assets/placeholder.png';
+    }
+
+    // ✅ PRIORITY 1: If we have a resolved image URL from useEffect, use it
+    if (resolvedImageUrl) {
+      return resolvedImageUrl;
+    }
+
+    // Get the field configuration to understand the relationship
+    const imageFieldConfig = config.fields?.find(f => f.name === imageField);
+    
+    if (!imageFieldConfig) {
+      return '/assets/placeholder.png';
+    }
+
+    // Handle media type fields
+    if (imageFieldConfig.type === 'media') {
+      // ✅ FIXED: Handle both nested and non-nested relation configs
+      const relationConfig = imageFieldConfig.relation?.relation || imageFieldConfig.relation;
+      
+      if (!relationConfig) {
+        return '/assets/placeholder.png';
+      }
+
+      const { table, linkTo, junctionTable } = relationConfig;
+
+      // Get the raw media ID first
+      const mediaId = record?.[imageField];
+
+      // Method 1: Check for resolved details using _details pattern
+      const detailsKey = `${imageField}_details`;
+      const resolvedDetails = record?.[detailsKey];
+      
+      if (resolvedDetails) {
+        const imageUrl = resolvedDetails[linkTo] || resolvedDetails.url;
+        if (imageUrl) {
+          return imageUrl;
+        }
+      }
+
+      // Method 2: Check for junction table pattern
+      if (junctionTable) {
+        const possibleJunctionKeys = [
+          `${imageField}_${table}`, // thumbnail_id_media
+          `${imageField}_${junctionTable}`, // thumbnail_id_contact_media
+          `${junctionTable}_${table}`, // contact_media_media
+        ];
+
+        for (const key of possibleJunctionKeys) {
+          const junctionData = record?.[key];
+          
+          if (junctionData) {
+            const imageUrl = junctionData[linkTo] || junctionData.url;
+            if (imageUrl) {
+              return imageUrl;
+            }
+          }
+        }
+      }
+
+      // Method 3: Check for direct relationship resolution (if media is embedded)
+      if (mediaId && typeof mediaId === 'object') {
+        const imageUrl = mediaId[linkTo] || mediaId.url;
+        if (imageUrl) {
+          return imageUrl;
+        }
+      }
+    }
+
+    // Handle direct URL fields
+    if (imageFieldConfig.type === 'link' || !imageFieldConfig.type) {
+      const directImage = record?.[imageField];
+      if (directImage && typeof directImage === 'string') {
+        return directImage;
+      }
+    }
+
+    // --- ENHANCED: Fallback methods for company thumbnails ---
+    
+    // Method 1: Direct company_id with resolved details
+    const companyIdDetails = record?.company_id_details;
+    if (companyIdDetails?.thumbnail_id_details?.url) {
+      return companyIdDetails.thumbnail_id_details.url;
+    }
+    
+    // Method 2: Multi-relationship companies_details (take first)
+    const companiesDetails = record?.companies_details;
+    if (companiesDetails?.length > 0) {
+      const firstCompany = companiesDetails[0];
+      if (firstCompany?.thumbnail_id_details?.url) {
+        return firstCompany.thumbnail_id_details.url;
+      }
+    }
+    
+    // Method 3: Check for nested company data patterns
+    const alternativeCompanyPaths = [
+      record?.company?.thumbnail_id_details?.url,
+      record?.company_id?.thumbnail_id_details?.url,
+      record?.company_id?.company?.thumbnail_id?.url,
+      record?.company?.thumbnail_id?.url,
+    ];
+    
+    for (const path of alternativeCompanyPaths) {
+      if (path) {
+        return path;
+      }
+    }
+    
+    // Method 4: Legacy patterns for backward compatibility
+    const legacyPaths = [
+      record?.company_id?.company?.thumbnail_id?.url,
+      record?.company_id?.company?.media?.url,
+    ];
+    
+    for (const path of legacyPaths) {
+      if (path) {
+        return path;
+      }
+    }
+
+    return '/assets/placeholder.png';
   };
-  
-  debug('Image sources', imageSources);
-  
-  // Use the first available image, or fallback
-  const image = 
-    imageSources.directImageDetail || 
-    imageSources.directImage || 
-    imageSources.companyLogo || 
-    imageSources.companyThumbnail || 
-    imageSources.companyDetailsThumb || 
-    '/assets/placeholder.png';
+
+  const image = getImageSource();
   
   // Get basic content fields - allow any field to be null
   const title = titleField ? record?.[titleField] : null;
@@ -84,15 +510,12 @@ export const QuickViewCard = ({ config, record }) => {
     const subtitleFieldConfig = config.fields?.find(f => f.name === subtitleField);
     
     if (subtitleFieldConfig?.type === 'select' || subtitleFieldConfig?.type === 'status') {
-      // Handle different status field formats
       const value = typeof record[subtitleField] === 'object' 
         ? record[subtitleField]?.value 
         : record[subtitleField];
         
       const option = subtitleFieldConfig.options?.find(opt => opt.value === value);
       subtitle = option?.label || value;
-      
-      debug('Status/subtitle', { value, option, subtitle });
     } else {
       subtitle = record[subtitleField];
     }
@@ -106,13 +529,9 @@ export const QuickViewCard = ({ config, record }) => {
     
     setRegenerating(true);
     try {
-      // Fetch the latest related data
       const relatedData = await fetchContractRelatedData(record, config);
-      
-      // Compile the content with the latest data using the standalone utility
       const compiledContent = await compileContractContent(record, relatedData);
       
-      // Update the contract in the database
       const { error } = await supabase
         .from('contract')
         .update({ 
@@ -126,7 +545,6 @@ export const QuickViewCard = ({ config, record }) => {
         alert('Failed to regenerate contract content.');
       } else {
         alert('Contract content regenerated successfully!');
-        // Optionally refresh the page or update the record
         window.location.reload();
       }
     } catch (err) {
@@ -140,25 +558,44 @@ export const QuickViewCard = ({ config, record }) => {
   return (
     <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
-        {image && (
+        {(image || imageLoading) && (
           <Box sx={{ p: 1, mb: 2 }}>
-            <Box
-              component="img"
-              src={image}
-              alt={title || 'Preview image'}
-              sx={{ width: '100%', borderRadius: 2 }}
-              onError={(e) => {
-                const fallback = '/assets/placeholder.png';
-                e.currentTarget.onerror = null;
-          
-                if (!e.currentTarget.src.includes(fallback)) {
-                  e.currentTarget.src = fallback;
-                } else {
-                  e.currentTarget.src =
-                    'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-                }
-              }}
-            />
+            {imageLoading ? (
+              <Box 
+                sx={{ 
+                  width: '100%', 
+                  height: 200, 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  bgcolor: 'grey.100',
+                  borderRadius: 2
+                }}
+              >
+                <CircularProgress size={24} />
+                <Typography variant="caption" sx={{ ml: 1 }}>
+                  Loading image...
+                </Typography>
+              </Box>
+            ) : (
+              <Box
+                component="img"
+                src={image}
+                alt={title || 'Preview image'}
+                sx={{ width: '100%', borderRadius: 2 }}
+                onError={(e) => {
+                  const fallback = '/assets/placeholder.png';
+                  e.currentTarget.onerror = null;
+            
+                  if (!e.currentTarget.src.includes(fallback)) {
+                    e.currentTarget.src = fallback;
+                  } else {
+                    e.currentTarget.src =
+                      'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
+                  }
+                }}
+              />
+            )}
           </Box>
         )}
 
@@ -182,7 +619,7 @@ export const QuickViewCard = ({ config, record }) => {
           </Typography>
         )}
 
-        {/* Add Contract-Specific Actions Section */}
+        {/* Contract-Specific Actions Section */}
         {isContract && record?.id && (
           <>
             <Divider sx={{ my: 2 }} />
@@ -202,9 +639,8 @@ export const QuickViewCard = ({ config, record }) => {
                   }}
                 />
                 
-                {/* Regenerate Content Button */}
                 <Button
-                sx={{ width: '100%',}}
+                  sx={{ width: '100%' }}
                   variant="outlined"
                   size="medium"
                   onClick={handleRegenerateContent}
@@ -218,6 +654,7 @@ export const QuickViewCard = ({ config, record }) => {
           </>
         )}
 
+        {/* Extra Fields Section */}
         {extraFields && extraFields.length > 0 && (
           <>
             <Divider sx={{ my: 2 }} />
@@ -227,24 +664,21 @@ export const QuickViewCard = ({ config, record }) => {
                 
                 const field = config.fields?.find((f) => f.name === fieldName);
                 if (!field) {
-                  debug(`Field not found: ${fieldName}`, 
-                    config.fields?.map(f => f.name)
-                  );
                   return null;
                 }
 
                 const label = field.label || fieldName;
                 
-                // For relationship fields, basic output without FieldRenderer
+                // FIXED: Use configured junction table for relationships
                 if (field.type === 'relationship') {
-                  const details = record?.[`${fieldName}_details`];
+                  const relationConfig = field.relation;
+                  const detailsKey = `${fieldName}_details`;
+                  const details = record?.[detailsKey];
                   const id = record?.[fieldName];
                   
-                  debug(`Relationship field ${fieldName}`, { 
-                    id,
-                    details,
-                    hasDetails: !!details
-                  });
+                  // Get URL for relationship item
+                  const itemUrl = details ? getItemUrl(details, relationConfig, fieldName, config.quickView) : `/dashboard/${relationConfig?.table}/${id}`;
+                  const isExternal = shouldOpenInNewTab(itemUrl);
                   
                   return (
                     <Box key={fieldName}>
@@ -257,15 +691,22 @@ export const QuickViewCard = ({ config, record }) => {
                       </Typography>
                       
                       {details ? (
-                        <Typography 
-                          component="a"
-                          href={`/dashboard/${field.relation?.table}/${id}`}
-                          variant="body2"
-                          color="primary"
-                          sx={{ textDecoration: 'none' }}
-                        >
-                          {details[field.relation?.labelField] || details.name || details.title || `ID: ${id}`}
-                        </Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography 
+                            component="a"
+                            href={itemUrl}
+                            target={isExternal ? '_blank' : '_self'}
+                            rel={isExternal ? 'noopener noreferrer' : undefined}
+                            variant="body2"
+                            color="primary"
+                            sx={{ textDecoration: 'none' }}
+                          >
+                            {details[relationConfig?.labelField] || details.name || details.title || `ID: ${id}`}
+                          </Typography>
+                          {isExternal && (
+                            <ArrowSquareOut size={16} color="currentColor" />
+                          )}
+                        </Box>
                       ) : id ? (
                         <Typography variant="body2">ID: {id}</Typography>
                       ) : (
@@ -275,16 +716,12 @@ export const QuickViewCard = ({ config, record }) => {
                   );
                 }
 
-                // For multi-relationship fields, show as chips
+                // ENHANCED: Multi-relationship with configurable link fields
                 if (field.type === 'multiRelationship') {
-                  const details = record?.[`${fieldName}_details`] || [];
+                  const relationConfig = field.relation;
+                  const detailsKey = `${fieldName}_details`;
+                  const details = record?.[detailsKey] || [];
                   const ids = record?.[fieldName] || [];
-                  
-                  debug(`MultiRelationship field ${fieldName}`, { 
-                    ids: ids.length,
-                    details: details.length,
-                    detailsData: details
-                  });
                   
                   if (details.length === 0 && ids.length === 0) {
                     return (
@@ -312,22 +749,36 @@ export const QuickViewCard = ({ config, record }) => {
                       </Typography>
                       
                       <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {details.map(item => (
-                          <Chip
-                            key={item.id}
-                            component="a"
-                            href={`/dashboard/${field.relation?.table}/${item.id}`}
-                            clickable
-                            label={item[field.relation?.labelField] || item.name || item.title || `ID: ${item.id}`}
-                            size="small"
-                            sx={{ 
-                              '&:hover': {
-                                bgcolor: 'primary.light',
-                                color: 'primary.contrastText'
+                        {details.map(item => {
+                          const itemUrl = getItemUrl(item, relationConfig, fieldName, config.quickView);
+                          const isExternal = shouldOpenInNewTab(itemUrl);
+                          
+                          return (
+                            <Chip
+                              key={item.id}
+                              component="a"
+                              href={itemUrl}
+                              target={isExternal ? '_blank' : '_self'}
+                              rel={isExternal ? 'noopener noreferrer' : undefined}
+                              clickable
+                              label={
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                  {item[relationConfig?.labelField] || item.name || item.title || `ID: ${item.id}`}
+                                  {isExternal && (
+                                    <ArrowSquareOut size={12} />
+                                  )}
+                                </Box>
                               }
-                            }}
-                          />
-                        ))}
+                              size="small"
+                              sx={{ 
+                                '&:hover': {
+                                  bgcolor: 'primary.light',
+                                  color: 'primary.contrastText'
+                                }
+                              }}
+                            />
+                          );
+                        })}
                         
                         {details.length === 0 && ids.length > 0 && (
                           <Typography variant="body2">
@@ -364,30 +815,23 @@ export const QuickViewCard = ({ config, record }) => {
           </>
         )}
         
-        {/* Show related fields (like tags) if specified in relatedFields */}
+        {/* Related Fields Section */}
         {relatedFields && relatedFields.length > 0 && (
           <>
             <Divider sx={{ my: 2 }} />
             <Stack spacing={2}>
               {relatedFields.map((fieldName) => {
-                if (!fieldName) return null;
-                
-                // Skip if already displayed in extraFields
-                if (extraFields?.includes(fieldName)) return null;
+                if (!fieldName || extraFields?.includes(fieldName)) return null;
                 
                 const field = config.fields?.find(f => f.name === fieldName);
                 if (!field || field.type !== 'multiRelationship') {
-                  debug(`Related field not found or not multiRelationship: ${fieldName}`);
                   return null;
                 }
                 
-                const details = record?.[`${fieldName}_details`] || [];
+                const relationConfig = field.relation;
+                const detailsKey = `${fieldName}_details`;
+                const details = record?.[detailsKey] || [];
                 const ids = record?.[fieldName] || [];
-                
-                debug(`Related field ${fieldName}`, {
-                  details: details.length,
-                  ids: ids.length
-                });
                 
                 if (details.length === 0 && ids.length === 0) {
                   return (
@@ -415,22 +859,36 @@ export const QuickViewCard = ({ config, record }) => {
                     </Typography>
                     
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {details.map(item => (
-                        <Chip
-                          key={item.id}
-                          component="a"
-                          href={`/dashboard/${field.relation?.table}/${item.id}`}
-                          clickable
-                          label={item[field.relation?.labelField] || item.name || item.title || `ID: ${item.id}`}
-                          size="small"
-                          sx={{ 
-                            '&:hover': {
-                              bgcolor: 'primary.light',
-                              color: 'primary.contrastText'
+                      {details.map(item => {
+                        const itemUrl = getItemUrl(item, relationConfig, fieldName, config.quickView);
+                        const isExternal = shouldOpenInNewTab(itemUrl);
+                        
+                        return (
+                          <Chip
+                            key={item.id}
+                            component="a"
+                            href={itemUrl}
+                            target={isExternal ? '_blank' : '_self'}
+                            rel={isExternal ? 'noopener noreferrer' : undefined}
+                            clickable
+                            label={
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                {item[relationConfig?.labelField] || item.name || item.title || `ID: ${item.id}`}
+                                {isExternal && (
+                                  <ArrowSquareOut size={12} />
+                                )}
+                              </Box>
                             }
-                          }}
-                        />
-                      ))}
+                            size="small"
+                            sx={{ 
+                              '&:hover': {
+                                bgcolor: 'primary.light',
+                                color: 'primary.contrastText'
+                              }
+                            }}
+                          />
+                        );
+                      })}
                       
                       {details.length === 0 && ids.length > 0 && (
                         <Typography variant="body2">
@@ -444,6 +902,7 @@ export const QuickViewCard = ({ config, record }) => {
             </Stack>
           </>
         )}
+        
       </CardContent>
     </Card>
   );

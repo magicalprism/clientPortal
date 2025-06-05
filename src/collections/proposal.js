@@ -194,6 +194,12 @@ export const proposal = {
   ],
   
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'status',
       type: 'select',

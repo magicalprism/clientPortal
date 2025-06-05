@@ -39,7 +39,7 @@ export const payment = {
       group: 'Primary', 
       tab: 'Details',
       clickable: true, 
-      openMode: 'modal',  
+      editable: 'false',  
       showInTable: true,
       description: 'Descriptive name for this payment'
     },
@@ -246,6 +246,12 @@ export const payment = {
   ],
   
   filters: [
+          {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
     {
       name: 'status',
       type: 'select',

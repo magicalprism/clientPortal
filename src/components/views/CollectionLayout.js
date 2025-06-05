@@ -6,6 +6,8 @@ import { useRouter, usePathname } from 'next/navigation';
 import { ViewSwitcher } from '@/components/views/ViewSwitcher';
 import { CollectionFilters } from '@/components/views/components/CollectionFilters';
 import { TablePagination } from '@mui/material';
+import { useModal } from '@/components/modals/ModalContext';
+import * as collections from '@/collections';
 
 export const CollectionLayout = ({
   config,
@@ -29,12 +31,18 @@ export const CollectionLayout = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-
+const { openModal } = useModal();
   const handleDefaultAdd = () => {
     router.push(`/dashboard/${config.name}/create`);
   };
 
-  
+
+
+ const handleOpenCreateModal = () => {
+    const fullConfig = collections[config.name] || config;
+    openModal('create', { config: fullConfig });
+  };
+ 
 
   return (
     <Box 
@@ -85,13 +93,14 @@ export const CollectionLayout = ({
             onClearFilters={onClearFilters}
             setIgnoreDefaults={setIgnoreDefaults}
             setDefaultValues={setDefaultValues}
+          
           />
         </Box>
 
         <Button
           variant="contained"
           startIcon={<PlusIcon />}
-          onClick={onAddClick || handleDefaultAdd}
+          onClick={onAddClick || handleOpenCreateModal}
           sx={{ height: 40 }}
         >
           Add {config.singularLabel}

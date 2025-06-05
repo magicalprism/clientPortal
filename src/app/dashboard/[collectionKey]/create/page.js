@@ -6,9 +6,7 @@ import { CollectionCreateLayout } from '@/components/create/CollectionCreateLayo
 
 export default function CreateCollectionPage() {
   const params = useParams();
-  const collectionKey = Array.isArray(params?.collectionKey)
-    ? params.collectionKey[0]
-    : params?.collectionKey;
+  const collectionKey = params?.collectionKey;
 
   const config = collections[collectionKey];
 
@@ -22,10 +20,28 @@ export default function CreateCollectionPage() {
     );
   }
 
-  return (
-    <div style={{ padding: '2rem' }}>
-      <h1>Create {config.singularLabel || config.label}</h1>
-      <CollectionCreateLayout config={config} />
+ return (
+  <div style={{
+    minHeight: '100vh',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // semi-transparent background
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: '2rem'
+  }}>
+    <div style={{
+      backgroundColor: '#fff',
+      borderRadius: '12px',
+      boxShadow: '0px 8px 24px rgba(0, 0, 0, 0.2)',
+      padding: '2rem',
+      width: '100%',
+      maxWidth: '700px',
+      maxHeight: '90vh',
+      overflowY: 'auto'
+    }}>
+      <CollectionCreateLayout collectionKey={collectionKey} />
     </div>
-  );
+  </div>
+);
+
 }

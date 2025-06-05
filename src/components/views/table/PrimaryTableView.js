@@ -215,6 +215,12 @@ export default function PrimaryTableView({
     }
   }, [data]);
 
+  const handleDeleteSuccess = (deletedIds) => {
+  setData(prev => prev.filter(row => !deletedIds.includes(row.id)));
+};
+
+
+
   return (
     <Box sx={{ px: 0 }}>
       <Typography sx={{ py: 3 }} variant="h5" gutterBottom>
@@ -242,7 +248,7 @@ export default function PrimaryTableView({
                 }}
                 filters={filters}
                 onFilterChange={setFilters}
-                onDeleteSuccess={refresh}
+                onDeleteSuccess={handleDeleteSuccess}
               />
               <CollectionTable
                 config={config}

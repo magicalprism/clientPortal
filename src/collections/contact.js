@@ -19,7 +19,7 @@ export const contact = {
           imageField: 'thumbnail_id',
           titleField: 'title',
           subtitleField: 'status',
-
+          
         }, 
     fields: [   
       // Overview
@@ -30,6 +30,7 @@ export const contact = {
         tab: 'Overview', 
         clickable: true,  
         showInTable: true,
+        editable: false,
       },
       { 
         name: 'first_name', 
@@ -79,6 +80,7 @@ export const contact = {
         group: 'Details',
         tab: 'Overview', 
       options: [
+        { value: 'none', label: 'None' },
         { value: 'user', label: 'User' },
         { value: 'super-admin', label: 'Super Admin' },
         { value: 'staff', label: 'Archived' },
@@ -90,11 +92,9 @@ export const contact = {
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: 'todo',
       showInTable: true,
       options: [
-        { value: 'client', label: 'Client' },
-        { value: 'team', label: 'Team' },
+        { value: 'active', label: 'Active' },
         { value: 'archived', label: 'Archived' },
       ]
     },
@@ -193,8 +193,8 @@ export const contact = {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
+        junctionTable: 'category_contact',
+        sourceKey: 'contact_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}
@@ -203,14 +203,18 @@ export const contact = {
 ],
 
     filters: [
+            {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
       {
         name: 'status',
         type: 'select',
         label: 'Status',
-        defaultValue: ['client', 'team'],
+        defaultValue: ['active'],
         options: [  
-          { value: 'client', label: 'Client' },
-          { value: 'team', label: 'Team' },
           { value: 'active', label: 'Active' },
           { value: 'archived', label: 'Archived' },
       ],

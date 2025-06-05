@@ -38,7 +38,7 @@ const CreateForm = ({
 }) => {
   const supabase = createClient();
   const router = useRouter();
-  
+
   const table = config?.name;
   const fields = config?.fields || [];
   const isContract = table === 'contract'; // Detect if this is a contract
