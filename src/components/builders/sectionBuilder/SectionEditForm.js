@@ -11,7 +11,10 @@ import {
   InputLabel,
   FormControl,
   Stack,
-  Divider
+  Divider,
+  Alert,
+  Chip 
+
 } from '@mui/material';
 import { sectionTemplates } from '@/components/templates/sectionTemplates';
 import { GalleryRelationshipField } from '@/components/fields/media/GalleryRelationshipField';
@@ -62,16 +65,27 @@ const FIELD_CONFIGS = {
 };
 
 export default function SectionEditForm({ section, onSave, onClose }) {
-  const [title, setTitle] = useState(section.title || '');
-  const [templateId, setTemplateId] = useState(section.template_id || '');
+  const [title, setTitle] = useState('');
+  const [templateId, setTemplateId] = useState('');
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
+
+  // Get template info - only use template_id
+  const getTemplateId = (section) => {
+    return section?.template_id || '';
+  };
 
   const selectedTemplate = sectionTemplates.find(t => t.id === templateId);
 
   // Initialize form data when section or template changes
   useEffect(() => {
     if (!section) return;
+
+    console.log('[SectionEditForm] Initializing with section:', section);
+
+    // Set basic fields
+    setTitle(section.title || '');
+    setTemplateId(getTemplateId(section));
 
     const newFormData = {};
     
@@ -90,7 +104,7 @@ export default function SectionEditForm({ section, onSave, onClose }) {
 
     console.log('[SectionEditForm] Initialized form data:', newFormData);
     setFormData(newFormData);
-  }, [section, templateId]);
+  }, [section]);
 
   const handleFieldChange = (fieldName, value) => {
     console.log('[SectionEditForm] Field changed:', { fieldName, value });
@@ -103,6 +117,14 @@ export default function SectionEditForm({ section, onSave, onClose }) {
     try {
       console.log('[SectionEditForm] Saving section with data:', { title, templateId, formData });
 
+      // Validation
+      if (!title.trim()) {
+        throw new Error('Section title is required');
+      }
+      if (!templateId) {
+        throw new Error('Please select a template');
+      }
+
       // Map form data back to database columns
       const dbUpdates = {};
       Object.keys(formData).forEach(fieldName => {
@@ -114,7 +136,7 @@ export default function SectionEditForm({ section, onSave, onClose }) {
 
       // Prepare the complete update payload
       const updatePayload = {
-        title,
+        title: title.trim(),
         template_id: templateId,
         ...dbUpdates
       };
@@ -127,6 +149,7 @@ export default function SectionEditForm({ section, onSave, onClose }) {
       
     } catch (error) {
       console.error('[SectionEditForm] Error saving section:', error);
+      alert(error.message || 'Failed to save section');
     } finally {
       setLoading(false);
     }
@@ -220,9 +243,10 @@ export default function SectionEditForm({ section, onSave, onClose }) {
 
   if (!section) {
     return (
-      <Box>
+      <Alert severity="error">
         <Typography variant="h6">Section not found</Typography>
-      </Box>
+        <Typography>The section data could not be loaded.</Typography>
+      </Alert>
     );
   }
 
@@ -231,6 +255,23 @@ export default function SectionEditForm({ section, onSave, onClose }) {
       <Typography variant="h6" gutterBottom>
         Edit Section
       </Typography>
+      
+      {/* Debug info */}
+      <Box sx={{ mb: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+        <Typography variant="caption" color="text.secondary">
+          Debug Info:
+        </Typography>
+        <Stack direction="row" spacing={1} flexWrap="wrap" sx={{ mt: 1 }}>
+          <Chip size="small" label={`ID: ${section.id}`} />
+          <Chip size="small" label={`Template ID: ${getTemplateId(section) || 'None'}`} />
+          {section.template && (
+            <Chip size="small" label={`Template Found: ${section.template.title}`} color="success" />
+          )}
+          {!section.template && getTemplateId(section) && (
+            <Chip size="small" label="Template Not Found" color="error" />
+          )}
+        </Stack>
+      </Box>
       
       <Stack spacing={3} mt={2}>
         {/* Basic Info */}
@@ -246,9 +287,10 @@ export default function SectionEditForm({ section, onSave, onClose }) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter a descriptive title for this section"
+              required
             />
 
-            <FormControl fullWidth>
+            <FormControl fullWidth required>
               <InputLabel>Template</InputLabel>
               <Select
                 value={templateId}
@@ -266,7 +308,7 @@ export default function SectionEditForm({ section, onSave, onClose }) {
         </Box>
 
         {/* Template Fields */}
-        {selectedTemplate && (
+        {selectedTemplate ? (
           <>
             <Divider />
             <Box>
@@ -275,7 +317,7 @@ export default function SectionEditForm({ section, onSave, onClose }) {
               </Typography>
               
               <Stack spacing={2}>
-                {selectedTemplate.fields.map((field) => {
+                {selectedTemplate.fields?.map((field) => {
                   const fieldName = typeof field === 'string' ? field : field?.name;
                   if (!fieldName || !FIELD_MAPPING[fieldName]) {
                     console.warn('[SectionEditForm] Unknown field:', fieldName);
@@ -286,7 +328,11 @@ export default function SectionEditForm({ section, onSave, onClose }) {
               </Stack>
             </Box>
           </>
-        )}
+        ) : templateId ? (
+          <Alert severity="warning">
+            Template "{templateId}" not found. Please select a valid template.
+          </Alert>
+        ) : null}
 
         {/* Actions */}
         <Divider />

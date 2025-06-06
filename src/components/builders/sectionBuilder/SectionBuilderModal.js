@@ -1,3 +1,5 @@
+// Updated SectionBuilderModal.js - Replace the imports and SectionList usage
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -8,19 +10,23 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Alert
+  Alert,
+   
 } from '@mui/material';
-import  SectionBuilderHeader  from '@/components/builders/sectionBuilder/SectionBuilderHeader';
-import  SectionList   from '@/components/builders/sectionBuilder/SectionList';
+import SectionBuilderHeader from '@/components/builders/sectionBuilder/SectionBuilderHeader';
+// Replace SectionList import with SectionList
+import SectionWireframeList from '@/components/builders/sectionBuilder/SectionList';
 import AddSectionBar from '@/components/builders/sectionBuilder/AddSectionBar';
 import SectionEditForm from '@/components/builders/sectionBuilder/SectionEditForm';
+import SectionDebugInfo from '@/components/builders/sectionBuilder/SectionDebugInfo';
 import { sectionTemplates } from '@/components/templates/sectionTemplates';
 import { 
   fetchSectionsByParentId, 
   createSection, 
   updateSection, 
   deleteSection,
-  ensureTemplateRecords
+  validateSectionTemplates,
+  reorderSections // Add this import
 } from '@/components/builders/sectionBuilder/queries/sections';
 import { useCurrentContact } from '@/hooks/useCurrentContact';
 
@@ -46,15 +52,11 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
     setError(null);
     
     try {
-      // First, ensure template records exist in the database
-      console.log('[SectionBuilderModal] Ensuring template records exist...');
-      await ensureTemplateRecords(sectionTemplates);
-      
-      // Then load sections
+      console.log('[SectionBuilderModal] Loading sections...');
       await loadSections();
     } catch (err) {
       console.error('[SectionBuilderModal] Error during initialization:', err);
-      setError('Failed to initialize section builder: ' + err.message);
+      setError('Failed to load sections: ' + err.message);
       setLoading(false);
     }
   };
@@ -64,11 +66,20 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
       console.log('[SectionBuilderModal] Loading sections for parent:', parentId);
       const data = await fetchSectionsByParentId(parentId);
       
+      // Validate templates before hydrating
+      const validation = await validateSectionTemplates(data, sectionTemplates);
+      if (!validation.valid) {
+        console.warn('[SectionBuilderModal] Some sections have invalid templates:', validation.invalidSections);
+      }
+      
       // Hydrate sections with template data
       const hydrated = data.map(section => {
-        const template = sectionTemplates.find(t => t.id === section.template_id);
+        const templateId = section.template_id;
+        const template = sectionTemplates.find(t => t.id === templateId);
+        
         return {
           ...section,
+          template_id: templateId,
           template,
           title: section.title || template?.title || 'Untitled Section',
         };
@@ -106,10 +117,9 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
         authorId: contact.id
       });
 
-      // Create section in database
       const newSection = await createSection({
         parentId,
-        templateKey: templateId, // Store template key as string
+        template_id: templateId,
         title: template.title,
         authorId: contact.id
       });
@@ -139,29 +149,25 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
     try {
       console.log('[SectionBuilderModal] Updating section:', { sectionId, updatedFields });
 
-      // Extract database fields from updatedFields
       const { data, ...dbFields } = updatedFields;
-      
-      // Merge template field data into main update payload
       const updatePayload = { ...dbFields };
       
       if (data) {
-        // Add template-specific fields to the main payload
         Object.keys(data).forEach(fieldName => {
           updatePayload[fieldName] = data[fieldName] || null;
         });
       }
 
-      // Update in database
       const updatedSection = await updateSection(sectionId, updatePayload);
 
-      // Update local state
       setSections(prev =>
         prev.map(section => {
           if (section.id === sectionId) {
-            const template = sectionTemplates.find(t => t.id === updatedSection.template_id);
+            const templateId = updatedSection.template_id;
+            const template = sectionTemplates.find(t => t.id === templateId);
             return {
               ...updatedSection,
+              template_id: templateId,
               template,
               title: updatedSection.title || template?.title || 'Untitled Section'
             };
@@ -192,8 +198,6 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
       console.log('[SectionBuilderModal] Deleting section:', sectionToDelete.id);
 
       await deleteSection(sectionToDelete.id);
-
-      // Remove from local state
       setSections(prev => prev.filter(section => section.id !== sectionToDelete.id));
       
       console.log('[SectionBuilderModal] Section deleted successfully');
@@ -218,6 +222,26 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
     setEditingSection(null);
   };
 
+  // NEW: Handle wireframe reordering
+  const handleReorderSections = async (newOrderSections) => {
+    try {
+      console.log('[SectionBuilderModal] Reordering sections:', newOrderSections.map(s => s.title));
+      
+      // Update local state immediately for smooth UX
+      setSections(newOrderSections);
+      
+      // Update order_index in database
+      await reorderSections(parentId, newOrderSections.map(s => s.id));
+      
+      console.log('[SectionBuilderModal] Sections reordered successfully');
+    } catch (err) {
+      console.error('[SectionBuilderModal] Error reordering sections:', err);
+      setError('Failed to reorder sections: ' + err.message);
+      // Reload sections to revert local state
+      loadSections();
+    }
+  };
+
   return (
     <>
       <Dialog fullScreen open={open} onClose={onClose} TransitionComponent={Transition}>
@@ -240,13 +264,18 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
               Section Builder
             </Typography>
             <Typography variant="body2" color="text.secondary" gutterBottom>
-              Create and manage sections for this element
+              Create and manage wireframe sections for this element
             </Typography>
             
-            <SectionList
+            {/* Debug Component - Remove once stable */}
+            <SectionDebugInfo sections={sections} />
+            
+            {/* Replace SectionWireframeList with SectionWireframeList */}
+            <SectionWireframeList
               sections={sections}
               onEdit={handleEditSection}
               onDelete={handleDeleteSection}
+              onReorder={handleReorderSections}
             />
             
             <AddSectionBar

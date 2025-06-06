@@ -1,323 +1,288 @@
+'use client';
+
 import { createClient } from '@/lib/supabase/browser';
 
+/**
+ * Fetch all sections for a given element ID (through junction table)
+ */
 export async function fetchSectionsByParentId(parentId) {
   const supabase = createClient();
   
-  console.log('[fetchSectionsByParentId] Fetching sections for parent:', parentId);
-
-  const { data, error } = await supabase
-    .from('element_section')
-    .select(`
-      section_id,
-      order_index,
-      section:section_id (
-        id,
-        title,
-        template_id,
-        headline,
-        subheadline,
-        body_text,
-        button_text,
-        button_url,
-        layout_variant,
-        eyebrow,
-        content,
-        status,
-        order_index,
-        created_at,
-        updated_at,
-        template:template_id (
-          id,
-          layout_key,
-          title
-        )
-      )
-    `)
-    .eq('element_id', parentId)
-    .order('order_index', { ascending: true });
-
-  if (error) {
-    console.error('[fetchSectionsByParentId] Error fetching sections:', error);
-    return [];
-  }
-
-  console.log('[fetchSectionsByParentId] Raw data:', data);
-
-  // Flatten and return sections with template data
-  const sections = data
-    .map(item => ({
-      ...item.section,
-      pivot_order_index: item.order_index,
-      // Use template.layout_key as the template_id for JavaScript compatibility
-      template_id: item.section.template?.layout_key || item.section.template_id
-    }))
-    .filter(Boolean);
-
-  console.log('[fetchSectionsByParentId] Processed sections:', sections);
-  return sections;
-}
-
-export async function createSection({ parentId, templateKey, title, authorId }) {
-  const supabase = createClient();
-  
-  console.log('[createSection] Creating section:', { parentId, templateKey, title });
-
   try {
-    // First, find the template record that matches our templateKey
-    const { data: templateData, error: templateError } = await supabase
-      .from('template')
-      .select('id, layout_key, title')
-      .eq('layout_key', templateKey)
-      .single();
+    console.log('[fetchSectionsByParentId] Fetching sections for element:', parentId);
+    
+    // Query through junction table to get sections for an element
+    const { data, error } = await supabase
+      .from('element_section')
+      .select(`
+        section:section_id (
+          id,
+          created_at,
+          title,
+          content,
+          status,
+          author_id,
+          updated_at,
+          parent_id,
+          order_index,
+          eyebrow,
+          headline,
+          subheadline,
+          body_text,
+          button_text,
+          button_url,
+          template_id,
+          layout_variant
+        )
+      `)
+      .eq('element_id', parentId);
 
-    if (templateError || !templateData) {
-      console.warn('[createSection] Template not found in database, creating without template_id:', templateKey);
-      console.error('[createSection] Template error:', templateError);
+    if (error) {
+      console.error('[fetchSectionsByParentId] Supabase error:', error);
+      throw error;
     }
 
-    const templateId = templateData?.id || null;
-    console.log('[createSection] Found template ID:', templateId, 'for key:', templateKey);
-
-    // Get the next order index for this parent
-    const { data: maxOrderData } = await supabase
-      .from('element_section')
-      .select('order_index')
-      .eq('element_id', parentId)
-      .order('order_index', { ascending: false })
-      .limit(1);
+    // Extract sections from the junction table response and sort by order_index
+    const sections = (data || [])
+      .map(item => item.section)
+      .filter(Boolean)
+      .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
     
-    const nextOrderIndex = (maxOrderData?.[0]?.order_index || 0) + 1;
+    console.log('[fetchSectionsByParentId] Found sections:', sections);
+    return sections;
+    
+  } catch (error) {
+    console.error('[fetchSectionsByParentId] Error:', error);
+    throw error;
+  }
+}
 
-    // Create the section in the sections table
-    const sectionPayload = {
+/**
+ * Create a new section and link it to an element via junction table
+ */
+export async function createSection({ parentId, template_id, title, authorId, order_index }) {
+  const supabase = createClient();
+  
+  try {
+    console.log('[createSection] Creating section:', { parentId, template_id, title, authorId });
+    
+    // Get the next order index if not provided
+    let finalOrderIndex = order_index;
+    if (finalOrderIndex === undefined) {
+      // Get existing sections for this element through junction table
+      const { data: existingSections } = await supabase
+        .from('element_section')
+        .select('section:section_id(order_index)')
+        .eq('element_id', parentId);
+      
+      const orderIndexes = (existingSections || [])
+        .map(item => item.section?.order_index || 0)
+        .filter(Boolean);
+      
+      finalOrderIndex = orderIndexes.length > 0 ? Math.max(...orderIndexes) + 1 : 1;
+    }
+
+    // Step 1: Create the section
+    const sectionData = {
+      template_id,
       title: title || 'Untitled Section',
-      headline: '',
-      subheadline: '',
-      body_text: '',
-      button_text: '',
-      button_url: '',
-      layout_variant: 'default',
-      status: 'draft',
       author_id: authorId,
-      order_index: nextOrderIndex,
+      order_index: finalOrderIndex,
+      status: 'published',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
     };
 
-    // Only add template_id if we found a matching template
-    if (templateId) {
-      sectionPayload.template_id = templateId;
-    }
-
-    const { data: sectionData, error: sectionError } = await supabase
+    const { data: newSection, error: sectionError } = await supabase
       .from('section')
-      .insert(sectionPayload)
+      .insert(sectionData)
       .select()
       .single();
 
     if (sectionError) {
-      console.error('[createSection] Error creating section:', sectionError);
+      console.error('[createSection] Section creation error:', sectionError);
       throw sectionError;
     }
 
-    console.log('[createSection] Section created:', sectionData);
-
-    // Link the section to its parent element
-    const { error: pivotError } = await supabase
+    // Step 2: Create the junction table record to link section to element
+    const { error: junctionError } = await supabase
       .from('element_section')
       .insert({
         element_id: parentId,
-        section_id: sectionData.id,
-        order_index: nextOrderIndex
+        section_id: newSection.id
       });
 
-    if (pivotError) {
-      console.error('[createSection] Error creating pivot link:', pivotError);
-      // Clean up the section if pivot creation fails
-      await supabase.from('section').delete().eq('id', sectionData.id);
-      throw pivotError;
+    if (junctionError) {
+      console.error('[createSection] Junction table error:', junctionError);
+      // Try to clean up the section if junction creation failed
+      await supabase.from('section').delete().eq('id', newSection.id);
+      throw junctionError;
     }
 
-    console.log('[createSection] Section linked to parent successfully');
+    console.log('[createSection] Section and junction record created:', newSection);
+    return newSection;
     
-    // Return section with template_key for JavaScript compatibility
-    return {
-      ...sectionData,
-      template_id: templateKey, // Return the original string template key
-      template: templateData
-    };
-
   } catch (error) {
-    console.error('[createSection] Failed to create section:', error);
+    console.error('[createSection] Error:', error);
     throw error;
   }
 }
 
+/**
+ * Update an existing section
+ */
 export async function updateSection(sectionId, updates) {
   const supabase = createClient();
   
-  console.log('[updateSection] Updating section:', { sectionId, updates });
+  try {
+    console.log('[updateSection] Updating section:', { sectionId, updates });
+    
+    const updateData = {
+      ...updates,
+      updated_at: new Date().toISOString()
+    };
 
-  const updatePayload = {
-    ...updates,
-    updated_at: new Date().toISOString()
-  };
-
-  // If updating template_id with a string key, find the corresponding template record
-  if (updatePayload.template_id && typeof updatePayload.template_id === 'string') {
-    const { data: templateData } = await supabase
-      .from('template')
-      .select('id')
-      .eq('layout_key', updatePayload.template_id)
+    const { data, error } = await supabase
+      .from('section')
+      .update(updateData)
+      .eq('id', sectionId)
+      .select()
       .single();
 
-    if (templateData) {
-      updatePayload.template_id = templateData.id;
-    } else {
-      console.warn('[updateSection] Template not found for key:', updatePayload.template_id);
-      delete updatePayload.template_id; // Don't update if template not found
+    if (error) {
+      console.error('[updateSection] Supabase error:', error);
+      throw error;
     }
-  }
 
-  const { data, error } = await supabase
-    .from('section')
-    .update(updatePayload)
-    .eq('id', sectionId)
-    .select(`
-      *,
-      template:template_id (
-        id,
-        layout_key,
-        title
-      )
-    `)
-    .single();
-
-  if (error) {
-    console.error('[updateSection] Error updating section:', error);
+    console.log('[updateSection] Section updated:', data);
+    return data;
+    
+  } catch (error) {
+    console.error('[updateSection] Error:', error);
     throw error;
   }
-
-  console.log('[updateSection] Section updated successfully:', data);
-  
-  // Return with template layout_key for JavaScript compatibility
-  return {
-    ...data,
-    template_id: data.template?.layout_key || data.template_id
-  };
 }
 
+/**
+ * Delete a section
+ */
 export async function deleteSection(sectionId) {
   const supabase = createClient();
   
-  console.log('[deleteSection] Deleting section:', sectionId);
-
   try {
-    // First remove from pivot table
-    const { error: pivotError } = await supabase
+    console.log('[deleteSection] Deleting section:', sectionId);
+    
+    // Step 1: Delete junction table records
+    const { error: junctionError } = await supabase
       .from('element_section')
       .delete()
       .eq('section_id', sectionId);
 
-    if (pivotError) {
-      console.error('[deleteSection] Error removing pivot link:', pivotError);
-      throw pivotError;
+    if (junctionError) {
+      console.warn('[deleteSection] Error deleting element_section relationships:', junctionError);
+      // Continue with deletion even if junction cleanup fails
     }
 
-    // Then delete the section itself
-    const { error: sectionError } = await supabase
+    // Step 2: Delete any media relationships
+    const { error: mediaError } = await supabase
+      .from('media_section')
+      .delete()
+      .eq('section_id', sectionId);
+
+    if (mediaError) {
+      console.warn('[deleteSection] Error deleting media relationships:', mediaError);
+      // Continue with section deletion even if media cleanup fails
+    }
+
+    // Step 3: Delete the section
+    const { error } = await supabase
       .from('section')
       .delete()
       .eq('id', sectionId);
 
-    if (sectionError) {
-      console.error('[deleteSection] Error deleting section:', sectionError);
-      throw sectionError;
+    if (error) {
+      console.error('[deleteSection] Supabase error:', error);
+      throw error;
     }
 
     console.log('[deleteSection] Section deleted successfully');
-    return true;
-
+    
   } catch (error) {
-    console.error('[deleteSection] Failed to delete section:', error);
+    console.error('[deleteSection] Error:', error);
     throw error;
   }
 }
 
-export async function updateSectionOrder(parentId, sectionOrders) {
-  const supabase = createClient();
+/**
+ * Validate that template IDs in sections exist in the JavaScript templates
+ * This replaces the database template table approach
+ */
+export async function validateSectionTemplates(sections, availableTemplates) {
+  console.log('[validateSectionTemplates] Validating section templates...');
   
-  console.log('[updateSectionOrder] Updating section order:', { parentId, sectionOrders });
-
-  try {
-    const updates = sectionOrders.map(({ sectionId, orderIndex }) => 
-      supabase
-        .from('element_section')
-        .update({ order_index: orderIndex })
-        .eq('element_id', parentId)
-        .eq('section_id', sectionId)
-    );
-
-    await Promise.all(updates);
-    console.log('[updateSectionOrder] Section order updated successfully');
-    return true;
-
-  } catch (error) {
-    console.error('[updateSectionOrder] Failed to update section order:', error);
-    throw error;
+  const availableTemplateIds = new Set(availableTemplates.map(t => t.id));
+  const sectionsWithInvalidTemplates = [];
+  
+  sections.forEach(section => {
+    const templateId = section.template_id;
+    if (templateId && !availableTemplateIds.has(templateId)) {
+      sectionsWithInvalidTemplates.push({
+        sectionId: section.id,
+        templateId,
+        sectionTitle: section.title
+      });
+    }
+  });
+  
+  if (sectionsWithInvalidTemplates.length > 0) {
+    console.warn('[validateSectionTemplates] Found sections with invalid templates:', sectionsWithInvalidTemplates);
+  } else {
+    console.log('[validateSectionTemplates] All section templates are valid');
   }
+  
+  return {
+    valid: sectionsWithInvalidTemplates.length === 0,
+    invalidSections: sectionsWithInvalidTemplates,
+    availableTemplates: availableTemplateIds
+  };
 }
 
-// Helper function to ensure template records exist for JavaScript templates
-export async function ensureTemplateRecords(sectionTemplates) {
+/**
+ * Reorder sections
+ */
+export async function reorderSections(elementId, sectionIds) {
   const supabase = createClient();
   
-  console.log('[ensureTemplateRecords] Checking template records...');
-
   try {
-    // Get existing templates
-    const { data: existingTemplates } = await supabase
-      .from('template')
-      .select('id, layout_key, title');
+    console.log('[reorderSections] Reordering sections for element:', { elementId, sectionIds });
+    
+    // Update order_index for each section
+    const updates = sectionIds.map((sectionId, index) => ({
+      id: sectionId,
+      order_index: index + 1,
+      updated_at: new Date().toISOString()
+    }));
 
-    const existingKeys = new Set(existingTemplates?.map(t => t.layout_key) || []);
-
-    // Find missing templates
-    const missingTemplates = sectionTemplates.filter(template => 
-      !existingKeys.has(template.id)
-    );
-
-    if (missingTemplates.length > 0) {
-      console.log('[ensureTemplateRecords] Creating missing template records:', missingTemplates.map(t => t.id));
-
-      const templatesToInsert = missingTemplates.map(template => ({
-        title: template.title,
-        layout_key: template.id,
-        type: 'section',
-        status: 'active',
-        fields: template.fields || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      }));
-
+    // Update sections one by one to avoid conflicts
+    for (const update of updates) {
       const { error } = await supabase
-        .from('template')
-        .insert(templatesToInsert);
+        .from('section')
+        .update({ 
+          order_index: update.order_index, 
+          updated_at: update.updated_at 
+        })
+        .eq('id', update.id);
 
       if (error) {
-        console.error('[ensureTemplateRecords] Error creating template records:', error);
-        return false;
+        console.error('[reorderSections] Error updating section:', update.id, error);
+        throw error;
       }
-
-      console.log('[ensureTemplateRecords] Successfully created template records');
-    } else {
-      console.log('[ensureTemplateRecords] All template records exist');
     }
-
-    return true;
-
+    
+    console.log('[reorderSections] Sections reordered successfully');
+    
   } catch (error) {
-    console.error('[ensureTemplateRecords] Error ensuring template records:', error);
-    return false;
+    console.error('[reorderSections] Error:', error);
+    throw error;
   }
 }
