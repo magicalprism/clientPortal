@@ -34,7 +34,7 @@ export const useContractBuilder = (contractId = null) => {
       
       // IMPORTANT: Only auto-include required parts for NEW contracts (when contractId is null)
       if (!contractId) {
-        console.log('[useContractBuilder] New contract - auto-including required parts');
+
         const requiredParts = (parts || [])
           .filter(part => part.is_required)
           .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
@@ -44,12 +44,12 @@ export const useContractBuilder = (contractId = null) => {
           order_index: index
         })));
       } else {
-        console.log('[useContractBuilder] Existing contract - NOT auto-including required parts');
+
         setContractParts([]);
       }
 
     } catch (error) {
-      console.error('Error loading contract parts:', error);
+
     } finally {
       setLoading(false);
     }
@@ -482,24 +482,21 @@ export const useContractBuilder = (contractId = null) => {
 
   // Add all required parts that aren't already in the contract
   const handleAddAllRequired = () => {
-    console.log('[useContractBuilder] ========== ADDING ALL REQUIRED PARTS ==========');
+
     
     // Get IDs of parts already in the contract
     const usedPartIds = contractParts.map(p => p.id);
-    console.log('[useContractBuilder] Currently used part IDs:', usedPartIds);
+
     
     // Find required parts that aren't already added
     const requiredParts = availableParts.filter(part => 
       part.is_required && !usedPartIds.includes(part.id)
     );
     
-    console.log('[useContractBuilder] Required parts to add:', requiredParts.map(p => ({
-      id: p.id,
-      title: p.title
-    })));
+
     
     if (requiredParts.length === 0) {
-      console.log('[useContractBuilder] No required parts to add');
+
       return;
     }
     
@@ -514,19 +511,15 @@ export const useContractBuilder = (contractId = null) => {
       order_index: contractParts.length + index
     }));
     
-    console.log('[useContractBuilder] New parts with order indices:', newParts.map(p => ({
-      id: p.id,
-      title: p.title,
-      order_index: p.order_index
-    })));
+
     
     setContractParts(prev => {
       const updated = [...prev, ...newParts];
-      console.log('[useContractBuilder] Updated contract parts total:', updated.length);
+
       return updated;
     });
     
-    console.log('[useContractBuilder] ========== ADDED ALL REQUIRED PARTS ==========');
+
   };
 
   return {

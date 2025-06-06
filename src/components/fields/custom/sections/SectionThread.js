@@ -23,7 +23,10 @@ import {
   verticalListSortingStrategy
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
-import { CompactMediaField } from '@/components/fields/media/components/CompactMediaField';
+
+import SectionBuilderButton from '@/components/buttons/SectionBuilderButton';
+import { Dialog, DialogContent } from '@mui/material';
+
 
 // Sortable Section Component
 const SortableSection = ({ section, children }) => {
@@ -41,6 +44,9 @@ const SortableSection = ({ section, children }) => {
     transition,
     zIndex: isDragging ? 10 : undefined
   };
+
+
+
 
   return (
     <Box
@@ -78,7 +84,7 @@ export const SectionThread = ({
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const [activeSection, setActiveSection] = useState(null);
-  
+    const [builderOpen, setBuilderOpen] = useState(false);
   const { contact, loading: contactLoading } = useCurrentContact();
   const { 
     sections, 
@@ -188,17 +194,39 @@ export const SectionThread = ({
     <Box sx={{ mt: 4 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="h6">{label}</Typography>
-        {contact && creationStep === 'none' && (
-          <Button
-            variant="outlined"
-            startIcon={<Plus />}
-            onClick={() => setCreationStep('title')}
-            sx={{ minWidth: 'auto' }}
-          >
-            Add Section
+        <Stack direction="row" spacing={1}>
+          {contact && creationStep === 'none' && (
+            <Button
+              variant="outlined"
+              startIcon={<Plus />}
+              onClick={() => setCreationStep('title')}
+              sx={{ minWidth: 'auto' }}
+            >
+              Add Section
+            </Button>
+          )}
+          <SectionBuilderButton 
+              record={record}
+              sx={{ minWidth: 'auto' }}
+            />
+        </Stack>
+
+        <Dialog fullScreen open={builderOpen} onClose={() => setBuilderOpen(false)}>
+        <DialogContent sx={{ p: 4 }}>
+          <Typography variant="h4" gutterBottom>
+            Section Builder (Coming Soon)
+          </Typography>
+          <Typography variant="body1">
+            This is a placeholder for the full-screen builder. Add components here later.
+          </Typography>
+          <Button onClick={() => setBuilderOpen(false)} sx={{ mt: 4 }}>
+            Close
           </Button>
-        )}
+        </DialogContent>
+      </Dialog>
+
       </Box>
+
       
       <DndContext
         sensors={sensors}
@@ -290,25 +318,7 @@ export const SectionThread = ({
                           />
                         </Box>
                         
-                        <Box sx={{ mb: 2 }}>
-                          <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                            Media
-                          </Typography>
-                          <Box sx={{ p: 2, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid', borderColor: 'divider' }}>
-                            <CompactMediaField
-                              key={`edit-media-${section.id}`}
-                              pivotTable={mediaPivotTable}
-                              sourceField="section_id"
-                              targetField="media_id"
-                              parentId={section.id}
-                              placeholder="No media attached to this section"
-                              record={record}
-                              editable={true}
-                              size="medium"
-                              maxItems={10}
-                            />
-                          </Box>
-                        </Box>
+                        
                         
                         <Stack direction="row" spacing={2}>
                           <Button 
@@ -375,22 +385,7 @@ export const SectionThread = ({
                             />
                           </Box>
                         )}
-                        
-                        {/* Media display for view mode */}
-                        <Box sx={{ mt: 2 }}>
-                          <CompactMediaField
-                            key={`view-media-${section.id}`}
-                            pivotTable={mediaPivotTable}
-                            sourceField="section_id"
-                            targetField="media_id"
-                            parentId={section.id}
-                            placeholder=""
-                            record={record}
-                            editable={false}
-                            size="medium"
-                            maxItems={10}
-                          />
-                        </Box>
+                       
                       </>
                     )}
                   </Box>
@@ -433,6 +428,8 @@ export const SectionThread = ({
           Please log in to manage sections.
         </Typography>
       )}
+      
     </Box>
+    
   );
 };

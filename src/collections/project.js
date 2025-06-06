@@ -144,14 +144,36 @@ export const project = {
     }
   }
 },
- {
-      name: 'brand_board_preview',
-      label: 'Brand Board Preview',
-      type: 'custom',
-      component: 'BrandBoardPreview',
-      tab: 'Brand', // You can place this in any tab or group you like
-      group: 'Brand Details'
-    },
+// In the Brand tab section:
+{
+  name: 'brands',
+  label: 'Primary Brand',
+  type: 'multiRelationship',
+  tab: 'Brand',
+  group: 'Brand Details',
+  displayMode: 'tags',
+  relation: {
+    table: 'brand',
+    labelField: 'title',
+    linkTo: '/dashboard/brand',
+    junctionTable: 'brand_project',
+    sourceKey: 'project_id',
+    targetKey: 'brand_id',
+    filter: {
+
+    }
+  }
+},
+{
+  name: 'brand_board_preview',
+  label: 'Brand Board Preview',
+  type: 'custom',
+  component: 'BrandBoardPreview',
+  tab: 'Brand',
+  group: 'Brand Details',
+  fullWidth: true,
+  description: 'Live preview of the brand board. Data is automatically pulled from the selected brand or company\'s primary brand.'
+},
     {
       name: 'logins',
       label: 'Logins',

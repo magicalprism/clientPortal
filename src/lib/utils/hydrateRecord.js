@@ -44,7 +44,7 @@ export const hydrateRecord = async (record, config, supabase) => {
       const { labelField = 'title', table } = field.relation;
       const { data: related } = await supabase
         .from(table)
-        .select(`id, ${labelField}`)
+        .select('*')
         .eq('id', record[name])
         .single();
 
@@ -59,6 +59,8 @@ export const hydrateRecord = async (record, config, supabase) => {
         targetKey,
         table,
         labelField = 'title',
+        selectFields = ['id', labelField], 
+        
       } = field.relation;
 
       const { data: junctionData } = await supabase
@@ -73,7 +75,7 @@ export const hydrateRecord = async (record, config, supabase) => {
       if (ids.length > 0) {
         const { data: details } = await supabase
           .from(table)
-          .select(`id, ${labelField}`)
+           .select('*')
           .in('id', ids);
 
         hydrated[`${name}_details`] = details || [];

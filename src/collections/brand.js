@@ -443,7 +443,7 @@ export const brand = {
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: [],
+      defaultValue: '',
       options: [
         { value: 'primary', label: 'Primary' },
         { value: 'secondary', label: 'Secondary' },
@@ -506,6 +506,24 @@ export const brand = {
     */
   ],
     filters: [
+        {
+        name: 'search',
+        label: 'Search',
+        type: 'text',
+        multiple: false
+      },
+    {
+      name: 'status',
+      type: 'select',
+      label: 'Status',
+      defaultValue: [],
+      options: [
+        { value: 'primary', label: 'Primary' },
+        { value: 'secondary', label: 'Secondary' },
+        { value: 'project', label: 'Project Only' },
+        { value: 'archived', label: 'Archived' },
+      ]
+    },
     {
       name: 'company_id',
       type: 'relationship',
@@ -520,7 +538,6 @@ export const brand = {
       name: 'sort',
       type: 'select',
       label: 'Sort',
-      defaultValue: 'title:asc',
       options: [
         { value: 'title:asc', label: 'Title (A–Z)' },
         { value: 'title:desc', label: 'Title (Z–A)' },

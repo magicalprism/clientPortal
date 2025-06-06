@@ -1,3 +1,8 @@
+// /src/data/brandBoardFields.js
+
+/**
+ * Extract color data from brand object
+ */
 export const getBrandColors = (brand = {}) => [
   { label: 'Primary', value: brand.primary_color },
   { label: 'Secondary', value: brand.secondary_color },
@@ -15,6 +20,9 @@ export const getBrandColors = (brand = {}) => [
   { label: 'Alt 6', value: brand.alt_color_6 },
 ].filter(c => !!c.value);
 
+/**
+ * Extract font data from brand object
+ */
 export const getBrandFonts = (brand = {}) => {
   // First check if we have the details objects (preferred method)
   if (brand.primary_font_details || brand.secondary_font_details) {
@@ -97,6 +105,9 @@ export const getBrandFonts = (brand = {}) => {
   return [];
 };
 
+/**
+ * Extract logo data from brand object
+ */
 export const getBrandLogos = (brand = {}) => {
   // First check if we have the details objects (preferred method)
   if (brand.primary_square_logo_details || brand.secondary_square_logo_details || 
@@ -154,4 +165,27 @@ export const getBrandLogos = (brand = {}) => {
   `);
 
   return [];
+};
+
+/**
+ * Get brand status options for filtering
+ */
+export const getBrandStatusOptions = () => [
+  { value: 'primary', label: 'Primary' },
+  { value: 'secondary', label: 'Secondary' },
+  { value: 'project', label: 'Project Only' },
+  { value: 'archived', label: 'Archived' }
+];
+
+/**
+ * Helper to determine if brand has sufficient data for preview
+ */
+export const hasSufficientBrandData = (brand) => {
+  if (!brand) return false;
+
+  const hasColors = brand.primary_color || brand.secondary_color;
+  const hasFonts = getBrandFonts(brand).length > 0;
+  const hasLogos = getBrandLogos(brand).length > 0;
+
+  return hasColors || hasFonts || hasLogos;
 };

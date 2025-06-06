@@ -6,6 +6,7 @@ import { Plus, CaretDown, Upload, LinkSimple, Link as LinkIcon } from '@phosphor
 import { createClient } from '@/lib/supabase/browser';
 import { CompactMediaPreview } from './CompactMediaPreview';
 import { MediaLibraryPicker } from '@/components/fields/media/components/MediaLibraryPicker';
+import { MediaEditModal } from '@/components/fields/media/modals/MediaEditModal';
 
 // Import the media modals with error handling
 import dynamic from 'next/dynamic';
