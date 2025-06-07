@@ -10,11 +10,10 @@ import {
   Box,
   Typography,
   CircularProgress,
-  Alert,
-   
+  Alert
 } from '@mui/material';
 import SectionBuilderHeader from '@/components/builders/sectionBuilder/SectionBuilderHeader';
-// Replace SectionList import with SectionList
+// Replace SectionList import with SectionWireframeList
 import SectionWireframeList from '@/components/builders/sectionBuilder/SectionList';
 import AddSectionBar from '@/components/builders/sectionBuilder/AddSectionBar';
 import SectionEditForm from '@/components/builders/sectionBuilder/SectionEditForm';
@@ -60,6 +59,28 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
       setLoading(false);
     }
   };
+
+  const handleFieldChange = async (sectionId, fieldUpdates) => {
+  try {
+    console.log('[SectionBuilderModal] Inline field update:', { sectionId, fieldUpdates });
+    
+    await handleUpdateSection(sectionId, fieldUpdates);
+    
+    // Optimistically update the local state
+    setSections(prev =>
+      prev.map(section => 
+        section.id === sectionId 
+          ? { ...section, ...fieldUpdates }
+          : section
+      )
+    );
+    
+  } catch (error) {
+    console.error('[SectionBuilderModal] Error updating field:', error);
+    setError('Failed to update field: ' + error.message);
+    throw error; // Re-throw so the component can handle the error
+  }
+};
 
   const loadSections = async () => {
     try {
@@ -270,12 +291,13 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
             {/* Debug Component - Remove once stable */}
             <SectionDebugInfo sections={sections} />
             
-            {/* Replace SectionWireframeList with SectionWireframeList */}
+            {/* Replace SectionList with SectionWireframeList */}
             <SectionWireframeList
               sections={sections}
               onEdit={handleEditSection}
               onDelete={handleDeleteSection}
               onReorder={handleReorderSections}
+              onFieldChange={handleFieldChange}
             />
             
             <AddSectionBar

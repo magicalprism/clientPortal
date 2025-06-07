@@ -9,7 +9,6 @@ import {
   Chip,
   Alert,
   Paper,
-  Drawer,
   Button,
   Divider
 } from '@mui/material';
@@ -38,7 +37,7 @@ import { useSortable } from '@dnd-kit/sortable';
 import { sectionTemplates } from '@/components/templates/sectionTemplates';
 import { getSpiritualFallback } from '@/data/spiritualLorem';
 import RichTextFieldRenderer from '@/components/fields/text/richText/RichTextFieldRenderer';
-import { reorderSections } from '@/components/builders/sectionBuilder/queries/sections';
+import { InlineEditableField } from '@/components/fields/InlineEditableField'; // Add this import
 
 // Sortable Wireframe Component
 const SortableWireframe = ({ section, children }) => {
@@ -73,8 +72,19 @@ const SortableWireframe = ({ section, children }) => {
   );
 };
 
-// Individual wireframe preview component
-const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete, dragHandleProps }) => {
+// Individual wireframe preview component - REPLACE THE ENTIRE COMPONENT
+const WireframePreview = ({ 
+  section, 
+  notesOpen, 
+  onToggleNotes, 
+  onEdit, 
+  onDelete, 
+  onFieldChange, // Add this prop
+  dragHandleProps 
+}) => {
+  const [localData, setLocalData] = useState({});
+  const [isInlineEditing, setIsInlineEditing] = useState(false);
+  
   const template = sectionTemplates.find(t => t.id === section.template_id);
   
   if (!template) {
@@ -98,12 +108,12 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
 
   // Prepare data for template render function
   const prepareTemplateData = () => {
-    const data = {};
+    const data = { ...section, ...localData };
     
     // Map template fields to section data with spiritual fallbacks
     if (template.fields) {
       template.fields.forEach(fieldName => {
-        const dbValue = section[fieldName];
+        const dbValue = data[fieldName];
         
         // Handle special array fields
         if (fieldName === 'testimonials') {
@@ -147,6 +157,24 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
     return data;
   };
 
+  const handleFieldChange = (fieldName, value) => {
+    console.log('[WireframePreview] Field changed:', { fieldName, value });
+    setLocalData(prev => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleFieldSave = async (fieldName, value) => {
+    try {
+      // Call the parent's field change handler to save to database
+      await onFieldChange(section.id, { [fieldName]: value });
+      
+      // Update local state
+      setLocalData(prev => ({ ...prev, [fieldName]: value }));
+    } catch (error) {
+      console.error('Error saving field:', error);
+      throw error; // Re-throw to let InlineEditableField handle the error
+    }
+  };
+
   const templateData = prepareTemplateData();
   
   return (
@@ -170,18 +198,29 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
         borderColor: 'divider',
         display: 'flex',
         justifyContent: 'space-between',
-        alignItems: 'center'
+        alignItems: 'center',
+        flexWrap: { xs: 'wrap', md: 'nowrap' },
+        gap: 1
       }}>
-        <Stack direction="row" alignItems="center" spacing={2}>
+        <Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0, flex: 1 }}>
           <IconButton
             size="small"
             {...dragHandleProps}
-            sx={{ cursor: 'grab' }}
+            sx={{ cursor: 'grab', flexShrink: 0 }}
           >
             <DotsSixVertical size={16} />
           </IconButton>
           
-          <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
+          <Typography 
+            variant="subtitle2" 
+            sx={{ 
+              fontWeight: 600, 
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+              minWidth: 0
+            }}
+          >
             {section.title || 'Untitled Section'}
           </Typography>
           
@@ -190,10 +229,27 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
             label={template.title}
             color="primary"
             variant="outlined"
+            sx={{ flexShrink: 0 }}
           />
         </Stack>
 
-        <Stack direction="row" spacing={1}>
+        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
+          {/* Quick Edit Toggle Button - THE KEY ADDITION */}
+          <Button
+            size="small"
+            variant={isInlineEditing ? "contained" : "outlined"}
+            onClick={() => setIsInlineEditing(!isInlineEditing)}
+            sx={{ 
+              fontSize: '0.75rem', 
+              minWidth: 'auto', 
+              px: 1,
+              bgcolor: isInlineEditing ? 'primary.main' : 'transparent',
+              color: isInlineEditing ? 'white' : 'primary.main'
+            }}
+          >
+            {isInlineEditing ? 'Exit Edit' : 'Quick Edit'}
+          </Button>
+          
           {section.content && (
             <IconButton
               size="small"
@@ -232,7 +288,11 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
         bgcolor: 'background.paper'
       }}>
         {template.render ? (
-          template.render(templateData)
+          template.render(templateData, {
+            editable: isInlineEditing,
+            onFieldChange: handleFieldChange,
+            onFieldSave: handleFieldSave
+          })
         ) : (
           <Alert severity="warning">
             <Typography variant="body2">
@@ -241,6 +301,19 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
           </Alert>
         )}
       </Box>
+
+      {/* Inline Editing Indicator */}
+      {isInlineEditing && (
+        <Box sx={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 3,
+          bgcolor: 'primary.main',
+          zIndex: 1
+        }} />
+      )}
 
       {/* Meta Info */}
       <Box sx={{ 
@@ -257,7 +330,7 @@ const WireframePreview = ({ section, notesOpen, onToggleNotes, onEdit, onDelete,
           
           <Stack direction="row" spacing={1}>
             {template.fields?.map(field => {
-              const hasContent = section[field] && section[field].trim();
+              const hasContent = (localData[field] || section[field]) && (localData[field] || section[field]).trim();
               return (
                 <Chip
                   key={field}
@@ -280,7 +353,8 @@ export default function SectionWireframeList({
   sections = [], 
   onEdit, 
   onDelete, 
-  onReorder 
+  onReorder,
+  onFieldChange // Add this prop
 }) {
   const [activeSection, setActiveSection] = useState(null);
   const [notesSection, setNotesSection] = useState(null);
@@ -325,11 +399,12 @@ export default function SectionWireframeList({
   }
 
   return (
-    <Box sx={{ position: 'relative' }}>
+    <Box sx={{ position: 'relative', height: '100%' }}>
       {/* Main Content Area */}
       <Box sx={{ 
         marginRight: notesSection ? '400px' : 0,
-        transition: 'margin-right 0.3s ease-in-out'
+        transition: 'margin-right 0.3s ease-in-out',
+        minHeight: '100%'
       }}>
         <Typography variant="h6" gutterBottom>
           Wireframe Previews ({sections.length})
@@ -355,6 +430,7 @@ export default function SectionWireframeList({
                       onToggleNotes={() => handleToggleNotes(section)}
                       onEdit={() => onEdit(section)}
                       onDelete={() => onDelete(section)}
+                      onFieldChange={onFieldChange} // Pass this down
                       dragHandleProps={{ ...listeners, ...attributes }}
                     />
                   )}
@@ -386,24 +462,25 @@ export default function SectionWireframeList({
         </DndContext>
       </Box>
 
-      {/* Slideout Notes Panel */}
-      <Drawer
-        anchor="right"
-        open={!!notesSection}
-        onClose={() => setNotesSection(null)}
-        variant="persistent"
-        sx={{
-          '& .MuiDrawer-paper': {
+      {/* Custom Slideout Notes Panel */}
+      {notesSection && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            right: 0,
             width: 400,
-            position: 'relative',
-            height: 'auto',
-            boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
+            height: '100vh',
+            bgcolor: 'background.paper',
             borderLeft: '1px solid',
-            borderColor: 'divider'
-          }
-        }}
-      >
-        {notesSection && (
+            borderColor: 'divider',
+            boxShadow: '-2px 0 8px rgba(0,0,0,0.1)',
+            transform: notesSection ? 'translateX(0)' : 'translateX(100%)',
+            transition: 'transform 0.3s ease-in-out',
+            zIndex: 1300,
+            overflow: 'auto'
+          }}
+        >
           <Box sx={{ p: 3 }}>
             <Box sx={{ 
               display: 'flex', 
@@ -438,7 +515,7 @@ export default function SectionWireframeList({
               borderRadius: 1,
               p: 2,
               bgcolor: 'grey.25',
-              maxHeight: '60vh',
+              maxHeight: '50vh',
               overflow: 'auto'
             }}>
               {notesSection.content ? (
@@ -464,8 +541,8 @@ export default function SectionWireframeList({
               </Button>
             </Box>
           </Box>
-        )}
-      </Drawer>
+        </Box>
+      )}
     </Box>
   );
 }
