@@ -61,10 +61,11 @@ export const BrandBoardPreview = (props) => {
       </Box>
 
       {/* Inline Brand Board Content - Transparent background */}
-      <BrandBoardContent 
+     <BrandBoardContent
         brand={brandToUse}
         mode="light" // Fixed to light mode for inline version
         editable={editable}
+        useBrandBackground={false}
       />
     </Box>
   );

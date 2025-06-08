@@ -52,8 +52,12 @@ export const BrandBoardFullPage = () => {
   }, [brandId]);
 
   const getBgColor = () => {
-    // You can get this from the brand's semantic tokens or fallback
-    return mode === 'light' ? '#ffffff' : '#1a1a1a';
+    if (!brand) {
+      return mode === 'light' ? '#ffffff' : '#1a1a1a';
+    }
+    return mode === 'light'
+      ? brand.neutral_color_100 || '#ffffff'
+      : brand.neutral_color_900 || '#1a1a1a';
   };
 
   return (
@@ -155,12 +159,13 @@ export const BrandBoardFullPage = () => {
 
       {/* Brand Board Content - Full page with padding */}
       <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
-        {brand ? (
-          <BrandBoardContent 
+          {brand ? (
+          <BrandBoardContent
             brand={brand}
             mode={mode}
             editable={true}
             showControls={false}
+            useBrandBackground={true}
           />
         ) : (
           <Box sx={{ 

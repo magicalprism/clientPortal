@@ -47,7 +47,7 @@ const isColorLight = (hexColor) => {
 };
 
 // Foundation Colors Component
-const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, onColorEdit, onAddAltColor, editable = true }) => {
+const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, onColorEdit, onAddAltColor, editable = true, surfaceBg }) => {
   const coreColors = [
     { name: 'Primary', value: foundation?.primary_color, group: 'primary', key: 'primary_color' },
     { name: 'Secondary', value: foundation?.secondary_color, group: 'secondary', key: 'secondary_color' },
@@ -67,9 +67,12 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
     { name: 'Error', value: foundation?.error_color, group: 'error', key: 'error_color' },
     { name: 'Warning', value: foundation?.warning_color, group: 'warning', key: 'warning_color' },
     { name: 'Info', value: foundation?.info_color, group: 'info', key: 'info_color' }
+
+    
   ];
 
   const ColorGroup = ({ title, colors, showGradients = true, allowEdit = false, isAltGroup = false }) => (
+    
     <Box sx={{ mb: 4 }}>
       <Typography variant="h6" align="center" sx={{ mb: 3, fontWeight: 600, color: semanticColors?.text.primary }}>
         {title}
@@ -86,7 +89,7 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
                     textAlign: 'center', 
                     p: 2, 
                     borderRadius: 3,
-                    bgcolor: semanticColors?.background.surface || 'background.paper',
+                    bgcolor: surfaceBg,
                     border: '1px solid',
                     borderColor: semanticColors?.border.base || 'divider',
                     transition: 'transform 0.2s ease',
@@ -208,7 +211,7 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
                     textAlign: 'center', 
                     p: 2, 
                     borderRadius: 3,
-                    bgcolor: semanticColors?.background.surface || 'background.paper',
+                    bgcolor: surfaceBg,
                     border: '1px solid',
                     borderColor: semanticColors?.border.base || 'divider',
                     transition: 'transform 0.2s ease',
@@ -665,10 +668,11 @@ const TypographySample = ({ token, semanticColors }) => {
 };
 
 // Main BrandBoardContent Component - NAMED EXPORT
-export const BrandBoardContent = ({ 
-  brand, 
-  mode = 'light', 
-  editable = true
+export const BrandBoardContent = ({
+  brand,
+  mode = 'light',
+  editable = true,
+  useBrandBackground = false
 }) => {
   const [copiedColor, setCopiedColor] = useState(null);
   const [colorTokens, setColorTokens] = useState([]);
@@ -953,6 +957,10 @@ export const BrandBoardContent = ({
       }
     };
   }, [colorTokens, mode, foundation?.primary_color]);
+
+  const surfaceBg = useBrandBackground
+    ? semanticColors?.background.surface || 'background.paper'
+    : '#ffffff';
 
   // Fixed title color calculation
   const titleColor = useMemo(() => {
@@ -1363,10 +1371,10 @@ export const BrandBoardContent = ({
               Typography
             </Typography>
           </Box>
-          <Paper sx={{ 
-            borderRadius: 3, 
+           <Paper sx={{
+            borderRadius: 3,
             overflow: 'hidden',
-            bgcolor: semanticColors?.background.surface || 'background.paper',
+            bgcolor: surfaceBg,
             border: '1px solid',
             borderColor: semanticColors?.border.base || 'divider'
           }}>

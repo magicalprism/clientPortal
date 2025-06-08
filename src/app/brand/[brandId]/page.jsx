@@ -55,7 +55,12 @@ export default function BrandBoardFullPage() {
   }, [brandId]);
 
   const getBgColor = () => {
-    return mode === 'light' ? '#ffffff' : '#1a1a1a';
+    if (!brand) {
+      return mode === 'light' ? '#ffffff' : '#1a1a1a';
+    }
+    return mode === 'light'
+      ? brand.neutral_color_100 || '#ffffff'
+      : brand.neutral_color_900 || '#1a1a1a';
   };
 
   if (loading) {
@@ -183,12 +188,13 @@ export default function BrandBoardFullPage() {
         </Toolbar>
       </AppBar>
 
-      {/* Brand Board Content - Full page with padding */}
+        {/* Brand Board Content - Full page with padding */}
       <Box sx={{ py: 4, px: 4, maxWidth: '1400px', mx: 'auto' }}>
-        <BrandBoardContent 
+        <BrandBoardContent
           brand={brand}
           mode={mode}
           editable={true}
+          useBrandBackground={true}
         />
       </Box>
     </Box>
