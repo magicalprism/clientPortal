@@ -281,15 +281,7 @@ export default function SectionBuilderModal({ open, onClose, parentId }) {
           )}
           
           <Box>
-            <Typography variant="h6" gutterBottom>
-              Section Builder
-            </Typography>
-            <Typography variant="body2" color="text.secondary" gutterBottom>
-              Create and manage wireframe sections for this element
-            </Typography>
-            
-            {/* Debug Component - Remove once stable */}
-            <SectionDebugInfo sections={sections} />
+
             
             {/* Replace SectionList with SectionWireframeList */}
             <SectionWireframeList

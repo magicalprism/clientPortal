@@ -15,6 +15,8 @@ import TimezoneFieldRenderer from '@/components/fields/dateTime/TimezoneFieldRen
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
+import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
+import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 
 const CommentsFieldRenderer = ({ field, record }) => {
   return (
@@ -50,6 +52,26 @@ const PaymentsFieldRenderer = ({ field, record }) => {
   );
 };
 
+const ColorTokensFieldRenderer = ({ field, record, editable }) => {
+  return (
+    <ColorTokenEditor
+      record={record}
+      field={field}
+      editable={editable}
+    />
+  );
+};
+
+const TypographyTokensFieldRenderer = ({ field, record, editable }) => {
+  return (
+    <TypographyTokenEditor
+      record={record}
+      field={field}
+      editable={editable}
+    />
+  );
+};
+
 const RENDERERS = {
   select: SelectFieldRenderer,
   status: SelectFieldRenderer,
@@ -69,6 +91,8 @@ const RENDERERS = {
   comments: CommentsFieldRenderer, 
   sections: SectionsFieldRenderer,
   payments: PaymentsFieldRenderer,
+  colorTokens: ColorTokensFieldRenderer,
+  typographyTokens: TypographyTokensFieldRenderer,
 };
 
 export const getRendererForField = (type) => {

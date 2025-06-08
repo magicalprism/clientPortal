@@ -7,6 +7,8 @@ import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTracker
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
+import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
+import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 
 /**
  * Custom field renderer for handling embedded components.
@@ -26,6 +28,12 @@ export const CustomFieldRenderer = ({
   switch (component) {
     case 'BrandBoardPreview':
       return <BrandBoardPreview brand={record} />;
+
+        case 'ColorTokenEditor':  // ADD THIS CASE
+      return <ColorTokenEditor record={record} field={field} editable={editable} />;
+
+      case 'TypographyTokenEditor':
+  return <TypographyTokenEditor record={record} field={field} editable={editable} />;
 
       case 'CommentThread':
       return (

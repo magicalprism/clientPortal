@@ -9,13 +9,7 @@ export const brand = {
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
       //Quickview
-      quickView: {
-        enabled: true,
-        imageField: 'thumbnail_id',
-        titleField: 'title',
-        subtitleField: 'status',
-
-      }, 
+    
   defaultView: 'table',
   views: {
     table: {
@@ -24,6 +18,14 @@ export const brand = {
     },
   },
   fields: [
+        {
+      name: 'brand_board_preview',
+      label: 'Brand Board Preview',
+      type: 'custom',
+      component: 'BrandBoardPreview',
+      tab: 'Details', // You can place this in any tab or group you like
+
+    },
     { 
       name: 'title', 
       label: 'Title', 
@@ -69,14 +71,8 @@ export const brand = {
       }
     },
 
-    {
-      name: 'brand_board_preview',
-      label: 'Brand Board Preview',
-      type: 'custom',
-      component: 'BrandBoardPreview',
-      tab: 'Details', // You can place this in any tab or group you like
-      group: 'Brand Details'
-    },
+
+
     
     {
       name: 'brand_board',
@@ -128,23 +124,80 @@ export const brand = {
     },
    
     //Colors
-    //Primary Light
+    //Primary Colors
+        {
+  name: 'color_tokens',
+  label: 'Color Tokens',
+  type: 'custom',
+  tab: 'Colors', 
+  group: 'Tokens',
+  component: 'ColorTokenEditor'
+},
     {
       name: 'primary_color',
       label: 'Primary',
-      description: '--foreground-primary',
+      description: '--primary-color-500',
       type: 'color',
       tab: 'Colors', 
-      group: 'Foreground Colors', 
+      group: 'Primary Colors', 
     },
-    //Secondary Dark
+
    {
       name: 'secondary_color',
       label: 'Secondary',
-      description: '--foreground-secondary',
+      description: '--secondary-color-500',
       type: 'color',
       tab: 'Colors', 
-      group: 'Foreground Colors', 
+      group: 'Main Colors', 
+    },
+
+       {
+      name: 'neutral_color_100',
+      label: 'Light Neutral',
+      description: '--neutral-color-100',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Main Colors', 
+    },
+           {
+      name: 'neutral_color_900',
+      label: 'Dark Neutral',
+      description: '--neutral-color-900',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Main Colors', 
+    },
+     {
+      name: 'success_color',
+      label: 'Success Color',
+      description: '--success-color-500',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Main Colors', 
+    },
+     {
+      name: 'error_color',
+      label: 'Error Color',
+      description: '--error-color-500',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Main Colors', 
+    },
+         {
+      name: 'warning_color',
+      label: 'Warning Color',
+      description: '--warning-color-500',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Main Colors', 
+    },
+         {
+      name: 'info_color',
+      label: 'Info Color',
+      description: '--info-color-500',
+      type: 'color',
+      tab: 'Colors', 
+      group: 'Primary Colors', 
     },
     //Accent
     {
@@ -250,6 +303,17 @@ export const brand = {
     },
 
     //Fonts
+    {
+  name: 'typography_tokens',
+  label: 'Typography Design Tokens',
+  type: 'custom',
+  component: 'TypographyTokenEditor',
+  description: 'Manage typography design tokens for this brand',
+  editable: true,
+  group: 'Font Files',
+      tab: 'Fonts',
+  admin: true // Optional: only show to admins
+},
     {
       name: 'primary_font',
       label: 'Primary Font',

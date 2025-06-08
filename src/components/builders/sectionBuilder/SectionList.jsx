@@ -177,116 +177,71 @@ const WireframePreview = ({
 
   const templateData = prepareTemplateData();
   
-  return (
-    <Paper
-      variant="outlined"
-      sx={{ 
+    return (
+    <Box
+      sx={{
+        position: 'relative',
         overflow: 'hidden',
-        '&:hover': {
-          boxShadow: 2,
-          borderColor: 'primary.main'
-        },
-        transition: 'all 0.2s ease-in-out',
-        position: 'relative'
+        '&:hover .hover-controls': { opacity: 1 },
+        '&:hover': { borderColor: 'primary.main' }
       }}
     >
-      {/* Control Bar */}
-      <Box sx={{ 
-        p: 2, 
-        bgcolor: 'grey.50', 
-        borderBottom: '1px solid',
-        borderColor: 'divider',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: { xs: 'wrap', md: 'nowrap' },
-        gap: 1
-      }}>
-        <Stack direction="row" alignItems="center" spacing={2} sx={{ minWidth: 0, flex: 1 }}>
+      {/* Hover controls including title */}
+      <Stack
+        className="hover-controls"
+        direction="row"
+        spacing={1}
+        alignItems="center"
+        sx={{
+          position: 'absolute',
+          top: 8,
+          right: 8,
+          bgcolor: 'background.paper',
+          px: 1,
+          py: 0.5,
+          borderRadius: 1,
+          boxShadow: 1,
+          opacity: 0,
+          transition: 'opacity 0.2s ease-in-out',
+          zIndex: 3
+        }}
+      >
+        <Typography
+          variant="caption"
+          sx={{
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            maxWidth: 160,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis'
+          }}
+        >
+          {section.title || 'Untitled Section'}
+        </Typography>
+        <Button
+          size="small"
+          variant="contained"
+          onClick={() => setIsInlineEditing(!isInlineEditing)}
+          sx={{ fontSize: '0.7rem', px: 1 }}
+        >
+          {isInlineEditing ? 'Exit Edit' : 'Quick Edit'}
+        </Button>
+        <IconButton size="small" onClick={onEdit}><PencilSimple size={16} /></IconButton>
+        <IconButton size="small" onClick={onDelete} color="error"><Trash size={16} /></IconButton>
+        {section.content && (
           <IconButton
             size="small"
-            {...dragHandleProps}
-            sx={{ cursor: 'grab', flexShrink: 0 }}
+            onClick={onToggleNotes}
+            sx={{ color: notesOpen ? 'primary.main' : 'inherit' }}
           >
-            <DotsSixVertical size={16} />
+            <Note size={16} />
           </IconButton>
-          
-          <Typography 
-            variant="subtitle2" 
-            sx={{ 
-              fontWeight: 600, 
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              whiteSpace: 'nowrap',
-              minWidth: 0
-            }}
-          >
-            {section.title || 'Untitled Section'}
-          </Typography>
-          
-          <Chip 
-            size="small"
-            label={template.title}
-            color="primary"
-            variant="outlined"
-            sx={{ flexShrink: 0 }}
-          />
-        </Stack>
+        )}
+        <IconButton size="small" {...dragHandleProps}><DotsSixVertical size={16} /></IconButton>
+      </Stack>
 
-        <Stack direction="row" spacing={0.5} sx={{ flexShrink: 0 }}>
-          {/* Quick Edit Toggle Button - THE KEY ADDITION */}
-          <Button
-            size="small"
-            variant={isInlineEditing ? "contained" : "outlined"}
-            onClick={() => setIsInlineEditing(!isInlineEditing)}
-            sx={{ 
-              fontSize: '0.75rem', 
-              minWidth: 'auto', 
-              px: 1,
-              bgcolor: isInlineEditing ? 'primary.main' : 'transparent',
-              color: isInlineEditing ? 'white' : 'primary.main'
-            }}
-          >
-            {isInlineEditing ? 'Exit Edit' : 'Quick Edit'}
-          </Button>
-          
-          {section.content && (
-            <IconButton
-              size="small"
-              onClick={onToggleNotes}
-              sx={{ 
-                color: notesOpen ? 'primary.main' : 'text.secondary',
-                bgcolor: notesOpen ? 'primary.50' : 'transparent'
-              }}
-            >
-              <Note size={16} />
-            </IconButton>
-          )}
-          
-          <IconButton 
-            size="small"
-            onClick={onEdit}
-            sx={{ color: 'primary.main' }}
-          >
-            <PencilSimple size={16} />
-          </IconButton>
-          
-          <IconButton 
-            size="small"
-            onClick={onDelete}
-            sx={{ color: 'error.main' }}
-          >
-            <Trash size={16} />
-          </IconButton>
-        </Stack>
-      </Box>
-
-      {/* Wireframe Content */}
-      <Box sx={{ 
-        p: 3,
-        minHeight: 200,
-        bgcolor: 'background.paper'
-      }}>
+      {/* Template content area */}
+      <Box sx={{ p: 0 }}>
         {template.render ? (
           template.render(templateData, {
             editable: isInlineEditing,
@@ -294,58 +249,10 @@ const WireframePreview = ({
             onFieldSave: handleFieldSave
           })
         ) : (
-          <Alert severity="warning">
-            <Typography variant="body2">
-              Template "{template.id}" has no render function
-            </Typography>
-          </Alert>
+          <Alert severity="warning">Template "{template.id}" has no render function</Alert>
         )}
       </Box>
-
-      {/* Inline Editing Indicator */}
-      {isInlineEditing && (
-        <Box sx={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          height: 3,
-          bgcolor: 'primary.main',
-          zIndex: 1
-        }} />
-      )}
-
-      {/* Meta Info */}
-      <Box sx={{ 
-        px: 2, 
-        py: 1, 
-        bgcolor: 'grey.25',
-        borderTop: '1px solid',
-        borderColor: 'divider'
-      }}>
-        <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center">
-          <Typography variant="caption" color="text.secondary">
-            Updated: {section.updated_at ? new Date(section.updated_at).toLocaleDateString() : 'Never'}
-          </Typography>
-          
-          <Stack direction="row" spacing={1}>
-            {template.fields?.map(field => {
-              const hasContent = (localData[field] || section[field]) && (localData[field] || section[field]).trim();
-              return (
-                <Chip
-                  key={field}
-                  size="small"
-                  label={field}
-                  color={hasContent ? 'success' : 'default'}
-                  variant={hasContent ? 'filled' : 'outlined'}
-                  sx={{ fontSize: '0.6rem', height: 20 }}
-                />
-              );
-            })}
-          </Stack>
-        </Stack>
-      </Box>
-    </Paper>
+    </Box>
   );
 };
 
@@ -406,9 +313,7 @@ export default function SectionWireframeList({
         transition: 'margin-right 0.3s ease-in-out',
         minHeight: '100%'
       }}>
-        <Typography variant="h6" gutterBottom>
-          Wireframe Previews ({sections.length})
-        </Typography>
+
         
         <DndContext
           sensors={sensors}

@@ -24,6 +24,7 @@ import { ViewButtons } from '@/components/buttons/ViewButtons';
 
 
 
+
 export const CollectionItemPage = ({ 
   config, 
   record, 

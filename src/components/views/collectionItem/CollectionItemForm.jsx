@@ -19,6 +19,8 @@ import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
 import { SectionThread } from '@/components/fields/custom/sections/SectionThread';
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
+import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
+import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 
 // NEW: Import Google Drive components
 import { GoogleDriveFolderStatus } from '@/components/google/GoogleDriveFolderStatus';
@@ -226,7 +228,7 @@ export const CollectionItemForm = ({
                 const isBasicTextField = ![
                   'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                   'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                  'select', 'color', 'custom', 'comments', 'sections', 'payments'
+                  'select', 'color', 'custom', 'comments', 'sections', 'payments', 'colorTokens', 'typographyTokens'
                 ].includes(field.type);
 
                 if (!field || typeof field !== 'object') {
@@ -245,6 +247,31 @@ export const CollectionItemForm = ({
                   return (
                     <Grid item xs={12} key={field.name}>
                       <TimeTrackerField task={formData} />
+                    </Grid>
+                  );
+                }
+
+                if (field.type === 'custom' && field.component === 'ColorTokenEditor') {
+                  return (
+                    <Grid item xs={12} key={field.name}>
+                      <ColorTokenEditor 
+                        record={formData} 
+                        field={field} 
+                        editable={fieldIsEditable}
+                      />
+                    </Grid>
+                  );
+                }
+
+
+                if (field.type === 'custom' && field.component === 'TypographyTokenEditor') {
+                  return (
+                    <Grid item xs={12} key={field.name}>
+                      <TypographyTokenEditor 
+                        record={formData} 
+                        field={field} 
+                        editable={fieldIsEditable}
+                      />
                     </Grid>
                   );
                 }
