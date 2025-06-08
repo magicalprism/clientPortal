@@ -1,7 +1,7 @@
 'use client';
 
 import { Box, Typography } from '@mui/material';
-import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
+import { BrandBoardPreview } from '@/components/fields/custom/brand/brandBoard/BrandBoardPreview';
 import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
 import { CommentThread } from '@/components/fields/custom/comments/CommentThread';

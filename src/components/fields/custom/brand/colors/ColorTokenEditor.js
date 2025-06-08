@@ -380,12 +380,30 @@ const ColorTokenCard = ({ token, onChange }) => {
   );
 };
 
-// Token group component
+// Token group component with proper sorting
 const TokenGroup = ({ title, tokens, onChange, expanded, onToggle, showAliases }) => {
   const baseTokens = tokens.filter(t => t.type === 'base');
   const aliasTokens = tokens.filter(t => t.type === 'alias');
   
-  const displayTokens = showAliases ? [...baseTokens, ...aliasTokens] : baseTokens;
+  // Sort base tokens by scale (100, 200, 300, etc.)
+  const sortedBaseTokens = baseTokens.sort((a, b) => {
+    // Extract the scale number from token names like "primary.500"
+    const getScale = (token) => {
+      const parts = token.token.split('.');
+      const lastPart = parts[parts.length - 1];
+      const scale = parseInt(lastPart, 10);
+      return isNaN(scale) ? 0 : scale;
+    };
+    
+    return getScale(a) - getScale(b);
+  });
+  
+  // Sort alias tokens alphabetically by token name for consistent ordering
+  const sortedAliasTokens = aliasTokens.sort((a, b) => {
+    return a.token.localeCompare(b.token);
+  });
+  
+  const displayTokens = showAliases ? [...sortedBaseTokens, ...sortedAliasTokens] : sortedBaseTokens;
 
   return (
     <Accordion expanded={expanded} onChange={onToggle}>
@@ -397,7 +415,7 @@ const TokenGroup = ({ title, tokens, onChange, expanded, onToggle, showAliases }
           </Typography>
           <Chip 
             size="small" 
-            label={`${baseTokens.length} base${showAliases ? `, ${aliasTokens.length} alias` : ''}`}
+            label={`${sortedBaseTokens.length} base${showAliases ? `, ${sortedAliasTokens.length} alias` : ''}`}
           />
         </Box>
       </AccordionSummary>
@@ -432,8 +450,7 @@ const RegenerationDialog = ({ open, onClose, onConfirm, loading, brandId }) => {
     alt_color_1: null,
     alt_color_2: null,
     alt_color_3: null,
-    alt_color_4: null,
-    alt_color_5: null
+    alt_color_4: null
   });
   const [loadingColors, setLoadingColors] = useState(false);
 
@@ -462,8 +479,7 @@ const RegenerationDialog = ({ open, onClose, onConfirm, loading, brandId }) => {
           alt_color_1,
           alt_color_2,
           alt_color_3,
-          alt_color_4,
-          alt_color_5
+          alt_color_4
         `)
         .eq('id', brandId)
         .single();
@@ -508,8 +524,7 @@ const RegenerationDialog = ({ open, onClose, onConfirm, loading, brandId }) => {
     { key: 'alt_color_1', label: 'Alt 1', description: 'Alternative color 1' },
     { key: 'alt_color_2', label: 'Alt 2', description: 'Alternative color 2' },
     { key: 'alt_color_3', label: 'Alt 3', description: 'Alternative color 3' },
-    { key: 'alt_color_4', label: 'Alt 4', description: 'Alternative color 4' },
-    { key: 'alt_color_5', label: 'Alt 5', description: 'Alternative color 5' }
+    { key: 'alt_color_4', label: 'Alt 4', description: 'Alternative color 4' }
   ];
 
   // Filter alt colors to only show ones with values or recently edited ones
@@ -614,7 +629,7 @@ const RegenerationDialog = ({ open, onClose, onConfirm, loading, brandId }) => {
                     <Typography variant="subtitle2" sx={{ fontWeight: 600 }}>
                       Alternative Colors
                     </Typography>
-                    {visibleAltColors.length < 5 && (
+                    {visibleAltColors.length < 4 && (
                       <Button
                         size="small"
                         variant="outlined"
@@ -630,7 +645,7 @@ const RegenerationDialog = ({ open, onClose, onConfirm, loading, brandId }) => {
                       if (!brandColors[key]) return null;
                       
                       return (
-                        <Grid item xs={6} sm={4} md={2.4} key={key}>
+                        <Grid item xs={6} sm={4} md={3} key={key}>
                           <Box sx={{ textAlign: 'center', position: 'relative' }}>
                             <Typography variant="caption" display="block" gutterBottom>
                               {label}
@@ -737,7 +752,6 @@ export const ColorTokenEditor = ({ record, field, editable = true }) => {
     alt2: false,
     alt3: false,
     alt4: false,
-    alt5: false,
     success: false,
     error: false,
     warning: false,
@@ -984,7 +998,7 @@ export const ColorTokenEditor = ({ record, field, editable = true }) => {
       <Box sx={{ space: 2 }}>
         {Object.entries(tokenGroups)
           .sort(([a], [b]) => {
-            const order = ['primary', 'secondary', 'neutral', 'alt1', 'alt2', 'alt3', 'alt4', 'alt5', 'success', 'error', 'warning', 'info', 'text', 'background', 'button', 'border', 'status', 'brand', 'link', 'semantic', 'other'];
+            const order = ['primary', 'secondary', 'neutral', 'alt1', 'alt2', 'alt3', 'alt4', 'success', 'error', 'warning', 'info', 'text', 'background', 'button', 'border', 'status', 'brand', 'link', 'semantic', 'other'];
             return order.indexOf(a) - order.indexOf(b);
           })
           .map(([groupName, groupTokens]) => (

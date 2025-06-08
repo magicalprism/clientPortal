@@ -68,8 +68,7 @@ export function generateBaseTokens(brandColors) {
     alt_color_1,
     alt_color_2,
     alt_color_3,
-    alt_color_4,
-    alt_color_5
+    alt_color_4
   } = brandColors;
 
   const tokenTypes = [
@@ -87,8 +86,7 @@ export function generateBaseTokens(brandColors) {
     { key: 'alt_color_1', name: 'alt1', color: alt_color_1 },
     { key: 'alt_color_2', name: 'alt2', color: alt_color_2 },
     { key: 'alt_color_3', name: 'alt3', color: alt_color_3 },
-    { key: 'alt_color_4', name: 'alt4', color: alt_color_4 },
-    { key: 'alt_color_5', name: 'alt5', color: alt_color_5 }
+    { key: 'alt_color_4', name: 'alt4', color: alt_color_4 }
   ];
 
   // Add non-null alt colors to token types
@@ -110,8 +108,7 @@ export function generateBaseTokens(brandColors) {
     alt1: 'Alternative brand color 1',
     alt2: 'Alternative brand color 2',
     alt3: 'Alternative brand color 3',
-    alt4: 'Alternative brand color 4',
-    alt5: 'Alternative brand color 5'
+    alt4: 'Alternative brand color 4'
   };
 
   const tokens = [];
@@ -416,8 +413,7 @@ export async function fetchBrandColors(brandId) {
         alt_color_1,
         alt_color_2,
         alt_color_3,
-        alt_color_4,
-        alt_color_5
+        alt_color_4
       `)
       .eq('id', brandId)
       .single();

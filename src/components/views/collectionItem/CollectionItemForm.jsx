@@ -4,7 +4,7 @@ import {
   Grid, Divider,
   Typography, TextField, CircularProgress, Box, IconButton
 } from '@mui/material';
-import { BrandBoardPreview } from '@/components/fields/custom/BrandBoardPreview';
+import { BrandBoardPreview } from '@/components/fields/custom/brand/brandBoard/BrandBoardPreview';
 import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
 import CollectionGridView from '@/components/views/grid/CollectionGridView';

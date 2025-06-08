@@ -3,6 +3,7 @@ export const paths = {
 	checkout: "/checkout",
 	contact: "/contact",
 	pricing: "/pricing",
+	brand: (brandId) => `/brand/${brandId}`,
 	onboarding: (onboardingId) => `/onboarding/${onboardingId}`,
 	auth: {
 		custom: {

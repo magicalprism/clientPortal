@@ -23,14 +23,33 @@ export const brand = {
       label: 'Brand Board Preview',
       type: 'custom',
       component: 'BrandBoardPreview',
-      tab: 'Details', // You can place this in any tab or group you like
+      tab: 'Overview', // You can place this in any tab or group you like
 
     },
+            {
+  name: 'color_tokens',
+  label: 'Color Tokens',
+  type: 'custom',
+  tab: 'Colors', 
+  group: 'Tokens',
+  component: 'ColorTokenEditor'
+},
+    {
+  name: 'typography_tokens',
+  label: 'Typography Design Tokens',
+  type: 'custom',
+  component: 'TypographyTokenEditor',
+  description: 'Manage typography design tokens for this brand',
+  editable: true,
+  group: 'Font Files',
+      tab: 'Fonts',
+  admin: true // Optional: only show to admins
+},
     { 
       name: 'title', 
       label: 'Title', 
       group: 'Brand Details',
-      tab: 'Details',
+      tab: 'Fields',
       clickable: true, 
       openMode: 'full', 
       showInTable: true,
@@ -41,7 +60,7 @@ export const brand = {
       name: 'company_id',
       label: 'Company',
       group: 'Brand Details',
-      tab: 'Details', 
+      tab: 'Fields',
       showInTable: true,
       type: 'relationship',
       relation: {
@@ -57,7 +76,7 @@ export const brand = {
       label: 'Projects',
       type: 'multiRelationship',
        group: 'Brand Details',
-      tab: 'Details', 
+      tab: 'Fields', 
       displayMode: 'tags',
       relation: {
         table: 'project',
@@ -125,195 +144,113 @@ export const brand = {
    
     //Colors
     //Primary Colors
-        {
-  name: 'color_tokens',
-  label: 'Color Tokens',
-  type: 'custom',
-  tab: 'Colors', 
-  group: 'Tokens',
-  component: 'ColorTokenEditor'
-},
+
     {
       name: 'primary_color',
       label: 'Primary',
       description: '--primary-color-500',
       type: 'color',
-      tab: 'Colors', 
-      group: 'Primary Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
 
    {
       name: 'secondary_color',
       label: 'Secondary',
       description: '--secondary-color-500',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
 
        {
       name: 'neutral_color_100',
       label: 'Light Neutral',
       description: '--neutral-color-100',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
            {
       name: 'neutral_color_900',
       label: 'Dark Neutral',
       description: '--neutral-color-900',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
      {
       name: 'success_color',
       label: 'Success Color',
       description: '--success-color-500',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
      {
       name: 'error_color',
       label: 'Error Color',
       description: '--error-color-500',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
          {
       name: 'warning_color',
       label: 'Warning Color',
       description: '--warning-color-500',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Main Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
          {
       name: 'info_color',
       label: 'Info Color',
       description: '--info-color-500',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Primary Colors', 
-    },
-    //Accent
-    {
-      name: 'primary_accent_color',
-      label: 'Primary Accent',
-      description: '--foreground-primary-accent',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Foreground Colors', 
-    },
-    {
-      name: 'secondary_accent_color',
-      label: 'Secondary Accent',
-      description: '--foreground-secondary-accent',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Foreground Colors',  
-    },
-    //Borders
-    {
-      name: 'border_primary_color',
-      label: 'Primary Border',
-      description: '--foreground-primary-border',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Foreground Colors', 
-    },
-    {
-      name: 'border_secondary_color',
-      label: 'Secondary Border',
-      description: '--foreground-secondary-border',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Foreground Colors', 
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
 
-    //Backgrounds
-    {
-      name: 'background_primary_color',
-      label: 'Primary Background color',
-      description: '--background-primary',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Background Colors',
-    },
-    {
-      name: 'background_secondary_color',
-      label: 'Secondary Background Color',
-      description: '--background-secondary',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Background Colors',
-    },
 
     //Alt Brand Colors
     {
       name: 'alt_color_1',
       label: 'Alt Color #1',
       description: '--alt-color-1',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
     {
       name: 'alt_color_2',
       label: 'Alt Color #2',
       description: '--alt-color-2',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
     {
       name: 'alt_color_3',
       label: 'Alt Color #3',
       description: '--alt-color-3',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
     {
       name: 'alt_color_4',
       label: 'Alt Color #4',
       description: '--alt-color-4',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
-    },
-    {
-      name: 'alt_color_5',
-      label: 'Alt Color #5',
-      description: '--alt-color-5',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
-    },
-    {
-      name: 'alt_color_6',
-      label: 'Alt Color #6',
-      description: '--alt-color-6',
-      type: 'color',
-      tab: 'Colors', 
-      group: 'Alternative Colors',
+      type: 'text',
+      tab: 'Fields', 
+      group: 'Colors',
     },
 
+
     //Fonts
-    {
-  name: 'typography_tokens',
-  label: 'Typography Design Tokens',
-  type: 'custom',
-  component: 'TypographyTokenEditor',
-  description: 'Manage typography design tokens for this brand',
-  editable: true,
-  group: 'Font Files',
-      tab: 'Fonts',
-  admin: true // Optional: only show to admins
-},
+
     {
       name: 'primary_font',
       label: 'Primary Font',
@@ -324,7 +261,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'italic_primary_font',
@@ -336,7 +273,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'secondary_font',
@@ -348,7 +285,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'italic_secondary_font',
@@ -360,7 +297,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'body_font',
@@ -372,7 +309,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'italic_body_font',
@@ -384,7 +321,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'accent_font',
@@ -396,7 +333,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     {
       name: 'italic_accent_font',
@@ -408,7 +345,7 @@ export const brand = {
         labelField: 'url'  // or 'alt' if you want something different
       },
       group: 'Font Files',
-      tab: 'Fonts'
+      tab: 'Fields', 
     },
     
     //Logos
