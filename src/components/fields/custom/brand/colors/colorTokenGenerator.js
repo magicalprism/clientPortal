@@ -128,7 +128,7 @@ export function generateBaseTokens(brandColors) {
       // Define specific lightness targets for each scale
       const lightnessTargets = {
         100: lightHSL[2],  // Use the actual lightness from neutral_color_100
-        200: Math.max(lightHSL[2] - 5, 95),   // Slightly darker than 100
+        200: Math.max(lightHSL[2] - 5, 96),   // Slightly darker than 100
         300: Math.max(lightHSL[2] - 10, 75),  // Medium-light
         400: Math.max(lightHSL[2] - 20, 65),  // Medium
         500: Math.max(lightHSL[2] - 38, 55),  // Medium-dark

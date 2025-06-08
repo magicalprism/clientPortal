@@ -25,7 +25,7 @@ export const BrandBoardPreview = (props) => {
 
   const openFullPageView = () => {
     // This creates the URL: /brand-board/[brandId]
-    const url = `/brand-board/${brandToUse.id}`;
+    const url = `/brand/${brandToUse.id}`;
     window.open(url, '_blank');
   };
 
