@@ -11,6 +11,7 @@ import CalendarView from '@/components/views/calendar/CalendarView';
 import { createClient } from '@/lib/supabase/browser';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { Box } from '@mui/material';
+import ProjectDashboard from '@/components/views/dashboards/ProjectDashboard';
 
 
 
@@ -19,6 +20,7 @@ const componentMap = {
   ChecklistView,
   PrimaryTableView,
   CalendarView,
+  ProjectDashboard,
 };
 
 export default function CollectionView({ config, event, forcedFilters = {}, variant = 'default' }) {

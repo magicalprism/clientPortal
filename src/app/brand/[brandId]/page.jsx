@@ -193,7 +193,7 @@ export default function BrandBoardFullPage() {
         <BrandBoardContent
           brand={brand}
           mode={mode}
-          editable={true}
+          editable={false}
           useBrandBackground={true}
         />
       </Box>

@@ -8,8 +8,12 @@ export const project = {
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   brandBoard: { enabled: true },
-  defaultView: 'table',
+  defaultView: 'dashboard',
   views: {
+     dashboard: { // ✅ Add dashboard view
+      label: 'Dashboard',
+      component: 'ProjectDashboard'
+    },
     table: {
       label: 'Table View',
       component: 'PrimaryTableView',
@@ -49,6 +53,14 @@ export const project = {
     { 
       name: 'url', 
       label: 'URL', 
+      type: 'link',
+      tab: 'Overview',   
+      group: 'Project Info',
+      
+      },
+          { 
+      name: 'staging_url', 
+      label: 'Staging URL', 
       type: 'link',
       tab: 'Overview',   
       group: 'Project Info',
@@ -400,9 +412,12 @@ export const project = {
       showInTable: true,
       width: 'auto',
       options: [
-        { label: 'Pending', value: 'pending' },
+        { label: 'Onboarding', value: 'onboarding' },
         { label: 'In Progress', value: 'in_progress' },
         { label: 'Maintained', value: 'maintained' },
+        { label: 'Delayed', value: 'delayed' },
+        { label: 'Suspended', value: 'suspended' },
+        { label: 'Abandonded', value: 'abandonded' },
         { label: 'Archived', value: 'archived' }
       ]
     },
@@ -450,9 +465,12 @@ export const project = {
       label: 'Status',
       defaultValue: [],
       options: [
-        { label: 'Pending', value: 'pending' },
+       { label: 'Onboarding', value: 'onboarding' },
         { label: 'In Progress', value: 'in_progress' },
         { label: 'Maintained', value: 'maintained' },
+        { label: 'Delayed', value: 'delayed' },
+        { label: 'Suspended', value: 'suspended' },
+        { label: 'Abandonded', value: 'abandonded' },
         { label: 'Archived', value: 'archived' }
       ]
     },

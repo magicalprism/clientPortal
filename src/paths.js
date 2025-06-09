@@ -59,6 +59,15 @@ export const paths = {
 			security: "/dashboard/settings/security",
 			team: "/dashboard/settings/team",
 		},
+		 search: "/dashboard/search",
+    searchCompany: "/dashboard/search/company",
+    searchProject: "/dashboard/search/project", 
+    searchMedia: "/dashboard/search/media",
+    
+    // Alternative specialized search pages
+    companySearch: "/dashboard/company/search",
+    projectSearch: "/dashboard/project/search",
+    mediaSearch: "/dashboard/media/search",
 		
 		blank: "/dashboard/blank",
 		resource: {

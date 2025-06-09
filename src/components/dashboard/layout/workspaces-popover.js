@@ -6,33 +6,29 @@ import ListItemAvatar from "@mui/material/ListItemAvatar";
 import Menu from "@mui/material/Menu";
 import MenuItem from "@mui/material/MenuItem";
 
-export const workspaces = [
-	{ name: "Lena Forrey, Inc.", avatar: "/assets/workspace-avatar-1.png" },
-];
-
-export function WorkspacesPopover({ anchorEl, onChange, onClose, open = false }) {
-	return (
-		<Menu
-			anchorEl={anchorEl}
-			anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
-			onClose={onClose}
-			open={open}
-			slotProps={{ paper: { sx: { width: "250px" } } }}
-			transformOrigin={{ horizontal: "right", vertical: "top" }}
-		>
-			{workspaces.map((workspace) => (
-				<MenuItem
-					key={workspace.name}
-					onClick={() => {
-						onChange?.(workspace.name);
-					}}
-				>
-					<ListItemAvatar>
-						<Avatar src={workspace.avatar} sx={{ "--Avatar-size": "32px" }} variant="rounded" />
-					</ListItemAvatar>
-					{workspace.name}
-				</MenuItem>
-			))}
-		</Menu>
-	);
+export function WorkspacesPopover({ anchorEl, companies = [], onChange, onClose, open = false }) {
+        return (
+                <Menu
+                        anchorEl={anchorEl}
+                        anchorOrigin={{ horizontal: "right", vertical: "bottom" }}
+                        onClose={onClose}
+                        open={open}
+                        slotProps={{ paper: { sx: { width: "250px" } } }}
+                        transformOrigin={{ horizontal: "right", vertical: "top" }}
+                >
+                        {companies.map((company) => (
+                                <MenuItem
+                                        key={company.id}
+                                        onClick={() => {
+                                                onChange?.(company);
+                                        }}
+                                >
+                                        <ListItemAvatar>
+                                                <Avatar src={company.thumbnail?.url || undefined} sx={{ "--Avatar-size": "32px" }} variant="rounded" />
+                                        </ListItemAvatar>
+                                        {company.title}
+                                </MenuItem>
+                        ))}
+                </Menu>
+        );
 }

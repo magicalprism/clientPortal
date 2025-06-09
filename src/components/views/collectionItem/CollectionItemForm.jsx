@@ -113,6 +113,11 @@ export const CollectionItemForm = ({
   const baseTabs = useGroupedFields(config?.fields || [], activeTab);
   const showTimelineTab = config?.showTimelineTab === true;
 
+
+
+
+
+
   const currentTabGroups = showTimelineTab && activeTab === baseTabs.tabNames.length
     ? null
     : baseTabs.currentTabGroups;
@@ -177,6 +182,7 @@ export const CollectionItemForm = ({
 
   return (
     <form id={formId} onSubmit={handleSubmit}>
+     
       {/* NEW: Google Drive Integration - Only show if config supports it */}
       {supportsGoogleDrive && formData?.id && (
         <Box sx={{ mb: 3 }}>
@@ -381,6 +387,7 @@ export const CollectionItemForm = ({
 
                   return (
                     <Grid item xs={12} key={field.name}>
+                      {ExportToolbar}
                       <CollectionView
                         config={relatedConfig}
                         variant="details"
@@ -411,6 +418,7 @@ export const CollectionItemForm = ({
                       </Box>
 
                       <Box>
+                        
                         {isEditing && isBasicTextField ? (
                           <TextField
                             fullWidth

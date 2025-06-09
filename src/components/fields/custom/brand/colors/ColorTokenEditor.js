@@ -202,11 +202,12 @@ const ColorTokenCard = ({ token, onChange }) => {
   console.log('[ColorTokenCard] Token:', token.token, 'Type:', token.type, 'IsAlias:', isAlias);
 
   return (
-    <Paper sx={{ p: 3, position: 'relative', overflow: 'visible' }}>
+    <Paper sx={{ p: 3, position: 'relative', overflow: 'visible', boxShadow: 5, }}>
       {/* Color Swatch */}
       <Box
         onClick={() => setIsOpen(!isOpen)}
         sx={{
+          boxShadow: 5,
           width: '100%',
           height: 80,
           backgroundColor: token.resolved,

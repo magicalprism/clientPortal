@@ -62,10 +62,20 @@ export const useMultiRelationshipModal = ({
       }
 
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from(junctionTable)
           .select(`${targetKey}(*)`)
           .eq(sourceKey, record.id);
+
+        // Apply junctionFilter if defined
+        if (field?.relation?.junctionFilter) {
+          Object.entries(field.relation.junctionFilter).forEach(([key, value]) => {
+            query = query.eq(key, value);
+          });
+        }
+
+        const { data, error } = await query;
+
 
         if (error) throw error;
         

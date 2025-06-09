@@ -1,4 +1,4 @@
-// BrandBoardContent.jsx - Complete working version with all functions properly defined
+// BrandBoardContent.jsx - Updated with alt color removal functionality
 import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -18,7 +18,8 @@ import {
   Select,
   MenuItem,
   FormControl,
-  Autocomplete
+  Autocomplete,
+  IconButton
 } from '@mui/material';
 import { 
   DownloadSimple,
@@ -27,7 +28,8 @@ import {
   Buildings,
   FolderOpen,
   ArrowsClockwise,
-  Plus
+  Plus,
+  X
 } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import { InlineEditableField } from '@/components/fields/InlineEditableField';
@@ -47,7 +49,17 @@ const isColorLight = (hexColor) => {
 };
 
 // Foundation Colors Component
-const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, onColorEdit, onAddAltColor, editable = true, surfaceBg }) => {
+const FoundationColors = ({ 
+  foundation, 
+  onCopy, 
+  groupedColors, 
+  semanticColors, 
+  onColorEdit, 
+  onAddAltColor, 
+  onRemoveAltColor, 
+  editable = true, 
+  surfaceBg 
+}) => {
   const coreColors = [
     { name: 'Primary', value: foundation?.primary_color, group: 'primary', key: 'primary_color' },
     { name: 'Secondary', value: foundation?.secondary_color, group: 'secondary', key: 'secondary_color' },
@@ -67,12 +79,9 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
     { name: 'Error', value: foundation?.error_color, group: 'error', key: 'error_color' },
     { name: 'Warning', value: foundation?.warning_color, group: 'warning', key: 'warning_color' },
     { name: 'Info', value: foundation?.info_color, group: 'info', key: 'info_color' }
-
-    
   ];
 
   const ColorGroup = ({ title, colors, showGradients = true, allowEdit = false, isAltGroup = false }) => (
-    
     <Box sx={{ mb: 4 }}>
       <Typography variant="h6" align="center" sx={{ mb: 3, fontWeight: 600, color: semanticColors?.text.primary }}>
         {title}
@@ -93,9 +102,34 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
                     border: '1px solid',
                     borderColor: semanticColors?.border.base || 'divider',
                     transition: 'transform 0.2s ease',
+                    position: 'relative',
                     '&:hover': { transform: 'translateY(-4px)' }
                   }}
                 >
+                  {/* Remove Button */}
+                  {editable && (
+                    <IconButton
+                      size="small"
+                      onClick={() => onRemoveAltColor && onRemoveAltColor(key, group)}
+                      sx={{
+                        position: 'absolute',
+                        top: 8,
+                        right: 8,
+                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
+                        color: '#d32f2f',
+                        width: 24,
+                        height: 24,
+                        '&:hover': {
+                          backgroundColor: '#d32f2f',
+                          color: 'white'
+                        },
+                        zIndex: 2
+                      }}
+                    >
+                      <X size={14} />
+                    </IconButton>
+                  )}
+
                   <Box
                     sx={{
                       width: '100%',
@@ -275,7 +309,7 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
         )}
       </Grid>
 
-      {/* Gradients */}
+      {/* Gradients - Rest of the gradient rendering code remains the same */}
       {showGradients && (
         isAltGroup ? (
           altColorSlots.map(({ group, name, value }) => {
@@ -473,7 +507,7 @@ const FoundationColors = ({ foundation, onCopy, groupedColors, semanticColors, o
   );
 };
 
-// Typography Sample Component
+// Typography Sample Component - keeping as is
 const TypographySample = ({ token, semanticColors }) => {
   const [fontLoaded, setFontLoaded] = useState(false);
   const [fontFamilyName, setFontFamilyName] = useState('');
@@ -689,7 +723,7 @@ export const BrandBoardContent = ({
 
   const brandId = brand?.id;
 
-  // Define data fetching functions within the component scope
+  // Database functions
   const fetchColorTokens = async (brandId) => {
     const supabase = createClient();
     
@@ -929,16 +963,48 @@ export const BrandBoardContent = ({
     }
   };
 
+  // NEW: Function to remove alt color and associated tokens
+  const removeAltColorAndTokens = async (brandId, colorKey, groupName) => {
+    const supabase = createClient();
+    
+    try {
+      // Update brand to set the alt color to null
+      const { error: brandError } = await supabase
+        .from('brand')
+        .update({ [colorKey]: null })
+        .eq('id', brandId);
+
+      if (brandError) throw brandError;
+
+      // Delete all color tokens associated with this alt color group
+      const { error: tokensError } = await supabase
+        .from('color')
+        .delete()
+        .eq('brand_id', brandId)
+        .eq('group', groupName);
+
+      if (tokensError) throw tokensError;
+
+      return true;
+    } catch (error) {
+      console.error('Error removing alt color and tokens:', error);
+      throw error;
+    }
+  };
+
   // Get semantic colors based on current mode
   const semanticColors = useMemo(() => {
     if (!colorTokens.length) return null;
-    
+
     const modePrefix = mode === 'light' ? 'lightmode' : 'darkmode';
-    
+
     const findToken = (tokenSuffix) => {
       const token = colorTokens.find(t => t.token === `${modePrefix}.${tokenSuffix}`);
       return token?.resolved || null;
     };
+
+    const neutralLight = foundation?.neutral_color_100 || '#ffffff';
+    const neutralDark = foundation?.neutral_color_900 || '#1a1a1a';
 
     return {
       text: {
@@ -946,8 +1012,10 @@ export const BrandBoardContent = ({
         secondary: findToken('color.text.secondary') || (mode === 'light' ? '#666666' : '#cccccc'),
       },
       background: {
-        default: findToken('color.bg.default') || (mode === 'light' ? '#ffffff' : '#1a1a1a'),
-        surface: findToken('color.bg.surface') || (mode === 'light' ? '#f8f9fa' : '#2d2d2d'),
+        default: findToken('color.bg.default') ||
+          (useBrandBackground ? (mode === 'light' ? neutralLight : neutralDark) : (mode === 'light' ? '#ffffff' : '#1a1a1a')),
+        surface: findToken('color.bg.surface') ||
+          (useBrandBackground ? (mode === 'light' ? neutralLight : neutralDark) : (mode === 'light' ? '#f8f9fa' : '#2d2d2d')),
       },
       border: {
         base: findToken('color.border.base') || (mode === 'light' ? '#e0e0e0' : '#404040'),
@@ -956,10 +1024,12 @@ export const BrandBoardContent = ({
         primary: findToken('color.brand.primary') || foundation?.primary_color || (mode === 'light' ? '#3B82F6' : '#60A5FA'),
       }
     };
-  }, [colorTokens, mode, foundation?.primary_color]);
+  }, [colorTokens, mode, foundation?.primary_color, foundation?.neutral_color_100, foundation?.neutral_color_900, useBrandBackground]);
 
   const surfaceBg = useBrandBackground
-    ? semanticColors?.background.surface || 'background.paper'
+    ? mode === 'light'
+      ? foundation?.neutral_color_100 || '#ffffff'
+      : foundation?.neutral_color_900 || '#1a1a1a'
     : '#ffffff';
 
   // Fixed title color calculation
@@ -1100,6 +1170,24 @@ export const BrandBoardContent = ({
       setBrandData(prev => ({ ...prev, [colorKey]: defaultColor }));
     } catch (error) {
       console.error('Error adding alt color:', error);
+    }
+  };
+
+  // NEW: Handler for removing alt colors
+  const handleRemoveAltColor = async (colorKey, groupName) => {
+    if (!editable || !brandId || !colorKey) return;
+    
+    try {
+      await removeAltColorAndTokens(brandId, colorKey, groupName);
+      
+      // Update local state
+      setFoundation(prev => ({ ...prev, [colorKey]: null }));
+      setBrandData(prev => ({ ...prev, [colorKey]: null }));
+      
+      // Remove the color tokens from local state
+      setColorTokens(prev => prev.filter(token => token.group !== groupName));
+    } catch (error) {
+      console.error('Error removing alt color:', error);
     }
   };
 
@@ -1358,7 +1446,9 @@ export const BrandBoardContent = ({
           semanticColors={semanticColors}
           onColorEdit={handleColorEdit}
           onAddAltColor={handleAddAltColor}
+          onRemoveAltColor={handleRemoveAltColor}
           editable={editable}
+          surfaceBg={surfaceBg}
         />
       )}
 

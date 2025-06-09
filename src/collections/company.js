@@ -20,7 +20,8 @@ export const company = {
           imageField: 'thumbnail_id',
           titleField: 'title',
           subtitleField: 'status',
-
+          descriptionField: 'description',
+          extraFields: ['contacts', 'projects', 'brand_id', 'company_folder'],
         }, 
     fields: [   
       // Overview
@@ -34,6 +35,19 @@ export const company = {
         showInTable: true,
         description: 'Please use a unique name so it can be easily recognized when a client has multiple sites.'
       },
+      {
+      name: 'brand_id',
+      label: 'Defaul Brand',
+      group: 'Details', 
+      tab: 'Overview',
+      type: 'relationship',
+      relation: {
+        table: 'brand', //usually current collection or pivot table
+        labelField: 'title',
+        linkTo: '/dashboard/brand', // or dynamically derive from config
+
+      }
+    },
                // Google Drive integration
     {
       name: 'create_folder',

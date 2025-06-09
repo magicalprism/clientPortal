@@ -1,5 +1,5 @@
 // BrandBoardFullPage.jsx - Full page version (for separate route)
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Box, 
   Switch, 
@@ -18,6 +18,7 @@ import {
 } from '@phosphor-icons/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandBoardContent } from '@/components/fields/custom/brand/brandBoard/BrandBoardContent';
+import { createClient } from "@/lib/supabase/browser";
 
 export const BrandBoardFullPage = () => {
   const [mode, setMode] = useState('light');

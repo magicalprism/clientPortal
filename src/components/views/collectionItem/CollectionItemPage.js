@@ -25,6 +25,7 @@ import { ViewButtons } from '@/components/buttons/ViewButtons';
 
 
 
+
 export const CollectionItemPage = ({ 
   config, 
   record, 
@@ -469,15 +470,15 @@ const handleRemovePartWithDirty = (partId) => {
   })));
 
   // Save the main record first
-  console.log('[CollectionItemPage] Saving main record...');
+
   const result = await saveRecord();
   
   if (!result) {
-    console.error('[CollectionItemPage] Main record save failed');
+
     return;
   }
 
-  console.log('[CollectionItemPage] Main record saved successfully:', result);
+
 
   // If this is a contract, also save the contract parts
   if (isContract && contractParts.length > 0 && localRecord?.id) {
@@ -494,14 +495,14 @@ const handleRemovePartWithDirty = (partId) => {
         .eq('contract_id', localRecord.id);
 
       if (deleteError) {
-        console.error('[CollectionItemPage] Error deleting existing relationships:', deleteError);
+
         // Don't return here - try to continue with insert
       } else {
-        console.log('[CollectionItemPage] Existing relationships deleted successfully');
+ 
       }
 
       // Create new relationships
-      console.log('[CollectionItemPage] Creating new contract parts relationships...');
+
       const pivotData = contractParts.map(part => {
         const pivotRecord = {
           contract_id: localRecord.id,
@@ -696,10 +697,52 @@ const handleRemovePartWithDirty = (partId) => {
     setTempValue(currentValue ?? '');
   };
 
+
+// Add this debug code right before the return statement in CollectionItemPage
+console.log('=== EXPORT BUTTONS DEBUG ===');
+console.log('formData:', formData);
+console.log('formData?.id:', formData?.id);
+console.log('config:', config);
+console.log('config?.key:', config?.key);
+console.log('localRecord:', localRecord);
+console.log('record prop:', record);
+console.log('=== END DEBUG ===');
+
+
+
   return (
     <>
       <Card elevation={0}>
+        {/* ViewButtons - only show if we have a record with an ID */}
+        {localRecord?.id && (
+          <ViewButtons 
+            config={config}
+            id={localRecord.id}
+            record={localRecord}
+            onRefresh={() => {
+              console.log('Record updated, refresh triggered');
+              
+              // If in modal, close it first (if onClose callback provided)
+              if (isModal && onClose) {
+                onClose();
+              }
+              
+              // Then trigger parent refresh
+              if (onRefresh) {
+                // Small delay to ensure modal closes first
+                setTimeout(() => {
+                  onRefresh();
+                }, 100);
+              }
+            }}
+            showModal={!isModal} // Hide modal button if already in modal
+            showFullView={true} // Always show full view option
+            isInModal={isModal} // Pass modal context to ViewButtons
+          />
+        )}
         <CardContent>
+          
+
           <Tabs
             value={activeTab}
             onChange={(e, newValue) => setActiveTab(newValue)}
@@ -755,33 +798,7 @@ const handleRemovePartWithDirty = (partId) => {
       </Card>
 
       <Box sx={{ display: 'flex', justifyContent: 'end', alignItems: 'center', mt: 2 }}>
-        {/* ViewButtons - only show if we have a record with an ID */}
-        {localRecord?.id && (
-          <ViewButtons 
-            config={config}
-            id={localRecord.id}
-            record={localRecord}
-            onRefresh={() => {
-              console.log('Record updated, refresh triggered');
-              
-              // If in modal, close it first (if onClose callback provided)
-              if (isModal && onClose) {
-                onClose();
-              }
-              
-              // Then trigger parent refresh
-              if (onRefresh) {
-                // Small delay to ensure modal closes first
-                setTimeout(() => {
-                  onRefresh();
-                }, 100);
-              }
-            }}
-            showModal={!isModal} // Hide modal button if already in modal
-            showFullView={true} // Always show full view option
-            isInModal={isModal} // Pass modal context to ViewButtons
-          />
-        )}
+        
                 
         {/* Save button on the right */}
         <Button 

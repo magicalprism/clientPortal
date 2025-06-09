@@ -34,6 +34,7 @@ export const element = {
       clickable: true, 
       showInTable: true,
     },
+    
   {
       name: 'status',
       label: 'Stage',
@@ -95,6 +96,35 @@ export const element = {
         { label: 'Template', value: false }
       ]
     }, 
+    {
+  name: 'media_items',
+  label: 'All Media',
+  type: 'galleryRelationship',
+  tab: 'Files',
+  database: false,
+  showAll: true,
+  filters: [
+    { name: 'mime_type', label: 'File Type' },
+
+], // 👈 multiple fields used in dropdowns
+  sortOptions: [ // ✅ Add this here
+      { value: 'title:asc', label: 'Title (A–Z)' },
+      { value: 'title:desc', label: 'Title (Z–A)' },
+      { value: 'created_at:desc', label: 'Newest Created' },
+      { value: 'created_at:asc', label: 'Oldest Created' }
+    ],
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'element_media',
+    sourceKey: 'element_id',
+    targetKey: 'media_id',
+    foreignKey: 'element_id',
+    filter: {
+      project_id: 'record.id'
+    }
+  }, 
+},
     
     {
       name: 'parent_id',

@@ -29,10 +29,11 @@ export const media = {
             { 
       name: 'url', 
       label: 'URL', 
-      type: 'link',
+      type: 'media',
       tab: 'Overview', 
       
       },
+      
     { 
       name: 'title', 
       label: 'Title', 

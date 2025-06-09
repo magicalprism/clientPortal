@@ -1,4 +1,4 @@
-// Fixed ViewButtons.jsx
+// Updated ViewButtons.jsx with integrated export functionality
 'use client';
 
 import { IconButton, Box, Tooltip } from '@mui/material';
@@ -7,19 +7,34 @@ import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
 import { createClient } from '@/lib/supabase/browser';
 import { DeleteRecordButton } from '@/components/buttons/DeleteRecordButton';
+import Image from 'next/image'; // ADD THIS IMPORT
+import {
+  Globe,
+  Envelope,
+  Phone,
+  Folder,
+  LinkSimple,
+  Code,
+  Palette,
+  DownloadSimple,
+  Printer,
+  PaintBrush,
+} from '@phosphor-icons/react';
+import { generateElementorExportZip } from '@/lib/utils/exports/elementorExport';
 
 export const ViewButtons = ({ 
   config, 
   id, 
-  record, // Optional: pass full record to avoid extra fetch
-  onRefresh, // Function to refresh parent data
-  showDelete = true, // Whether to show delete button
-  showFullView = true, // Whether to show full view button
-  showModal = true, // Whether to show modal view button
-  size = 'small', // Button size
-  isInModal = false // NEW: indicates if these buttons are inside a modal
+  record,
+  onRefresh,
+  showDelete = true,
+  showFullView = true,
+  showModal = true,
+  showExport = true, // NEW: Whether to show export buttons
+  size = 'small',
+  isInModal = false
 }) => {
-  const { openModal, closeModal } = useModal(); // Added closeModal
+  const { openModal, closeModal } = useModal();
   const fullConfig = collections[config.name] || config;
   const supabase = createClient();
 
@@ -27,7 +42,6 @@ export const ViewButtons = ({
   const handleOpenModal = async () => {
     let recordData = record;
     
-    // If no record provided, fetch it
     if (!recordData && id) {
       const { data, error } = await supabase
         .from(fullConfig.name)
@@ -51,7 +65,7 @@ export const ViewButtons = ({
     openModal('edit', {
       config: fullConfig,
       defaultValues: recordData,
-      onRefresh: onRefresh // Pass refresh function to modal
+      onRefresh: onRefresh
     });
   };
 
@@ -66,24 +80,28 @@ export const ViewButtons = ({
   const handleDeleteSuccess = (deletedId) => {
     console.log('Record deleted from ViewButtons:', deletedId);
     
-    // If we're in a modal, close it first
     if (isInModal) {
       closeModal();
     }
     
-    // Then refresh the background data
     if (onRefresh) {
-      // Small delay to ensure modal closes first
       setTimeout(() => {
         onRefresh();
       }, 100);
     }
   };
 
+  // Get collection-specific buttons (including export buttons)
+  const specificButtons = getCollectionSpecificButtons(
+    config.name || config.key, 
+    record || { id }, 
+    showExport
+  );
+
   return (
     <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
       {/* Modal View Button */}
-      {showModal && !isInModal && ( // Don't show modal button if already in modal
+      {showModal && !isInModal && (
         <Tooltip title="Quick view">
           <IconButton size={size} onClick={handleOpenModal}>
             <Eye size={size === 'small' ? 16 : 20} />
@@ -100,6 +118,19 @@ export const ViewButtons = ({
         </Tooltip>
       )}
 
+      {/* Collection-specific buttons (including exports) */}
+      {specificButtons.map((btn, i) => (
+        <Tooltip title={btn.label} key={`specific-${i}`}>
+          <IconButton
+            size={size}
+            onClick={btn.action}
+            sx={{ mx: 0 }}
+          >
+            <btn.icon size={size === 'small' ? 16 : 20} />
+          </IconButton>
+        </Tooltip>
+      ))}
+
       {/* Delete Button */}
       {showDelete && (record || id) && (
         <DeleteRecordButton
@@ -114,3 +145,143 @@ export const ViewButtons = ({
     </Box>
   );
 };
+
+/**
+ * Get collection-specific action buttons (now includes export buttons)
+ */
+function getCollectionSpecificButtons(collectionName, item, showExport = true) {
+  const buttons = [];
+
+  const ElementorIcon = ({ size = 16 }) => (
+  <Image
+    src="/images/elementor.svg"
+    alt="Elementor"
+    width={size}
+    height={size}
+    style={{ objectFit: 'contain' }}
+  />
+);
+
+  switch (collectionName) {
+    case 'brand':
+      // Export buttons for brand
+      if (showExport && item?.id) {
+        buttons.push({
+          icon: ElementorIcon,
+          label: 'Elementor Export',
+          action: async () => {
+            try {
+              await generateElementorExportZip(item);
+            } catch (err) {
+              console.error('Elementor export failed:', err);
+              alert('Elementor export failed');
+            }
+          }
+        });
+
+        buttons.push({
+          icon: DownloadSimple,
+          label: 'React Theme Export',
+          action: () => {
+            alert('React export coming soon...');
+          }
+        });
+
+        buttons.push({
+          icon: Printer,
+          label: 'Printable Style Guide',
+          action: () => {
+            alert('Print export coming soon...');
+          }
+        });
+
+        buttons.push({
+          icon: PaintBrush,
+          label: 'Webstudio Export',
+          action: () => {
+            alert('Webstudio export coming soon...');
+          }
+        });
+      }
+      break;
+
+    case 'company':
+      if (item.url) {
+        buttons.push({
+          icon: Globe,
+          label: 'Website',
+          action: () => window.open(item.url, '_blank')
+        });
+      }
+      if (item.company_folder) {
+        buttons.push({
+          icon: Folder,
+          label: 'Company Folder',
+          action: () => window.open(item.company_folder, '_blank')
+        });
+      }
+      break;
+      
+    case 'contact':
+      if (item.email) {
+        buttons.push({
+          icon: Envelope,
+          label: 'Email',
+          action: () => window.open(`mailto:${item.email}`, '_blank')
+        });
+      }
+      if (item.phone) {
+        buttons.push({
+          icon: Phone,
+          label: 'Call',
+          action: () => window.open(`tel:${item.phone}`, '_blank')
+        });
+      }
+      break;
+      
+    case 'project':
+      if (item.project_folder) {
+        buttons.push({
+          icon: Folder,
+          label: 'Project Folder',
+          action: () => window.open(item.project_folder, '_blank')
+        });
+      }
+      if (item.url) {
+        buttons.push({
+          icon: Globe,
+          label: 'Visit Live',
+          action: () => window.open(item.url, '_blank')
+        });
+      }
+      if (item.staging_url) {
+        buttons.push({
+          icon: Code,
+          label: 'Visit Staging',
+          action: () => window.open(item.staging_url, '_blank')
+        });
+      }
+      const firstBrand = item.brands?.[0]?.brand;
+      if (firstBrand?.id) {
+        const brandConfig = collections.brand;
+        buttons.push({
+          icon: Palette,
+          label: `Brand: ${firstBrand.title}`,
+          action: () => window.open(`${brandConfig.editPathPrefix}/${firstBrand.id}`, '_blank')
+        });
+      }
+      break;
+      
+    case 'media':
+      if (item.url) {
+        buttons.push({
+          icon: LinkSimple,
+          label: 'View File',
+          action: () => window.open(item.url, '_blank')
+        });
+      }
+      break;
+  }
+
+  return buttons;
+}

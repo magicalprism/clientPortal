@@ -45,6 +45,60 @@ export const proposal = {
       }
     },
     {
+      name: 'products',
+      label: 'Products',
+      type: 'multiRelationship',
+      group: 'Primary',
+      tab: 'Details', 
+      displayMode: 'tags',
+      relation: {
+        table: 'product',
+        labelField: 'title',
+        linkTo: '/dashboard/product',
+        junctionTable: 'product_proposal',
+        sourceKey: 'proposal_id',
+        targetKey: 'product_id',
+        tableFields: ['title', 'price', 'yearly_price'],
+        junctionFilter: { type: 'core' }
+      }
+    },
+        {
+      name: 'addOns',
+      label: 'Add Ons',
+      type: 'multiRelationship',
+      group: 'Primary',
+      tab: 'Details', 
+      displayMode: 'tags',
+      relation: {
+        table: 'product',
+        labelField: 'title',
+        linkTo: '/dashboard/product',
+        junctionTable: 'product_proposal',
+        sourceKey: 'proposal_id',
+        targetKey: 'product_id',
+        tableFields: ['title', 'price', 'yearly_price'],
+        junctionFilter: { type: 'addon' }
+      }
+    },
+    {
+      name: 'contracts',
+      label: 'Contracts',
+      type: 'multiRelationship',
+      group: 'Primary',
+      tab: 'Details', 
+      displayMode: 'tags',
+      relation: {
+        table: 'contract',
+        labelField: 'title',
+        linkTo: '/dashboard/contract',
+        junctionTable: 'contract_proposal',
+        sourceKey: 'proposal_id',
+        targetKey: 'contract_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+    {
       name: 'tier',
       type: 'select',
       label: 'Selected Tier',
@@ -75,20 +129,57 @@ export const proposal = {
       ]
     },
     {
-      name: 'products',
-      label: 'Selected Products',
+      name: 'deliverables',
+      label: 'Deliverables',
       type: 'multiRelationship',
-      tab: 'Products',
-      group: 'Products',
-      displayMode: 'table',
+      group: 'Primary', 
+      tab: 'Details',
+      displayMode: 'tags',
       relation: {
-        table: 'product',
+        table: 'deliverable',
         labelField: 'title',
-        linkTo: '/dashboard/product',
-        junctionTable: 'product_proposal',
+        linkTo: '/dashboard/deliverable',
+        junctionTable: 'deliverable_proposal',
         sourceKey: 'proposal_id',
-        targetKey: 'product_id',
-        tableFields: ['title', 'price', 'yearly_price'],
+        targetKey: 'deliverable_id',
+        tableFields: ['title',],
+        filter: {}
+      }
+    },
+
+    {
+      name: 'features',
+      label: 'Features',
+      type: 'multiRelationship',
+      group: 'Primary', 
+      tab: 'Details',
+      displayMode: 'tags',
+      relation: {
+        table: 'feature',
+        labelField: 'title',
+        linkTo: '/dashboard/feature',
+        junctionTable: 'feature_proposal',
+        sourceKey: 'proposal_id',
+        targetKey: 'feature_id',
+        tableFields: ['title',],
+        filter: {}
+      }
+    },
+        {
+      name: 'problems',
+      label: 'Problems',
+      type: 'multiRelationship',
+      group: 'Primary',
+      tab: 'Details', 
+      displayMode: 'tags',
+      relation: {
+        table: 'problem',
+        labelField: 'title',
+        linkTo: '/dashboard/problem',
+        junctionTable: 'problem_proposal',
+        sourceKey: 'proposal_id',
+        targetKey: 'problem_id',
+        tableFields: ['title', ],
         filter: {}
       }
     },
@@ -119,22 +210,7 @@ export const proposal = {
       editable: false,
       description: 'Calculated yearly total'
     },
-    {
-      name: 'contracts',
-      label: 'Contracts',
-      type: 'multiRelationship',
-      tab: 'Contracts',
-      group: 'Contracts',
-      displayMode: 'table',
-      relation: {
-        table: 'contract',
-        labelField: 'title',
-        linkTo: '/dashboard/contract',
-        sourceKey: 'proposal_id',
-        isOneToMany: true,
-        filter: {}
-      }
-    },
+
     {
       name: 'parent_id',
       label: 'Parent Proposal',
