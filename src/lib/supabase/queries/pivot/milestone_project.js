@@ -1,241 +1,130 @@
 // lib/supabase/queries/pivot/milestone_project.js
+
 import { createClient } from '@/lib/supabase/browser';
 
 /**
- * Fetch milestones for a specific project via milestone_project pivot
- * Returns milestones ordered by their order_index
- * 
- * Used by:
- * - ProjectKanbanBoard (milestone mode columns)
- * - Project milestone timeline views
- * - Project overview pages
- * - Milestone management interfaces
- * 
- * @param {number} projectId - The project ID to fetch milestones for
- * @returns {Promise<{data, error}>} - Array of milestone objects or error
+ * Get all milestones for a project (via pivot)
  */
 export const fetchMilestonesForProject = async (projectId) => {
   const supabase = createClient();
-  
   const { data, error } = await supabase
     .from('milestone_project')
     .select(`
+      milestone_id,
+      order_index,
       milestone:milestone_id(
-        id, 
-        title, 
-        order_index,
+        id,
+        title,
         description,
         status,
-        created_at,
-        updated_at,
-        due_date,
-        start_date
+        created_at
       )
     `)
     .eq('project_id', projectId)
-    .order('milestone.order_index', { ascending: true });
+    .order('order_index', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching milestones for project:', error);
-    return { data: [], error };
-  }
+  if (error) return { data: [], error };
 
-  return { 
-    data: data?.map(item => item.milestone).filter(Boolean) || [], 
-    error: null 
-  };
+  // Transform the data to include order_index on the milestone object
+  const milestones = (data || []).map(row => ({
+    ...row.milestone,
+    order_index: row.order_index || 0
+  }));
+
+  return { data: milestones, error: null };
 };
 
 /**
- * Link milestone to project
- * 
- * Used by:
- * - Project milestone assignment
- * - Milestone creation wizards
- * - Project template applications
- * 
- * @param {number} milestoneId - The milestone ID
- * @param {number} projectId - The project ID  
- * @returns {Promise<{data, error}>} - Created relationship or error
+ * Get all projects for a milestone (via pivot)
  */
-export const linkMilestoneToProject = async (milestoneId, projectId) => {
+export const fetchProjectsForMilestone = async (milestoneId) => {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('milestone_project')
+    .select(`
+      project_id,
+      order_index,
+      project:project_id(
+        id,
+        title,
+        status,
+        created_at
+      )
+    `)
+    .eq('milestone_id', milestoneId);
+
+  if (error) return { data: [], error };
+
+  const projects = (data || []).map(row => row.project);
+  return { data: projects, error: null };
+};
+
+/**
+ * Link a milestone to a project
+ */
+export const linkMilestoneToProject = async (milestoneId, projectId, orderIndex = 0) => {
   const supabase = createClient();
   
   // Check if relationship already exists
   const { data: existing } = await supabase
     .from('milestone_project')
-    .select('id')
+    .select('*')
     .eq('milestone_id', milestoneId)
     .eq('project_id', projectId)
     .single();
-    
+
   if (existing) {
     return { data: existing, error: null };
   }
-  
-  const { data, error } = await supabase
+
+  return await supabase
     .from('milestone_project')
     .insert({
       milestone_id: milestoneId,
-      project_id: projectId
+      project_id: projectId,
+      order_index: orderIndex
     })
     .select()
     .single();
-
-  if (error) {
-    console.error('Error linking milestone to project:', error);
-  }
-
-  return { data, error };
 };
 
 /**
- * Unlink milestone from project
- * 
- * Used by:
- * - Milestone removal from projects
- * - Project milestone management
- * - Milestone reassignment
- * 
- * @param {number} milestoneId - The milestone ID
- * @param {number} projectId - The project ID
- * @returns {Promise<{data, error}>} - Deletion result or error
+ * Unlink a milestone from a project
  */
 export const unlinkMilestoneFromProject = async (milestoneId, projectId) => {
   const supabase = createClient();
-  
-  const { data, error } = await supabase
+  return await supabase
     .from('milestone_project')
     .delete()
     .eq('milestone_id', milestoneId)
-    .eq('project_id', projectId)
-    .select();
-
-  if (error) {
-    console.error('Error unlinking milestone from project:', error);
-  }
-
-  return { data, error };
+    .eq('project_id', projectId);
 };
 
 /**
- * Fetch projects for a specific milestone
- * 
- * Used by:
- * - Milestone detail pages showing associated projects
- * - Cross-project milestone reporting
- * - Milestone usage analytics
- * 
- * @param {number} milestoneId - The milestone ID
- * @returns {Promise<{data, error}>} - Array of project objects or error
+ * Update milestone order within a project
  */
-export const fetchProjectsForMilestone = async (milestoneId) => {
+export const updateMilestoneOrder = async (milestoneId, projectId, newOrder) => {
   const supabase = createClient();
-  
-  const { data, error } = await supabase
+  return await supabase
     .from('milestone_project')
-    .select(`
-      project:project_id(
-        id,
-        title,
-        status,
-        start_date,
-        launch_date,
-        company_id
-      )
-    `)
-    .eq('milestone_id', milestoneId);
-
-  if (error) {
-    console.error('Error fetching projects for milestone:', error);
-    return { data: [], error };
-  }
-
-  return { 
-    data: data?.map(item => item.project).filter(Boolean) || [], 
-    error: null 
-  };
+    .update({ order_index: newOrder })
+    .eq('milestone_id', milestoneId)
+    .eq('project_id', projectId);
 };
 
 /**
- * Bulk link multiple milestones to a project
- * 
- * Used by:
- * - Project setup wizards
- * - Template applications
- * - Bulk milestone assignment
- * 
- * @param {number[]} milestoneIds - Array of milestone IDs
- * @param {number} projectId - The project ID
- * @returns {Promise<{data, error}>} - Created relationships or error
+ * Update all milestone orders for a project
  */
-export const bulkLinkMilestonesToProject = async (milestoneIds, projectId) => {
+export const updateMilestoneOrders = async (projectId, milestoneOrders) => {
   const supabase = createClient();
   
-  if (!milestoneIds || milestoneIds.length === 0) {
-    return { data: [], error: null };
-  }
-  
-  // Check for existing relationships
-  const { data: existing } = await supabase
-    .from('milestone_project')
-    .select('milestone_id')
-    .eq('project_id', projectId)
-    .in('milestone_id', milestoneIds);
-    
-  const existingIds = existing?.map(item => item.milestone_id) || [];
-  const newMilestoneIds = milestoneIds.filter(id => !existingIds.includes(id));
-  
-  if (newMilestoneIds.length === 0) {
-    return { data: [], error: null };
-  }
-  
-  const insertData = newMilestoneIds.map(milestoneId => ({
-    milestone_id: milestoneId,
-    project_id: projectId
-  }));
-  
-  const { data, error } = await supabase
-    .from('milestone_project')
-    .insert(insertData)
-    .select();
+  const updates = milestoneOrders.map(({ milestoneId, order }) => 
+    supabase
+      .from('milestone_project')
+      .update({ order_index: order })
+      .eq('milestone_id', milestoneId)
+      .eq('project_id', projectId)
+  );
 
-  if (error) {
-    console.error('Error bulk linking milestones to project:', error);
-  }
-
-  return { data: data || [], error };
-};
-
-/**
- * Bulk unlink multiple milestones from a project
- * 
- * Used by:
- * - Project milestone cleanup
- * - Milestone reassignment
- * - Project template modifications
- * 
- * @param {number[]} milestoneIds - Array of milestone IDs
- * @param {number} projectId - The project ID
- * @returns {Promise<{data, error}>} - Deletion result or error
- */
-export const bulkUnlinkMilestonesFromProject = async (milestoneIds, projectId) => {
-  const supabase = createClient();
-  
-  if (!milestoneIds || milestoneIds.length === 0) {
-    return { data: [], error: null };
-  }
-  
-  const { data, error } = await supabase
-    .from('milestone_project')
-    .delete()
-    .eq('project_id', projectId)
-    .in('milestone_id', milestoneIds)
-    .select();
-
-  if (error) {
-    console.error('Error bulk unlinking milestones from project:', error);
-  }
-
-  return { data: data || [], error };
+  return await Promise.all(updates);
 };

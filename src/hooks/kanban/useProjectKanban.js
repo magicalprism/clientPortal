@@ -1,19 +1,13 @@
-// hooks/useProjectKanban.js - Updated imports
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
-import { 
-  milestoneProject,
-  milestoneTask, 
-  task,
-  taskConfig 
-} from '@/lib/supabase/queries';
+import { useState, useCallback, useEffect, useMemo } from 'react';
+import { milestoneProject, task } from '@/lib/supabase/queries';
 
-export const useProjectKanban = ({ 
-  projectId, 
-  mode = 'milestone', 
+export const useProjectKanban = ({
+  projectId,
+  mode = 'milestone',
   showCompleted = false,
-  config 
+  config
 }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,62 +15,91 @@ export const useProjectKanban = ({
   const [tasksByContainer, setTasksByContainer] = useState({});
   const [statusColumns, setStatusColumns] = useState([]);
 
-  // Get status options from config
-  const statusOptions = taskConfig.getTaskStatusOptions(config);
+  const statusOptions = useMemo(() => {
+    if (!config?.fields) return [];
+    const statusField = config.fields.find(field => field.name === 'status');
+    return statusField?.options || [];
+  }, [config]);
 
-  // Load data based on current mode
+  const containers = useMemo(() => {
+    if (mode === 'milestone') {
+      return milestones.map(m => ({
+        id: `milestone-${m.id}`,
+        title: m.title,
+        type: 'milestone',
+        data: m
+      }));
+    } else {
+      return statusColumns.map(col => ({
+        id: `status-${col.status}`,
+        title: col.title,
+        type: 'status',
+        data: col
+      }));
+    }
+  }, [mode, milestones, statusColumns]);
+
   const loadData = useCallback(async () => {
     if (!projectId) {
       setLoading(false);
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       if (mode === 'milestone') {
-        // Load milestones and their tasks
         const { data: milestonesData, error: milestonesError } = await milestoneProject.fetchMilestonesForProject(projectId);
-        
         if (milestonesError) throw milestonesError;
-        
+
         const sortedMilestones = (milestonesData || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
         setMilestones(sortedMilestones);
-        
+
         if (sortedMilestones.length > 0) {
           const milestoneIds = sortedMilestones.map(m => m.id);
-          const { data: tasksData, error: tasksError } = await milestoneTask.fetchTasksForMilestones(
-            milestoneIds, 
-            projectId, 
-            showCompleted
-          );
-          
+
+          const { data: tasksData, error: tasksError } = await task.fetchTasks({
+            projectId,
+            ids: null,
+            showCompleted,
+            milestoneId: null,
+            groupByStatus: false
+          });
+
           if (tasksError) throw tasksError;
-          
-          setTasksByContainer(tasksData || {});
+
+          const grouped = {};
+          for (const t of tasksData) {
+            if (!t.milestone_id) continue;
+            const key = `milestone-${t.milestone_id}`;
+            if (!grouped[key]) grouped[key] = [];
+            grouped[key].push(t);
+          }
+
+          setTasksByContainer(grouped);
         } else {
           setTasksByContainer({});
         }
-        
+
         setStatusColumns([]);
       } else {
-        // Load support tasks grouped by status
-        const { data: supportTasksData, error: supportError } = await task.fetchSupportTasks(
-          projectId, 
-          showCompleted
-        );
-        
+        const { data: supportTasksData, error: supportError } = await task.fetchTasks({
+          projectId,
+          taskType: 'support',
+          showCompleted,
+          groupByStatus: true
+        });
+
         if (supportError) throw supportError;
-        
-        // Set up status columns
+
         const columns = statusOptions.map(option => ({
           id: option.value,
           title: option.label,
           status: option.value
         }));
+
         setStatusColumns(columns);
-        
         setTasksByContainer(supportTasksData || {});
         setMilestones([]);
       }
@@ -88,15 +111,12 @@ export const useProjectKanban = ({
     }
   }, [projectId, mode, showCompleted, statusOptions]);
 
-  // Optimistically update milestones order
   const updateMilestonesOrder = useCallback(async (newMilestones) => {
     setMilestones(newMilestones);
-    
     try {
-      // Use the organized milestone queries
       await Promise.all(
-        newMilestones.map((milestone, index) => 
-          milestoneProject.updateMilestoneOrder(milestone.id, index) // This should be milestone.updateMilestoneOrder
+        newMilestones.map((milestone, index) =>
+          milestoneProject.updateMilestoneOrder(milestone.id, projectId, index)
         )
       );
     } catch (err) {
@@ -104,17 +124,17 @@ export const useProjectKanban = ({
       setError(err.message || 'Failed to update milestone order');
       loadData();
     }
-  }, [loadData]);
+  }, [loadData, projectId]);
 
-  // Move task between containers
   const moveTask = useCallback(async (taskId, fromContainer, toContainer, newIndex) => {
     try {
       if (mode === 'milestone') {
-        await milestoneTask.moveTaskToMilestone(taskId, fromContainer, toContainer, newIndex);
+        const toMilestoneId = toContainer.replace('milestone-', '');
+        await task.moveTaskToMilestone(taskId, parseInt(toMilestoneId), newIndex);
       } else {
-        await task.updateTaskStatus(taskId, toContainer, newIndex);
+        const newStatus = toContainer.replace('status-', '');
+        await task.updateTaskStatus(taskId, newStatus, newIndex);
       }
-      
       await loadData();
     } catch (err) {
       console.error('Error moving task:', err);
@@ -122,16 +142,15 @@ export const useProjectKanban = ({
     }
   }, [mode, loadData]);
 
-  // Update task order within same container
   const reorderTasks = useCallback(async (containerId, newTaskOrder) => {
     setTasksByContainer(prev => ({
       ...prev,
       [containerId]: newTaskOrder
     }));
-    
+
     try {
       await Promise.all(
-        newTaskOrder.map((taskItem, index) => 
+        newTaskOrder.map((taskItem, index) =>
           task.updateTaskOrder(taskItem.id, index)
         )
       );
@@ -142,37 +161,63 @@ export const useProjectKanban = ({
     }
   }, [loadData]);
 
-  // ... rest of the hook remains the same
+  const getContainer = useCallback((containerId) => {
+    return containers.find(c => c.id === containerId);
+  }, [containers]);
+
+  const getTasksForContainer = useCallback((containerId) => {
+    return tasksByContainer[containerId] || [];
+  }, [tasksByContainer]);
+
+  const findTask = useCallback((taskId) => {
+    for (const [containerId, tasks] of Object.entries(tasksByContainer)) {
+      const task = tasks.find(t => t.id === taskId);
+      if (task) return { task, containerId };
+    }
+    return null;
+  }, [tasksByContainer]);
+
+  const findTaskContainer = useCallback((taskId) => {
+    for (const [containerId, tasks] of Object.entries(tasksByContainer)) {
+      if (tasks.some(t => t.id === taskId)) {
+        return containerId;
+      }
+    }
+    return null;
+  }, [tasksByContainer]);
+
+  const getTotalTaskCount = useCallback(() => {
+    return Object.values(tasksByContainer).reduce((total, tasks) => total + tasks.length, 0);
+  }, [tasksByContainer]);
+
+  const getCompletedTaskCount = useCallback(() => {
+    return Object.values(tasksByContainer).reduce((total, tasks) => {
+      return total + tasks.filter(task => task.status === 'complete' || task.is_complete).length;
+    }, 0);
+  }, [tasksByContainer]);
 
   useEffect(() => {
     loadData();
   }, [loadData]);
 
   return {
-    // State
     loading,
     error,
     milestones,
     statusColumns,
     tasksByContainer,
     containers,
-    
-    // Actions
     loadData,
     updateMilestonesOrder,
     moveTask,
     reorderTasks,
     setError,
-    
-    // Utilities
     getContainer,
     getTasksForContainer,
     findTask,
     findTaskContainer,
     getTotalTaskCount,
     getCompletedTaskCount,
-    
-    // Config
     statusOptions
   };
 };

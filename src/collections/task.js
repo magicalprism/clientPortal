@@ -83,7 +83,7 @@ export const task = {
       type: 'select', 
       defaultValue: 'todo',
       options: [
-        { value: 'not started', label: 'Not Started' },
+        { value: 'not_started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },
         { value: 'unavailable', label: 'Unavailable' },
@@ -282,7 +282,7 @@ export const task = {
       multiple: true,
       defaultValue: [],
       options: [
-        { value: 'not started', label: 'Not Started' },
+        { value: 'not_started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
         { value: 'complete', label: 'Complete' },
         { value: 'unavailable', label: 'Unavailable' },
@@ -290,7 +290,7 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       excludeFromViews: ['calendar'],
-      defaultValue: ['todo', 'not started'],
+      defaultValue: ['todo', 'not_started'],
     },
     {
       name: 'task_type',

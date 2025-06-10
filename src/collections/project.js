@@ -465,7 +465,8 @@ export const project = {
         name: 'search',
         label: 'Search',
         type: 'text',
-        multiple: false
+        multiple: false,
+        excludeFromViews: ['dashboard']
       },
     {
       name: 'status',
@@ -480,7 +481,8 @@ export const project = {
         { label: 'Suspended', value: 'suspended' },
         { label: 'Abandonded', value: 'abandonded' },
         { label: 'Archived', value: 'archived' }
-      ]
+      ],
+      excludeFromViews: ['dashboard']
     },
     {
       name: 'company_id',
@@ -490,7 +492,8 @@ export const project = {
         table: 'company',
         labelField: 'title',
         filter: { is_client: true } // optional: filters options
-      }
+      },
+      excludeFromViews: ['dashboard']
     },
     {
       name: 'sort',
@@ -502,7 +505,8 @@ export const project = {
         { value: 'title:desc', label: 'Title (Z–A)' },
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
-      ]
+      ],
+      excludeFromViews: ['dashboard']
     }
     
   ]

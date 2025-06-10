@@ -1,312 +1,349 @@
+// components/kanban/ProjectKanbanBoard.js
+'use client';
+
 import { useState } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Switch, 
-  FormControlLabel, 
-  ToggleButton, 
-  ToggleButtonGroup,
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Switch,
+  FormControlLabel,
   Button,
   Alert,
-  CircularProgress
+  CircularProgress,
+  Stack,
+  Tooltip,
+  Chip
 } from '@mui/material';
-import { Plus as PlusIcon } from '@phosphor-icons/react';
-import {
-  DndContext,
+import { 
+  DndContext, 
   DragOverlay,
   closestCorners,
+  KeyboardSensor,
   PointerSensor,
   useSensor,
   useSensors,
 } from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  horizontalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { 
+  restrictToFirstScrollableAncestor,
+} from '@dnd-kit/modifiers';
+import { Kanban, ListChecks } from '@phosphor-icons/react';
 
 import { useProjectKanban } from '@/hooks/kanban/useProjectKanban';
-import { task } from '@/lib/supabase/queries'; // Only need task queries for creation
-import { KanbanColumn } from '@/components/kanban/KanbanColumn';
-import { KanbanTaskCard } from '@/components/kanban/KanbanTaskCard';
-import { CollectionModal } from '@/components/modals/CollectionModal';
-import { useDialog } from '@/hooks/use-dialog';
+import { KanbanColumn } from './KanbanColumn';
+import { KanbanTaskCard } from './KanbanTaskCard';
 
-export function ProjectKanbanBoard({ 
-  projectId, 
-  mode = 'milestone', 
+export const ProjectKanbanBoard = ({
+  projectId,
+  mode = 'milestone',
   showCompleted = false,
   embedded = false,
-  config 
-}) {
-  const [currentMode, setCurrentMode] = useState(mode);
-  const [showCompletedTasks, setShowCompletedTasks] = useState(showCompleted);
+  config,
+  onTaskUpdate
+}) => {
+  const [localMode, setLocalMode] = useState(mode);
+  const [localShowCompleted, setLocalShowCompleted] = useState(showCompleted);
   
-  // Use the kanban hook for state management
   const {
     loading,
     error,
     containers,
     tasksByContainer,
-    loadData,
-    updateMilestonesOrder,
     moveTask,
     reorderTasks,
+    updateMilestonesOrder,
+    loadData,
     setError,
-    getTasksForContainer,
-    findTask,
-    findTaskContainer
+    getTotalTaskCount,
+    getCompletedTaskCount
   } = useProjectKanban({
     projectId,
-    mode: currentMode,
-    showCompleted: showCompletedTasks,
+    mode: localMode,
+    showCompleted: localShowCompleted,
     config
   });
-  
-  // Drag and drop states
+
   const [activeId, setActiveId] = useState(null);
-  const [draggedItem, setDraggedItem] = useState(null);
-  
-  // Modal for task creation/editing
-  const createDialog = useDialog();
-  const editDialog = useDialog();
-  
+  const [activeTask, setActiveTask] = useState(null);
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 8,
+        distance: 8, // 8px movement required before drag starts
       },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
     })
   );
 
-  // Handle drag start
   const handleDragStart = (event) => {
     const { active } = event;
     setActiveId(active.id);
     
-    // Find the dragged item
-    const activeIdStr = String(active.id);
-    
-    if (activeIdStr.startsWith('task-')) {
-      const taskId = activeIdStr.replace('task-', '');
-      const result = findTask(taskId);
-      if (result) {
-        setDraggedItem({ type: 'task', data: result.task });
-      }
-    } else if (activeIdStr.startsWith('milestone-') || activeIdStr.startsWith('status-')) {
-      const containerId = activeIdStr.replace(/^(milestone-|status-)/, '');
-      const container = containers.find(c => String(c.id) === containerId);
-      if (container) {
-        setDraggedItem({ type: 'container', data: container });
+    // Find the task being dragged
+    const taskId = active.id.toString().replace('task-', '');
+    for (const [containerId, tasks] of Object.entries(tasksByContainer)) {
+      const task = tasks.find(t => t.id.toString() === taskId);
+      if (task) {
+        setActiveTask(task);
+        break;
       }
     }
   };
 
-  // Handle drag end
-  const handleDragEnd = async (event) => {
+  const handleDragOver = (event) => {
     const { active, over } = event;
-    
-    setActiveId(null);
-    setDraggedItem(null);
     
     if (!over) return;
     
-    const activeIdStr = String(active.id);
-    const overIdStr = String(over.id);
+    const activeId = active.id;
+    const overId = over.id;
     
-    try {
-      if (activeIdStr.startsWith('task-')) {
-        await handleTaskDrag(activeIdStr, overIdStr);
-      } else if (currentMode === 'milestone' && activeIdStr.startsWith('milestone-')) {
-        await handleMilestoneDrag(activeIdStr, overIdStr);
-      }
-    } catch (err) {
-      console.error('Error handling drag end:', err);
-      setError(err.message || 'Failed to update positions');
-    }
-  };
-
-  // Handle task drag operations
-  const handleTaskDrag = async (activeIdStr, overIdStr) => {
-    const taskId = activeIdStr.replace('task-', '');
-    const currentContainer = findTaskContainer(taskId);
+    if (activeId === overId) return;
     
-    let newContainer = null;
-    let newIndex = 0;
+    const activeIsTask = activeId.toString().startsWith('task-');
+    const overIsTask = overId.toString().startsWith('task-');
+    const overIsContainer = containers.some(c => c.id === overId);
     
-    if (overIdStr.startsWith('milestone-') || overIdStr.startsWith('status-')) {
-      // Dropped on a container
-      newContainer = overIdStr.replace(/^(milestone-|status-)/, '');
-      const tasksInContainer = getTasksForContainer(newContainer);
-      newIndex = tasksInContainer.length;
-    } else if (overIdStr.startsWith('task-')) {
-      // Dropped on another task
-      const overTaskId = overIdStr.replace('task-', '');
-      const overTaskContainer = findTaskContainer(overTaskId);
-      if (overTaskContainer) {
-        newContainer = overTaskContainer;
-        const tasksInContainer = getTasksForContainer(overTaskContainer);
-        const overTaskIndex = tasksInContainer.findIndex(t => String(t.id) === overTaskId);
-        newIndex = Math.max(0, overTaskIndex);
-      }
+    if (!activeIsTask) return;
+    
+    // Prevent dragging subtasks
+    if (activeTask?.parent_id) return;
+    
+    // Handle task dropped on container
+    if (activeIsTask && overIsContainer) {
+      return; // Will be handled in handleDragEnd
     }
     
-    if (newContainer !== null && newContainer !== currentContainer) {
-      // Move to different container
-      await moveTask(taskId, currentContainer, newContainer, newIndex);
-    } else if (newContainer === currentContainer && overIdStr.startsWith('task-')) {
-      // Reorder within same container
-      const tasksInContainer = getTasksForContainer(currentContainer);
-      const oldIndex = tasksInContainer.findIndex(t => String(t.id) === taskId);
-      if (oldIndex !== -1 && oldIndex !== newIndex) {
-        const newTaskOrder = arrayMove(tasksInContainer, oldIndex, newIndex);
-        await reorderTasks(currentContainer, newTaskOrder);
-      }
-    }
-  };
-
-  // Handle milestone drag operations
-  const handleMilestoneDrag = async (activeIdStr, overIdStr) => {
-    if (!overIdStr.startsWith('milestone-')) return;
-    
-    const activeMilestoneId = activeIdStr.replace('milestone-', '');
-    const overMilestoneId = overIdStr.replace('milestone-', '');
-    
-    if (activeMilestoneId === overMilestoneId) return;
-    
-    const oldIndex = containers.findIndex(m => String(m.id) === activeMilestoneId);
-    const newIndex = containers.findIndex(m => String(m.id) === overMilestoneId);
-    
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const newMilestones = arrayMove(containers, oldIndex, newIndex);
-      await updateMilestonesOrder(newMilestones);
-    }
-  };
-
-  // Handle task creation
-  const handleCreateTask = async (containerData) => {
-    const defaultValues = {
-      project_id: projectId,
-      task_type: currentMode === 'support' ? 'support' : 'task'
-    };
-    
-    if (currentMode === 'support') {
-      defaultValues.status = containerData.id;
-    }
-    
-    createDialog.handleOpen({
-      mode: 'create',
-      containerId: containerData.id,
-      containerType: currentMode,
-      projectId,
-      defaultValues
-    });
-  };
-
-  // Handle task creation submit
-  const handleTaskCreated = async (taskData, dialogData) => {
-    try {
-      const milestoneId = currentMode === 'milestone' ? dialogData.containerId : null;
-      await task.createTask(taskData, milestoneId); // Updated function name
-      await loadData();
-      createDialog.handleClose();
-    } catch (err) {
-      console.error('Error creating task:', err);
-      setError(err.message || 'Failed to create task');
-    }
-  };
-
-  // Handle task edit
-  const handleEditTask = (task) => {
-    editDialog.handleOpen(task);
-  };
-
-  // Handle task edit submit
-  const handleTaskEdited = async () => {
-    await loadData();
-    editDialog.handleClose();
-  };
-
-  // Render columns
-  const renderColumns = () => {
-    return containers.map((container) => {
-      const tasks = getTasksForContainer(container.id);
-      const containerId = currentMode === 'milestone' ? `milestone-${container.id}` : `status-${container.id}`;
+    // Handle task dropped on another task (reordering within same container)
+    if (activeIsTask && overIsTask) {
+      let activeContainer = null;
+      let overContainer = null;
       
-      return (
-        <KanbanColumn
-          key={containerId}
-          id={containerId}
-          title={container.title}
-          description={container.description}
-          tasks={tasks}
-          onAddTask={() => handleCreateTask(container)}
-          color={currentMode === 'milestone' ? 'primary' : 'secondary'}
-        >
-          {tasks.map((task) => (
-            <KanbanTaskCard
-              key={`task-${task.id}`}
-              task={task}
-              onEdit={() => handleEditTask(task)}
-              config={config}
-            />
-          ))}
-        </KanbanColumn>
-      );
-    });
+      for (const [containerId, tasks] of Object.entries(tasksByContainer)) {
+        if (tasks.some(t => `task-${t.id}` === activeId)) {
+          activeContainer = containerId;
+        }
+        if (tasks.some(t => `task-${t.id}` === overId)) {
+          overContainer = containerId;
+        }
+      }
+      
+      if (activeContainer && overContainer && activeContainer === overContainer) {
+        const tasks = tasksByContainer[activeContainer];
+        const activeIndex = tasks.findIndex(t => `task-${t.id}` === activeId);
+        const overIndex = tasks.findIndex(t => `task-${t.id}` === overId);
+        
+        if (activeIndex !== overIndex) {
+          const newTasks = arrayMove(tasks, activeIndex, overIndex);
+          reorderTasks(activeContainer, newTasks);
+        }
+      }
+    }
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    
+    setActiveId(null);
+    setActiveTask(null);
+    
+    if (!over) return;
+    
+    const activeId = active.id;
+    const overId = over.id;
+    
+    if (activeId === overId) return;
+    
+    const activeIsTask = activeId.toString().startsWith('task-');
+    const activeIsContainer = containers.some(c => c.id === activeId);
+    const overIsContainer = containers.some(c => c.id === overId);
+    
+    // Prevent dragging subtasks
+    if (activeTask?.parent_id) return;
+    
+    // Handle container reordering (milestones only)
+    if (activeIsContainer && overIsContainer && localMode === 'milestone') {
+      const activeIndex = containers.findIndex(c => c.id === activeId);
+      const overIndex = containers.findIndex(c => c.id === overId);
+      
+      if (activeIndex !== overIndex) {
+        const newContainers = arrayMove(containers, activeIndex, overIndex);
+        const newMilestones = newContainers.map(c => c.data);
+        updateMilestonesOrder(newMilestones);
+      }
+      return;
+    }
+    
+    // Handle task movement
+    if (activeIsTask && overIsContainer) {
+      let currentContainer = null;
+      const taskId = activeId.toString().replace('task-', '');
+      
+      for (const [containerId, tasks] of Object.entries(tasksByContainer)) {
+        if (tasks.some(t => t.id.toString() === taskId)) {
+          currentContainer = containerId;
+          break;
+        }
+      }
+      
+      if (currentContainer && currentContainer !== overId) {
+        const tasksInTarget = tasksByContainer[overId] || [];
+        moveTask(taskId, currentContainer, overId, tasksInTarget.length);
+      }
+    }
+  };
+
+  const handleModeToggle = () => {
+    setLocalMode(prev => prev === 'milestone' ? 'support' : 'milestone');
+  };
+
+  const handleCompletedToggle = (event) => {
+    setLocalShowCompleted(event.target.checked);
+  };
+
+  const handleTaskUpdate = (updatedTask) => {
+    if (onTaskUpdate) {
+      onTaskUpdate(updatedTask);
+    }
+    // Optionally refresh data if task was marked complete and we're not showing completed
+    if (!localShowCompleted && updatedTask.status === 'complete') {
+      loadData();
+    }
   };
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight={400}>
-        <CircularProgress />
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight={embedded ? 200 : 400}>
+        <CircularProgress size={embedded ? 24 : 40} />
+        <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+          Loading {localMode === 'milestone' ? 'milestones' : 'support tasks'}...
+        </Typography>
       </Box>
     );
   }
 
+  if (error) {
+    return (
+      <Alert 
+        severity="error" 
+        action={
+          <Button color="inherit" size="small" onClick={loadData}>
+            Retry
+          </Button>
+        }
+      >
+        {error}
+      </Alert>
+    );
+  }
+
+  const totalTasks = getTotalTaskCount();
+  const completedTasks = getCompletedTaskCount();
+
   return (
-    <Box sx={{ width: '100%', height: '100%' }}>
+    <Box>
       {/* Header Controls */}
       {!embedded && (
-        <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-          <Typography variant="h5">Project Kanban</Typography>
-          
-          <ToggleButtonGroup
-            value={currentMode}
-            exclusive
-            onChange={(_, value) => value && setCurrentMode(value)}
-            size="small"
-          >
-            <ToggleButton value="milestone">Milestones</ToggleButton>
-            <ToggleButton value="support">Support</ToggleButton>
-          </ToggleButtonGroup>
-          
-          <FormControlLabel
-            control={
-              <Switch
-                checked={showCompletedTasks}
-                onChange={(e) => setShowCompletedTasks(e.target.checked)}
-                size="small"
-              />
-            }
-            label="Show completed"
-          />
-          
-          <Button
-            startIcon={<PlusIcon />}
-            variant="outlined"
-            size="small"
-            onClick={() => handleCreateTask({ 
-              id: containers[0]?.id,
-              title: containers[0]?.title
-            })}
-            disabled={containers.length === 0}
-          >
-            Add Task
-          </Button>
-        </Box>
+        <Card sx={{ mb: 3 }}>
+          <CardContent>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
+              <Box>
+                <Typography variant="h6" gutterBottom>
+                  Task Board
+                </Typography>
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <Typography variant="body2" color="text.secondary">
+                    {totalTasks} total tasks
+                  </Typography>
+                  <Chip 
+                    label={`${completedTasks} completed`} 
+                    size="small" 
+                    color="success" 
+                    variant="outlined"
+                  />
+                </Stack>
+              </Box>
+              
+              <Stack direction="row" alignItems="center" gap={3}>
+                {/* Mode Toggle Switch */}
+                <Stack direction="row" alignItems="center" gap={1}>
+                  <Tooltip title="Milestone View" placement="top">
+                    <Kanban 
+                      size={20} 
+                      color={localMode === 'milestone' ? '#3B82F6' : '#9CA3AF'} 
+                    />
+                  </Tooltip>
+                  
+                  <Switch 
+                    checked={localMode === 'support'}
+                    onChange={handleModeToggle}
+                    size="small"
+                    sx={{
+                      '& .MuiSwitch-thumb': {
+                        bgcolor: localMode === 'support' ? '#8B5CF6' : '#3B82F6'
+                      },
+                      '& .MuiSwitch-track': {
+                        bgcolor: localMode === 'support' ? '#8B5CF620' : '#3B82F620'
+                      }
+                    }}
+                  />
+                  
+                  <Tooltip title="Support View" placement="top">
+                    <ListChecks 
+                      size={20} 
+                      color={localMode === 'support' ? '#8B5CF6' : '#9CA3AF'} 
+                    />
+                  </Tooltip>
+                </Stack>
+                
+                {/* Show Completed Toggle */}
+                <FormControlLabel
+                  control={
+                    <Switch 
+                      checked={localShowCompleted} 
+                      onChange={handleCompletedToggle}
+                      size="small"
+                    />
+                  }
+                  label="Show completed"
+                  sx={{ m: 0 }}
+                />
+              </Stack>
+            </Stack>
+          </CardContent>
+        </Card>
       )}
 
-      {/* Error Alert */}
-      {error && (
-        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError(null)}>
-          {error}
-        </Alert>
+      {/* Embedded Header */}
+      {embedded && (
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" color="text.secondary">
+            {localMode === 'milestone' ? 'Tasks by milestone' : 'Support tasks by status'}
+          </Typography>
+          
+          <Stack direction="row" alignItems="center" gap={2}>
+            <Typography variant="caption" color="text.secondary">
+              {totalTasks} tasks
+            </Typography>
+            
+            <Tooltip title={`Switch to ${localMode === 'milestone' ? 'support' : 'milestone'} view`}>
+              <Switch 
+                checked={localMode === 'support'}
+                onChange={handleModeToggle}
+                size="small"
+              />
+            </Tooltip>
+          </Stack>
+        </Stack>
       )}
 
       {/* Kanban Board */}
@@ -314,59 +351,80 @@ export function ProjectKanbanBoard({
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
+        modifiers={[restrictToFirstScrollableAncestor]}
       >
-        <Box
-          sx={{
+        <Box 
+          sx={{ 
             display: 'flex',
             gap: 2,
             overflowX: 'auto',
-            overflowY: 'hidden',
-            minHeight: 500,
-            pb: 2
+            pb: 2,
+            minHeight: embedded ? 300 : 400,
+            maxHeight: embedded ? 500 : 'calc(100vh - 250px)',
+            '&::-webkit-scrollbar': {
+              height: 8,
+            },
+            '&::-webkit-scrollbar-track': {
+              backgroundColor: 'rgba(0,0,0,0.1)',
+              borderRadius: 4,
+            },
+            '&::-webkit-scrollbar-thumb': {
+              backgroundColor: 'rgba(0,0,0,0.3)',
+              borderRadius: 4,
+            },
           }}
         >
-          <SortableContext
-            items={containers.map(c => 
-              currentMode === 'milestone' ? `milestone-${c.id}` : `status-${c.id}`
-            )}
+          <SortableContext 
+            items={containers.map(c => c.id)}
             strategy={horizontalListSortingStrategy}
           >
-            {renderColumns()}
+            {containers.map((container, index) => (
+              <KanbanColumn
+                key={container.id}
+                container={{
+                  ...container,
+                  projectId // Pass project ID for support mode
+                }}
+                tasks={tasksByContainer[container.id] || []}
+                config={config}
+                mode={localMode}
+                milestoneIndex={index}
+                onTaskUpdate={handleTaskUpdate}
+              />
+            ))}
           </SortableContext>
         </Box>
 
-        {/* Drag Overlay */}
         <DragOverlay>
-          {draggedItem && draggedItem.type === 'task' ? (
-            <KanbanTaskCard
-              task={draggedItem.data}
+          {activeTask ? (
+            <KanbanTaskCard 
+              task={activeTask} 
               config={config}
               isDragging
             />
           ) : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Task Creation Modal */}
-      <CollectionModal
-        open={createDialog.open}
-        onClose={createDialog.handleClose}
-        config={config}
-        mode="create"
-        data={createDialog.data}
-        onSubmit={handleTaskCreated}
-      />
-
-      {/* Task Edit Modal */}
-      <CollectionModal
-        open={editDialog.open}
-        onClose={editDialog.handleClose}
-        config={config}
-        mode="edit"
-        data={editDialog.data}
-        onSubmit={handleTaskEdited}
-      />
+      
+      {/* Empty State */}
+      {containers.length === 0 && (
+        <Card>
+          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="h6" color="text.secondary" gutterBottom>
+              {localMode === 'milestone' 
+                ? 'No milestones found' 
+                : 'No support tasks found'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {localMode === 'milestone' 
+                ? 'Create milestones for this project to organize tasks.' 
+                : 'No support tasks exist for this project yet.'}
+            </Typography>
+          </CardContent>
+        </Card>
+      )}
     </Box>
   );
-}
+};

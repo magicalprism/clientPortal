@@ -799,48 +799,7 @@ const handleRemovePartWithDirty = (partId) => {
           {/* Kanban Tab */}
           {isKanbanTab && localRecord?.id && (
             <Box mt={2}>
-              {/* Kanban Controls */}
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center', 
-                mb: 3,
-                flexWrap: 'wrap',
-                gap: 2
-              }}>
-                <Typography variant="h6">
-                  Task Board
-                </Typography>
-                
-                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                  {/* Mode Toggle */}
-                  {kanbanConfig.modes && kanbanConfig.modes.length > 1 && (
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      {kanbanConfig.modes.map((mode) => (
-                        <Button
-                          key={mode}
-                          size="small"
-                          variant={kanbanMode === mode ? 'contained' : 'outlined'}
-                          onClick={() => handleKanbanModeChange(mode)}
-                          sx={{ textTransform: 'capitalize' }}
-                        >
-                          {mode}
-                        </Button>
-                      ))}
-                    </Box>
-                  )}
-                  
-                  {/* Show Completed Toggle */}
-                  <Button
-                    size="small"
-                    variant={showCompletedTasks ? 'contained' : 'outlined'}
-                    onClick={handleShowCompletedToggle}
-                  >
-                    {showCompletedTasks ? 'Hide' : 'Show'} Completed
-                  </Button>
-                </Box>
-              </Box>
-
+              
               {/* Kanban Board */}
               <ProjectKanbanBoard
                 projectId={localRecord.id}

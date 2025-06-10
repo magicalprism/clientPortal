@@ -10,7 +10,8 @@ import {
   Chip,
   IconButton,
   Button,
-  CircularProgress
+  CircularProgress,
+  Grid
 } from '@mui/material';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { ArrowSquareOut } from '@phosphor-icons/react';
@@ -20,6 +21,7 @@ import { createClient } from '@/lib/supabase/browser';
 import { fetchContractRelatedData } from '@/lib/utils/fetchContractRelatedData';
 import { compileContractContent } from '@/lib/utils/contractContentCompiler';
 import { DeleteRecordButton } from '@/components/buttons/DeleteRecordButton.jsx';
+import { table } from '@/lib/supabase/queries';
 
 // Simple debug helper - only logs in development
 const debug = (label, value) => {
@@ -144,31 +146,7 @@ export const QuickViewCard = ({ config, record }) => {
     linkOverrides = {} // NEW: QuickView-specific link field overrides
   } = config.quickView || {};
 
-  // ✅ DEBUG: Add global debug function for troubleshooting (development only)
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development' && record) {
-      window.debugQuickViewRecord = () => {
-        console.log('🐛 QuickView Debug - Full Record:', record);
-        console.log('🐛 Company-related fields:', {
-          company_id: record?.company_id,
-          company_id_details: record?.company_id_details,
-          companies: record?.companies,
-          companies_details: record?.companies_details,
-        });
-        console.log('🐛 Image-related fields:', {
-          [imageField]: record?.[imageField],
-          [`${imageField}_details`]: record?.[`${imageField}_details`],
-        });
-        console.log('🐛 All keys containing "thumbnail":', 
-          Object.keys(record).filter(key => key.includes('thumbnail'))
-        );
-        console.log('🐛 All keys containing "company":', 
-          Object.keys(record).filter(key => key.includes('company'))
-        );
-        return record;
-      };
-    }
-  }, [record, imageField]);
+  
 
   // Check if this is a contract - multiple detection methods
   const isContract = 
@@ -228,19 +206,11 @@ export const QuickViewCard = ({ config, record }) => {
         setImageLoading(true);
         
         try {
-          const { data: company, error } = await supabase
-            .from('company')
-            .select('id, title, thumbnail_id')
-            .eq('id', companyId)
-            .single();
+          const { data: company } = await table.company.fetchCompanyById(companyId);
             
           if (!error && company?.thumbnail_id) {
             // Now fetch the actual media
-            const { data: media, error: mediaError } = await supabase
-              .from('media')
-              .select('*')
-              .eq('id', company.thumbnail_id)
-              .single();
+            const { data: media } = await table.media.fetchMediaById(mediaId);
               
             if (!mediaError && media?.url) {
               setResolvedImageUrl(media.url);
@@ -532,13 +502,7 @@ export const QuickViewCard = ({ config, record }) => {
       const relatedData = await fetchContractRelatedData(record, config);
       const compiledContent = await compileContractContent(record, relatedData);
       
-      const { error } = await supabase
-        .from('contract')
-        .update({ 
-          content: compiledContent, 
-          updated_at: new Date().toISOString() 
-        })
-        .eq('id', record.id);
+      const { error } = await updateContractContentById(record.id, compiledContent);
 
       if (error) {
         console.error('[RegenerateContent] Update failed:', error);
@@ -558,262 +522,147 @@ export const QuickViewCard = ({ config, record }) => {
   return (
     <Card sx={{ borderRadius: 2, boxShadow: 3 }}>
       <CardContent>
-        {(image || imageLoading) && (
-          <Box sx={{ p: 1, mb: 2 }}>
-            {imageLoading ? (
-              <Box 
-                sx={{ 
-                  width: '100%', 
-                  height: 200, 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center',
-                  bgcolor: 'grey.100',
-                  borderRadius: 2
-                }}
-              >
-                <CircularProgress size={24} />
-                <Typography variant="caption" sx={{ ml: 1 }}>
-                  Loading image...
-                </Typography>
-              </Box>
-            ) : (
-              <Box
-                component="img"
-                src={image}
-                alt={title || 'Preview image'}
-                sx={{ width: '100%', borderRadius: 2 }}
-                onError={(e) => {
-                  const fallback = '/assets/placeholder.png';
-                  e.currentTarget.onerror = null;
-            
-                  if (!e.currentTarget.src.includes(fallback)) {
-                    e.currentTarget.src = fallback;
-                  } else {
-                    e.currentTarget.src =
-                      'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=';
-                  }
+          <Grid container spacing={4} alignItems="flex-start">
+    {/* Image / Logo on the left */}
+    <Grid item xs={12} md={2}>
+      {(image || imageLoading) && (
+        <Box>
+          {imageLoading ? (
+            <Box 
+              sx={{ 
+                width: '100%', 
+                aspectRatio: '1', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                bgcolor: 'grey.100',
+                borderRadius: 2
+              }}
+            >
+              <CircularProgress size={24} />
+            </Box>
+          ) : (
+            <Box
+              component="img"
+              src={image}
+              alt={title || 'Preview image'}
+              sx={{ width: '100%', borderRadius: 2 }}
+              onError={(e) => {
+                const fallback = '/assets/placeholder.png';
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = fallback;
+              }}
+            />
+          )}
+        </Box>
+      )}
+    </Grid>
+
+    {/* Text content on the right */}
+    <Grid item xs={12} md={10}>
+      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+        <Box sx={{ flexBasis: '100%' }}>
+      {title && (
+        <Typography variant="h5" gutterBottom>
+          {title}
+        </Typography>
+      )}
+
+      {subtitle && (
+        <Chip label={subtitle} size="small" sx={{ mb: 2 }} color="primary" />
+      )}
+
+      {description && (
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{ mb: 2, whiteSpace: 'pre-wrap' }}
+        >
+          {description}
+        </Typography>
+      )}
+
+
+      {isContract && record?.id && (
+        <>
+          <Divider sx={{ my: 2 }} />
+          <Box sx={{ mb: 2 }}>
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ display: 'block', mb: 1 }}
+            >
+              Contract Actions
+            </Typography>
+            <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 1 }}>
+              <SignatureButton 
+                contractRecord={record}
+                onStatusUpdate={(status, data) => {
+                  console.log('Signature status updated:', status);
                 }}
               />
-            )}
-          </Box>
-        )}
-
-        {title && (
-          <Typography variant="h5" gutterBottom>
-            {title}
-          </Typography>
-        )}
-
-        {subtitle && (
-          <Chip label={subtitle} size="small" sx={{ mb: 2 }} color="primary" />
-        )}
-
-        {description && (
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            sx={{ mb: 2, whiteSpace: 'pre-wrap' }}
-          >
-            {description}
-          </Typography>
-        )}
-
-        {/* Contract-Specific Actions Section */}
-        {isContract && record?.id && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Box sx={{ mb: 2 }}>
-              <Typography 
-                variant="caption" 
-                color="text.secondary" 
-                sx={{ display: 'block', mb: 1 }}
+              <Button
+                sx={{ width: '100%' }}
+                variant="outlined"
+                size="medium"
+                onClick={handleRegenerateContent}
+                disabled={regenerating}
+                startIcon={regenerating ? <CircularProgress size={16} /> : null}
               >
-                Contract Actions
-              </Typography>
-              <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap', gap: 1 }}>
-                <SignatureButton 
-                  contractRecord={record}
-                  onStatusUpdate={(status, data) => {
-                    console.log('Signature status updated:', status);
-                  }}
-                />
-                
-                <Button
-                  sx={{ width: '100%' }}
-                  variant="outlined"
-                  size="medium"
-                  onClick={handleRegenerateContent}
-                  disabled={regenerating}
-                  startIcon={regenerating ? <CircularProgress size={16} /> : null}
-                >
-                  {regenerating ? 'Regenerating...' : 'Regenerate Content'}
-                </Button>
-              </Stack>
-            </Box>
-          </>
-        )}
-
-        {/* Extra Fields Section */}
-        {extraFields && extraFields.length > 0 && (
-          <>
-            <Divider sx={{ my: 2 }} />
-            <Stack spacing={2}>
-              {extraFields.map((fieldName) => {
-                if (!fieldName) return null;
-                
-                const field = config.fields?.find((f) => f.name === fieldName);
-                if (!field) {
-                  return null;
-                }
-
-                const label = field.label || fieldName;
-                
-                // FIXED: Use configured junction table for relationships
-                if (field.type === 'relationship') {
-                  const relationConfig = field.relation;
-                  const detailsKey = `${fieldName}_details`;
-                  const details = record?.[detailsKey];
-                  const id = record?.[fieldName];
-                  
-                  // Get URL for relationship item
-                  const itemUrl = details ? getItemUrl(details, relationConfig, fieldName, config.quickView) : `/dashboard/${relationConfig?.table}/${id}`;
-                  const isExternal = shouldOpenInNewTab(itemUrl);
-                  
-                  return (
-                    <Box key={fieldName}>
-                      <Typography 
-                        variant="caption" 
-                        color="text.secondary" 
-                        sx={{ display: 'block', mb: 0.5 }}
-                      >
-                        {label}
-                      </Typography>
-                      
-                      {details ? (
-                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Typography 
-                            component="a"
-                            href={itemUrl}
-                            target={isExternal ? '_blank' : '_self'}
-                            rel={isExternal ? 'noopener noreferrer' : undefined}
-                            variant="body2"
-                            color="primary"
-                            sx={{ textDecoration: 'none' }}
-                          >
-                            {details[relationConfig?.labelField] || details.name || details.title || `ID: ${id}`}
-                          </Typography>
-                          {isExternal && (
-                            <ArrowSquareOut size={16} color="currentColor" />
-                          )}
-                        </Box>
-                      ) : id ? (
-                        <Typography variant="body2">ID: {id}</Typography>
-                      ) : (
-                        <Typography variant="body2">—</Typography>
-                      )}
-                    </Box>
-                  );
-                }
-
-                // ENHANCED: Multi-relationship with configurable link fields
-                if (field.type === 'multiRelationship') {
-                  const relationConfig = field.relation;
-                  const detailsKey = `${fieldName}_details`;
-                  const details = record?.[detailsKey] || [];
-                  const ids = record?.[fieldName] || [];
-                  
-                  if (details.length === 0 && ids.length === 0) {
-                    return (
-                      <Box key={fieldName}>
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary" 
-                          sx={{ display: 'block', mb: 0.5 }}
-                        >
-                          {label}
-                        </Typography>
-                        <Typography variant="body2">—</Typography>
-                      </Box>
-                    );
-                  }
-                  
-                  return (
-                    <Box key={fieldName}>
-                      <Typography 
-                        variant="caption" 
-                        color="text.secondary" 
-                        sx={{ display: 'block', mb: 0.5 }}
-                      >
-                        {label}
-                      </Typography>
-                      
-                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                        {details.map(item => {
-                          const itemUrl = getItemUrl(item, relationConfig, fieldName, config.quickView);
-                          const isExternal = shouldOpenInNewTab(itemUrl);
-                          
-                          return (
-                            <Chip
-                              key={item.id}
-                              component="a"
-                              href={itemUrl}
-                              target={isExternal ? '_blank' : '_self'}
-                              rel={isExternal ? 'noopener noreferrer' : undefined}
-                              clickable
-                              label={
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                  {item[relationConfig?.labelField] || item.name || item.title || `ID: ${item.id}`}
-                                  {isExternal && (
-                                    <ArrowSquareOut size={12} />
-                                  )}
-                                </Box>
-                              }
-                              size="small"
-                              sx={{ 
-                                '&:hover': {
-                                  bgcolor: 'primary.light',
-                                  color: 'primary.contrastText'
-                                }
-                              }}
-                            />
-                          );
-                        })}
-                        
-                        {details.length === 0 && ids.length > 0 && (
-                          <Typography variant="body2">
-                            {ids.length} items
-                          </Typography>
-                        )}
-                      </Box>
-                    </Box>
-                  );
-                }
-                
-                // For all other field types, use FieldRenderer
-                return (
-                  <Box key={fieldName}>
-                    <Typography 
-                      variant="caption" 
-                      color="text.secondary" 
-                      sx={{ display: 'block', mb: 0.5 }}
-                    >
-                      {label}
-                    </Typography>
-                    
-                    <FieldRenderer
-                      value={record?.[field.name]}
-                      field={field}
-                      record={record}
-                      config={config}
-                      mode="view"
-                    />
-                  </Box>
-                );
-              })}
+                {regenerating ? 'Regenerating...' : 'Regenerate Content'}
+              </Button>
             </Stack>
-          </>
-        )}
+          </Box>
+        </>
+      )}
+</Box>
+       <Divider sx={{ my: 2 }} />         
+             {extraFields && extraFields.length > 0 && (
+
+    
+    <Stack
+      direction="row"
+      spacing={2}
+      useFlexGap
+      flexWrap="wrap"
+      sx={{ alignItems: 'flex-start' }}
+    >
+      {extraFields.map((fieldName) => {
+        if (!fieldName) return null;
+
+        const field = config.fields?.find((f) => f.name === fieldName);
+        if (!field) return null;
+
+        const label = field.label || fieldName;
+
+        // other field type handling...
+
+        // ✅ This must be inside the map
+        return (
+          <Box key={fieldName}>
+            <Typography 
+              variant="caption" 
+              color="text.secondary" 
+              sx={{ display: 'block', mb: 0.5 }}
+            >
+              {label}
+            </Typography>
+
+            <FieldRenderer
+              value={record?.[field.name]}
+              field={field}
+              record={record}
+              config={config}
+              mode="view"
+            />
+          </Box>
+        );
+      })}
+    </Stack>
+
+)}
+
+   
         
         {/* Related Fields Section */}
         {relatedFields && relatedFields.length > 0 && (
@@ -902,7 +751,9 @@ export const QuickViewCard = ({ config, record }) => {
             </Stack>
           </>
         )}
-        
+        </Box>
+            </Grid>
+        </Grid>
       </CardContent>
     </Card>
   );

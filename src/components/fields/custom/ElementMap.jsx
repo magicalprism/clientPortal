@@ -38,7 +38,7 @@ import FooterNode from '@/components/nodes/FooterNode';
 import HeaderNode from '@/components/nodes/HeaderNode';
 import EmailNode from '@/components/nodes/EmailNode';
 import PopupNode from '@/components/nodes/PopupNode';
-import { STATUS_COLORS } from '@/data/statusColors';
+import { statusColors } from '@/data/statusColors';
 import NodeWrapper from '@/components/nodes/NodeWrapper';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
@@ -89,7 +89,7 @@ const buildNodes = (pages) => {
         title: title,
         thumbnailUrl: page.resource?.thumbnail?.url || null,
         status,
-        backgroundColor: STATUS_COLORS[status] || STATUS_COLORS.default,
+        backgroundColor: statusColors[status] || statusColors.default,
       },
     };
   });
