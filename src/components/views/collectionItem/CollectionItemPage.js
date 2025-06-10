@@ -10,6 +10,18 @@ const CollectionView = dynamic(() => import('@/components/views/CollectionView')
   ssr: false,
   loading: () => <div>Loading collection...</div>,
 });
+// Import kanban components
+const ProjectKanbanBoard = dynamic(() => import('@/components/kanban/ProjectKanbanBoard').then(mod => mod.default || mod.ProjectKanbanBoard), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+      <CircularProgress />
+      <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
+        Loading kanban board...
+      </Typography>
+    </Box>
+  ),
+});
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
 import { useCollectionSave } from '@/hooks/useCollectionSave';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
@@ -22,7 +34,7 @@ import { useContractBuilder } from '@/components/dashboard/contract/useContractB
 import { generateSupabaseSelect } from '@/lib/supabase/generateSupabaseSelect';
 import { ViewButtons } from '@/components/buttons/ViewButtons';
 
-
+import * as collections from '@/collections';
 
 
 
@@ -42,8 +54,20 @@ export const CollectionItemPage = ({
   const initialValues = useRef(null);
   const [initialContractParts, setInitialContractParts] = useState([]);
 
+
+    // Kanban state
+  const [kanbanMode, setKanbanMode] = useState('milestone');
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   // Check if this is a contract before calling the hook
   const isContract = config?.name === 'contract';
+
+    // Check if kanban is enabled for this collection
+  const hasKanbanTab = config?.showKanbanTab === true || config?.kanban?.enabled === true;
+  const kanbanConfig = config?.kanban || {};
+   // Get task configuration for kanban
+  const taskConfig = kanbanConfig.taskConfig ? collections[kanbanConfig.taskConfig] : collections.task;
+
+
 
   // Always call useContractBuilder, but conditionally use its values
 const contractBuilderResult = useContractBuilder(localRecord?.id);
@@ -143,12 +167,8 @@ const handleAddAllRequiredWithDirty = () => {
 useEffect(() => {
   // Load contract parts if this is a contract and we have a record ID
   if (isContract && localRecord?.id && contractBuilderResult) {
-    console.log('[CollectionItemPage] Loading contract parts for contract ID:', localRecord.id);
-    console.log('[CollectionItemPage] Builder loading state:', contractBuilderResult.loading);
-    
     // Only proceed if the contract builder has finished its initial load
     if (contractBuilderResult.loading) {
-      console.log('[CollectionItemPage] Contract builder still loading, waiting...');
       return;
     }
     
@@ -230,9 +250,6 @@ useEffect(() => {
 useEffect(() => {
   // Load contract parts if this is a contract and we have a record ID
   if (isContract && localRecord?.id) {
-    console.log('[CollectionItemPage] Loading contract parts for contract ID:', localRecord.id);
-    console.log('[CollectionItemPage] contractBuilderResult available?', !!contractBuilderResult);
-    console.log('[CollectionItemPage] setContractParts available?', !!contractBuilderResult.setContractParts);
     
     const loadContractParts = async () => {
       try {
@@ -314,9 +331,6 @@ useEffect(() => {
 // Also add a separate useEffect to sync when contractBuilderResult becomes available
 useEffect(() => {
   if (isContract && contractParts.length > 0 && initialContractParts.length === 0) {
-    console.log('[CollectionItemPage] ContractBuilder result changed, syncing initial state');
-    console.log('[CollectionItemPage] Current contractParts:', contractParts.length);
-    
     // If we have contract parts but no initial state, set it now
     setInitialContractParts(JSON.parse(JSON.stringify(contractParts)));
   }
@@ -326,13 +340,8 @@ useEffect(() => {
 useEffect(() => {
   if (!isContract) return;
   
-  console.log('[CollectionItemPage] === CONTRACT PARTS COMPARISON ===');
-  console.log('[CollectionItemPage] Current parts count:', contractParts.length);
-  console.log('[CollectionItemPage] Initial parts count:', initialContractParts.length);
-  
   // Don't compare if we don't have initial state yet
   if (initialContractParts.length === 0 && contractParts.length > 0) {
-    console.log('[CollectionItemPage] Still loading initial state, skipping comparison');
     return;
   }
   
@@ -352,10 +361,6 @@ useEffect(() => {
   })));
   
   const contractPartsChanged = currentPartsString !== initialPartsString;
-  
-  console.log('[CollectionItemPage] Contract parts changed?', contractPartsChanged);
-  console.log('[CollectionItemPage] Current hash:', currentPartsString.substring(0, 100) + '...');
-  console.log('[CollectionItemPage] Initial hash:', initialPartsString.substring(0, 100) + '...');
   
   if (contractPartsChanged && !isDirty) {
     console.log('[CollectionItemPage] Setting isDirty=true due to contract parts changes');
@@ -410,6 +415,16 @@ const handleRemovePartWithDirty = (partId) => {
   setIsDirty(true);
 };
 
+// Initialize kanban mode from config
+  useEffect(() => {
+    if (hasKanbanTab && kanbanConfig.defaultMode) {
+      setKanbanMode(kanbanConfig.defaultMode);
+    }
+    if (hasKanbanTab && kanbanConfig.defaultShowCompleted !== undefined) {
+      setShowCompletedTasks(kanbanConfig.defaultShowCompleted);
+    }
+  }, [hasKanbanTab, kanbanConfig]);
+
 
 // Make sure to import createClient at the top if not already imported:
 // import { createClient } from '@/lib/supabase/browser';
@@ -447,17 +462,36 @@ const handleRemovePartWithDirty = (partId) => {
   };
 
   // Build tab names
+  // ✅ FIX: Correct tab ordering logic
   const tabNames = [...baseTabs.tabNames];
-  if (isContract) tabNames.push('Contract Sections');
-  if (showTimelineTab) tabNames.push('Timeline');
+  let currentTabIndex = baseTabs.tabNames.length;
+
+  // Add tabs in this specific order: contract -> kanban -> timeline
+  if (isContract) {
+    tabNames.push('Contract Sections');
+    currentTabIndex++;
+  }
+  
+  if (hasKanbanTab) {
+    tabNames.push('Kanban Board');
+    currentTabIndex++;
+  }
+  
+  if (showTimelineTab) {
+    tabNames.push('Timeline');
+    currentTabIndex++;
+  }
 
   // Determine which tab we're on
-  const contractTabIndex = isContract ? baseTabs.tabNames.length : -1;
-  const timelineTabIndex = showTimelineTab ? tabNames.length - 1 : -1;
+  let tabIndex = baseTabs.tabNames.length;
+  const contractTabIndex = isContract ? tabIndex++ : -1;
+  const kanbanTabIndex = hasKanbanTab ? tabIndex++ : -1;
+  const timelineTabIndex = showTimelineTab ? tabIndex++ : -1;
   
   const isContractTab = isContract && activeTab === contractTabIndex;
+  const isKanbanTab = hasKanbanTab && activeTab === kanbanTabIndex;
   const isTimelineTab = showTimelineTab && activeTab === timelineTabIndex;
-  const isRegularFormTab = !isContractTab && !isTimelineTab;
+  const isRegularFormTab = !isContractTab && !isKanbanTab && !isTimelineTab;
 
   const handleSave = async () => {
   console.log('[CollectionItemPage] ========== SAVE PROCESS STARTING ==========');
@@ -521,26 +555,22 @@ const handleRemovePartWithDirty = (partId) => {
         .select();
 
       if (pivotError) {
-        console.error('[CollectionItemPage] Error saving contract parts:', pivotError);
-        console.error('[CollectionItemPage] Pivot error details:', JSON.stringify(pivotError, null, 2));
+
         // You might want to show an error toast here
         alert('Contract saved but failed to save sections: ' + pivotError.message);
       } else {
-        console.log('[CollectionItemPage] Contract parts saved successfully:', pivotResult);
-        console.log('[CollectionItemPage] Saved', pivotResult.length, 'contract part relationships');
+
       }
 
     } catch (error) {
-      console.error('[CollectionItemPage] Unexpected error saving contract parts:', error);
+
       alert('Contract saved but failed to save sections: ' + error.message);
     }
   }
 
   // Handle other logic (Google Drive, etc.)
   if (config?.name === 'element') {
-    console.log('[Debug] Element localRecord:', JSON.stringify(localRecord, null, 2));
-    console.log('[Debug] Element company_id:', localRecord?.company_id);
-    console.log('[Debug] Element project_id:', localRecord?.project_id);
+
   }
   
   if (result && (localRecord?.create_folder === true || formData?.create_folder === true)) {
@@ -553,17 +583,15 @@ const handleRemovePartWithDirty = (partId) => {
           payload: localRecord
         })
       });
-      
-      console.log('[Debug] Response status:', response.status);
-      console.log('[Debug] Response headers:', response.headers);
+
       
       const responseText = await response.text();
-      console.log('[Debug] Raw response:', responseText);
+
       
       let responseData;
       try {
         responseData = JSON.parse(responseText);
-        console.log('[Debug] Parsed JSON:', responseData);
+
       } catch (parseError) {
         console.error('[Debug] JSON parse failed:', parseError);
         console.log('[Debug] Response was probably HTML error page');
@@ -697,20 +725,19 @@ const handleRemovePartWithDirty = (partId) => {
     setTempValue(currentValue ?? '');
   };
 
+ // Kanban mode toggle handler
+  const handleKanbanModeChange = (newMode) => {
+    setKanbanMode(newMode);
+  };
 
-// Add this debug code right before the return statement in CollectionItemPage
-console.log('=== EXPORT BUTTONS DEBUG ===');
-console.log('formData:', formData);
-console.log('formData?.id:', formData?.id);
-console.log('config:', config);
-console.log('config?.key:', config?.key);
-console.log('localRecord:', localRecord);
-console.log('record prop:', record);
-console.log('=== END DEBUG ===');
+  const handleShowCompletedToggle = () => {
+    setShowCompletedTasks(prev => !prev);
+  };
 
 
 
-  return (
+
+    return (
     <>
       <Card elevation={0}>
         {/* ViewButtons - only show if we have a record with an ID */}
@@ -722,27 +749,23 @@ console.log('=== END DEBUG ===');
             onRefresh={() => {
               console.log('Record updated, refresh triggered');
               
-              // If in modal, close it first (if onClose callback provided)
               if (isModal && onClose) {
                 onClose();
               }
               
-              // Then trigger parent refresh
               if (onRefresh) {
-                // Small delay to ensure modal closes first
                 setTimeout(() => {
                   onRefresh();
                 }, 100);
               }
             }}
-            showModal={!isModal} // Hide modal button if already in modal
-            showFullView={true} // Always show full view option
-            isInModal={isModal} // Pass modal context to ViewButtons
+            showModal={!isModal}
+            showFullView={true}
+            isInModal={isModal}
           />
         )}
+        
         <CardContent>
-          
-
           <Tabs
             value={activeTab}
             onChange={(e, newValue) => setActiveTab(newValue)}
@@ -754,29 +777,89 @@ console.log('=== END DEBUG ===');
             ))}
           </Tabs>
           
-          {/* Render content based on active tab */}
-          {isTimelineTab && (
-            <Box mt={2}>
-              <TimelineView projectId={localRecord?.id} config={config} />
-            </Box>
-          )}
-
+          {/* ✅ FIX: Render content based on correct tab logic */}
+          
+          {/* Contract Tab */}
           {isContractTab && (
             <Box mt={2}>
               <ContractSectionsTab
                 contractParts={contractParts}
                 availableParts={availableParts}
                 activeId={activeId}
-                handleDragStart={handleDragStartWithDirty}
-                handleDragEndWrapper={handleDragEndWrapperWithDirty}
-                handleRemovePart={handleRemovePartWithDirty}
-                handleAddExistingPart={handleAddExistingPartWithDirty}
-                handleAddCustomPart={handleAddCustomPartWithDirty}
+                handleDragStart={handleDragStart}
+                handleDragEndWrapper={handleDragEndWrapper}
+                handleRemovePart={handleRemovePart}
+                handleAddExistingPart={handleAddExistingPart}
+                handleAddCustomPart={handleAddCustomPart}
                 handleAddAllRequired={handleAddAllRequiredWithDirty}
               />
             </Box>
           )}
 
+          {/* Kanban Tab */}
+          {isKanbanTab && localRecord?.id && (
+            <Box mt={2}>
+              {/* Kanban Controls */}
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: 3,
+                flexWrap: 'wrap',
+                gap: 2
+              }}>
+                <Typography variant="h6">
+                  Task Board
+                </Typography>
+                
+                <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                  {/* Mode Toggle */}
+                  {kanbanConfig.modes && kanbanConfig.modes.length > 1 && (
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      {kanbanConfig.modes.map((mode) => (
+                        <Button
+                          key={mode}
+                          size="small"
+                          variant={kanbanMode === mode ? 'contained' : 'outlined'}
+                          onClick={() => handleKanbanModeChange(mode)}
+                          sx={{ textTransform: 'capitalize' }}
+                        >
+                          {mode}
+                        </Button>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Show Completed Toggle */}
+                  <Button
+                    size="small"
+                    variant={showCompletedTasks ? 'contained' : 'outlined'}
+                    onClick={handleShowCompletedToggle}
+                  >
+                    {showCompletedTasks ? 'Hide' : 'Show'} Completed
+                  </Button>
+                </Box>
+              </Box>
+
+              {/* Kanban Board */}
+              <ProjectKanbanBoard
+                projectId={localRecord.id}
+                mode={kanbanMode}
+                showCompleted={showCompletedTasks}
+                embedded={false}
+                config={taskConfig}
+              />
+            </Box>
+          )}
+
+          {/* Timeline Tab */}
+          {isTimelineTab && (
+            <Box mt={2}>
+              <TimelineView projectId={localRecord?.id} config={config} />
+            </Box>
+          )}
+
+          {/* Regular Form Tabs */}
           {isRegularFormTab && (
             <CollectionItemForm
               config={config}
@@ -798,9 +881,6 @@ console.log('=== END DEBUG ===');
       </Card>
 
       <Box sx={{ display: 'flex', justifyContent: 'end', alignItems: 'center', mt: 2 }}>
-        
-                
-        {/* Save button on the right */}
         <Button 
           disabled={!isDirty && !hasChanges}
           onClick={handleSave}
@@ -812,5 +892,4 @@ console.log('=== END DEBUG ===');
       </Box>
     </>
   );
-
 };

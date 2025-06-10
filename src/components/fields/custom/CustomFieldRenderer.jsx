@@ -1,6 +1,7 @@
 'use client';
 
 import { Box, Typography } from '@mui/material';
+import dynamic from 'next/dynamic'; 
 import { BrandBoardPreview } from '@/components/fields/custom/brand/brandBoard/BrandBoardPreview';
 import { ElementMap } from '@/components/fields/custom/ElementMap';
 import { TimeTrackerField } from '@/components/fields/dateTime/timer/TimeTrackerField';
@@ -9,6 +10,15 @@ import { SectionThread } from '@/components/fields/custom/sections/SectionThread
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
+// Dynamic import for kanban board
+const ProjectKanbanBoard = dynamic(() => import('@/components/kanban/ProjectKanbanBoard'), {
+  ssr: false,
+  loading: () => (
+    <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>
+      <Typography variant="body2" color="text.secondary">Loading kanban board...</Typography>
+    </Box>
+  ),
+});
 
 /**
  * Custom field renderer for handling embedded components.
@@ -31,6 +41,16 @@ export const CustomFieldRenderer = ({
 
         case 'ColorTokenEditor':  // ADD THIS CASE
       return <ColorTokenEditor record={record} field={field} editable={editable} />;
+
+    case 'ProjectKanbanBoard':
+    case 'KanbanBoard':
+      if (!record?.id) {
+        return (
+          <Typography variant="body2" color="text.secondary">
+            Record ID required for kanban board
+          </Typography>
+        );
+      }
 
       case 'TypographyTokenEditor':
   return <TypographyTokenEditor record={record} field={field} editable={editable} />;

@@ -65,6 +65,7 @@
     "@tiptap/react": "^2.11.7",
     "@tiptap/starter-kit": "^2.11.7",
     "dagre": "^0.8.5",
+    "date-fns": "^4.1.0",
     "dayjs": "1.11.13",
     "embla-carousel": "8.5.2",
     "embla-carousel-react": "8.5.2",

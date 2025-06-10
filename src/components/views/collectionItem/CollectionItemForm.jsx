@@ -21,6 +21,8 @@ import { SectionThread } from '@/components/fields/custom/sections/SectionThread
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
+import KanbanFieldRenderer from '@/components/kanban/KanbanFieldRenderer';
+
 
 // NEW: Import Google Drive components
 import { GoogleDriveFolderStatus } from '@/components/google/GoogleDriveFolderStatus';
@@ -44,6 +46,11 @@ const normalizeFormValue = (value, field) => {
         return null; // Date fields can be null
       case 'number':
         return 0;
+         case 'kanban': // ✅ NEW: Handle kanban field type
+        return {
+          mode: field.defaultMode || 'milestone',
+          showCompleted: field.defaultShowCompleted || false
+        };
       default:
         return ''; // String fields
     }
@@ -234,17 +241,50 @@ export const CollectionItemForm = ({
                 const isBasicTextField = ![
                   'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                   'editButton', 'media', 'link', 'date', 'richText', 'timezone',
-                  'select', 'color', 'custom', 'comments', 'sections', 'payments', 'colorTokens', 'typographyTokens'
+                  'select', 'color', 'custom', 'comments', 'sections', 'payments', 'colorTokens', 'typographyTokens', 'kanban'
                 ].includes(field.type);
 
                 if (!field || typeof field !== 'object') {
                   return null;
                 }
 
+                if (field.type === 'kanban') {
+                  return (
+                    <Grid item xs={12} key={field.name}>
+                      <KanbanFieldRenderer
+                        value={value}
+                        field={field}
+                        record={formData}
+                        editable={fieldIsEditable}
+                        onChange={(newValue) => handleFieldChange(field, newValue)}
+                        view={isModal ? 'modal' : 'detail'}
+                      />
+                    </Grid>
+                  );
+                }
+
                 if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
                   return (
                     <Grid item xs={12} key={field.name}>
                       <BrandBoardPreview brand={formData} />
+                    </Grid>
+                  );
+                }
+
+                 if (field.type === 'custom' && (field.component === 'ProjectKanbanBoard' || field.component === 'KanbanBoard')) {
+                  return (
+                    <Grid item xs={12} key={field.name}>
+                      <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
+                        {field.label}
+                      </Typography>
+                      <KanbanFieldRenderer
+                        value={value}
+                        field={field}
+                        record={formData}
+                        editable={fieldIsEditable}
+                        onChange={(newValue) => handleFieldChange(field, newValue)}
+                        view={isModal ? 'modal' : 'detail'}
+                      />
                     </Grid>
                   );
                 }
@@ -387,7 +427,7 @@ export const CollectionItemForm = ({
 
                   return (
                     <Grid item xs={12} key={field.name}>
-                      {ExportToolbar}
+                
                       <CollectionView
                         config={relatedConfig}
                         variant="details"
