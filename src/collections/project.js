@@ -4,11 +4,19 @@ export const project = {
   singularLabel: 'Project',
   table: 'project',
   editPathPrefix: '/dashboard/project',
+  showKanbanTab: true,
   showTimelineTab: true,
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
   brandBoard: { enabled: true },
   defaultView: 'dashboard',
+  kanban: {
+    enabled: true,
+    modes: ['milestone', 'support'], // Available modes
+    defaultMode: 'milestone',
+    defaultShowCompleted: false,
+    taskConfig: 'task' // References @collections/task
+  },
   views: {
      dashboard: { // ✅ Add dashboard view
       label: 'Dashboard',
@@ -112,23 +120,47 @@ export const project = {
       } 
     },
 
-    
-
-    {
+{
       name: 'tasks',
       label: 'Tasks',
       type: 'multiRelationship',
       tab: 'Tasks',
-      component: 'CollectionView',
+      component: 'CollectionView', // Keep table view as default
       displayMode: 'table',
       relation: {
         table: 'task',
         labelField: 'title',
         linkTo: '/dashboard/task',
         sourceKey: 'project_id',
-        
       },
-       
+      // Add kanban view option
+      views: {
+        table: {
+          component: 'CollectionView',
+          displayMode: 'table'
+        },
+        kanban: {
+          component: 'ProjectKanbanBoard',
+          modes: ['milestone', 'support']
+        }
+      }
+    },
+
+    // Add a dedicated kanban field (alternative approach)
+    {
+      name: 'task_kanban',
+      label: 'Task Board',
+      type: 'kanban',
+      tab: 'Kanban',
+      component: 'ProjectKanbanBoard',
+      fullWidth: true,
+      modes: ['milestone', 'support'],
+      defaultMode: 'milestone',
+      showCompleted: false,
+      relation: {
+        table: 'task',
+        sourceKey: 'project_id'
+      }
     },
     {
       name: 'element_map',
