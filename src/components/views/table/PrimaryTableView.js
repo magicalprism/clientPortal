@@ -112,14 +112,14 @@ export default function PrimaryTableView({
       if (f.name === 'search') {
         parentQuery = parentQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
       } else if (f.multiple && Array.isArray(value)) {
-        if (['select', 'relationship'].includes(f.type)) {
+        if (['select', 'relationship', 'boolean'].includes(f.type)) {
           parentQuery = parentQuery.in(f.name, value);
         } else if (f.type === 'text') {
           const conditions = value.map(v => `${f.name}.ilike.%${v}%`).join(',');
           parentQuery = parentQuery.or(conditions);
         }
       } else {
-        if (['select', 'relationship'].includes(f.type)) {
+        if (['select', 'relationship', 'boolean'].includes(f.type)) {
           parentQuery = parentQuery.eq(f.name, value);
         } else if (f.type === 'text') {
           parentQuery = parentQuery.ilike(f.name, `%${value}%`);
@@ -161,14 +161,14 @@ export default function PrimaryTableView({
       if (f.name === 'search') {
         childQuery = childQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
       } else if (f.multiple && Array.isArray(value)) {
-        if (['select', 'relationship'].includes(f.type)) {
+        if (['select', 'relationship', 'boolean'].includes(f.type)) {
           childQuery = childQuery.in(f.name, value);
         } else if (f.type === 'text') {
           const conditions = value.map(v => `${f.name}.ilike.%${v}%`).join(',');
           childQuery = childQuery.or(conditions);
         }
       } else {
-        if (['select', 'relationship'].includes(f.type)) {
+        if (['select', 'relationship', 'boolean'].includes(f.type)) {
           childQuery = childQuery.eq(f.name, value);
         } else if (f.type === 'text') {
           childQuery = childQuery.ilike(f.name, `%${value}%`);

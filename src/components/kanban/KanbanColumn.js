@@ -8,9 +8,11 @@ import {
   Typography,
   Chip,
   Button,
-  Stack
+  Stack,
+  IconButton,
+  Tooltip
 } from '@mui/material';
-import { Plus } from '@phosphor-icons/react';
+import { Plus, Kanban } from '@phosphor-icons/react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
@@ -18,7 +20,9 @@ import { CSS } from '@dnd-kit/utilities';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { KanbanTaskCard } from './KanbanTaskCard';
-import { getMilestoneColor } from '@/data/statusColors';
+import { getMilestoneColor, getLighterColor } from '@/data/statusColors';
+import { useModal } from '@/components/modals/ModalContext';
+import * as collections from '@/collections';
 
 const SortableColumn = ({ 
   container, 
@@ -43,57 +47,68 @@ const SortableColumn = ({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.7 : 1,
   };
 
-  const milestoneColor = mode === 'milestone' ? getMilestoneColor(milestoneIndex) : '#6B7280';
+  const milestoneColor = mode === 'milestone' ? getMilestoneColor(milestoneIndex) : '#6366F1';
+  const lightBg = getLighterColor(milestoneColor, 0.05);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
       <Card 
         sx={{ 
-          minWidth: 280,
-          maxWidth: 300,
+          width: 320,
           height: 'fit-content',
+          maxHeight: 'calc(100vh - 280px)', // Consistent max height
+          display: 'flex',
+          flexDirection: 'column',
           border: isDragging ? '2px dashed' : '1px solid',
           borderColor: isDragging ? 'primary.main' : 'divider',
-          borderTop: mode === 'milestone' ? `4px solid ${milestoneColor}` : 'none',
-          borderRadius: mode === 'milestone' ? '8px 8px 4px 4px' : 1
+          borderRadius: 2,
+          overflow: 'hidden',
+          backgroundColor: lightBg
         }}
       >
-        {/* Column Header */}
-        <CardContent sx={{ pb: 1 }}>
-          <Stack 
-            direction="row" 
-            justifyContent="space-between" 
-            alignItems="center"
-            sx={{ mb: 1 }}
-            {...(mode === 'milestone' ? listeners : {})}
-          >
+        {/* Column Header with Background Color */}
+        <Box
+          sx={{
+            background: mode === 'milestone' 
+              ? `linear-gradient(135deg, ${milestoneColor} 0%, ${milestoneColor}DD 100%)`
+              : 'linear-gradient(135deg, #6366F1 0%, #6366F1DD 100%)',
+            color: 'white',
+            p: 2,
+            cursor: mode === 'milestone' ? 'grab' : 'default',
+            '&:active': {
+              cursor: mode === 'milestone' ? 'grabbing' : 'default'
+            }
+          }}
+          {...(mode === 'milestone' ? listeners : {})}
+        >
+          <Stack direction="row" justifyContent="space-between" alignItems="center">
             <Typography 
               variant="subtitle1" 
               fontWeight="bold"
               sx={{ 
-                color: mode === 'milestone' ? milestoneColor : 'text.primary',
-                cursor: mode === 'milestone' ? 'grab' : 'default'
+                color: 'white',
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)'
               }}
             >
               {container.title}
             </Typography>
+            
             <Chip 
               label={tasks.length} 
-              size="small" 
-              variant="outlined"
+              size="small"
               sx={{
-                borderColor: tasks.length > 0 ? milestoneColor : 'divider',
-                color: tasks.length > 0 ? milestoneColor : 'text.secondary'
+                backgroundColor: 'rgba(255,255,255,0.2)',
+                color: 'white',
+                border: '1px solid rgba(255,255,255,0.3)',
+                fontWeight: 600
               }}
             />
           </Stack>
           
-   
-          
-          {/* For milestones, show derived due date from tasks */}
+          {/* Milestone metadata */}
           {mode === 'milestone' && tasks.length > 0 && (
             (() => {
               const taskDueDates = tasks
@@ -101,18 +116,43 @@ const SortableColumn = ({
                 .filter(Boolean)
                 .map(date => new Date(date));
               
+              const upcomingTasks = tasks.filter(task => 
+                task.due_date && new Date(task.due_date) > new Date()
+              ).length;
+              
+              const overdueTasks = tasks.filter(task => 
+                task.due_date && new Date(task.due_date) < new Date() && task.status !== 'complete'
+              ).length;
+              
               if (taskDueDates.length > 0) {
                 const latestDueDate = new Date(Math.max(...taskDueDates));
                 return (
-                  <Typography variant="caption" color="text.secondary" display="block">
-                    Latest due: {latestDueDate.toLocaleDateString()}
-                  </Typography>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
+                    <Typography variant="caption" sx={{ 
+                      color: 'rgba(255,255,255,0.9)',
+                      fontSize: '0.7rem'
+                    }}>
+                      Due: {latestDueDate.toLocaleDateString()}
+                    </Typography>
+                    {overdueTasks > 0 && (
+                      <Typography variant="caption" sx={{ 
+                        color: 'white',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        backgroundColor: '#d93636',
+                        padding: '.1rem .5rem',
+                        borderRadius: '5rem'
+                      }}>
+                        {overdueTasks} overdue
+                      </Typography>
+                    )}
+                  </Stack>
                 );
               }
               return null;
             })()
           )}
-        </CardContent>
+        </Box>
 
         {children}
       </Card>
@@ -129,13 +169,16 @@ const DroppableArea = ({ container, tasks, config, children }) => {
     <Box
       ref={setNodeRef}
       sx={{
-        minHeight: 100,
-        maxHeight: 'calc(100vh - 300px)', // Prevent endless scroll
+        flex: 1,
+        minHeight: 120,
+        maxHeight: 'calc(100vh - 420px)', // Consistent scrollable area
         overflowY: 'auto',
-        p: 1,
-        backgroundColor: isOver ? 'action.hover' : 'transparent',
-        borderRadius: 1,
+        p: 1.5,
+        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+        borderRadius: '0 0 8px 8px',
         transition: 'background-color 0.2s ease',
+        
+        // Custom scrollbar
         '&::-webkit-scrollbar': {
           width: 6,
         },
@@ -145,6 +188,9 @@ const DroppableArea = ({ container, tasks, config, children }) => {
         '&::-webkit-scrollbar-thumb': {
           backgroundColor: 'rgba(0,0,0,0.2)',
           borderRadius: 3,
+          '&:hover': {
+            backgroundColor: 'rgba(0,0,0,0.3)',
+          }
         },
       }}
     >
@@ -163,6 +209,7 @@ export const KanbanColumn = ({
 }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { openModal } = useModal();
 
   // Organize tasks by hierarchy (parent tasks with their subtasks)
   const organizeTasksWithSubtasks = (tasks) => {
@@ -171,19 +218,30 @@ export const KanbanColumn = ({
     
     const organizedTasks = [];
     
+    // Sort parent tasks by priority: overdue > due soon > no due date > completed
     parentTasks
       .sort((a, b) => {
-        // Sort by due date, then by order_index, then by created_at
-        const dateA = a.due_date ? new Date(a.due_date) : null;
-        const dateB = b.due_date ? new Date(b.due_date) : null;
-
-        if (!dateA && !dateB) {
-          return (a.order_index || 0) - (b.order_index || 0);
-        }
-        if (!dateA) return 1;
-        if (!dateB) return -1;
-
-        return dateA - dateB;
+        // First sort by completion status
+        const aComplete = a.status === 'complete';
+        const bComplete = b.status === 'complete';
+        if (aComplete !== bComplete) return aComplete ? 1 : -1;
+        
+        // Then by due date priority
+        const aDate = a.due_date ? new Date(a.due_date) : null;
+        const bDate = b.due_date ? new Date(b.due_date) : null;
+        const now = new Date();
+        
+        if (!aDate && !bDate) return (a.order_index || 0) - (b.order_index || 0);
+        if (!aDate) return 1;
+        if (!bDate) return -1;
+        
+        const aOverdue = aDate < now;
+        const bOverdue = bDate < now;
+        
+        if (aOverdue && !bOverdue) return -1;
+        if (!aOverdue && bOverdue) return 1;
+        
+        return aDate - bDate;
       })
       .forEach(parentTask => {
         organizedTasks.push(parentTask);
@@ -203,36 +261,52 @@ export const KanbanColumn = ({
   const taskIds = organizedTasks.map(task => `task-${task.id}`);
 
   const handleAddTask = () => {
-    const currentParams = new URLSearchParams(searchParams.toString());
-    currentParams.set('modal', 'create');
-    currentParams.set('collection', 'task');
+    const fullConfig = collections[config.name] || config;
     
-    // Pre-populate based on mode and container
+    // Prepare initial data based on mode and container
+    const initialData = {};
+    
     if (mode === 'milestone') {
-      currentParams.set('milestone_id', container.id);
-      // Get project_id from the milestone relationship
+      const milestoneId = container.id.replace('milestone-', '');
+      initialData.milestone_id = milestoneId;
+      
+      // Get project_id from container data or first task
       if (container.data?.project_id) {
-        currentParams.set('project_id', container.data.project_id);
+        initialData.project_id = container.data.project_id;
+      } else if (tasks.length > 0 && tasks[0].project_id) {
+        initialData.project_id = tasks[0].project_id;
+      }
+      
+      // Get company_id from first task if available
+      if (tasks.length > 0 && tasks[0].company_id) {
+        initialData.company_id = tasks[0].company_id;
       }
     } else if (mode === 'support') {
-      currentParams.set('status', container.id);
-      currentParams.set('task_type', 'support');
-      // Get project_id from context (this should be passed down)
+      const status = container.id.replace('status-', '');
+      initialData.status = status;
+      initialData.task_type = 'support';
+      
+      // Get project_id from container
       if (container.projectId) {
-        currentParams.set('project_id', container.projectId);
+        initialData.project_id = container.projectId;
       }
     }
     
-    router.push(`${window.location.pathname}?${currentParams.toString()}`);
+    openModal('create', { 
+      config: fullConfig,
+      initialData
+    });
   };
 
   const handleTaskClick = (task) => {
-    const currentParams = new URLSearchParams(searchParams.toString());
-    currentParams.set('modal', 'edit');
-    currentParams.set('id', task.id);
-    currentParams.set('collection', 'task');
-    router.push(`${window.location.pathname}?${currentParams.toString()}`);
+    const fullConfig = collections[config.name] || config;
+    openModal('edit', { 
+      config: fullConfig,
+      recordId: task.id
+    });
   };
+
+  const milestoneColor = mode === 'milestone' ? getMilestoneColor(milestoneIndex) : '#6366F1';
 
   return (
     <SortableColumn 
@@ -243,8 +317,8 @@ export const KanbanColumn = ({
       milestoneIndex={milestoneIndex}
     >
       <DroppableArea container={container} tasks={tasks} config={config}>
-        <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-          <Stack spacing={0}>
+        <Stack spacing={0.5}>
+          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
             {organizedTasks.map((task) => (
               <KanbanTaskCard 
                 key={task.id}
@@ -254,30 +328,35 @@ export const KanbanColumn = ({
                 onTaskClick={handleTaskClick}
               />
             ))}
+          </SortableContext>
 
-            {/* Add Task Button */}
-            <Button
-              variant="outlined"
-              startIcon={<Plus size={16} />}
-              onClick={handleAddTask}
-              size="small"
-              sx={{ 
-                mt: 1,
-                borderStyle: 'dashed',
-                color: 'text.secondary',
-                borderColor: 'divider',
-                '&:hover': {
-                  borderStyle: 'solid',
-                  borderColor: mode === 'milestone' ? getMilestoneColor(milestoneIndex) : 'primary.main',
-                  color: mode === 'milestone' ? getMilestoneColor(milestoneIndex) : 'primary.main',
-                  backgroundColor: 'transparent'
-                }
-              }}
-            >
-              Add Task
-            </Button>
-          </Stack>
-        </SortableContext>
+          {/* Add Task Button */}
+          <Button
+            variant="outlined"
+            startIcon={<Plus size={16} />}
+            onClick={handleAddTask}
+            size="small"
+            fullWidth
+            sx={{ 
+              mt: 1,
+              borderStyle: 'dashed',
+              borderColor: `${milestoneColor}40`,
+              color: milestoneColor,
+              backgroundColor: 'transparent',
+              '&:hover': {
+                borderStyle: 'solid',
+                borderColor: milestoneColor,
+                backgroundColor: `${milestoneColor}08`,
+                color: milestoneColor
+              },
+              '&:active': {
+                backgroundColor: `${milestoneColor}12`
+              }
+            }}
+          >
+            Add Task
+          </Button>
+        </Stack>
       </DroppableArea>
     </SortableColumn>
   );

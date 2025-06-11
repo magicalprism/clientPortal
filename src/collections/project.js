@@ -262,16 +262,6 @@ export const project = {
   tab: 'Content',
   database: false,
   showAll: true,
-  filters: [
-    { name: 'mime_type', label: 'File Type' },
-    { name: 'element_id', label: 'Page or Element'  },
-], // 👈 multiple fields used in dropdowns
-  sortOptions: [ // ✅ Add this here
-      { value: 'title:asc', label: 'Title (A–Z)' },
-      { value: 'title:desc', label: 'Title (Z–A)' },
-      { value: 'created_at:desc', label: 'Newest Created' },
-      { value: 'created_at:asc', label: 'Oldest Created' }
-    ],
   relation: {
     table: 'media',
     labelField: 'title',

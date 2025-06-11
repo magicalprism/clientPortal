@@ -14,7 +14,8 @@ import {
   CircularProgress,
   Stack,
   Tooltip,
-  Chip
+  Chip,
+  Divider
 } from '@mui/material';
 import { 
   DndContext, 
@@ -34,7 +35,7 @@ import {
 import { 
   restrictToFirstScrollableAncestor,
 } from '@dnd-kit/modifiers';
-import { Kanban, ListChecks } from '@phosphor-icons/react';
+import { Kanban, ListChecks, Calendar, CheckCircle } from '@phosphor-icons/react';
 
 import { useProjectKanban } from '@/hooks/kanban/useProjectKanban';
 import { KanbanColumn } from './KanbanColumn';
@@ -214,7 +215,7 @@ export const ProjectKanbanBoard = ({
     if (onTaskUpdate) {
       onTaskUpdate(updatedTask);
     }
-    // Optionally refresh data if task was marked complete and we're not showing completed
+    // Refresh data if task was marked complete and we're not showing completed
     if (!localShowCompleted && updatedTask.status === 'complete') {
       loadData();
     }
@@ -223,7 +224,7 @@ export const ProjectKanbanBoard = ({
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" alignItems="center" minHeight={embedded ? 200 : 400}>
-        <CircularProgress size={embedded ? 24 : 40} />
+        <CircularProgress size={embedded ? 24 : 40} sx={{ color: 'primary.500' }} />
         <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
           Loading {localMode === 'milestone' ? 'milestones' : 'support tasks'}...
         </Typography>
@@ -248,28 +249,41 @@ export const ProjectKanbanBoard = ({
 
   const totalTasks = getTotalTaskCount();
   const completedTasks = getCompletedTaskCount();
+  const pendingTasks = totalTasks - completedTasks;
 
   return (
-    <Box>
+    <Box sx={{ pb: 3 }}>
       {/* Header Controls */}
       {!embedded && (
         <Card sx={{ mb: 3 }}>
           <CardContent>
             <Stack direction="row" justifyContent="space-between" alignItems="center" flexWrap="wrap" gap={2}>
               <Box>
-                <Typography variant="h6" gutterBottom>
+                <Typography variant="h6" gutterBottom sx={{ mb: 1 }}>
                   Task Board
                 </Typography>
-                <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" color="text.secondary">
-                    {totalTasks} total tasks
-                  </Typography>
-                  <Chip 
-                    label={`${completedTasks} completed`} 
-                    size="small" 
-                    color="success" 
-                    variant="outlined"
-                  />
+                <Stack direction="row" spacing={2} alignItems="center">
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Typography variant="body2" color="text.secondary">
+                      {totalTasks} tasks
+                    </Typography>
+                    <Chip 
+                      icon={<CheckCircle size={14} />}
+                      label={`${completedTasks} done`}
+                      size="small" 
+                      color="success" 
+                      variant="outlined"
+                    />
+                    {pendingTasks > 0 && (
+                      <Chip 
+                        icon={<Calendar size={14} />}
+                        label={`${pendingTasks} pending`}
+                        size="small" 
+                        color="primary" 
+                        variant="outlined"
+                      />
+                    )}
+                  </Stack>
                 </Stack>
               </Box>
               
@@ -279,7 +293,7 @@ export const ProjectKanbanBoard = ({
                   <Tooltip title="Milestone View" placement="top">
                     <Kanban 
                       size={20} 
-                      color={localMode === 'milestone' ? '#3B82F6' : '#9CA3AF'} 
+                      color={localMode === 'milestone' ? '#6366F1' : '#9CA3AF'} 
                     />
                   </Tooltip>
                   
@@ -288,11 +302,18 @@ export const ProjectKanbanBoard = ({
                     onChange={handleModeToggle}
                     size="small"
                     sx={{
-                      '& .MuiSwitch-thumb': {
-                        bgcolor: localMode === 'support' ? '#8B5CF6' : '#3B82F6'
+                      '& .MuiSwitch-switchBase': {
+                        '&.Mui-checked': {
+                          color: '#6366F1',
+                          '& + .MuiSwitch-track': {
+                            backgroundColor: '#6366F1',
+                            opacity: 0.5
+                          }
+                        }
                       },
                       '& .MuiSwitch-track': {
-                        bgcolor: localMode === 'support' ? '#8B5CF620' : '#3B82F620'
+                        backgroundColor: '#6366F1',
+                        opacity: 0.3
                       }
                     }}
                   />
@@ -300,10 +321,12 @@ export const ProjectKanbanBoard = ({
                   <Tooltip title="Support View" placement="top">
                     <ListChecks 
                       size={20} 
-                      color={localMode === 'support' ? '#8B5CF6' : '#9CA3AF'} 
+                      color={localMode === 'support' ? '#6366F1' : '#9CA3AF'} 
                     />
                   </Tooltip>
                 </Stack>
+                
+                <Divider orientation="vertical" flexItem />
                 
                 {/* Show Completed Toggle */}
                 <FormControlLabel
@@ -312,9 +335,21 @@ export const ProjectKanbanBoard = ({
                       checked={localShowCompleted} 
                       onChange={handleCompletedToggle}
                       size="small"
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': {
+                          color: '#6366F1'
+                        },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#6366F1'
+                        }
+                      }}
                     />
                   }
-                  label="Show completed"
+                  label={
+                    <Typography variant="body2" color="text.secondary">
+                      Show completed
+                    </Typography>
+                  }
                   sx={{ m: 0 }}
                 />
               </Stack>
@@ -340,6 +375,14 @@ export const ProjectKanbanBoard = ({
                 checked={localMode === 'support'}
                 onChange={handleModeToggle}
                 size="small"
+                sx={{
+                  '& .MuiSwitch-switchBase.Mui-checked': {
+                    color: '#6366F1'
+                  },
+                  '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                    backgroundColor: '#6366F1'
+                  }
+                }}
               />
             </Tooltip>
           </Stack>
@@ -360,19 +403,24 @@ export const ProjectKanbanBoard = ({
             display: 'flex',
             gap: 2,
             overflowX: 'auto',
-            pb: 2,
-            minHeight: embedded ? 300 : 400,
-            maxHeight: embedded ? 500 : 'calc(100vh - 250px)',
+            pb: 3, // Bottom padding for scrolling
+            minHeight: embedded ? 350 : 450,
+            maxHeight: embedded ? 500 : 'calc(100vh - 200px)',
+            
+            // Custom horizontal scrollbar
             '&::-webkit-scrollbar': {
               height: 8,
             },
             '&::-webkit-scrollbar-track': {
-              backgroundColor: 'rgba(0,0,0,0.1)',
+              backgroundColor: 'rgba(0,0,0,0.05)',
               borderRadius: 4,
             },
             '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(0,0,0,0.3)',
+              backgroundColor: 'rgba(0,0,0,0.2)',
               borderRadius: 4,
+              '&:hover': {
+                backgroundColor: 'rgba(0,0,0,0.3)',
+              }
             },
           }}
         >
@@ -411,16 +459,23 @@ export const ProjectKanbanBoard = ({
       {/* Empty State */}
       {containers.length === 0 && (
         <Card>
-          <CardContent sx={{ textAlign: 'center', py: 4 }}>
+          <CardContent sx={{ textAlign: 'center', py: 6 }}>
+            <Box sx={{ mb: 2 }}>
+              {localMode === 'milestone' ? (
+                <Kanban size={48} color="#9CA3AF" />
+              ) : (
+                <ListChecks size={48} color="#9CA3AF" />
+              )}
+            </Box>
             <Typography variant="h6" color="text.secondary" gutterBottom>
               {localMode === 'milestone' 
                 ? 'No milestones found' 
                 : 'No support tasks found'}
             </Typography>
-            <Typography variant="body2" color="text.secondary">
+            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
               {localMode === 'milestone' 
-                ? 'Create milestones for this project to organize tasks.' 
-                : 'No support tasks exist for this project yet.'}
+                ? 'Create milestones for this project to organize your tasks into phases or deliverables.' 
+                : 'No support tasks exist for this project yet. Support tasks help track customer requests and issues.'}
             </Typography>
           </CardContent>
         </Card>

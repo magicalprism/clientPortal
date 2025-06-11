@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
-  Tabs, Tab, Divider, Stack, Button, Typography, Select, MenuItem, TextField
+  Tabs, Tab, Divider, Stack, Button, Typography, Select, MenuItem, TextField, FormControlLabel, Switch
 } from '@mui/material';
 import { FilterButton, FilterPopover, useFilterContext } from '@/components/core/filter-button';
 import { useCollectionSelection } from '@/components/views/components/CollectionSelectionContext';
@@ -32,53 +32,52 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
     const fetchOptions = async () => {
       if (!filterKey) return;
 
-      console.log('[Relationship Filter] Starting fetch for:', filter.name);
+
       
       setLoading(true);
       setError(null);
       
       try {
         let query = supabase.from(filter.relation.table).select(`id, ${filter.relation.labelField}`);
-        console.log(`[Relationship Filter] Base query: SELECT id, ${filter.relation.labelField} FROM ${filter.relation.table}`);
+  
         
         // Apply any dynamic filters
         if (filter.relation.filter) {
-          console.log(`[Relationship Filter] Has relation filter:`, filter.relation.filter);
+
           const resolvedFilter = resolveDynamicFilter(filter.relation.filter, { record: filters });
-          console.log(`[Relationship Filter] Resolved filter:`, resolvedFilter);
+
           
           Object.entries(resolvedFilter).forEach(([key, val]) => {
             if (val) {
-              console.log(`[Relationship Filter] Adding filter: ${key} = ${val}`);
+
               query = query.eq(key, val);
             }
           });
         }
 
-        console.log('[Relationship Filter] Executing query...');
+
         const { data, error } = await query;
-        console.log(`[Relationship Filter] Query result:`, { data, error, dataLength: data?.length });
+
         
         if (error) {
-          console.error(`[Relationship Filter] Query error:`, error);
+ 
           setError(error.message);
           setOptions([]);
         } else if (data) {
           const labelField = filter.relation.labelField;
-          console.log(`[Relationship Filter] Using labelField: ${labelField}`);
-          console.log(`[Relationship Filter] Sample data:`, data.slice(0, 3));
+
           
           const sortedData = [...data].sort((a, b) =>
             (a[labelField] || '').localeCompare(b[labelField] || '')
           );
           setOptions(sortedData);
-          console.log(`[Relationship Filter] Set ${sortedData.length} options`);
+       
         } else {
-          console.log('[Relationship Filter] No data returned');
+
           setOptions([]);
         }
       } catch (err) {
-        console.error(`[Relationship Filter] Fetch error:`, err);
+
         setError(err.message);
         setOptions([]);
       }
@@ -88,18 +87,31 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
     fetchOptions();
   }, [filterKey]); // Only depend on the memoized filterKey, not the entire filters object
 
+  // Boolean filter
+  if (filter.type === 'boolean') {
+    return (
+      <FormControlLabel
+        control={
+          <Switch
+            checked={Boolean(value)}
+            onChange={(e) => {
+              const nextValue = e.target.checked;
+        
+              setValue(nextValue);
+            }}
+          />
+        }
+        label={filter.label}
+      />
+    );
+  }
+
   // Relationship filter
   if (filter.type === 'relationship' && filter.relation) {
     const isMultiple = filter.multiple || false;
     const currentValue = isMultiple ? (Array.isArray(value) ? value : []) : value;
     
-    console.log('[Relationship Filter] Rendering relationship select:', {
-      isMultiple,
-      currentValue,
-      optionsLength: options.length,
-      loading,
-      error
-    });
+
 
     if (error) {
       return (
@@ -115,27 +127,27 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
         multiple={isMultiple}
         value={currentValue}
         onChange={(e) => {
-          console.log('[Relationship Filter] Select onChange:', e.target.value);
+      
           setValue(e.target.value);
         }}
         displayEmpty
         size="small"
         disabled={loading}
         renderValue={(selected) => {
-          console.log('[Relationship Filter] renderValue called with:', selected);
+
           if (isMultiple && Array.isArray(selected)) {
             if (selected.length === 0) return 'All';
             const labels = selected.map(id => {
               const option = options.find(opt => opt.id === id);
               const label = option ? option[filter.relation.labelField] : `ID: ${id}`;
-              console.log(`[Relationship Filter] Label lookup: ${id} -> ${label}`);
+       
               return label;
             });
             return labels.join(', ');
           } else if (selected) {
             const option = options.find(opt => opt.id === selected);
             const label = option ? option[filter.relation.labelField] : `ID: ${selected}`;
-            console.log(`[Relationship Filter] Single label lookup: ${selected} -> ${label}`);
+
             return label;
           }
           return 'All';
@@ -148,7 +160,7 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
           <MenuItem disabled>No options available</MenuItem>
         ) : (
           options.map((opt) => {
-            console.log('[Relationship Filter] Rendering option:', opt);
+    
             return (
               <MenuItem key={opt.id} value={opt.id}>
                 {opt[filter.relation.labelField] || `Untitled (${opt.id})`}
@@ -165,11 +177,7 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
     const isMultiple = filter.multiple || false;
     const currentValue = isMultiple ? (Array.isArray(value) ? value : []) : value;
     
-    console.log('[Regular Filter] Rendering regular select:', {
-      isMultiple,
-      currentValue,
-      optionsLength: filter.options.length
-    });
+
     
     return (
       <Select
@@ -202,7 +210,7 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
   }
 
   // Text filter
-  console.log('[Text Filter] Rendering text field');
+
   return (
     <TextField
       fullWidth
@@ -214,23 +222,19 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
   );
 }
 
-
-
-
-
 function TextFilterPopover({ label, filter }) {
   const { anchorEl, onApply, onClose, open, value: initialValue } = useFilterContext();
   const [value, setValue] = useState('');
 
   useEffect(() => {
-    if (filter.multiple) {
-      // For multi-select, ensure we start with an array
+    if (filter.type === 'boolean') {
+      setValue(initialValue === undefined ? false : Boolean(initialValue));
+    } else if (filter.multiple) {
       setValue(Array.isArray(initialValue) ? initialValue : (initialValue ? [initialValue] : []));
     } else {
-      // For single-select, use the value as-is
       setValue(initialValue ?? '');
     }
-  }, [initialValue, filter.multiple]);
+  }, [initialValue, filter.multiple, filter.type]);
 
   return (
     <FilterPopover anchorEl={anchorEl} onClose={onClose} open={open} title={`Filter by ${label}`}>
@@ -299,12 +303,8 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
   const hasFilters = Object.values(filters).some(Boolean);
   const tabValue = filters[tabFilter?.name] ?? tabFilter?.options?.[0]?.value ?? '';
 
-
-
   return (
-    <div 
-      
-    >
+    <div>
       {tabFilter && (
         <>
           <Tabs
@@ -324,93 +324,94 @@ export function CollectionFilters({ config, filters, onChange, sortDir, onSortCh
       <Stack direction="row" spacing={2} sx={{ px: 0, py: 0, alignItems: 'center', flexWrap: 'wrap' }}>
         <Stack direction="row" spacing={2} sx={{ flex: '1 1 auto', flexWrap: 'wrap' }}>
         
-  {otherFilters.map((filter) => {
-  const value = filters[filter.name] || (filter.multiple ? [] : '');
-  let displayValue = '';
+          {otherFilters.map((filter) => {
+            const filterValue = filters[filter.name] || (filter.multiple ? [] : '');
+            let displayValue = '';
 
+            // Handle boolean filters
+            if (filter.type === 'boolean') {
+              displayValue = filterValue === true ? 'Yes' : filterValue === false ? 'No' : '';
+            }
+            // Handle multi-select arrays
+            else if (filter.multiple && Array.isArray(filterValue)) {
+              if (filterValue.length === 0) {
+                displayValue = '';
+              } else if (filter.type === 'select' && filter.options) {
+                // Regular select options
+                const labels = filterValue.map(val => {
+                  const option = filter.options.find(opt => (opt.value || opt) === val);
+                  const label = option ? (option.label || option) : val;
+                  return label;
+                });
+                displayValue = labels.join(', ');
+              } else if (filter.type === 'relationship' && filter.relation) {
+                // Relationship options - we need to fetch these or cache them
+                // For now, show IDs - you might want to implement a lookup cache
+                displayValue = filterValue.map(id => `ID: ${id}`).join(', ');
+         
+              } else {
+                displayValue = filterValue.join(', ');
+              }
+            } 
+            // Handle single-select values
+            else if (!filter.multiple && filter.type === 'select' && filter.options) {
+              const selectedOption = filter.options.find(opt => (opt.value || opt) === filterValue);
+              displayValue = selectedOption ? (selectedOption.label || selectedOption) : filterValue;
+            }
+            // Handle single relationship values
+            else if (!filter.multiple && filter.type === 'relationship' && filterValue) {
+              // For single relationship, show ID for now
+              displayValue = `ID: ${filterValue}`;
+             
+            }
+            // Handle string values that should be arrays (fallback)
+            else if (filter.multiple && typeof filterValue === 'string' && filterValue.includes(',')) {
+   
+              const arrayValue = filterValue.split(',').map(v => v.trim());
+              if (filter.type === 'select' && filter.options) {
+                const labels = arrayValue.map(val => {
+                  const option = filter.options.find(opt => (opt.value || opt) === val);
+                  return option ? (option.label || option) : val;
+                });
+                displayValue = labels.join(', ');
+              } else {
+                displayValue = arrayValue.join(', ');
+              }
+            }
+            // Default case
+            else {
+              displayValue = filterValue;
+            }
 
+            // Truncate long display values
+            const maxDisplayLength = 30;
+            const truncatedDisplayValue = displayValue && displayValue.length > maxDisplayLength 
+              ? displayValue.substring(0, maxDisplayLength) + '...' 
+              : displayValue;
 
-  // Handle multi-select arrays
-  if (filter.multiple && Array.isArray(value)) {
-    if (value.length === 0) {
-      displayValue = '';
-    } else if (filter.type === 'select' && filter.options) {
-      // Regular select options
-      const labels = value.map(val => {
-        const option = filter.options.find(opt => (opt.value || opt) === val);
-        const label = option ? (option.label || option) : val;
-       
-        return label;
-      });
-      displayValue = labels.join(', ');
-    } else if (filter.type === 'relationship' && filter.relation) {
-      // Relationship options - we need to fetch these or cache them
-      // For now, show IDs - you might want to implement a lookup cache
-      displayValue = value.map(id => `ID: ${id}`).join(', ');
-      console.log(`[Relationship Display] Showing IDs for now:`, displayValue);
-    } else {
-      displayValue = value.join(', ');
-    }
-  } 
-  // Handle single-select values
-  else if (!filter.multiple && filter.type === 'select' && filter.options) {
-    const selectedOption = filter.options.find(opt => (opt.value || opt) === value);
-    displayValue = selectedOption ? (selectedOption.label || selectedOption) : value;
-  }
-  // Handle single relationship values
-  else if (!filter.multiple && filter.type === 'relationship' && value) {
-    // For single relationship, show ID for now
-    displayValue = `ID: ${value}`;
-    console.log(`[Single Relationship Display] Showing ID for now:`, displayValue);
-  }
-  // Handle string values that should be arrays (fallback)
-  else if (filter.multiple && typeof value === 'string' && value.includes(',')) {
-    console.log(`[Fallback] Converting string to array: ${value}`);
-    const arrayValue = value.split(',').map(v => v.trim());
-    if (filter.type === 'select' && filter.options) {
-      const labels = arrayValue.map(val => {
-        const option = filter.options.find(opt => (opt.value || opt) === val);
-        return option ? (option.label || option) : val;
-      });
-      displayValue = labels.join(', ');
-    } else {
-      displayValue = arrayValue.join(', ');
-    }
-  }
-  // Default case
-  else {
-    displayValue = value;
-  }
-
-  // Truncate long display values
-  const maxDisplayLength = 30;
-  const truncatedDisplayValue = displayValue && displayValue.length > maxDisplayLength 
-    ? displayValue.substring(0, maxDisplayLength) + '...' 
-    : displayValue;
-
-
-
-  return (
-    <FilterButton
-      key={filter.name}
-      displayValue={truncatedDisplayValue}
-      label={filter.label}
-      value={value}
-      onFilterApply={(newValue) => {
-        console.log(`[Filter Apply] ${filter.name}:`, newValue);
-        onChange({ ...filters, [filter.name]: newValue });
-      }}
-      onFilterDelete={() => {
-        console.log(`[Filter Delete] ${filter.name}`);
-        onChange({ ...filters, [filter.name]: filter.multiple ? [] : '' });
-      }}
-      popover={<TextFilterPopover label={filter.label} filter={filter} />}
-    />
-  );
-})}
-
-
-          
+            return (
+              <FilterButton
+                key={filter.name}
+                displayValue={truncatedDisplayValue}
+                label={filter.label}
+                value={filterValue}
+                onFilterApply={(newValue) => {
+               
+                  onChange(prev => ({ ...prev, [filter.name]: newValue }));
+                }}
+                onFilterDelete={() => {
+           
+                  onChange({
+                    ...filters,
+                    [filter.name]: filter.type === 'boolean'
+                      ? undefined
+                      : (filter.multiple ? [] : '')
+                  });
+                }}
+                popover={<TextFilterPopover label={filter.label} filter={filter} />}
+              />
+            );
+          })}
 
           {hasFilters && <Button onClick={handleClearFilters}>Clear filters</Button>}
         </Stack>

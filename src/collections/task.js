@@ -5,7 +5,7 @@ export const task = {
   editPathPrefix: '/dashboard/task',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
-  defaultView: 'table',
+  defaultView: 'checklist',
   views: {
     table: {
       label: 'Table View',
@@ -19,6 +19,7 @@ export const task = {
          label: 'Kanban View', 
          component: 'KanbanView' 
         },
+        templateTree: { label: 'Task Templates', component: 'TaskTemplateTree' },
         checklist: {
           label: 'Checklist View',
           component: 'ChecklistView'
@@ -253,6 +254,14 @@ export const task = {
 
       }
     },
+          {
+        name: 'is_template',
+        label: 'Is Template',
+         type: 'boolean',
+         defaultValue: false,
+         multiple: false
+
+      },
    
     { 
       name: 'author_id', 
@@ -273,14 +282,22 @@ export const task = {
         name: 'search',
         label: 'Search',
         type: 'text',
-        multiple: false
+        multiple: false,
+         excludeFromViews: ['templateTree', 'calendar'],
+      },
+      {
+        name: 'is_template',
+        label: 'Is Template',
+         type: 'boolean',
+         multiple: false,
+          excludeFromViews: ['templateTree'],
+
       },
     {
       name: 'status',
       type: 'select',
       label: 'Status',
       multiple: true,
-      defaultValue: [],
       options: [
         { value: 'not_started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
@@ -289,7 +306,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      excludeFromViews: ['calendar'],
+      excludeFromViews: ['calendar','templateTree'],
       defaultValue: ['todo', 'not_started'],
     },
     {
@@ -304,21 +321,20 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       defaultValue: [],
-      excludeFromViews: ['table', 'checklist']
+      excludeFromViews: ['table', 'checklist', 'templateTree']
     },
      {
       name: 'task_type',
       type: 'select',
       label: 'Event Type',
       multiple: true,
-      defaultValue: [],
       options: [
         { value: 'task', label: 'Task' },
         { value: 'vacation', label: 'Vacation' },
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      excludeFromViews: ['calendar'],
+      excludeFromViews: ['calendar', 'templateTree'],
       defaultValue: ['task'],
     },
      {
@@ -326,6 +342,7 @@ export const task = {
     label: 'Assigned to',
     type: 'relationship',
     multiple: false, // ✅ Single-select for assignment (typically one person)
+    excludeFromViews: ['templateTree'],
     relation: {
       table: 'contact',
       labelField: 'title', // ✅ This should show names, not IDs
@@ -341,7 +358,7 @@ export const task = {
         { value: 'due_date:desc', label: 'Due date (newest first)' },
       ],
       defaultValue: 'due_date:asc',
-      excludeFromViews: ['calendar', 'checklist']
+      excludeFromViews: ['calendar', 'checklist', 'templateTree']
     }
   ]
 };

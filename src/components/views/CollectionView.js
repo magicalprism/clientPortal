@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/browser';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { Box } from '@mui/material';
 import ProjectDashboard from '@/components/views/dashboards/ProjectDashboard';
+import TaskTemplateTree from '@/components/views/TaskTemplateTree';
 
 
 
@@ -21,6 +22,7 @@ const componentMap = {
   PrimaryTableView,
   CalendarView,
   ProjectDashboard,
+  TaskTemplateTree,
 };
 
 export default function CollectionView({ config, event, forcedFilters = {}, variant = 'default' }) {
@@ -39,7 +41,7 @@ export default function CollectionView({ config, event, forcedFilters = {}, vari
 
 	
   const handlePageChange = (event, newPage) => {
-  console.log('[Pagination] Changing page to:', newPage);
+
   setPage(newPage);
     setPage(newPage);
 };
@@ -68,14 +70,14 @@ useEffect(() => {
 useEffect(() => {
   const fetchDefaults = async () => {
     const contactId = await getCurrentContactId();
-    console.log('[fetchDefaults] contactId:', contactId);
+
     
     const fieldDefaults = (config.fields || []).reduce((acc, field) => {
       if (field.defaultToCurrentUser && contactId) {
-        console.log(`[fetchDefaults] setting field ${field.name} to contactId: ${contactId}`);
+
         acc[field.name] = contactId;
       } else if (field.defaultValue !== undefined) {
-        console.log(`[fetchDefaults] setting field ${field.name} to defaultValue: ${field.defaultValue}`);
+
         acc[field.name] = field.defaultValue;
       }
       return acc;
@@ -83,10 +85,10 @@ useEffect(() => {
     
     const filterDefaults = (config.filters || []).reduce((acc, filter) => {
       if (filter.defaultToCurrentUser && contactId) {
-        console.log(`[fetchDefaults] setting filter ${filter.name} to contactId: ${contactId}`);
+ 
         acc[filter.name] = filter.multiple ? [contactId] : contactId;
       } else if (filter.defaultValue !== undefined) {
-        console.log(`[fetchDefaults] setting filter ${filter.name} to defaultValue:`, filter.defaultValue);
+
         // ✅ Don't modify the defaultValue - use it as-is since it should already be the correct type
         acc[filter.name] = filter.defaultValue;
       } else if (filter.multiple) {
@@ -97,7 +99,7 @@ useEffect(() => {
     }, {});
     
     const mergedDefaults = { ...fieldDefaults, ...filterDefaults };
-    console.log('[fetchDefaults] final default values:', mergedDefaults);
+
     setDefaultValues(mergedDefaults);
     setLoadingUser(false);
   };

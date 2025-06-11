@@ -6,28 +6,25 @@ import {
   CardContent,
   Typography,
   Chip,
-  Stack,
-  Avatar,
   Box,
   IconButton,
-  Checkbox,
+  Avatar,
+  AvatarGroup,
   Tooltip
 } from '@mui/material';
 import { 
   Calendar, 
-  User, 
-  Flag, 
   CheckCircle,
   Circle,
-  CaretRight
+  Flag
 } from '@phosphor-icons/react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
-import { getStatusColor, getPriorityColor } from '@/data/statusColors';
-import { useCollectionSave } from '@/hooks/useCollectionSave';
+import { getStatusColor, getPriorityColor, getTaskTypeColor } from '@/data/statusColors';
+import { toggleTaskComplete } from '@/lib/supabase/queries/table/task';
 
 const SortableTaskCard = ({ 
   task, 
@@ -52,7 +49,6 @@ const SortableTaskCard = ({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging || sortableIsDragging ? 0.8 : 1,
-    cursor: isSubtask ? 'pointer' : (isDragging ? 'grabbing' : 'grab'),
   };
 
   return (
@@ -74,24 +70,27 @@ export const KanbanTaskCard = ({
   const [isCompleting, setIsCompleting] = useState(false);
   
   const isSubtask = !!task.parent_id;
-  const statusConfig = getStatusColor(task.status);
+  const statusConfig = getStatusColor(task.status, config);
   const priorityConfig = getPriorityColor(task.priority);
-
-  const { updateLocalValue, saveRecord } = useCollectionSave({
-    config,
-    record: task,
-    setRecord: (updatedTask) => {
-      onTaskUpdate && onTaskUpdate(updatedTask);
-    },
-    mode: 'edit'
-  });
+  const typeConfig = getTaskTypeColor(task.task_type);
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
     const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = date - now;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) return 'Today';
+    if (diffDays === 1) return 'Tomorrow';
+    if (diffDays === -1) return 'Yesterday';
+    if (diffDays < -1) return `${Math.abs(diffDays)} days ago`;
+    if (diffDays > 1 && diffDays <= 7) return `${diffDays} days`;
+    
     return date.toLocaleDateString('en-US', { 
       month: 'short', 
-      day: 'numeric' 
+      day: 'numeric',
+      year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
     });
   };
 
@@ -101,8 +100,8 @@ export const KanbanTaskCard = ({
   };
 
   const handleTaskClick = (event) => {
-    // Don't trigger if clicking on checkbox or other interactive elements
-    if (event.target.type === 'checkbox' || event.target.closest('button')) {
+    // Don't trigger if clicking on interactive elements
+    if (event.target.closest('button') || event.target.closest('[role="button"]')) {
       return;
     }
 
@@ -123,12 +122,15 @@ export const KanbanTaskCard = ({
     setIsCompleting(true);
     
     try {
-      const newStatus = task.status === 'complete' ? 'todo' : 'complete';
-      updateLocalValue('status', newStatus);
-      await saveRecord();
+      const { data, error } = await toggleTaskComplete(task.id, task.status);
       
-      if (onTaskUpdate) {
-        onTaskUpdate({ ...task, status: newStatus });
+      if (error) {
+        console.error('Failed to toggle task completion:', error);
+        return;
+      }
+      
+      if (onTaskUpdate && data) {
+        onTaskUpdate(data);
       }
     } catch (error) {
       console.error('Failed to update task status:', error);
@@ -137,198 +139,36 @@ export const KanbanTaskCard = ({
     }
   };
 
-  const getAssigneeAvatar = () => {
-    // TODO: Get actual assignee data with thumbnail from contact table
-    // For now, show initials or placeholder
-    if (task.assigned_id) {
-      // In a real implementation, you'd fetch the contact details
-      // const assignee = task.assigned_id_details;
-      // if (assignee?.thumbnail_id_details?.url) {
-      //   return <Avatar src={assignee.thumbnail_id_details.url} sx={{ width: 20, height: 20 }} />;
-      // }
-      return (
-        <Avatar sx={{ width: 20, height: 20, fontSize: '0.7rem', bgcolor: 'primary.main' }}>
-          {task.assigned_id.toString().charAt(0).toUpperCase()}
+  const getAssigneeAvatars = () => {
+    const assignee = task.assigned_contact;
+    if (!assignee) return null;
+
+    const avatarUrl = assignee.thumbnail_media?.url;
+    const initials = assignee.first_name && assignee.last_name 
+      ? `${assignee.first_name[0]}${assignee.last_name[0]}`.toUpperCase()
+      : assignee.title?.substring(0, 2).toUpperCase() || '?';
+
+    return (
+      <Tooltip title={assignee.title || `${assignee.first_name} ${assignee.last_name}`}>
+        <Avatar
+          src={avatarUrl}
+          sx={{ 
+            width: isSubtask ? 16 : 20, 
+            height: isSubtask ? 16 : 20, 
+            fontSize: isSubtask ? '0.6rem' : '0.7rem',
+            bgcolor: 'primary.main',
+            border: '1px solid white',
+            cursor: 'pointer'
+          }}
+        >
+          {initials}
         </Avatar>
-      );
-    }
-    return null;
+      </Tooltip>
+    );
   };
 
-  const cardContent = (
-    <Card 
-      elevation={isDragging ? 8 : (isSubtask ? 0 : 1)}
-      sx={{ 
-        cursor: 'pointer',
-        ml: isSubtask ? 2 : 0,
-        mb: isSubtask ? 0.5 : 1,
-        transform: isSubtask ? 'scale(0.95)' : 'none',
-        '&:hover': {
-          elevation: isSubtask ? 2 : 3,
-          transform: isSubtask ? 'scale(0.97)' : 'translateY(-1px)',
-          transition: 'all 0.2s ease'
-        },
-        '&:active': {
-          cursor: 'grabbing'
-        },
-        border: isDragging ? '2px solid' : '1px solid',
-        borderColor: isDragging ? 'primary.main' : 'divider',
-        borderLeft: isSubtask ? '3px solid' : 'none',
-        borderLeftColor: isSubtask ? 'primary.light' : 'none',
-        opacity: task.status === 'complete' ? 0.7 : 1
-      }}
-      onClick={handleTaskClick}
-    >
-      <CardContent sx={{ p: isSubtask ? 1.5 : 2, '&:last-child': { pb: isSubtask ? 1.5 : 2 } }}>
-        {/* Quick Complete Checkbox & Title */}
-        <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1 }}>
-          <Tooltip title={task.status === 'complete' ? 'Mark incomplete' : 'Mark complete'}>
-            <IconButton
-              size="small"
-              onClick={handleQuickComplete}
-              disabled={isCompleting}
-              sx={{ p: 0, mt: 0.25 }}
-            >
-              {task.status === 'complete' ? (
-                <CheckCircle size={16} weight="fill" color={statusConfig.color} />
-              ) : (
-                <Circle size={16} color="#9CA3AF" />
-              )}
-            </IconButton>
-          </Tooltip>
-          
-          {isSubtask && (
-            <CaretRight size={12} color="#9CA3AF" style={{ marginTop: 4 }} />
-          )}
-          
-          <Typography 
-            variant={isSubtask ? 'caption' : 'body2'} 
-            fontWeight={isSubtask ? 'normal' : 'medium'}
-            sx={{ 
-              flex: 1,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              textDecoration: task.status === 'complete' ? 'line-through' : 'none',
-              color: task.status === 'complete' ? 'text.secondary' : 'text.primary'
-            }}
-          >
-            {task.title}
-          </Typography>
-        </Box>
-
-        {/* Status and Priority Chips */}
-        {!isSubtask && (
-          <Stack direction="row" spacing={1} sx={{ mb: 1.5 }} flexWrap="wrap">
-            <Chip 
-              label={statusConfig.label}
-              size="small"
-              sx={{
-                backgroundColor: statusConfig.bg,
-                color: statusConfig.color,
-                border: `1px solid ${statusConfig.color}20`,
-                fontWeight: 500,
-                fontSize: '0.7rem'
-              }}
-            />
-            
-            {task.task_type && task.task_type !== 'task' && (
-              <Chip 
-                label={task.task_type}
-                size="small"
-                variant="outlined"
-                color="secondary"
-                sx={{ fontSize: '0.7rem' }}
-              />
-            )}
-            
-            {task.priority && priorityConfig && (
-              <Chip 
-                icon={<Flag size={12} />}
-                label={priorityConfig.label}
-                size="small"
-                sx={{
-                  backgroundColor: priorityConfig.bg,
-                  color: priorityConfig.color,
-                  border: `1px solid ${priorityConfig.color}20`,
-                  fontSize: '0.7rem'
-                }}
-              />
-            )}
-          </Stack>
-        )}
-
-        {/* Task Details */}
-        <Stack spacing={isSubtask ? 0.5 : 1}>
-          {/* Due Date */}
-          {task.due_date && (
-            <Box display="flex" alignItems="center" gap={0.5}>
-              <Calendar size={isSubtask ? 12 : 14} color={isOverdue(task.due_date) ? '#EF4444' : '#6B7280'} />
-              <Typography 
-                variant="caption" 
-                color={isOverdue(task.due_date) ? 'error' : 'text.secondary'}
-                fontWeight={isOverdue(task.due_date) ? 'bold' : 'normal'}
-              >
-                {isOverdue(task.due_date) ? 'Overdue' : 'Due'} {formatDate(task.due_date)}
-              </Typography>
-            </Box>
-          )}
-
-          {/* Assigned User */}
-          {task.assigned_id && !isSubtask && (
-            <Box display="flex" alignItems="center" gap={0.5}>
-              <User size={14} color="#6B7280" />
-              <Typography variant="caption" color="text.secondary" sx={{ mr: 0.5 }}>
-                Assigned
-              </Typography>
-              {getAssigneeAvatar()}
-            </Box>
-          )}
-
-          {/* Tags - only show for main tasks */}
-          {task.tags && task.tags.length > 0 && !isSubtask && (
-            <Stack direction="row" spacing={0.5} flexWrap="wrap">
-              {task.tags.slice(0, 2).map((tag, index) => (
-                <Chip 
-                  key={index}
-                  label={tag}
-                  size="small"
-                  variant="outlined"
-                  sx={{ 
-                    height: 18,
-                    fontSize: '0.6rem',
-                    '& .MuiChip-label': { px: 0.5 }
-                  }}
-                />
-              ))}
-              {task.tags.length > 2 && (
-                <Typography variant="caption" color="text.secondary">
-                  +{task.tags.length - 2} more
-                </Typography>
-              )}
-            </Stack>
-          )}
-        </Stack>
-
-        {/* Progress indicator for completed tasks */}
-        {task.status === 'complete' && !isSubtask && (
-          <Box 
-            sx={{ 
-              position: 'absolute',
-              top: 8,
-              right: 8,
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              backgroundColor: statusConfig.color
-            }}
-          />
-        )}
-      </CardContent>
-    </Card>
-  );
+  const dueDateColor = isOverdue(task.due_date) ? '#EF4444' : '#6B7280';
+  const isCompleted = task.status === 'complete';
 
   return (
     <SortableTaskCard 
@@ -337,7 +177,206 @@ export const KanbanTaskCard = ({
       isDragging={isDragging}
       isSubtask={isSubtask}
     >
-      {cardContent}
+      <Card 
+        elevation={isDragging ? 8 : (isSubtask ? 0 : 1)}
+        sx={{ 
+          cursor: 'pointer',
+          ml: isSubtask ? 1 : 0,
+          mb: 0.5,
+          transform: isSubtask ? 'scale(0.95)' : 'none',
+          '&:hover': {
+            elevation: isSubtask ? 2 : 3,
+            transform: isSubtask ? 'scale(0.97)' : 'translateY(-1px)',
+            transition: 'all 0.2s ease'
+          },
+          border: isDragging ? '2px solid' : '1px solid',
+          borderColor: isDragging ? 'primary.main' : 'divider',
+          borderLeft: isSubtask ? '3px solid' : 'none',
+          borderLeftColor: isSubtask ? 'primary.light' : 'none',
+          opacity: isCompleted ? 0.75 : 1,
+          position: 'relative'
+        }}
+        onClick={handleTaskClick}
+      >
+        <CardContent sx={{ 
+          p: isSubtask ? 1 : 1.5, 
+          '&:last-child': { pb: isSubtask ? 1 : 1.5 },
+          position: 'relative'
+        }}>
+          {/* Top Row: Status Badge & Due Date */}
+          {!isSubtask && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'flex-start',
+              mb: 1,
+              minHeight: 20
+            }}>
+              {/* Status Badge */}
+              <Chip 
+                label={statusConfig.label}
+                size="small"
+                sx={{
+                  backgroundColor: statusConfig.bg,
+                  color: statusConfig.color,
+                  border: `1px solid ${statusConfig.color}20`,
+                  fontWeight: 500,
+                  fontSize: '0.65rem',
+                  height: 20
+                }}
+              />
+              
+              {/* Due Date */}
+              {task.due_date && (
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <Calendar size={12} color={dueDateColor} />
+                  <Typography 
+                    variant="caption" 
+                    sx={{
+                      color: dueDateColor,
+                      fontWeight: isOverdue(task.due_date) ? 600 : 400,
+                      fontSize: '0.7rem'
+                    }}
+                  >
+                    {formatDate(task.due_date)}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Main Content Row: Checkbox + Title */}
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: 1,
+            mb: isSubtask ? 0.5 : 1
+          }}>
+            {/* Completion Checkbox */}
+            <Tooltip title={isCompleted ? 'Mark incomplete' : 'Mark complete'}>
+              <IconButton
+                size="small"
+                onClick={handleQuickComplete}
+                disabled={isCompleting}
+                sx={{ 
+                  p: 0, 
+                  width: isSubtask ? 20 : 24,
+                  height: isSubtask ? 20 : 24,
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    transform: 'scale(1.1)'
+                  }
+                }}
+              >
+                {isCompleted ? (
+                  <CheckCircle 
+                    size={isSubtask ? 16 : 20} 
+                    weight="fill" 
+                    color={statusConfig.color} 
+                  />
+                ) : (
+                  <Circle 
+                    size={isSubtask ? 16 : 20} 
+                    color="#9CA3AF" 
+                    weight="regular"
+                  />
+                )}
+              </IconButton>
+            </Tooltip>
+            
+            {/* Task Title */}
+            <Typography 
+              variant={isSubtask ? 'caption' : 'body2'} 
+              fontWeight={isSubtask ? 400 : 500}
+              sx={{ 
+                flex: 1,
+                display: '-webkit-box',
+                WebkitLineClamp: isSubtask ? 1 : 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                textDecoration: isCompleted ? 'line-through' : 'none',
+                color: isCompleted ? 'text.secondary' : 'text.primary',
+                fontSize: isSubtask ? '0.75rem' : '0.875rem',
+                lineHeight: isSubtask ? 1.2 : 1.4
+              }}
+            >
+              {task.title}
+            </Typography>
+
+            {/* Due Date for Subtasks (inline) */}
+            {isSubtask && task.due_date && (
+              <Typography 
+                variant="caption" 
+                sx={{
+                  color: dueDateColor,
+                  fontSize: '0.65rem',
+                  fontWeight: isOverdue(task.due_date) ? 600 : 400
+                }}
+              >
+                {formatDate(task.due_date)}
+              </Typography>
+            )}
+          </Box>
+
+          {/* Bottom Row: Additional Info (only for main tasks) */}
+          {!isSubtask && (
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center'
+            }}>
+              {/* Left side: Type & Priority */}
+              <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                {task.task_type && task.task_type !== 'task' && (
+                  <Chip 
+                    label={typeConfig.label}
+                    size="small"
+                    sx={{
+                      backgroundColor: typeConfig.bg,
+                      color: typeConfig.color,
+                      fontSize: '0.6rem',
+                      height: 16,
+                      '& .MuiChip-label': { px: 0.5 }
+                    }}
+                  />
+                )}
+                
+                {task.priority && priorityConfig && (
+                  <Tooltip title={`${priorityConfig.label} Priority`}>
+                    <Flag 
+                      size={12} 
+                      color={priorityConfig.color}
+                      weight="fill"
+                    />
+                  </Tooltip>
+                )}
+              </Box>
+
+              {/* Right side: Assigned Avatar */}
+              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {getAssigneeAvatars()}
+              </Box>
+            </Box>
+          )}
+
+          {/* Completion Indicator */}
+          {isCompleted && (
+            <Box 
+              sx={{ 
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                width: 6,
+                height: 6,
+                borderRadius: '50%',
+                backgroundColor: statusConfig.color,
+                boxShadow: '0 0 0 1px white'
+              }}
+            />
+          )}
+        </CardContent>
+      </Card>
     </SortableTaskCard>
   );
 };
