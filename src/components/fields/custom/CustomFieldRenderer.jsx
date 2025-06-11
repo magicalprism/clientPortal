@@ -11,7 +11,7 @@ import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 // Dynamic import for kanban board
-const ProjectKanbanBoard = dynamic(() => import('@/components/kanban/ProjectKanbanBoard'), {
+const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/ProjectKanbanBoard'), {
   ssr: false,
   loading: () => (
     <Box sx={{ display: 'flex', justifyContent: 'center', p: 2 }}>

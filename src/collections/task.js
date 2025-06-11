@@ -15,9 +15,17 @@ export const task = {
         label: 'Page View', 
         component: 'PageView' 
       },
-      kanban: {
+      projectkanban: {
+         label: 'Project View', 
+         component: 'ProjectKanbanView' ,
+         hideFilters: true 
+
+        },
+         kanban: {
          label: 'Kanban View', 
-         component: 'KanbanView' 
+         component: 'UniversalKanbanView' ,
+         hideFilters: true 
+
         },
         templateTree: { label: 'Task Templates', component: 'TaskTemplateTree' },
         checklist: {
@@ -283,14 +291,14 @@ export const task = {
         label: 'Search',
         type: 'text',
         multiple: false,
-         excludeFromViews: ['templateTree', 'calendar'],
+         excludeFromViews: ['templateTree', 'calendar', , 'kanban'],
       },
       {
         name: 'is_template',
         label: 'Is Template',
          type: 'boolean',
          multiple: false,
-          excludeFromViews: ['templateTree'],
+          excludeFromViews: ['templateTree', , 'kanban'],
 
       },
     {
@@ -306,7 +314,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      excludeFromViews: ['calendar','templateTree'],
+      excludeFromViews: ['calendar','templateTree', , 'kanban'],
       defaultValue: ['todo', 'not_started'],
     },
     {
@@ -321,7 +329,7 @@ export const task = {
         { value: 'archived', label: 'Archived' },       
       ],
       defaultValue: [],
-      excludeFromViews: ['table', 'checklist', 'templateTree']
+      excludeFromViews: ['table', 'checklist', 'templateTree', 'projectkanban', 'kanban']
     },
      {
       name: 'task_type',
@@ -334,7 +342,7 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      excludeFromViews: ['calendar', 'templateTree'],
+      excludeFromViews: ['calendar', 'templateTree', 'projectkanban', 'kanban'],
       defaultValue: ['task'],
     },
      {
@@ -342,7 +350,7 @@ export const task = {
     label: 'Assigned to',
     type: 'relationship',
     multiple: false, // ✅ Single-select for assignment (typically one person)
-    excludeFromViews: ['templateTree'],
+    excludeFromViews: ['templateTree', 'projectkanban', 'kanban'],
     relation: {
       table: 'contact',
       labelField: 'title', // ✅ This should show names, not IDs
@@ -358,7 +366,7 @@ export const task = {
         { value: 'due_date:desc', label: 'Due date (newest first)' },
       ],
       defaultValue: 'due_date:asc',
-      excludeFromViews: ['calendar', 'checklist', 'templateTree']
+      excludeFromViews: ['calendar', 'checklist', 'templateTree', 'projectkanban', 'kanban' ]
     }
   ]
 };

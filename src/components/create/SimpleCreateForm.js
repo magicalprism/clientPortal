@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Box, 
@@ -27,9 +27,9 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Get essential fields for creation (usually just title and any required fields)
-  const getEssentialFields = () => {
-    const essentialFieldNames = ['title', 'name', 'company_id', 'project_id'];
+  // ✅ FIX: Memoize essential fields to prevent infinite re-renders
+  const essentialFields = useMemo(() => {
+    const essentialFieldNames = ['title', 'name', 'company_id', 'project_id', 'checklist_id'];
     const requiredFields = config.fields.filter(field => field.required);
     
     return config.fields.filter(field => {
@@ -44,32 +44,37 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       
       return false;
     });
-  };
+  }, [config.fields, searchParams]);
 
-  const essentialFields = getEssentialFields();
-
-  // Initialize form data with URL params and defaults
-  useState(() => {
+  // ✅ FIX: Only run effect when searchParams or config changes, not essentialFields
+  useEffect(() => {
     const initialData = {};
     
     // Add URL parameters
     searchParams.forEach((value, key) => {
       if (key !== 'modal' && key !== 'id') {
-        initialData[key] = value;
+        // Convert numeric strings to numbers for foreign keys
+        if (key.endsWith('_id') && !isNaN(value)) {
+          initialData[key] = parseInt(value, 10);
+        } else {
+          initialData[key] = value;
+        }
       }
     });
 
-    // Add default values
+    // Add default values from field configs
     essentialFields.forEach(field => {
       if (field.defaultValue && !initialData[field.name]) {
         initialData[field.name] = field.defaultValue;
       }
     });
 
+    console.log('[SimpleCreateForm] Initialized form data:', initialData);
     setFormData(initialData);
-  }, []);
+  }, [searchParams, config.fields]); // ✅ Remove essentialFields dependency
 
   const handleChange = useCallback((fieldName, value) => {
+    console.log(`[SimpleCreateForm] Field changed: ${fieldName} =`, value);
     setFormData(prev => ({ ...prev, [fieldName]: value }));
   }, []);
 
@@ -82,7 +87,7 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       const now = getPostgresTimestamp();
       const currentContactId = await getCurrentContactId();
 
-      // Prepare the payload with just essential data
+      // Prepare the payload with just essential data, ensuring proper types
       const payload = {
         ...formData,
         created_at: now,
@@ -93,6 +98,15 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       if (currentContactId && config.fields.some(f => f.name === 'author_id')) {
         payload.author_id = currentContactId;
       }
+
+      // Ensure numeric fields are properly typed
+      config.fields.forEach(field => {
+        if (field.name.endsWith('_id') && payload[field.name]) {
+          payload[field.name] = parseInt(payload[field.name], 10);
+        }
+      });
+
+      console.log('[SimpleCreateForm] Submitting payload:', payload);
 
       // Insert the record
       const { data: newRecord, error: insertError } = await supabase
@@ -107,21 +121,39 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
 
       console.log('[SimpleCreateForm] Created record:', newRecord);
 
-      // Success callback
+      // Call onSuccess first for immediate UI update
       if (onSuccess) {
-        await onSuccess(newRecord);
-        return;
+        console.log('[SimpleCreateForm] Calling onSuccess callback with:', newRecord);
+        try {
+          await onSuccess(newRecord);
+        } catch (successError) {
+          console.error('[SimpleCreateForm] Error in onSuccess callback:', successError);
+        }
       }
 
-      // Close modal if applicable
-      if (isModal && onClose) {
-        onClose();
-      }
-
-      // Redirect to edit page
-      if (newRecord?.id) {
-        const editUrl = `${config.editPathPrefix}/${newRecord.id}?modal=edit&id=${newRecord.id}`;
-        router.push(editUrl);
+      // Handle modal vs non-modal behavior
+      if (isModal) {
+        // Close modal after success callback
+        if (onClose) {
+          console.log('[SimpleCreateForm] Closing modal after successful creation');
+          onClose();
+        }
+        
+        // Clean up URL parameters
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.delete('modal');
+        currentUrl.searchParams.delete('id');
+        // Remove any field parameters too
+        essentialFields.forEach(field => {
+          currentUrl.searchParams.delete(field.name);
+        });
+        router.replace(currentUrl.pathname + currentUrl.search);
+      } else {
+        // Redirect to edit page for non-modal cases
+        if (newRecord?.id) {
+          const editUrl = `${config.editPathPrefix}/${newRecord.id}?modal=edit&id=${newRecord.id}`;
+          router.push(editUrl);
+        }
       }
 
     } catch (err) {
@@ -194,6 +226,11 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       <Dialog open={true} onClose={onClose} maxWidth="md" fullWidth>
         <DialogTitle>
           Create New {config.singularLabel || config.label}
+          {formData.checklist_id && (
+            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
+              For Checklist ID: {formData.checklist_id}
+            </Typography>
+          )}
         </DialogTitle>
         <DialogContent>
           {content}

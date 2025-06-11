@@ -11,7 +11,7 @@ const CollectionView = dynamic(() => import('@/components/views/CollectionView')
   loading: () => <div>Loading collection...</div>,
 });
 // Import kanban components
-const ProjectKanbanBoard = dynamic(() => import('@/components/kanban/ProjectKanbanBoard').then(mod => mod.default || mod.ProjectKanbanBoard), {
+const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/ProjectKanbanBoard').then(mod => mod.default || mod.ProjectKanbanBoard), {
   ssr: false,
   loading: () => (
     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>

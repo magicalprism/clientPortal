@@ -7,8 +7,12 @@ import { DotsSixVertical } from '@phosphor-icons/react';
 import { ViewButtons } from '@/components/buttons/ViewButtons';
 import { useModal } from '@/components/modals/ModalContext';
 
-
-export default function SortableTask({ task, config, onToggleComplete }) {
+export default function SortableTask({ 
+  task, 
+  config, 
+  onToggleComplete, 
+  onTaskDelete // ✅ Receive onTaskDelete prop
+}) {
   const {
     attributes,
     listeners,
@@ -23,6 +27,14 @@ export default function SortableTask({ task, config, onToggleComplete }) {
   };
 
   const { openModal } = useModal();
+
+  // ✅ Handle delete success by calling the parent's onTaskDelete
+  const handleDeleteSuccess = (deletedTaskId) => {
+    console.log('[SortableTask] Task deleted:', deletedTaskId);
+    if (onTaskDelete) {
+      onTaskDelete(deletedTaskId);
+    }
+  };
 
   return (
     <Box
@@ -62,7 +74,14 @@ export default function SortableTask({ task, config, onToggleComplete }) {
       </Box>
 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <ViewButtons config={config} id={task.id} />
+        <ViewButtons 
+          config={config} 
+          id={task.id}
+          record={task}
+          onDeleteSuccess={handleDeleteSuccess} // ✅ Pass delete success callback
+          showFullView={false} // Don't need full view for tasks in checklist
+          isInModal={false}
+        />
         <IconButton {...listeners} {...attributes} size="small">
           <DotsSixVertical size={16} />
         </IconButton>

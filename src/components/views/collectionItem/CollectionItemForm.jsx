@@ -21,7 +21,7 @@ import { SectionThread } from '@/components/fields/custom/sections/SectionThread
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
-import KanbanFieldRenderer from '@/components/kanban/KanbanFieldRenderer';
+import KanbanFieldRenderer from '@/components/views/kanban/KanbanFieldRenderer';
 
 
 // NEW: Import Google Drive components

@@ -389,7 +389,7 @@ export const ProjectKanbanBoard = ({
         </Stack>
       )}
 
-      {/* Kanban Board */}
+{/* Kanban Board */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
@@ -403,9 +403,13 @@ export const ProjectKanbanBoard = ({
             display: 'flex',
             gap: 2,
             overflowX: 'auto',
-            pb: 3, // Bottom padding for scrolling
+            pb: 3,
             minHeight: embedded ? 350 : 450,
             maxHeight: embedded ? 500 : 'calc(100vh - 200px)',
+            
+            // ✅ Add these properties for empty state centering
+            justifyContent: containers.length === 0 ? 'center' : 'flex-start',
+            alignItems: containers.length === 0 ? 'center' : 'flex-start',
             
             // Custom horizontal scrollbar
             '&::-webkit-scrollbar': {
@@ -424,25 +428,51 @@ export const ProjectKanbanBoard = ({
             },
           }}
         >
-          <SortableContext 
-            items={containers.map(c => c.id)}
-            strategy={horizontalListSortingStrategy}
-          >
-            {containers.map((container, index) => (
-              <KanbanColumn
-                key={container.id}
-                container={{
-                  ...container,
-                  projectId // Pass project ID for support mode
-                }}
-                tasks={tasksByContainer[container.id] || []}
-                config={config}
-                mode={localMode}
-                milestoneIndex={index}
-                onTaskUpdate={handleTaskUpdate}
-              />
-            ))}
-          </SortableContext>
+          {/* ✅ Show empty state INSIDE the kanban container */}
+          {containers.length === 0 ? (
+            <Card sx={{ maxWidth: 500, width: '100%' }}>
+              <CardContent sx={{ textAlign: 'center', py: 6 }}>
+                <Box sx={{ mb: 2 }}>
+                  {localMode === 'milestone' ? (
+                    <Kanban size={48} color="#9CA3AF" />
+                  ) : (
+                    <ListChecks size={48} color="#9CA3AF" />
+                  )}
+                </Box>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {localMode === 'milestone' 
+                    ? 'No milestones found' 
+                    : 'No support tasks found'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
+                  {localMode === 'milestone' 
+                    ? 'Create milestones for this project to organize your tasks into phases or deliverables.' 
+                    : 'No support tasks exist for this project yet. Support tasks help track customer requests and issues.'}
+                </Typography>
+              </CardContent>
+            </Card>
+          ) : (
+            /* ✅ Only render kanban columns when we have containers */
+            <SortableContext 
+              items={containers.map(c => c.id)}
+              strategy={horizontalListSortingStrategy}
+            >
+              {containers.map((container, index) => (
+                <KanbanColumn
+                  key={container.id}
+                  container={{
+                    ...container,
+                    projectId // Pass project ID for support mode
+                  }}
+                  tasks={tasksByContainer[container.id] || []}
+                  config={config}
+                  mode={localMode}
+                  milestoneIndex={index}
+                  onTaskUpdate={handleTaskUpdate}
+                />
+              ))}
+            </SortableContext>
+          )}
         </Box>
 
         <DragOverlay>
@@ -456,30 +486,7 @@ export const ProjectKanbanBoard = ({
         </DragOverlay>
       </DndContext>
       
-      {/* Empty State */}
-      {containers.length === 0 && (
-        <Card>
-          <CardContent sx={{ textAlign: 'center', py: 6 }}>
-            <Box sx={{ mb: 2 }}>
-              {localMode === 'milestone' ? (
-                <Kanban size={48} color="#9CA3AF" />
-              ) : (
-                <ListChecks size={48} color="#9CA3AF" />
-              )}
-            </Box>
-            <Typography variant="h6" color="text.secondary" gutterBottom>
-              {localMode === 'milestone' 
-                ? 'No milestones found' 
-                : 'No support tasks found'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ maxWidth: 400, mx: 'auto' }}>
-              {localMode === 'milestone' 
-                ? 'Create milestones for this project to organize your tasks into phases or deliverables.' 
-                : 'No support tasks exist for this project yet. Support tasks help track customer requests and issues.'}
-            </Typography>
-          </CardContent>
-        </Card>
-      )}
+     
     </Box>
   );
 };

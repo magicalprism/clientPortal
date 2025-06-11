@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import * as collections from '@/collections';
 
 // Dynamic import for better performance
-const ProjectKanbanBoard = dynamic(() => import('@/components/kanban/ProjectKanbanBoard'), {
+const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/ProjectKanbanBoard'), {
   ssr: false,
   loading: () => (
     <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>

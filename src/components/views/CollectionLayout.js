@@ -1,6 +1,6 @@
 'use client';
 
-import { Box, Button, Stack, Typograph, Container } from '@mui/material';
+import { Box, Button, Stack, Typography, Container } from '@mui/material';
 import { Plus as PlusIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ViewSwitcher } from '@/components/views/ViewSwitcher';
@@ -31,24 +31,26 @@ export const CollectionLayout = ({
 }) => {
   const router = useRouter();
   const pathname = usePathname();
-const { openModal } = useModal();
+  const { openModal } = useModal();
+  
+  // ✅ Check if current view should hide filters
+  const currentViewConfig = config.views?.[currentView];
+  const shouldHideFilters = currentViewConfig?.hideFilters === true;
+  
   const handleDefaultAdd = () => {
     router.push(`/dashboard/${config.name}/create`);
   };
 
-
-
- const handleOpenCreateModal = () => {
+  const handleOpenCreateModal = () => {
     const fullConfig = collections[config.name] || config;
     openModal('create', { config: fullConfig });
   };
- 
 
   return (
     <Box 
-    sx={{
-      paddingLeft: 0,
-    }}
+      sx={{
+        paddingLeft: 0,
+      }}
     >
       <Box
         sx={{
@@ -56,7 +58,6 @@ const { openModal } = useModal();
           justifyContent: 'space-between',
           alignItems: 'center',
           px: 0,
-          
           mb: 2,
           flexWrap: 'wrap',
         }}
@@ -78,23 +79,25 @@ const { openModal } = useModal();
               views={config.views}
               noLabel
               sx={{
-              paddingLeft: 0,
+                paddingLeft: 0,
               }}
             />
           )}
 
-          <CollectionFilters
-            config={config}
-            filters={filters}
-            onChange={onFilterChange}
-            sortDir={sortDir}
-            onSortChange={onSortChange}
-            onDeleteSuccess={onDeleteSuccess}
-            onClearFilters={onClearFilters}
-            setIgnoreDefaults={setIgnoreDefaults}
-            setDefaultValues={setDefaultValues}
-          
-          />
+          {/* ✅ Conditionally render filters based on view config */}
+          {!shouldHideFilters && (
+            <CollectionFilters
+              config={config}
+              filters={filters}
+              onChange={onFilterChange}
+              sortDir={sortDir}
+              onSortChange={onSortChange}
+              onDeleteSuccess={onDeleteSuccess}
+              onClearFilters={onClearFilters}
+              setIgnoreDefaults={setIgnoreDefaults}
+              setDefaultValues={setDefaultValues}
+            />
+          )}
         </Box>
 
         <Button
@@ -108,17 +111,18 @@ const { openModal } = useModal();
       </Box>
 
       {children}
+      
       <Box sx={{ px: 3, pt: 2 }}>
-      <TablePagination
-        component="div"
-        count={totalCount || 0} // you'll need to compute this
-        page={page}
-        onPageChange={onPageChange}
-        rowsPerPage={rowsPerPage}
-        onRowsPerPageChange={onRowsPerPageChange}
-        rowsPerPageOptions={[10, 25, 50]}
-      />
-    </Box>
+        <TablePagination
+          component="div"
+          count={totalCount || 0}
+          page={page}
+          onPageChange={onPageChange}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={onRowsPerPageChange}
+          rowsPerPageOptions={[10, 25, 50]}
+        />
+      </Box>
     </Box>
   );
 };

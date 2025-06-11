@@ -18,3 +18,4 @@ export { milestone } from './milestone';
 export { feature } from './feature';
 export { login } from './login';
 export { color } from './color';
+export { event } from './event';

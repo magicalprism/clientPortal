@@ -50,8 +50,19 @@ const SortableColumn = ({
     opacity: isDragging ? 0.7 : 1,
   };
 
-  const milestoneColor = mode === 'milestone' ? getMilestoneColor(milestoneIndex) : '#6366F1';
-  const lightBg = getLighterColor(milestoneColor, 0.05);
+  // Get appropriate color based on mode
+  const getColumnColor = () => {
+    if (mode === 'milestone') {
+      return getMilestoneColor(milestoneIndex);
+    } else if (mode === 'universal') {
+      return container.color || '#6366F1';
+    } else {
+      return '#6366F1';
+    }
+  };
+
+  const columnColor = getColumnColor();
+  const lightBg = getLighterColor(columnColor, 0.05);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -72,9 +83,7 @@ const SortableColumn = ({
         {/* Column Header with Background Color */}
         <Box
           sx={{
-            background: mode === 'milestone' 
-              ? `linear-gradient(135deg, ${milestoneColor} 0%, ${milestoneColor}DD 100%)`
-              : 'linear-gradient(135deg, #6366F1 0%, #6366F1DD 100%)',
+            background: `linear-gradient(135deg, ${columnColor} 0%, ${columnColor}DD 100%)`,
             color: 'white',
             p: 2,
             cursor: mode === 'milestone' ? 'grab' : 'default',
@@ -108,7 +117,7 @@ const SortableColumn = ({
             />
           </Stack>
           
-          {/* Milestone metadata */}
+          {/* Milestone metadata - only show for milestone mode */}
           {mode === 'milestone' && tasks.length > 0 && (
             (() => {
               const taskDueDates = tasks
@@ -150,6 +159,40 @@ const SortableColumn = ({
                 );
               }
               return null;
+            })()
+          )}
+
+          {/* Universal mode metadata */}
+          {mode === 'universal' && tasks.length > 0 && (
+            (() => {
+              const overdueTasks = tasks.filter(task => 
+                task.due_date && new Date(task.due_date) < new Date() && task.status !== 'complete'
+              ).length;
+              
+              const completedTasks = tasks.filter(task => task.status === 'complete').length;
+              
+              return (
+                <Stack direction="row" justifyContent="space-between" sx={{ mt: 1 }}>
+                  <Typography variant="caption" sx={{ 
+                    color: 'rgba(255,255,255,0.9)',
+                    fontSize: '0.7rem'
+                  }}>
+                    {completedTasks > 0 && `${completedTasks} done`}
+                  </Typography>
+                  {overdueTasks > 0 && (
+                    <Typography variant="caption" sx={{ 
+                      color: 'white',
+                      fontSize: '0.7rem',
+                      fontWeight: 600,
+                      backgroundColor: '#d93636',
+                      padding: '.1rem .5rem',
+                      borderRadius: '5rem'
+                    }}>
+                      {overdueTasks} overdue
+                    </Typography>
+                  )}
+                </Stack>
+              );
             })()
           )}
         </Box>
@@ -290,6 +333,27 @@ export const KanbanColumn = ({
       if (container.projectId) {
         initialData.project_id = container.projectId;
       }
+    } else if (mode === 'universal') {
+      // Universal mode - set status from container
+      const status = container.id.replace('status-', '');
+      initialData.status = status;
+      
+      // Don't set task_type for universal mode - allow all task types
+      
+      // Get project_id from container if available
+      if (container.projectId) {
+        initialData.project_id = container.projectId;
+      }
+      
+      // Get project_id from first task if available
+      if (tasks.length > 0 && tasks[0].project_id) {
+        initialData.project_id = tasks[0].project_id;
+      }
+      
+      // Get company_id from first task if available
+      if (tasks.length > 0 && tasks[0].company_id) {
+        initialData.company_id = tasks[0].company_id;
+      }
     }
     
     openModal('create', { 
@@ -306,7 +370,18 @@ export const KanbanColumn = ({
     });
   };
 
-  const milestoneColor = mode === 'milestone' ? getMilestoneColor(milestoneIndex) : '#6366F1';
+  // Get appropriate color based on mode
+  const getColumnColor = () => {
+    if (mode === 'milestone') {
+      return getMilestoneColor(milestoneIndex);
+    } else if (mode === 'universal') {
+      return container.color || '#6366F1';
+    } else {
+      return '#6366F1';
+    }
+  };
+
+  const columnColor = getColumnColor();
 
   return (
     <SortableColumn 
@@ -340,17 +415,17 @@ export const KanbanColumn = ({
             sx={{ 
               mt: 1,
               borderStyle: 'dashed',
-              borderColor: `${milestoneColor}40`,
-              color: milestoneColor,
+              borderColor: `${columnColor}40`,
+              color: columnColor,
               backgroundColor: 'transparent',
               '&:hover': {
                 borderStyle: 'solid',
-                borderColor: milestoneColor,
-                backgroundColor: `${milestoneColor}08`,
-                color: milestoneColor
+                borderColor: columnColor,
+                backgroundColor: `${columnColor}08`,
+                color: columnColor
               },
               '&:active': {
-                backgroundColor: `${milestoneColor}12`
+                backgroundColor: `${columnColor}12`
               }
             }}
           >
