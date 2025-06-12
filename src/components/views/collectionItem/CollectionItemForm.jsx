@@ -23,10 +23,58 @@ import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorT
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 import KanbanFieldRenderer from '@/components/views/kanban/KanbanFieldRenderer';
 
-
 // NEW: Import Google Drive components
 import { GoogleDriveFolderStatus } from '@/components/google/GoogleDriveFolderStatus';
 import { GoogleDriveRenameStatus } from '@/components/google/GoogleDriveRenameStatus';
+
+// Import ViewButtons
+import { ViewButtons } from '@/components/buttons/ViewButtons';
+
+// Helper function to determine if a field should be full width
+const shouldBeFullWidth = (field) => {
+  // Check for explicit fullWidth property in field config
+  if (field.fullWidth === true) {
+    return true;
+  }
+  
+  // Field types that should always be full width
+  const fullWidthTypes = [
+    'richText',
+    'comments', 
+    'sections', 
+    'payments',
+    'kanban'
+  ];
+  
+  if (fullWidthTypes.includes(field.type)) {
+    return true;
+  }
+  
+  // Custom components that should be full width
+  if (field.type === 'custom') {
+    const fullWidthCustomComponents = [
+      'BrandBoardPreview',
+      'ElementMap', 
+      'TimeTrackerField',
+      'CollectionGridView',
+      'ProjectKanbanBoard',
+      'KanbanBoard',
+      'ColorTokenEditor',
+      'TypographyTokenEditor'
+    ];
+    
+    if (fullWidthCustomComponents.includes(field.component)) {
+      return true;
+    }
+  }
+  
+  // MultiRelationship with table display mode should be full width
+  if (field.type === 'multiRelationship' && field.displayMode === 'table') {
+    return true;
+  }
+  
+  return false;
+};
 
 // Helper function to ensure all field values are defined (never undefined)
 const normalizeFormValue = (value, field) => {
@@ -46,7 +94,7 @@ const normalizeFormValue = (value, field) => {
         return null; // Date fields can be null
       case 'number':
         return 0;
-         case 'kanban': // ✅ NEW: Handle kanban field type
+      case 'kanban': // ✅ NEW: Handle kanban field type
         return {
           mode: field.defaultMode || 'milestone',
           showCompleted: field.defaultShowCompleted || false
@@ -87,7 +135,8 @@ export const CollectionItemForm = ({
   onSave,
   onCancel,
   edit = false,
-  formId
+  formId,
+  onRefresh
 }) => {
   const router = useRouter();
   
@@ -119,11 +168,6 @@ export const CollectionItemForm = ({
 
   const baseTabs = useGroupedFields(config?.fields || [], activeTab);
   const showTimelineTab = config?.showTimelineTab === true;
-
-
-
-
-
 
   const currentTabGroups = showTimelineTab && activeTab === baseTabs.tabNames.length
     ? null
@@ -189,6 +233,24 @@ export const CollectionItemForm = ({
 
   return (
     <form id={formId} onSubmit={handleSubmit}>
+      
+      {/* ViewButtons - only show in modal mode */}
+      {isModal && formData?.id && (
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <ViewButtons 
+            config={config}
+            id={formData.id}
+            record={formData}
+            onRefresh={onRefresh}
+            showModal={false} // Don't show modal button - already in modal
+            showFullView={true} // Show full view button to exit modal
+            showDelete={true} // Show delete button
+            showExport={true}
+            size="small"
+            isInModal={true}
+          />
+        </Box>
+      )}
      
       {/* NEW: Google Drive Integration - Only show if config supports it */}
       {supportsGoogleDrive && formData?.id && (
@@ -238,6 +300,12 @@ export const CollectionItemForm = ({
                 const isEditing = isEditingField === field.name;
                 const isLoading = loadingField === field.name;
 
+                // ✅ NEW: Determine grid size based on field type and configuration
+                const isFullWidth = shouldBeFullWidth(field);
+                const gridProps = isFullWidth ? 
+                  { xs: 12 } : 
+                  { xs: 12, lg: 6 }; // Two columns on large screens, full width on mobile
+
                 const isBasicTextField = ![
                   'relationship', 'multiRelationship', 'boolean', 'status', 'json',
                   'editButton', 'media', 'link', 'date', 'richText', 'timezone',
@@ -250,7 +318,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'kanban') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <KanbanFieldRenderer
                         value={value}
                         field={field}
@@ -265,7 +333,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'custom' && field.component === 'BrandBoardPreview') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <BrandBoardPreview brand={formData} />
                     </Grid>
                   );
@@ -273,7 +341,7 @@ export const CollectionItemForm = ({
 
                  if (field.type === 'custom' && (field.component === 'ProjectKanbanBoard' || field.component === 'KanbanBoard')) {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
                         {field.label}
                       </Typography>
@@ -291,7 +359,7 @@ export const CollectionItemForm = ({
                 
                 if (field.type === 'custom' && field.component === 'TimeTrackerField') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <TimeTrackerField task={formData} />
                     </Grid>
                   );
@@ -299,7 +367,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'custom' && field.component === 'ColorTokenEditor') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <ColorTokenEditor 
                         record={formData} 
                         field={field} 
@@ -309,10 +377,9 @@ export const CollectionItemForm = ({
                   );
                 }
 
-
                 if (field.type === 'custom' && field.component === 'TypographyTokenEditor') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <TypographyTokenEditor 
                         record={formData} 
                         field={field} 
@@ -324,7 +391,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'comments') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
                         {field.label}
                       </Typography>
@@ -338,7 +405,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'sections') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <SectionThread
                         pivotTable={field.props?.pivotTable}
                         entityField={field.props?.entityField}
@@ -353,7 +420,7 @@ export const CollectionItemForm = ({
 
                 if (field.type === 'payments') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <PaymentThread
                         pivotTable={field.props?.pivotTable || 'contract_payment'}
                         entityField={field.props?.entityField || 'contract_id'}
@@ -372,7 +439,7 @@ export const CollectionItemForm = ({
                 // Tags multirelationship 
                 if (field.type === 'multiRelationship' && field.displayMode === 'tags') {
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <RelatedTagsField 
                         field={field} 
                         parentId={formData?.id} 
@@ -390,7 +457,7 @@ export const CollectionItemForm = ({
                   const items = formData?.[`${field.sourceField}_details`] ?? [];
 
                   return (
-                    <Grid item xs={12} key={field.name}>
+                    <Grid item {...gridProps} key={field.name}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                         <Typography variant="subtitle2">{field.label || 'Gallery'}</Typography>
                         <IconButton
@@ -426,8 +493,7 @@ export const CollectionItemForm = ({
                   };
 
                   return (
-                    <Grid item xs={12} key={field.name}>
-                
+                    <Grid item {...gridProps} key={field.name}>
                       <CollectionView
                         config={relatedConfig}
                         variant="details"
@@ -437,7 +503,7 @@ export const CollectionItemForm = ({
                 }
 
                 return (
-                  <Grid item xs={12} key={field.name}>
+                  <Grid item {...gridProps} key={field.name}>
                     <Box
                       sx={{
                         display: 'flex',

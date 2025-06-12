@@ -257,7 +257,7 @@ export const task = {
         label: 'Is Template',
          type: 'boolean',
          defaultValue: false,
-         multiple: false
+      
 
       },
    
@@ -266,6 +266,7 @@ export const task = {
       label: 'Author', 
       type: 'relationship',
       group: 'General',
+
       tab: 'Meta',
       relation: {
         table: 'contact',

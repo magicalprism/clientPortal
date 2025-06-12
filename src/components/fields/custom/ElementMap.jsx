@@ -38,7 +38,7 @@ import FooterNode from '@/components/nodes/FooterNode';
 import HeaderNode from '@/components/nodes/HeaderNode';
 import EmailNode from '@/components/nodes/EmailNode';
 import PopupNode from '@/components/nodes/PopupNode';
-import { statusColors } from '@/data/statusColors';
+import { getStatusColor } from '@/data/statusColors';
 import NodeWrapper from '@/components/nodes/NodeWrapper';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
@@ -74,8 +74,11 @@ const buildNodes = (pages) => {
   return pages.map((page) => {
     const type = page.type || 'page';
     const title = page.title || 'title';
-    const status = page.status || 'default';
+    const status = page.status || 'not started';
     const size = customSize[type] || customSize.page;
+    
+    // Get status colors using the new system
+    const statusColors = getStatusColor(status);
 
     return {
       id: page.id.toString(),
@@ -89,7 +92,10 @@ const buildNodes = (pages) => {
         title: title,
         thumbnailUrl: page.resource?.thumbnail?.url || null,
         status,
-        backgroundColor: statusColors[status] || statusColors.default,
+        statusLabel: statusColors.label,
+        backgroundColor: statusColors.bg,
+        statusColor: statusColors.color,
+        statusColorHover: statusColors.bgHover,
       },
     };
   });
@@ -282,7 +288,7 @@ const nodeTypes = useMemo(() => ({
         type: formData.type,
         company_id: companyId,
         project_id: projectId,
-        status: 'plan',
+        status: 'not started', // Updated to use consistent status naming
         create_folder: formData.create_folder,
         created_at: now,
         updated_at: now,
@@ -527,7 +533,7 @@ const nodeTypes = useMemo(() => ({
                 </Typography>
               )}
               <Typography variant="body2" sx={{ fontSize: '0.8rem' }}>
-                • Default Status: plan
+                • Default Status: Not Started
               </Typography>
               {formData.create_folder && (
                 <Typography variant="body2" sx={{ fontSize: '0.8rem', color: 'success.main' }}>

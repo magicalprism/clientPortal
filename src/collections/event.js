@@ -5,7 +5,7 @@ export const event = {
   table: 'event',
   editPathPrefix: '/dashboard/event',
   showEditButton: true,
-  defaultView: 'table',
+  defaultView: 'calendar',
   subtitleField: 'title',
 
   views: {
@@ -13,9 +13,9 @@ export const event = {
       label: 'Table View',
       component: 'PrimaryTableView'
     },
-    page: {
-      label: 'Page View',
-      component: 'PageView'
+    calendar: {
+      label: 'Calendar View',
+      component: 'CalendarView'
     }
   },
 
@@ -55,7 +55,10 @@ export const event = {
     {
       name: 'start_time',
       label: 'Start Time',
-      type: 'timestamp',
+      type: 'date',
+      config: {
+        datetime: true  // Also enables datetime functionality
+      },
       tab: 'Overview',
       group: 'Timing',
       showInTable: true
@@ -63,6 +66,9 @@ export const event = {
     {
       name: 'end_time',
       label: 'End Time',
+      config: {
+        datetime: true  // Also enables datetime functionality
+      },
       type: 'timestamp',
       tab: 'Overview',
       group: 'Timing',
@@ -75,6 +81,76 @@ export const event = {
       tab: 'Overview',
       group: 'Timing'
     },
+        {
+      name: 'type',
+      label: 'Event Type',
+      type: 'select',
+      tab: 'Overview',
+      group: 'Meta',
+      options: [
+        { label: 'Meeting', value: 'meeting' },
+        { label: 'Vacation', value: 'vacation' },
+        { label: 'Appointment', value: 'appointment' },
+        { label: 'Other', value: 'other' }
+      ],
+      showInTable: true
+    },
+          {
+      name: 'contacts',
+      label: 'People Attending',
+      type: 'multiRelationship',
+      tab: 'Overview',
+      group: 'Meta',
+      displayMode: 'tags',
+      relation: {
+        table: 'contact',
+        labelField: 'title',
+        linkTo: '/dashboard/contact',
+        junctionTable: 'contact_event',
+        sourceKey: 'event_id',
+        targetKey: 'contact_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+
+          {
+      name: 'companies',
+      label: 'Companies Attending',
+      type: 'multiRelationship',
+      tab: 'Overview',
+      group: 'Meta',
+      displayMode: 'tags',
+      relation: {
+        table: 'company',
+        labelField: 'title',
+        linkTo: '/dashboard/company',
+        junctionTable: 'company_event',
+        sourceKey: 'event_id',
+        targetKey: 'project_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+          {
+      name: 'projects',
+      label: 'Projects Involved',
+      type: 'multiRelationship',
+       group: 'Brand Details',
+      tab: 'Fields', 
+      displayMode: 'tags',
+      relation: {
+        table: 'project',
+        labelField: 'title',
+        linkTo: '/dashboard/project',
+        junctionTable: 'brand_project',
+        sourceKey: 'event_id',
+        targetKey: 'project_id',
+        tableFields: ['title'],
+        filter: {}
+      }
+    },
+
     {
       name: 'status',
       label: 'Status',
@@ -177,12 +253,27 @@ export const event = {
     {
       name: 'search',
       label: 'Search',
-      type: 'text'
+      type: 'text',
+      multiple: false, 
+    },
+            {
+      name: 'type',
+      label: 'Event Type',
+      type: 'select',
+      multiple: false, 
+      options: [
+        { label: 'Meeting', value: 'meeting' },
+        { label: 'Vacation', value: 'vacation' },
+        { label: 'Appointment', value: 'appointment' },
+        { label: 'Other', value: 'other' }
+      ],
     },
     {
       name: 'status',
       type: 'select',
       label: 'Status',
+      multiple: false, 
+      defaultValue: '',
       options: [
         { label: 'Scheduled', value: 'scheduled' },
         { label: 'In Progress', value: 'in_progress' },

@@ -741,7 +741,7 @@ const handleRemovePartWithDirty = (partId) => {
     <>
       <Card elevation={0}>
         {/* ViewButtons - only show if we have a record with an ID */}
-        {localRecord?.id && (
+        {isModal &&  localRecord?.id && (
           <ViewButtons 
             config={config}
             id={localRecord.id}

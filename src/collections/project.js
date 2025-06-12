@@ -82,7 +82,15 @@ export const project = {
       group: 'Details',
       tab: 'Overview', 
       variant: 'full',
-      description: 'Automatically creates and manages Google Drive folders for this project. Folders will be organized as: Company > Projects > [Project Name]'
+      description: 'Automatically creates and manages Google Drive folders for this project.'
+    },
+        {
+      name: 'project_folder',
+      label: 'Primary Content Folder',
+      type: 'link',
+      description: 'Location of project folder',
+      group: 'Details',
+      tab: 'Overview'
     },
     {
       name: 'content',
@@ -211,6 +219,19 @@ export const project = {
         tableFields: ['title', 'link_id', 'link_id_details.url'],
         filter: {}
       }
+    },
+        {
+      name: 'platform',
+      label: 'Site Platform',
+      type: 'select',
+      tab: 'Meta',
+      group: 'General',
+      options: [
+        { label: 'WordPress', value: 'wordpress' },
+        { label: 'React', value: 'react' },
+        { label: 'Web Studio', value: 'webstudio' },
+        { label: 'Cloudflare', value: 'cloudflare' },
+      ]
     },
 
  { 
@@ -433,7 +454,7 @@ export const project = {
     {
       name: 'drive_folder_id',
       type: 'text',
-      tab: 'meta', 
+      tab: 'Meta', 
       group: 'General',
       database: true,
       editable: false,
@@ -442,7 +463,7 @@ export const project = {
     {
       name: 'drive_original_name',
       type: 'text', 
-      tab: 'meta', 
+      tab: 'Meta', 
       group: 'General',
       database: true,
       editable: false,
@@ -462,6 +483,7 @@ export const project = {
       name: 'status',
       type: 'select',
       label: 'Status',
+      multiple: false,
       defaultValue: [],
       options: [
        { label: 'Onboarding', value: 'onboarding' },
@@ -478,6 +500,7 @@ export const project = {
       name: 'company_id',
       type: 'relationship',
       label: 'Company',
+      multiple: false,
       relation: {
         table: 'company',
         labelField: 'title',

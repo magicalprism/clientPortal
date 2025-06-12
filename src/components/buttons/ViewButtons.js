@@ -14,11 +14,13 @@ import {
   Phone,
   Folder,
   LinkSimple,
-  Code,
+  Hash,
   Palette,
   DownloadSimple,
   Printer,
   PaintBrush,
+  Blueprint,
+  SignIn,
 } from '@phosphor-icons/react';
 import { generateElementorExportZip } from '@/lib/utils/exports/elementorExport';
 
@@ -249,6 +251,10 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
       break;
       
     case 'project':
+      
+      // Handle select field values (could be object or string)
+      const platformValue = typeof item.platform === 'object' ? item.platform?.value : item.platform;
+      
       if (item.project_folder) {
         buttons.push({
           icon: Folder,
@@ -263,13 +269,39 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
           action: () => window.open(item.url, '_blank')
         });
       }
+       if (platformValue === 'wordpress') {
+
+        if (item.url) {
+
+          buttons.push({
+            icon: SignIn,
+            label: 'Live Admin',
+            action: () => window.open(`${item.url}/wp-admin`, '_blank')
+          });
+        }
+      }
       if (item.staging_url) {
         buttons.push({
-          icon: Code,
+          icon: Blueprint,
           label: 'Visit Staging',
           action: () => window.open(item.staging_url, '_blank')
         });
       }
+
+
+      if (platformValue === 'wordpress') {
+
+        if (item.staging_url) {
+
+          buttons.push({
+            icon: Hash,
+            label: 'Staging Admin',
+            action: () => window.open(`${item.staging_url}/wp-admin`, '_blank')
+          });
+        }
+
+      }
+      
       const firstBrand = item.brands?.[0]?.brand;
       if (firstBrand?.id) {
         const brandConfig = collections.brand;
@@ -279,6 +311,8 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
           action: () => window.open(`${brandConfig.editPathPrefix}/${firstBrand.id}`, '_blank')
         });
       }
+      
+      console.log('[ViewButtons] Total buttons for project:', buttons.length); // Debug log
       break;
       
     case 'media':
