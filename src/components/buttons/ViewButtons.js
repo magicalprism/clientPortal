@@ -1,4 +1,4 @@
-// Updated ViewButtons.jsx with integrated export functionality
+// Updated ViewButtons.jsx with proper onDeleteSuccess handling
 'use client';
 
 import { IconButton, Box, Tooltip } from '@mui/material';
@@ -7,7 +7,7 @@ import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
 import { createClient } from '@/lib/supabase/browser';
 import { DeleteRecordButton } from '@/components/buttons/DeleteRecordButton';
-import Image from 'next/image'; // ADD THIS IMPORT
+import Image from 'next/image';
 import {
   Globe,
   Envelope,
@@ -27,10 +27,11 @@ export const ViewButtons = ({
   id, 
   record,
   onRefresh,
+  onDeleteSuccess, // ✅ NEW: Custom delete success handler
   showDelete = true,
   showFullView = true,
   showModal = true,
-  showExport = true, // NEW: Whether to show export buttons
+  showExport = true,
   size = 'small',
   isInModal = false
 }) => {
@@ -78,8 +79,16 @@ export const ViewButtons = ({
 
   // Handle delete success
   const handleDeleteSuccess = (deletedId) => {
-    console.log('Record deleted from ViewButtons:', deletedId);
+    console.log('[ViewButtons] Record deleted:', deletedId);
     
+    // ✅ If custom onDeleteSuccess provided, use it immediately (for tasks)
+    if (onDeleteSuccess) {
+      console.log('[ViewButtons] Using custom onDeleteSuccess callback');
+      onDeleteSuccess(deletedId);
+      return;
+    }
+    
+    // ✅ Otherwise use default behavior (for regular records)
     if (isInModal) {
       closeModal();
     }
@@ -153,14 +162,14 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
   const buttons = [];
 
   const ElementorIcon = ({ size = 16 }) => (
-  <Image
-    src="/images/elementor.svg"
-    alt="Elementor"
-    width={size}
-    height={size}
-    style={{ objectFit: 'contain' }}
-  />
-);
+    <Image
+      src="/images/elementor.svg"
+      alt="Elementor"
+      width={size}
+      height={size}
+      style={{ objectFit: 'contain' }}
+    />
+  );
 
   switch (collectionName) {
     case 'brand':

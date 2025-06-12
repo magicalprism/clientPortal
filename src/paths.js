@@ -112,6 +112,11 @@ export const paths = {
 			create: "/dashboard/element/create",
 			details: (elementId) => `/dashboard/element${elementId}`,
 		},
+		element: {
+			list: "/dashboard/event",
+			create: "/dashboard/event/create",
+			details: (eventId) => `/dashboard/event${eventId}`,
+		},
 		onboarding: {
 			list: "/dashboard/onboarding",
 			create: "/dashboard/onboarding/create",

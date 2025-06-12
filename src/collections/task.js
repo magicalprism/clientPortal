@@ -11,10 +11,6 @@ export const task = {
       label: 'Table View',
       component: 'TaskTableView'
     },
-      page: { 
-        label: 'Page View', 
-        component: 'PageView' 
-      },
          kanban: {
          label: 'Kanban View', 
          component: 'UniversalKanbanView' ,
@@ -24,7 +20,8 @@ export const task = {
         templateTree: { label: 'Task Templates', component: 'TaskTemplateTree' },
         checklist: {
           label: 'Checklist View',
-          component: 'ChecklistView'
+          component: 'ChecklistView',
+          hideFilters: true 
         },
         calendar: {
           label: 'Calendar',
