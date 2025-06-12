@@ -50,9 +50,10 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
   useEffect(() => {
     const initialData = {};
     
-    // Add URL parameters
+    // Add URL parameters (exclude frontend routing parameters)
+    const excludedParams = ['modal', 'id', 'view', 'type'];
     searchParams.forEach((value, key) => {
-      if (key !== 'modal' && key !== 'id') {
+      if (!excludedParams.includes(key)) {
         // Convert numeric strings to numbers for foreign keys
         if (key.endsWith('_id') && !isNaN(value)) {
           initialData[key] = parseInt(value, 10);
@@ -84,6 +85,11 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
     setError(null);
 
     try {
+      console.log('[SimpleCreateForm] Starting submit process...');
+      console.log('[SimpleCreateForm] Config:', config);
+      console.log('[SimpleCreateForm] Config name:', config.name);
+      console.log('[SimpleCreateForm] Form data:', formData);
+
       const now = getPostgresTimestamp();
       const currentContactId = await getCurrentContactId();
 
@@ -106,20 +112,32 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
         }
       });
 
-      console.log('[SimpleCreateForm] Submitting payload:', payload);
+      console.log('[SimpleCreateForm] Final payload:', payload);
+      console.log('[SimpleCreateForm] Table name:', config.name);
 
       // Insert the record
+      console.log('[SimpleCreateForm] Attempting to insert into table:', config.name);
       const { data: newRecord, error: insertError } = await supabase
         .from(config.name)
         .insert([payload])
         .select()
         .single();
 
+      console.log('[SimpleCreateForm] Supabase response - data:', newRecord);
+      console.log('[SimpleCreateForm] Supabase response - error:', insertError);
+
       if (insertError) {
+        console.error('[SimpleCreateForm] Supabase insert error details:', {
+          message: insertError.message,
+          details: insertError.details,
+          hint: insertError.hint,
+          code: insertError.code,
+          fullError: insertError
+        });
         throw insertError;
       }
 
-      console.log('[SimpleCreateForm] Created record:', newRecord);
+      console.log('[SimpleCreateForm] Created record successfully:', newRecord);
 
       // Call onSuccess first for immediate UI update
       if (onSuccess) {
@@ -157,8 +175,27 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       }
 
     } catch (err) {
-      console.error('[SimpleCreateForm] Error creating record:', err);
-      setError(err.message || 'An error occurred while creating the record');
+      console.error('[SimpleCreateForm] Error creating record - full error object:', err);
+      console.error('[SimpleCreateForm] Error type:', typeof err);
+      console.error('[SimpleCreateForm] Error constructor:', err.constructor.name);
+      console.error('[SimpleCreateForm] Error keys:', Object.keys(err));
+      console.error('[SimpleCreateForm] Error message:', err.message);
+      console.error('[SimpleCreateForm] Error details:', err.details);
+      console.error('[SimpleCreateForm] Error code:', err.code);
+      
+      let errorMessage = 'An error occurred while creating the record';
+      
+      if (err.message) {
+        errorMessage = err.message;
+      } else if (err.details) {
+        errorMessage = err.details;
+      } else if (typeof err === 'string') {
+        errorMessage = err;
+      } else if (err.code) {
+        errorMessage = `Database error (${err.code})`;
+      }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -247,31 +247,82 @@ export const updateTaskOrder = async (taskId, newIndex) => {
  * Quick complete/uncomplete a task
  */
 export const toggleTaskComplete = async (taskId, currentStatus) => {
-  const newStatus = currentStatus === 'complete' ? 'todo' : 'complete';
-  const updateData = {
-    status: newStatus,
-    updated_at: new Date().toISOString()
-  };
-
-  if (newStatus === 'complete') {
-    updateData.completed_at = new Date().toISOString();
-  } else {
-    updateData.completed_at = null;
+  const supabase = createClient();
+  
+  try {
+    console.log('[toggleTaskComplete] Starting toggle for task:', taskId, 'current status:', currentStatus);
+    
+    // Determine new status
+    const isCurrentlyComplete = currentStatus === 'complete';
+    const newStatus = isCurrentlyComplete ? 'todo' : 'complete';
+    
+    console.log('[toggleTaskComplete] Setting new status to:', newStatus);
+    
+    // Update the task
+    const { data, error } = await supabase
+      .from('task')
+      .update({ 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', taskId)
+      .select('*')
+      .single();
+    
+    if (error) {
+      console.error('[toggleTaskComplete] Database error:', error);
+      return { data: null, error };
+    }
+    
+    console.log('[toggleTaskComplete] Task updated successfully:', data);
+    
+    // If marking as complete, also mark any subtasks as complete
+    if (newStatus === 'complete') {
+      const { error: subtaskError } = await supabase
+        .from('task')
+        .update({ 
+          status: 'complete',
+          updated_at: new Date().toISOString()
+        })
+        .eq('parent_id', taskId)
+        .neq('status', 'complete'); // Only update non-complete subtasks
+      
+      if (subtaskError) {
+        console.error('[toggleTaskComplete] Error updating subtasks:', subtaskError);
+        // Don't fail the main operation, just log the error
+      } else {
+        console.log('[toggleTaskComplete] Subtasks marked as complete');
+      }
+    }
+    
+    // If marking as incomplete, also mark parent as incomplete if it was complete
+    if (newStatus !== 'complete') {
+      // Check if this task has a parent
+      if (data.parent_id) {
+        const { error: parentError } = await supabase
+          .from('task')
+          .update({ 
+            status: 'in_progress', // Set parent to in_progress when child is incomplete
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', data.parent_id)
+          .eq('status', 'complete'); // Only update if parent was complete
+        
+        if (parentError) {
+          console.error('[toggleTaskComplete] Error updating parent task:', parentError);
+          // Don't fail the main operation
+        } else {
+          console.log('[toggleTaskComplete] Parent task marked as in_progress');
+        }
+      }
+    }
+    
+    return { data, error: null };
+    
+  } catch (err) {
+    console.error('[toggleTaskComplete] Unexpected error:', err);
+    return { data: null, error: err };
   }
-
-  const { data, error } = await supabase
-    .from('task')
-    .update(updateData)
-    .eq('id', taskId)
-    .select()
-    .single();
-
-  if (error) {
-    console.error('Error toggling task completion:', error);
-    return { data: null, error };
-  }
-
-  return { data, error: null };
 };
 
 /**

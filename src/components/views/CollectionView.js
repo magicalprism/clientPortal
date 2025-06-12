@@ -13,7 +13,6 @@ import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { Box } from '@mui/material';
 import ProjectDashboard from '@/components/views/dashboards/ProjectDashboard';
 import TaskTemplateTree from '@/components/views/TaskTemplateTree';
-import ProjectKanbanView from '@/components/views/kanban/ProjectKanbanView';
 import UniversalKanbanView from '@/components/views/kanban/UniversalKanbanView';
 
 
@@ -25,7 +24,6 @@ const componentMap = {
   CalendarView,
   ProjectDashboard,
   TaskTemplateTree,
-  ProjectKanbanView,
   UniversalKanbanView,
 };
 

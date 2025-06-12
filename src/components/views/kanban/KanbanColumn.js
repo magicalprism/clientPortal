@@ -14,15 +14,14 @@ import {
 } from '@mui/material';
 import { Plus, Kanban } from '@phosphor-icons/react';
 import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { useRouter, useSearchParams } from 'next/navigation';
-
 import { KanbanTaskCard } from './KanbanTaskCard';
-import { getMilestoneColor, getLighterColor } from '@/data/statusColors';
+import statusColors from '@/data/statusColors';
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
+import { useTheme } from '@mui/material/styles';
 
 const SortableColumn = ({ 
   container, 
@@ -53,7 +52,7 @@ const SortableColumn = ({
   // Get appropriate color based on mode
   const getColumnColor = () => {
     if (mode === 'milestone') {
-      return getMilestoneColor(milestoneIndex);
+      return statusColors.getMilestoneColor(milestoneIndex);
     } else if (mode === 'universal') {
       return container.color || '#6366F1';
     } else {
@@ -62,7 +61,7 @@ const SortableColumn = ({
   };
 
   const columnColor = getColumnColor();
-  const lightBg = getLighterColor(columnColor, 0.05);
+  const lightBg = statusColors.getLighterColor(columnColor, 0.05);
 
   return (
     <div ref={setNodeRef} style={style} {...attributes}>
@@ -208,6 +207,8 @@ const DroppableArea = ({ container, tasks, config, children }) => {
     id: container.id,
   });
 
+
+
   return (
     <Box
       ref={setNodeRef}
@@ -217,9 +218,10 @@ const DroppableArea = ({ container, tasks, config, children }) => {
         maxHeight: 'calc(100vh - 420px)', // Consistent scrollable area
         overflowY: 'auto',
         p: 1.5,
-        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+        backgroundColor: isOver ? 'rgba(59, 130, 246, 0.15)' : 'transparent', // More visible when hovering
         borderRadius: '0 0 8px 8px',
         transition: 'background-color 0.2s ease',
+        border: isOver ? '2px dashed rgba(59, 130, 246, 0.5)' : '2px dashed transparent', // Visual feedback
         
         // Custom scrollbar
         '&::-webkit-scrollbar': {
@@ -256,6 +258,32 @@ export const KanbanColumn = ({
 
   // Organize tasks by hierarchy (parent tasks with their subtasks)
   const organizeTasksWithSubtasks = (tasks) => {
+
+    
+    // For completed tasks, treat all as standalone and limit to recent 20
+    if (container.id === 'complete') {
+  
+      
+      const sortedTasks = tasks
+        .sort((a, b) => {
+          // Sort by updated_at first (most recent first), then created_at, then id
+          const aDate = new Date(a.updated_at || a.created_at || 0);
+          const bDate = new Date(b.updated_at || b.created_at || 0);
+          const dateComparison = bDate - aDate; // Most recent first
+          
+          if (dateComparison !== 0) return dateComparison;
+          
+          // Fallback to ID for consistent ordering
+          return (b.id || 0) - (a.id || 0);
+        });
+      
+      const limitedTasks = sortedTasks.slice(0, 20); // Only show the 20 most recent completed tasks
+
+      
+      return limitedTasks;
+    }
+    
+    // For non-completed tasks, maintain parent-child hierarchy
     const parentTasks = tasks.filter(task => !task.parent_id);
     const subtasks = tasks.filter(task => task.parent_id);
     
@@ -289,19 +317,23 @@ export const KanbanColumn = ({
       .forEach(parentTask => {
         organizedTasks.push(parentTask);
         
-        // Add subtasks for this parent
-        const taskSubtasks = subtasks
-          .filter(subtask => subtask.parent_id === parentTask.id)
-          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
-        
-        organizedTasks.push(...taskSubtasks);
+        // Add subtasks for this parent (only if parent is not completed)
+        if (parentTask.status !== 'complete') {
+          const taskSubtasks = subtasks
+            .filter(subtask => subtask.parent_id === parentTask.id)
+            .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
+          
+          organizedTasks.push(...taskSubtasks);
+        }
       });
     
+ 
     return organizedTasks;
   };
 
   const organizedTasks = organizeTasksWithSubtasks(tasks);
-  const taskIds = organizedTasks.map(task => `task-${task.id}`);
+  const totalTasksBeforeLimit = tasks.length; // Store original count for complete column indicator
+  // No need for taskIds since we're not reordering within columns
 
   const handleAddTask = () => {
     const fullConfig = collections[config.name] || config;
@@ -373,7 +405,7 @@ export const KanbanColumn = ({
   // Get appropriate color based on mode
   const getColumnColor = () => {
     if (mode === 'milestone') {
-      return getMilestoneColor(milestoneIndex);
+      return statusColors.getMilestoneColor(milestoneIndex);
     } else if (mode === 'universal') {
       return container.color || '#6366F1';
     } else {
@@ -393,17 +425,29 @@ export const KanbanColumn = ({
     >
       <DroppableArea container={container} tasks={tasks} config={config}>
         <Stack spacing={0.5}>
-          <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
-            {organizedTasks.map((task) => (
-              <KanbanTaskCard 
-                key={task.id}
-                task={task}
-                config={config}
-                onTaskUpdate={onTaskUpdate}
-                onTaskClick={handleTaskClick}
-              />
-            ))}
-          </SortableContext>
+          {/* No SortableContext needed - just render tasks directly */}
+          {organizedTasks.map((task) => (
+            <KanbanTaskCard 
+              key={task.id}
+              task={task}
+              config={config}
+              onTaskUpdate={onTaskUpdate}
+              onTaskClick={handleTaskClick}
+            />
+          ))}
+
+          {/* Show "Show more" indicator for complete column if there are more tasks */}
+          {container.id === 'complete' && totalTasksBeforeLimit > 20 && (
+            <Box sx={{ 
+              p: 1, 
+              textAlign: 'center', 
+              color: 'text.secondary',
+              fontSize: '0.75rem',
+              fontStyle: 'italic'
+            }}>
+              Showing 20 most recent of {totalTasksBeforeLimit} completed tasks
+            </Box>
+          )}
 
           {/* Add Task Button */}
           <Button

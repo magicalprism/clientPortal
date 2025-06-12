@@ -1,8 +1,8 @@
-// ChecklistView.js with inline task creation support
+// ChecklistView.js with inline task creation support and fixed create checklist button
 'use client';
 
 import { useEffect, useState, useMemo, useCallback } from 'react';
-import { Box, Typography, Grid } from '@mui/material';
+import { Box, Typography, Grid, IconButton, Tooltip } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
 import {
@@ -23,6 +23,7 @@ import { useSearchParams } from 'next/navigation';
 import SortableChecklist from '@/components/views/checklists/components/SortableChecklist';
 import ChecklistCard from '@/components/views/checklists/ChecklistCard';
 import * as collections from '@/collections';
+import { Plus } from '@phosphor-icons/react';
 
 export default function ChecklistView({ config, overId, dragging }) {
   const supabase = createClient();
@@ -35,7 +36,6 @@ export default function ChecklistView({ config, overId, dragging }) {
   const sensors = useSensors(useSensor(PointerSensor));
   const searchParams = useSearchParams();
   const showModal = searchParams.get('modal') === 'create';
-  const modalType = searchParams.get('type') || config.name;
 
   // Fetch data function
   const fetchData = useCallback(async () => {
@@ -123,7 +123,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     }
   };
 
-  // ✅ NEW: Handle inline task addition
+  // Handle inline task addition
   const handleTaskAdd = (newTask) => {
     console.log('[ChecklistView] Adding new task to state:', newTask);
     
@@ -191,50 +191,26 @@ export default function ChecklistView({ config, overId, dragging }) {
     }
   };
 
-  // Handle modal success (for checklist creation only - not for inline tasks)
-  const handleModalSuccess = useCallback(async (newRecord) => {
-    console.log('[ChecklistView] Modal creation success:', newRecord);
-    
-    if (!newRecord) {
-      console.warn('[ChecklistView] No record returned from modal success');
-      return;
-    }
-    
-    // Handle checklist creation only (tasks are handled inline now)
-    if (newRecord && (modalType === 'checklist' || config.name === 'checklist')) {
-      console.log('[ChecklistView] Adding checklist to state:', newRecord);
-      setChecklists(prev => [...prev, newRecord]);
-      
-      // Only do backup fetch for checklist creation, not task creation
-      setTimeout(async () => {
-        console.log('[ChecklistView] Backup fetch after checklist creation');
-        try {
-          await fetchData();
-        } catch (error) {
-          console.error('[ChecklistView] Error in backup fetch:', error);
-        }
-      }, 1000);
-    }
-    
-    return newRecord;
-  }, [fetchData, modalType, config.name]);
+  // Handle create checklist button click
+  const handleCreateChecklist = () => {
+    console.log('[ChecklistView] Opening create checklist modal');
+    const currentUrl = new URL(window.location);
+    currentUrl.searchParams.set('modal', 'create');
+    // Don't override the type, keep existing URL structure
+    router.push(currentUrl.pathname + currentUrl.search);
+  };
 
   // Handle modal close
-  const handleModalClose = useCallback(() => {
+  const handleModalClose = () => {
     console.log('[ChecklistView] Modal closed');
-    
-    const currentUrl = new URL(window.location);
-    currentUrl.searchParams.delete('modal');
-    currentUrl.searchParams.delete('type');
-    currentUrl.searchParams.delete('id');
-    
-    // Remove any field parameters that might have been added
-    ['checklist_id', 'project_id', 'company_id', 'title', 'status'].forEach(param => {
-      currentUrl.searchParams.delete(param);
-    });
-    
-    router.replace(currentUrl.pathname + currentUrl.search);
-  }, [router]);
+    window.history.back();
+  };
+
+  // Handle modal refresh/success
+  const handleModalRefresh = () => {
+    console.log('[ChecklistView] Modal refresh triggered');
+    fetchData();
+  };
 
   // Group tasks by checklist
   const groupedTasks = useMemo(() => {
@@ -351,25 +327,33 @@ export default function ChecklistView({ config, overId, dragging }) {
     }
   };
 
-  // Get the correct config for the modal
-  const getModalConfig = () => {
-    if (modalType === 'task') {
-      return collections.task;
-    }
-    if (modalType === 'checklist') {
-      return collections.checklist;
-    }
-    return config;
-  };
-
-  const modalConfig = getModalConfig();
-
   return (
     <>
       <Box sx={{ p: 3 }}>
-        <Typography sx={{ pb: 3 }} variant="h5" gutterBottom>
-          {(config?.singularLabel || config?.label || 'Untitled') + ' Checklists'}
-        </Typography>
+        <Box sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between',
+          pb: 3 
+        }}>
+          <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
+            {(config?.singularLabel || config?.label || 'Untitled') + ' Checklists'}
+          </Typography>
+          
+          <Tooltip title="Create checklist">
+            <IconButton
+              onClick={handleCreateChecklist}
+              sx={{ 
+                color: 'primary.main',
+                '&:hover': {
+                  backgroundColor: 'primary.50'
+                }
+              }}
+            >
+              <Plus size={20} />
+            </IconButton>
+          </Tooltip>
+        </Box>
 
         {isLoading ? (
           <Typography>Loading checklists...</Typography>
@@ -403,7 +387,7 @@ export default function ChecklistView({ config, overId, dragging }) {
                         onDelete={handleChecklistDelete}
                         onToggleComplete={handleToggleComplete}
                         onTaskDelete={handleTaskDelete}
-                        onTaskAdd={handleTaskAdd} // ✅ NEW: Pass task add handler
+                        onTaskAdd={handleTaskAdd}
                         enableTaskDrag
                       />
                     </SortableChecklist>
@@ -433,7 +417,7 @@ export default function ChecklistView({ config, overId, dragging }) {
                   onDelete={() => {}}
                   onToggleComplete={() => {}}
                   onTaskDelete={() => {}}
-                  onTaskAdd={() => {}} // ✅ NEW: Add empty handler for drag overlay
+                  onTaskAdd={() => {}}
                   field={{ name: 'checklist_id', label: 'Task' }}
                   record={{ id: activeTask.id }}
                   dragging
@@ -451,14 +435,13 @@ export default function ChecklistView({ config, overId, dragging }) {
         )}
       </Box>
 
-      {/* Modal for checklist creation only */}
+      {/* Modal for checklist creation */}
       {showModal && (
         <CollectionModal
-          open={showModal}
-          config={modalConfig}
+          open
+          config={collections.checklist}
           onClose={handleModalClose}
-          onSuccess={handleModalSuccess}
-          mode="create"
+          onRefresh={handleModalRefresh}
         />
       )}
     </>

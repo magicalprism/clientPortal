@@ -2,6 +2,7 @@
 
 // Table queries
 export * as company from './table/company';
+export * as contact from './table/contact';
 export * as contract from './table/contract';
 export * as media from './table/media';
 export * as milestone from './table/milestone';
@@ -13,6 +14,7 @@ export * as milestoneProject from './pivot/milestone_project';
 
 // Organized imports for re-export
 import * as companyQueries from './table/company';
+import * as contactQueries from './table/contact';
 import * as contractQueries from './table/contract';
 import * as mediaQueries from './table/media';
 import * as milestoneQueries from './table/milestone';
@@ -28,6 +30,7 @@ export const table = {
   milestone: milestoneQueries,
   task: taskQueries,
   project: projectQueries,
+  contact: contactQueries,
 };
 
 export const pivot = {

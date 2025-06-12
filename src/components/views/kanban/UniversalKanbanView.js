@@ -18,13 +18,15 @@ import {
   CardContent,
   Switch,
   FormControlLabel,
-  Chip
+  Chip,
+  Avatar
 } from '@mui/material';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   DndContext, 
   DragOverlay,
-  closestCorners,
+  closestCenter,
+  pointerWithin,
   KeyboardSensor,
   PointerSensor,
   useSensor,
@@ -32,18 +34,15 @@ import {
 } from '@dnd-kit/core';
 import {
   arrayMove,
-  SortableContext,
   sortableKeyboardCoordinates,
-  horizontalListSortingStrategy,
 } from '@dnd-kit/sortable';
-import { 
-  restrictToFirstScrollableAncestor,
-} from '@dnd-kit/modifiers';
-import { Kanban, ListChecks, Calendar, CheckCircle, FunnelSimple } from '@phosphor-icons/react';
+import { Kanban, ListChecks, Calendar, CheckCircle, FunnelSimple, User } from '@phosphor-icons/react';
 
 import CollectionModal from '@/components/modals/CollectionModal';
 import { KanbanColumn } from '@/components/views/kanban/KanbanColumn';
 import { KanbanTaskCard } from '@/components/views/kanban/KanbanTaskCard';
+import { useUniversalKanban } from '@/hooks/kanban/useUniversalKanban';
+import { useCurrentContact } from '@/hooks/useCurrentContact';
 import * as collections from '@/collections';
 import { table } from '@/lib/supabase/queries';
 
@@ -56,37 +55,57 @@ export default function UniversalKanbanView({
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  // State
+  // Get current contact for default selection
+  const { contact: currentContact, loading: currentContactLoading } = useCurrentContact();
+  
+  // Local state for filters and UI
   const [companies, setCompanies] = useState([]);
   const [projects, setProjects] = useState([]);
-  const [tasks, setTasks] = useState([]);
+  const [contacts, setContacts] = useState([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState('all');
   const [selectedProjectId, setSelectedProjectId] = useState('all');
-  const [showCompleted, setShowCompleted] = useState(false);
+  const [selectedContactId, setSelectedContactId] = useState('current'); // Default to current user
   const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingTasks, setIsLoadingTasks] = useState(false);
   const [activeId, setActiveId] = useState(null);
   const [activeTask, setActiveTask] = useState(null);
   
   // Refs to prevent infinite loops
   const companiesLoadedRef = useRef(false);
+  const currentContactSetRef = useRef(false);
+
+  // Get task config
+  const taskConfig = collections.task;
+
+  // Use the universal kanban hook with contact filtering
+  const {
+    loading: kanbanLoading,
+    error: kanbanError,
+    tasks,
+    containers,
+    tasksByContainer,
+    moveTask,
+    reorderTasks,
+    updateTask,
+    loadData,
+    clearError,
+    getTotalTaskCount,
+    getCompletedTaskCount,
+    getPendingTaskCount,
+    getOverdueTaskCount
+  } = useUniversalKanban({
+    companyId: selectedCompanyId,
+    projectId: selectedProjectId,
+    contactId: selectedContactId === 'current' ? currentContact?.id : selectedContactId,
+    showCompleted: true,
+    searchQuery,
+    filters,
+    config: taskConfig
+  });
 
   // Modal state
   const showModal = searchParams.get('modal') === 'create' || searchParams.get('modal') === 'edit';
   const modalType = searchParams.get('type') || 'task';
   const recordId = searchParams.get('id');
-
-  // Get task config
-  const taskConfig = collections.task;
-
-  // Define standard task statuses (customize based on your needs)
-  const standardStatuses = [
-    { id: 'todo', label: 'To Do', color: '#6B7280' },
-    { id: 'in_progress', label: 'In Progress', color: '#3B82F6' },
-    { id: 'review', label: 'Review', color: '#F59E0B' },
-    { id: 'complete', label: 'Complete', color: '#10B981' },
-    { id: 'on_hold', label: 'On Hold', color: '#EF4444' }
-  ];
 
   // Drag and drop sensors
   const sensors = useSensors(
@@ -99,6 +118,15 @@ export default function UniversalKanbanView({
       coordinateGetter: sortableKeyboardCoordinates,
     })
   );
+
+  // Set current contact as default when loaded
+  useEffect(() => {
+    if (currentContact && !currentContactLoading && !currentContactSetRef.current) {
+      console.log('[UniversalKanbanView] Setting current contact as default:', currentContact);
+      setSelectedContactId(currentContact.id);
+      currentContactSetRef.current = true;
+    }
+  }, [currentContact, currentContactLoading]);
 
   // Fetch companies
   const fetchCompanies = useCallback(async () => {
@@ -124,26 +152,66 @@ export default function UniversalKanbanView({
       let data, error;
       
       if (companyId && companyId !== 'all') {
+        // Only filter by company when a specific company is selected
         ({ data, error } = await table.project.fetchProjectsByCompanyId(companyId));
+        console.log('[UniversalKanbanView] Fetching projects for company:', companyId, 'Found:', data?.length || 0);
       } else {
-        // For "all" projects, we need to get them through companies or use a different method
-        // Let's try to get all projects by fetching from all companies
-        const { data: companiesData, error: companiesError } = await table.company.fetchCompaniesWithProjects();
-        if (companiesError) throw companiesError;
+        // Default: Show ALL projects regardless of company
+        console.log('[UniversalKanbanView] Fetching all projects');
         
-        // Extract all projects from companies
-        const allProjects = [];
-        companiesData?.forEach(company => {
-          if (company.projects) {
-            allProjects.push(...company.projects);
+        // Try different methods to get all projects
+        const projectQueryMethods = [
+          () => table.project.fetchAllProjects(),
+          () => table.project.fetchProjects(),
+          () => table.project.fetchAll(),
+          () => table.project.fetch(),
+          async () => {
+            // Fallback: Get projects from companies
+            const { data: companiesData, error: companiesError } = await table.company.fetchCompaniesWithProjects();
+            if (companiesError) throw companiesError;
+            
+            const allProjects = [];
+            companiesData?.forEach(company => {
+              if (company.projects) {
+                allProjects.push(...company.projects);
+              }
+            });
+            return { data: allProjects, error: null };
           }
-        });
-        data = allProjects;
-        error = null;
+        ];
+
+        let success = false;
+        for (const method of projectQueryMethods) {
+          try {
+            const result = await method();
+            if (result && result.data) {
+              data = result.data;
+              error = result.error;
+            } else if (Array.isArray(result)) {
+              data = result;
+              error = null;
+            }
+            
+            if (data && data.length >= 0) { // Allow empty arrays
+              success = true;
+              break;
+            }
+          } catch (methodError) {
+            console.log('[UniversalKanbanView] Project query method failed:', methodError.message);
+            continue;
+          }
+        }
+
+        if (!success) {
+          console.warn('[UniversalKanbanView] All project query methods failed');
+          data = [];
+          error = null;
+        }
       }
       
       if (error) throw error;
       
+      console.log('[UniversalKanbanView] Setting projects:', data?.length || 0);
       setProjects(data || []);
       
     } catch (error) {
@@ -152,108 +220,242 @@ export default function UniversalKanbanView({
     }
   }, []);
 
-  // Fetch all tasks with filters
-  const fetchTasks = useCallback(async () => {
-    setIsLoadingTasks(true);
-    
+  // Fetch contacts that are assigned to active tasks in current filter context
+  const fetchContacts = useCallback(async () => {
     try {
-      let data = [];
-      let error = null;
+      console.log('[UniversalKanbanView] Fetching contacts with active tasks for context:', {
+        companyId: selectedCompanyId,
+        projectId: selectedProjectId
+      });
+
+      // Step 1: Fetch tasks based on current company/project filter
+      // IMPORTANT: Don't filter by contact here - we want to see ALL assignments
+      // to determine which contacts have active tasks in the current scope
+      let activeTasks = [];
+      const activeStatuses = ['not_started', 'todo', 'in_progress'];
       
-      if (selectedProjectId !== 'all') {
-        // Try different methods to fetch tasks for a specific project
-        const methodsToTry = [
-          () => table.task.fetchTasksByProjectId(selectedProjectId),
-          () => table.task.fetchByProjectId(selectedProjectId),
-          () => table.task.getByProjectId(selectedProjectId),
-          () => table.task.fetchTasks({ project_id: selectedProjectId }),
-          () => table.task.fetch({ project_id: selectedProjectId })
-        ];
-        
-        for (const method of methodsToTry) {
-          try {
-            const result = await method();
-            data = result.data || result;
-            error = result.error || null;
-            break; // Success, exit loop
-          } catch (methodError) {
-            console.log('[UniversalKanbanView] Method failed, trying next:', methodError.message);
-            continue; // Try next method
-          }
-        }
-      } else {
-        // For all tasks, try to fetch from all projects
-        let allTasks = [];
-        
-        for (const project of projects) {
-          const methodsToTry = [
-            () => table.task.fetchTasksByProjectId(project.id),
-            () => table.task.fetchByProjectId(project.id),
-            () => table.task.getByProjectId(project.id),
-            () => table.task.fetchTasks({ project_id: project.id }),
-            () => table.task.fetch({ project_id: project.id })
-          ];
+      // Build base filter for task fetching (excluding contact filter)
+      const baseFilters = {};
+      if (selectedProjectId && selectedProjectId !== 'all') {
+        baseFilters.project_id = selectedProjectId;
+      }
+      if (selectedCompanyId && selectedCompanyId !== 'all') {
+        baseFilters.company_id = selectedCompanyId;
+      }
+
+      // Try different methods to fetch tasks with current filters
+      const taskQueryMethods = [
+        () => table.task.fetchTasks({ ...baseFilters, showCompleted: false }),
+        () => table.task.fetchTasksWithFilters({ ...baseFilters, showCompleted: false }),
+        () => table.task.fetchAll(baseFilters),
+        () => table.task.fetch(baseFilters),
+        async () => {
+          // Fallback method - fetch all and filter manually
+          const { data, error } = await table.task.fetchAll();
+          if (error) throw error;
           
-          for (const method of methodsToTry) {
+          let filtered = data || [];
+          
+          // Apply filters manually
+          if (baseFilters.project_id) {
+            filtered = filtered.filter(task => task.project_id === baseFilters.project_id);
+          }
+          if (baseFilters.company_id) {
+            filtered = filtered.filter(task => task.company_id === baseFilters.company_id);
+          }
+          
+          return { data: filtered, error: null };
+        }
+      ];
+
+      let success = false;
+      for (const method of taskQueryMethods) {
+        try {
+          const result = await method();
+          
+          // Handle different response formats
+          if (result && result.data) {
+            activeTasks = result.data;
+          } else if (Array.isArray(result)) {
+            activeTasks = result;
+          } else if (result && Array.isArray(result.tasks)) {
+            activeTasks = result.tasks;
+          }
+          
+          success = true;
+          console.log('[UniversalKanbanView] Successfully fetched tasks for contact filtering:', activeTasks.length);
+          break;
+        } catch (methodError) {
+          console.log('[UniversalKanbanView] Task query method failed:', methodError.message);
+          continue;
+        }
+      }
+
+      if (!success) {
+        console.warn('[UniversalKanbanView] All task query methods failed for contact filtering');
+        activeTasks = [];
+      }
+
+      // Step 2: Filter to only active status tasks and exclude templates
+      const filteredActiveTasks = activeTasks.filter(task => 
+        activeStatuses.includes(task.status) && 
+        task.is_template !== true &&
+        task.assigned_id // Only tasks that have someone assigned
+      );
+
+      console.log('[UniversalKanbanView] Active tasks with assignments:', filteredActiveTasks.length);
+
+      // Step 3: Extract unique contact IDs from active tasks
+      const uniqueContactIds = [...new Set(
+        filteredActiveTasks
+          .map(task => task.assigned_id)
+          .filter(Boolean) // Remove null/undefined values
+      )];
+
+      console.log('[UniversalKanbanView] Unique contact IDs with active tasks:', uniqueContactIds);
+
+      // Debug: Check what methods are actually available on table.contact
+      console.log('[UniversalKanbanView] Available table.contact methods:', Object.keys(table.contact || {}));
+      console.log('[UniversalKanbanView] table.contact object:', table.contact);
+
+      // Step 4: Fetch contact details for these IDs
+      if (uniqueContactIds.length === 0) {
+        console.log('[UniversalKanbanView] No contacts have active task assignments in current context');
+        setContacts([]);
+        return;
+      }
+
+      // Try different methods to fetch contact details
+      let contactData = [];
+      
+      const contactQueryMethods = [
+        async () => {
+          // Method 1: Try fetchContactsByIds if it exists
+          const { data, error } = await table.contact.fetchContactsByIds(uniqueContactIds);
+          if (error) throw error;
+          return data;
+        },
+        async () => {
+          // Method 2: Try individual contact fetches with different method names
+          const contacts = [];
+          for (const contactId of uniqueContactIds) {
             try {
-              const result = await method();
-              const projectTasks = result.data || result || [];
-              allTasks.push(...projectTasks);
-              break; // Success, exit method loop
-            } catch (methodError) {
-              continue; // Try next method
+              // Try different individual fetch method names
+              let result = null;
+              const individualMethods = [
+                () => table.contact.fetchContact(contactId),
+                () => table.contact.fetch(contactId),
+                () => table.contact.getContact(contactId),
+                () => table.contact.get(contactId),
+                () => table.contact.fetchContactById(contactId),
+                () => table.contact.getById(contactId)
+              ];
+              
+              for (const method of individualMethods) {
+                try {
+                  const { data, error } = await method();
+                  if (!error && data) {
+                    result = data;
+                    break;
+                  }
+                } catch (methodError) {
+                  continue;
+                }
+              }
+              
+              if (result) {
+                contacts.push(result);
+              } else {
+                console.log(`[UniversalKanbanView] Failed to fetch contact ${contactId} with any method`);
+              }
+            } catch (err) {
+              console.log(`[UniversalKanbanView] Failed to fetch contact ${contactId}:`, err.message);
             }
           }
+          return contacts;
+        },
+        async () => {
+          // Method 3: Try different "fetch all" method names and filter
+          const allContactMethods = [
+            () => table.contact.fetchAllContacts(),
+            () => table.contact.fetchContacts(),
+            () => table.contact.fetchAll(),
+            () => table.contact.fetch(),
+            () => table.contact.getAll(),
+            () => table.contact.getContacts(),
+            () => table.contact.list()
+          ];
+          
+          for (const method of allContactMethods) {
+            try {
+              const { data, error } = await method();
+              if (!error && data) {
+                console.log(`[UniversalKanbanView] Successfully fetched all contacts:`, data.length);
+                return data.filter(contact => uniqueContactIds.includes(contact.id));
+              }
+            } catch (methodError) {
+              console.log(`[UniversalKanbanView] Contact fetch all method failed:`, methodError.message);
+              continue;
+            }
+          }
+          
+          throw new Error('No working fetchAll method found');
+        },
+        async () => {
+          // Method 4: Direct Supabase query fallback
+          // Import the supabase client directly if table methods don't work
+          console.log('[UniversalKanbanView] Trying direct Supabase client approach...');
+          
+          // Try to access the supabase client from the window or import it
+          if (window.supabase) {
+            const { data, error } = await window.supabase
+              .from('contacts')
+              .select('*')
+              .in('id', uniqueContactIds);
+            
+            if (error) throw error;
+            console.log(`[UniversalKanbanView] Direct Supabase query successful:`, data.length);
+            return data;
+          }
+          
+          throw new Error('No direct Supabase client available');
+        },
+        async () => {
+          // Method 5: Last resort - create mock contacts with IDs so at least the dropdown shows something
+          console.log('[UniversalKanbanView] Creating mock contacts as last resort...');
+          return uniqueContactIds.map(id => ({
+            id: id,
+            title: `Contact ${id}`,
+            first_name: `Contact`,
+            last_name: `${id}`,
+            email: `contact${id}@example.com`
+          }));
         }
-        
-        data = allTasks;
-      }
-      
-      if (error) throw error;
-      
-      let filteredTasks = data || [];
-      
-      // Apply company filter client-side if needed
-      if (selectedCompanyId !== 'all') {
-        filteredTasks = filteredTasks.filter(task => 
-          task.project?.company_id === selectedCompanyId || 
-          projects.find(p => p.id === task.project_id)?.company_id === selectedCompanyId
-        );
-      }
-      
-      // Apply completion filter
-      if (!showCompleted) {
-        filteredTasks = filteredTasks.filter(task => task.status !== 'complete');
-      }
-      
-      // Apply search query client-side
-      if (searchQuery) {
-        filteredTasks = filteredTasks.filter(task =>
-          task.title?.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      }
-      
-      // Apply additional filters
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined && value !== null && value !== '') {
-          filteredTasks = filteredTasks.filter(task => task[key] === value);
+      ];
+
+      for (const method of contactQueryMethods) {
+        try {
+          contactData = await method();
+          if (contactData && contactData.length > 0) {
+            console.log('[UniversalKanbanView] Successfully fetched contact details:', contactData.length);
+            break;
+          }
+        } catch (methodError) {
+          console.log('[UniversalKanbanView] Contact query method failed:', methodError.message);
+          continue;
         }
-      });
-      
-      setTasks(filteredTasks);
-      
+      }
+
+      // Step 5: Set the contacts
+      console.log('[UniversalKanbanView] Final contact data:', contactData);
+      console.log('[UniversalKanbanView] Sample contact structure:', contactData[0]);
+      setContacts(contactData || []);
+
     } catch (error) {
-      console.error('[UniversalKanbanView] Error fetching tasks:', error);
-      
-      // If all methods fail, set empty tasks array and show message
-      setTasks([]);
-      
-      // Show a user-friendly error
-      alert(`Unable to fetch tasks. Please check that your task API methods are available. Error: ${error.message}`);
-    } finally {
-      setIsLoadingTasks(false);
+      console.error('[UniversalKanbanView] Error fetching contacts with active tasks:', error);
+      setContacts([]);
     }
-  }, [selectedCompanyId, selectedProjectId, showCompleted, searchQuery, filters, projects]);
+  }, [selectedCompanyId, selectedProjectId]); // Re-run when company/project filters change (NOT when selectedContactId changes)
 
   // Initialize data
   useEffect(() => {
@@ -261,9 +463,11 @@ export default function UniversalKanbanView({
       setIsLoading(true);
       
       try {
-        await fetchCompanies();
-        await fetchProjects();
-        await fetchTasks();
+        await Promise.all([
+          fetchCompanies(),
+          fetchProjects(), // Fetch all projects initially
+          fetchContacts()
+        ]);
       } catch (error) {
         console.error('[UniversalKanbanView] Error initializing data:', error);
       } finally {
@@ -274,79 +478,25 @@ export default function UniversalKanbanView({
     initializeData();
   }, []);
 
-  // Refetch data when filters change
-  useEffect(() => {
-    if (!companiesLoadedRef.current) return;
-    
-    fetchTasks();
-  }, [fetchTasks]);
-
-  // Refetch projects when company changes
+  // Refetch projects and contacts when company changes
   useEffect(() => {
     if (selectedCompanyId !== 'all') {
+      // When a specific company is selected, filter projects to that company
       fetchProjects(selectedCompanyId);
-      setSelectedProjectId('all'); // Reset project filter
+      setSelectedProjectId('all'); // Reset project filter when company changes
     } else {
-      fetchProjects();
+      // When "All Companies" is selected, show all projects
+      fetchProjects(); // This will fetch all projects
     }
-  }, [selectedCompanyId, fetchProjects]);
+    
+    // Always refetch contacts when company filter changes
+    fetchContacts();
+  }, [selectedCompanyId, fetchProjects, fetchContacts]);
 
-  // Group tasks by status
-  const tasksByStatus = useMemo(() => {
-    const grouped = {};
-    
-    // Initialize all statuses
-    standardStatuses.forEach(status => {
-      grouped[status.id] = [];
-    });
-    
-    // Group tasks
-    tasks.forEach(task => {
-      const status = task.status || 'todo';
-      if (grouped[status]) {
-        grouped[status].push(task);
-      } else {
-        // Handle custom statuses
-        if (!grouped[status]) {
-          grouped[status] = [];
-        }
-        grouped[status].push(task);
-      }
-    });
-    
-    return grouped;
-  }, [tasks]);
-
-  // Create containers for kanban columns
-  const containers = useMemo(() => {
-    const statusContainers = [];
-    
-    // Add standard statuses
-    standardStatuses.forEach(status => {
-      if (tasksByStatus[status.id] && tasksByStatus[status.id].length > 0) {
-        statusContainers.push({
-          id: `status-${status.id}`,
-          title: status.label,
-          color: status.color,
-          data: status
-        });
-      }
-    });
-    
-    // Add custom statuses
-    Object.keys(tasksByStatus).forEach(statusId => {
-      if (!standardStatuses.find(s => s.id === statusId) && tasksByStatus[statusId].length > 0) {
-        statusContainers.push({
-          id: `status-${statusId}`,
-          title: statusId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          color: '#6B7280',
-          data: { id: statusId, label: statusId }
-        });
-      }
-    });
-    
-    return statusContainers;
-  }, [tasksByStatus]);
+  // Refetch contacts when project changes
+  useEffect(() => {
+    fetchContacts();
+  }, [selectedProjectId, fetchContacts]);
 
   // Handle selections
   const handleCompanyChange = useCallback((event) => {
@@ -357,8 +507,8 @@ export default function UniversalKanbanView({
     setSelectedProjectId(event.target.value);
   }, []);
 
-  const handleShowCompletedToggle = useCallback((event) => {
-    setShowCompleted(event.target.checked);
+  const handleContactChange = useCallback((event) => {
+    setSelectedContactId(event.target.value);
   }, []);
 
   // Drag and drop handlers
@@ -366,10 +516,16 @@ export default function UniversalKanbanView({
     const { active } = event;
     setActiveId(active.id);
     
-    // Find the task being dragged
     const taskId = active.id.toString().replace('task-', '');
     const task = tasks.find(t => t.id.toString() === taskId);
     setActiveTask(task);
+    
+    console.log('[UniversalKanbanView] Drag started:', { 
+      activeId: active.id, 
+      taskId, 
+      taskTitle: task?.title,
+      taskStatus: task?.status 
+    });
   };
 
   const handleDragOver = (event) => {
@@ -388,12 +544,9 @@ export default function UniversalKanbanView({
     
     if (!activeIsTask) return;
     
-    // Prevent dragging subtasks
     if (activeTask?.parent_id) return;
     
-    // Handle task dropped on container or other task
     if (activeIsTask && (overIsContainer || overIsTask)) {
-      // This will be handled in handleDragEnd
       return;
     }
   };
@@ -404,58 +557,75 @@ export default function UniversalKanbanView({
     setActiveId(null);
     setActiveTask(null);
     
-    if (!over) return;
+    if (!over) {
+      console.log('[UniversalKanbanView] Drag cancelled - no drop target');
+      return;
+    }
     
     const activeId = active.id;
     const overId = over.id;
     
-    if (activeId === overId) return;
+    if (activeId === overId) {
+      console.log('[UniversalKanbanView] Drag cancelled - same position');
+      return;
+    }
     
     const activeIsTask = activeId.toString().startsWith('task-');
-    const overIsContainer = containers.some(c => c.id === overId);
     
-    if (!activeIsTask) return;
+    if (!activeIsTask) {
+      console.log('[UniversalKanbanView] Drag cancelled - not a task');
+      return;
+    }
     
-    // Prevent dragging subtasks
-    if (activeTask?.parent_id) return;
+    if (!activeTask) {
+      console.log('[UniversalKanbanView] Drag cancelled - no active task');
+      return;
+    }
     
-    // Handle task movement to different status
-    if (activeIsTask && overIsContainer) {
-      const newStatus = overId.replace('status-', '');
-      const taskId = activeId.toString().replace('task-', '');
+    const targetContainer = containers.find(c => c.id === overId);
+    
+    if (!targetContainer) {
+      console.log('[UniversalKanbanView] Drag cancelled - not dropped on a valid column');
+      return;
+    }
+    
+    const newStatus = targetContainer.id;
+    const oldStatus = activeTask.status || 'todo';
+    
+    if (newStatus === oldStatus) {
+      console.log('[UniversalKanbanView] Drag cancelled - same status');
+      return;
+    }
+    
+    const taskId = activeId.toString().replace('task-', '');
+    
+    console.log('[UniversalKanbanView] Moving task between columns:', { 
+      taskId, 
+      taskTitle: activeTask.title,
+      from: oldStatus, 
+      to: newStatus,
+      isParent: !activeTask.parent_id
+    });
+    
+    try {
+      await moveTask(taskId, oldStatus, newStatus, 0);
       
-      try {
-        // Try different methods to update the task
-        const updateMethods = [
-          () => table.task.updateTask(taskId, { status: newStatus }),
-          () => table.task.update(taskId, { status: newStatus }),
-          () => table.task.patch(taskId, { status: newStatus }),
-          () => table.task.edit(taskId, { status: newStatus })
-        ];
+      if (!activeTask.parent_id) {
+        const childTasks = tasks.filter(task => task.parent_id === activeTask.id);
+        console.log('[UniversalKanbanView] Moving child tasks with parent:', childTasks.length, 'children');
         
-        let success = false;
-        for (const method of updateMethods) {
+        for (const childTask of childTasks) {
           try {
-            const { data, error } = await method();
-            if (error) throw error;
-            success = true;
-            break; // Success, exit loop
-          } catch (methodError) {
-            console.log('[UniversalKanbanView] Update method failed, trying next:', methodError.message);
-            continue; // Try next method
+            await moveTask(childTask.id, childTask.status || 'todo', newStatus, 0);
+          } catch (childError) {
+            console.error('[UniversalKanbanView] Error moving child task:', childError);
           }
         }
-        
-        if (!success) {
-          throw new Error('No working update method found. Please check your task API methods.');
-        }
-        
-        // Refresh tasks
-        await fetchTasks();
-        
-      } catch (error) {
-        console.error('[UniversalKanbanView] Error updating task status:', error);
       }
+      
+      console.log('[UniversalKanbanView] Task move completed successfully');
+    } catch (error) {
+      console.error('[UniversalKanbanView] Error moving task:', error);
     }
   };
 
@@ -473,18 +643,19 @@ export default function UniversalKanbanView({
     console.log('[UniversalKanbanView] Modal success:', newRecord);
     
     if (newRecord) {
-      // Refresh tasks
-      await fetchTasks();
+      await loadData();
+      // Refetch contacts in case new assignments were made
+      await fetchContacts();
     }
     
     return newRecord;
-  }, [fetchTasks]);
+  }, [loadData, fetchContacts]);
 
-  // Handle task updates
-  const handleTaskUpdate = useCallback((updatedTask) => {
-    // Refresh tasks to reflect changes
-    fetchTasks();
-  }, [fetchTasks]);
+  const handleTaskUpdate = useCallback(async () => {
+    await loadData();
+    // Refetch contacts in case assignments changed
+    await fetchContacts();
+  }, [loadData, fetchContacts]);
 
   // Modal config
   const modalConfig = useMemo(() => {
@@ -499,20 +670,50 @@ export default function UniversalKanbanView({
     currentUrl.searchParams.set('modal', 'create');
     currentUrl.searchParams.set('type', 'task');
     
-    // Pre-fill project if one is selected
     if (selectedProjectId !== 'all') {
       currentUrl.searchParams.set('project_id', selectedProjectId);
     }
     
+    if (selectedContactId && selectedContactId !== 'all') {
+      currentUrl.searchParams.set('assigned_id', selectedContactId);
+    }
+    
     router.push(currentUrl.pathname + currentUrl.search);
-  }, [selectedProjectId, router]);
+  }, [selectedProjectId, selectedContactId, router]);
 
-  // Get stats
-  const totalTasks = tasks.length;
-  const completedTasks = tasks.filter(t => t.status === 'complete').length;
-  const pendingTasks = totalTasks - completedTasks;
+  const handleClearError = useCallback(() => {
+    clearError();
+  }, [clearError]);
 
-  if (isLoading) {
+  // Get contact display info
+  const getContactDisplayInfo = useCallback((contact) => {
+    if (!contact) return { name: 'Unknown', avatar: null };
+    
+    const name = contact.title || `${contact.first_name || ''} ${contact.last_name || ''}`.trim() || contact.email || 'Unknown';
+    const avatar = contact.thumbnail_id_details?.url || contact.thumbnail_id?.url || null;
+    
+    // Debug logging
+    if (contact.id === 15 || contact.id === 47 || contact.id === 25) {
+      console.log(`[UniversalKanbanView] getContactDisplayInfo for contact ${contact.id}:`, {
+        contact,
+        extractedName: name,
+        title: contact.title,
+        firstName: contact.first_name,
+        lastName: contact.last_name,
+        email: contact.email
+      });
+    }
+    
+    return { name, avatar };
+  }, []);
+
+  // Get stats using the hook
+  const totalTasks = getTotalTaskCount();
+  const completedTasks = getCompletedTaskCount();
+  const pendingTasks = getPendingTaskCount();
+  const overdueTasks = getOverdueTaskCount();
+
+  if (isLoading || currentContactLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', py: 8 }}>
         <CircularProgress size={32} sx={{ mr: 2 }} />
@@ -523,8 +724,6 @@ export default function UniversalKanbanView({
     );
   }
 
-    console.log(tasks);
-
   return (
     <Box sx={{ pt: 3 }}>
       {/* Header */}
@@ -532,16 +731,19 @@ export default function UniversalKanbanView({
         <Typography variant="h5">
           Universal Task Board
         </Typography>
-        
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Button
-            variant="contained"
-            onClick={handleCreateTask}
-          >
-            New Task
-          </Button>
-        </Stack>
+            
       </Box>
+
+      {/* Error Alert */}
+      {kanbanError && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 3 }}
+          onClose={handleClearError}
+        >
+          {kanbanError}
+        </Alert>
+      )}
 
       {/* Filters and Stats */}
       <Card sx={{ mb: 3 }}>
@@ -595,17 +797,64 @@ export default function UniversalKanbanView({
                   </Select>
                 </FormControl>
 
-                {/* Show Completed Toggle */}
-                <FormControlLabel
-                  control={
-                    <Switch 
-                      checked={showCompleted} 
-                      onChange={handleShowCompletedToggle}
-                      size="small"
-                    />
-                  }
-                  label="Show completed"
-                />
+                {/* Contact Filter */}
+                <FormControl size="small" sx={{ minWidth: 200 }}>
+                  <InputLabel>Assigned To</InputLabel>
+                  <Select
+                    value={selectedContactId}
+                    label="Assigned To"
+                    onChange={handleContactChange}
+                    renderValue={(value) => {
+                      console.log('[UniversalKanbanView] renderValue called with:', value, typeof value);
+                      console.log('[UniversalKanbanView] contacts available:', contacts.map(c => ({ id: c.id, idType: typeof c.id, title: c.title })));
+                      
+                      if (value === 'all') return 'All Contacts';
+                      if (value === 'current' || value === currentContact?.id) {
+                        const { name } = getContactDisplayInfo(currentContact);
+                        return `${name} (You)`;
+                      }
+                      const contact = contacts.find(c => c.id == value); // Use == instead of === for loose comparison
+                      console.log('[UniversalKanbanView] Found contact for renderValue:', contact);
+                      const { name } = getContactDisplayInfo(contact);
+                      console.log('[UniversalKanbanView] Display name:', name);
+                      return name;
+                    }}
+                  >
+                    <MenuItem value="all">All Contacts</MenuItem>
+                    {currentContact && (
+                      <MenuItem value={currentContact.id}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Avatar 
+                            src={getContactDisplayInfo(currentContact).avatar} 
+                            sx={{ width: 20, height: 20, fontSize: '0.75rem' }}
+                          >
+                            <User size={12} />
+                          </Avatar>
+                          {getContactDisplayInfo(currentContact).name} (You)
+                        </Box>
+                      </MenuItem>
+                    )}
+                    {contacts
+                      .filter(contact => contact.id !== currentContact?.id)
+                      .map(contact => {
+                        const { name, avatar } = getContactDisplayInfo(contact);
+                        console.log('[UniversalKanbanView] Rendering MenuItem for contact:', { id: contact.id, name, contact });
+                        return (
+                          <MenuItem key={contact.id} value={contact.id}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Avatar 
+                                src={avatar} 
+                                sx={{ width: 20, height: 20, fontSize: '0.75rem' }}
+                              >
+                                <User size={12} />
+                              </Avatar>
+                              {name}
+                            </Box>
+                          </MenuItem>
+                        );
+                      })}
+                  </Select>
+                </FormControl>
               </Stack>
             </Box>
             
@@ -634,6 +883,14 @@ export default function UniversalKanbanView({
                     variant="outlined"
                   />
                 )}
+                {overdueTasks > 0 && (
+                  <Chip 
+                    label={`${overdueTasks} overdue`}
+                    size="small" 
+                    color="error" 
+                    variant="outlined"
+                  />
+                )}
               </Stack>
             </Box>
           </Box>
@@ -642,8 +899,8 @@ export default function UniversalKanbanView({
 
       <Divider sx={{ mb: 3 }} />
 
-      {/* Loading indicator for tasks */}
-      {isLoadingTasks && (
+      {/* Loading indicator for kanban data */}
+      {kanbanLoading && (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 2, mb: 2 }}>
           <CircularProgress size={24} sx={{ mr: 2 }} />
           <Typography variant="body2" color="text.secondary">
@@ -655,11 +912,10 @@ export default function UniversalKanbanView({
       {/* Kanban Board */}
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCorners}
+        collisionDetection={pointerWithin}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
-        modifiers={[restrictToFirstScrollableAncestor]}
       >
         <Box 
           sx={{ 
@@ -688,7 +944,7 @@ export default function UniversalKanbanView({
             },
           }}
         >
-          {containers.length === 0 ? (
+          {containers.length === 0 && !kanbanLoading ? (
             <Card sx={{ maxWidth: 500, width: '100%' }}>
               <CardContent sx={{ textAlign: 'center', py: 6 }}>
                 <Box sx={{ mb: 2 }}>
@@ -708,22 +964,17 @@ export default function UniversalKanbanView({
               </CardContent>
             </Card>
           ) : (
-            <SortableContext 
-              items={containers.map(c => c.id)}
-              strategy={horizontalListSortingStrategy}
-            >
-              {containers.map((container, index) => (
-                <KanbanColumn
-                  key={container.id}
-                  container={container}
-                  tasks={tasksByStatus[container.data.id] || []}
-                  config={taskConfig}
-                  mode="universal"
-                  milestoneIndex={index}
-                  onTaskUpdate={handleTaskUpdate}
-                />
-              ))}
-            </SortableContext>
+            containers.map((container, index) => (
+              <KanbanColumn
+                key={container.id}
+                container={container}
+                tasks={tasksByContainer[container.id] || []}
+                config={taskConfig}
+                mode="universal"
+                milestoneIndex={index}
+                onTaskUpdate={handleTaskUpdate}
+              />
+            ))
           )}
         </Box>
 

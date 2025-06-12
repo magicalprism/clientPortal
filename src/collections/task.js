@@ -15,12 +15,6 @@ export const task = {
         label: 'Page View', 
         component: 'PageView' 
       },
-      projectkanban: {
-         label: 'Project View', 
-         component: 'ProjectKanbanView' ,
-         hideFilters: true 
-
-        },
          kanban: {
          label: 'Kanban View', 
          component: 'UniversalKanbanView' ,
@@ -94,9 +88,8 @@ export const task = {
       options: [
         { value: 'not_started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
+        { value: 'in_progress', label: 'In Progress' },
         { value: 'complete', label: 'Complete' },
-        { value: 'unavailable', label: 'Unavailable' },
-        { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },
       ]
     },
@@ -309,10 +302,9 @@ export const task = {
       options: [
         { value: 'not_started', label: 'Not Started' },
         { value: 'todo', label: 'To do' },
+        { value: 'in_progress', label: 'In Progress' },
         { value: 'complete', label: 'Complete' },
-        { value: 'unavailable', label: 'Unavailable' },
-        { value: 'meeting', label: 'Meeting' },
-        { value: 'archived', label: 'Archived' },       
+        { value: 'archived', label: 'Archived' },    
       ],
       excludeFromViews: ['calendar','templateTree', , 'kanban'],
       defaultValue: ['todo', 'not_started'],
