@@ -1,270 +1,601 @@
 // components/design-tool/inputs/UrlAnalyzerSection.jsx
-'use client';
-
-import { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Box,
+  Card,
+  CardContent,
   Typography,
   TextField,
   Button,
+  Switch,
+  FormControlLabel,
+  Chip,
   Alert,
   CircularProgress,
-  Chip,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  IconButton,
+  Grid,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
   Tooltip
 } from '@mui/material';
 import {
-  Globe,
-  MagnifyingGlass,
-  CheckCircle,
-  Warning,
+  Link,
+  Eye,
+  Palette,
   Layout,
-  X
+  Sparkle,
+  CaretDown,
+  Info
 } from '@phosphor-icons/react';
 
-export default function UrlAnalyzerSection({
-  value,
-  onChange,
-  extractedLayout,
-  onLayoutChange
-}) {
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
+export default function UrlAnalyzerSection({ onAnalysisComplete }) {
+  const [url, setUrl] = useState('');
+  const [useScreenshots, setUseScreenshots] = useState(false);
+  const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
-  const [lastAnalyzedUrl, setLastAnalyzedUrl] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  // Validate URL format
-  const isValidUrl = (string) => {
-    try {
-      new URL(string);
-      return true;
-    } catch (_) {
-      return false;
-    }
-  };
-
-  // Analyze URL layout structure
-  const handleAnalyze = useCallback(async () => {
-    if (!value.trim() || !isValidUrl(value)) {
-      setError('Please enter a valid URL (e.g., https://example.com)');
+  const handleAnalyze = async () => {
+    if (!url) {
+      setError('Please enter a valid URL');
       return;
     }
 
-    setIsAnalyzing(true);
+    setIsLoading(true);
     setError('');
 
     try {
       const response = await fetch('/api/ai/extract-layout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: value })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          url: url.trim(),
+          useScreenshots 
+        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to analyze URL: ${response.statusText}`);
-      }
-
       const result = await response.json();
-      
+
       if (result.success) {
-        onLayoutChange(result.data);
-        setLastAnalyzedUrl(value);
+        setAnalysis(result);
+        onAnalysisComplete?.(result);
       } else {
-        throw new Error(result.error || 'Analysis failed');
+        setError(result.error || 'Analysis failed');
       }
-    } catch (error) {
-      console.error('URL analysis error:', error);
-      setError(error.message);
-      
-      // Use mock layout as fallback for development
-      const mockLayout = generateMockLayout(value);
-      onLayoutChange(mockLayout);
-      setLastAnalyzedUrl(value);
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError('Failed to analyze URL. Please try again.');
     } finally {
-      setIsAnalyzing(false);
+      setIsLoading(false);
     }
-  }, [value, onLayoutChange]);
-
-  // Generate mock layout for development
-  const generateMockLayout = (url) => {
-    const layouts = [
-      { type: 'hero', layout: 'centered', container: 'full-width', description: 'Main hero section with headline' },
-      { type: 'features', layout: '3-col-grid', container: 'contained', description: 'Feature grid with icons' },
-      { type: 'testimonial', layout: 'carousel', container: 'contained', description: 'Customer testimonials' },
-      { type: 'cta', layout: 'centered', container: 'contained', description: 'Call-to-action section' }
-    ];
-
-    // Different layouts based on URL to simulate variety
-    if (url.includes('stripe')) {
-      return [
-        { type: 'hero', layout: 'image-right', container: 'contained', description: 'Hero with product demo' },
-        { type: 'features', layout: '2-col-grid', container: 'contained', description: 'Feature comparison' },
-        { type: 'testimonial', layout: 'single-quote', container: 'contained', description: 'Customer quote' },
-        { type: 'cta', layout: 'button-centered', container: 'full-width', description: 'Sign up CTA' }
-      ];
-    } else if (url.includes('apple')) {
-      return [
-        { type: 'hero', layout: 'image-background', container: 'full-width', description: 'Full-screen product hero' },
-        { type: 'features', layout: 'stacked', container: 'contained', description: 'Feature showcase' },
-        { type: 'gallery', layout: 'masonry', container: 'contained', description: 'Product gallery' }
-      ];
-    }
-
-    return layouts;
   };
 
-  // Remove a layout section
-  const removeLayoutSection = (index) => {
-    const updated = extractedLayout.filter((_, i) => i !== index);
-    onLayoutChange(updated);
-  };
-
-  // Get layout type color
-  const getLayoutColor = (type) => {
-    const colors = {
-      hero: 'primary',
-      features: 'secondary',
-      testimonial: 'success',
-      cta: 'warning',
-      gallery: 'info',
-      about: 'default',
-      navigation: 'default',
-      footer: 'default'
+  const getSourceBadge = (source) => {
+    const sourceConfig = {
+      'complete_analysis': { label: 'AI + Screenshots', color: 'success', icon: <Sparkle size={16} /> },
+      'html_ai_analysis': { label: 'AI + HTML', color: 'primary', icon: <Eye size={16} /> },
+      'enhanced_mock': { label: 'Smart Mock', color: 'warning', icon: <Layout size={16} /> },
+      'basic_mock': { label: 'Basic Mock', color: 'default', icon: <Link size={16} /> }
     };
-    return colors[type] || 'default';
-  };
 
-  // Get layout icon
-  const getLayoutIcon = (layout) => {
-    switch (layout) {
-      case '3-col-grid':
-      case '2-col-grid':
-        return '⚏';
-      case 'carousel':
-        return '⟲';
-      case 'centered':
-        return '◉';
-      case 'image-left':
-      case 'image-right':
-        return '🖼';
-      case 'stacked':
-        return '⚍';
-      default:
-        return '▢';
-    }
-  };
-
-  return (
-    <Box>
-      {/* Header */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <Globe size={20} weight="duotone" />
-        <Typography variant="h6">Layout Inspiration</Typography>
-      </Box>
-
-      {/* URL Input */}
-      <TextField
-        fullWidth
-        placeholder="https://stripe.com or https://linear.app"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        sx={{ mb: 2 }}
+    const config = sourceConfig[source] || sourceConfig['basic_mock'];
+    
+    return (
+      <Chip
+        icon={config.icon}
+        label={config.label}
+        color={config.color}
+        size="small"
         variant="outlined"
-        helperText="Enter a website URL to extract layout patterns"
-        error={!!error && !isAnalyzing}
       />
+    );
+  };
 
-      {/* Analyze Button */}
-      <Button
-        variant="contained"
-        startIcon={isAnalyzing ? <CircularProgress size={16} /> : <MagnifyingGlass size={16} />}
-        onClick={handleAnalyze}
-        disabled={!value.trim() || isAnalyzing}
-        fullWidth
-        sx={{ mb: 2 }}
-      >
-        {isAnalyzing ? 'Analyzing Layout...' : 'Analyze Layout Structure'}
-      </Button>
+  const renderAnalysisResults = () => {
+    if (!analysis) return null;
 
-      {/* Error Alert */}
-      {error && !isAnalyzing && (
-        <Alert 
-          severity="warning" 
-          sx={{ mb: 2 }}
-          icon={<Warning size={16} />}
-        >
-          {error}
-        </Alert>
-      )}
+    // Debug logging to see what we actually received
+    console.log('🖥️ UI - Analysis data received:', analysis);
+    console.log('🖥️ UI - Analysis.data keys:', Object.keys(analysis.data || {}));
+    console.log('🖥️ UI - Containers available:', !!analysis.data?.containers);
+    console.log('🖥️ UI - Grids available:', !!analysis.data?.grids);
+    console.log('🖥️ UI - Spacing available:', !!analysis.data?.spacing);
 
-      {/* Extracted Layout */}
-      {extractedLayout.length > 0 && (
-        <>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CheckCircle size={16} weight="fill" color="green" />
-            Layout Structure from {lastAnalyzedUrl}
-          </Typography>
+    return (
+      <Box sx={{ mt: 3 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <Typography variant="h6">Layout Analysis Results</Typography>
+          {getSourceBadge(analysis.source)}
+          {analysis.data?.confidence && (
+            <Chip 
+              label={`${Math.round(analysis.data.confidence * 100)}% confidence`}
+              size="small"
+              color={analysis.data.confidence > 0.7 ? 'success' : 'warning'}
+            />
+          )}
+        </Box>
 
-          <List dense sx={{ bgcolor: 'grey.50', borderRadius: 1 }}>
-            {extractedLayout.map((section, index) => (
-              <ListItem
-                key={index}
-                sx={{
-                  border: 1,
-                  borderColor: 'grey.200',
-                  borderRadius: 1,
-                  mb: 1,
-                  bgcolor: 'white'
-                }}
-                secondaryAction={
-                  <Tooltip title="Remove section">
-                    <IconButton
-                      size="small"
-                      onClick={() => removeLayoutSection(index)}
-                    >
-                      <X size={14} />
-                    </IconButton>
-                  </Tooltip>
-                }
-              >
-                <ListItemText
-                  primary={
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-                      <Chip
-                        label={section.type}
-                        color={getLayoutColor(section.type)}
-                        size="small"
-                      />
-                      <Typography variant="body2" sx={{ fontWeight: 500 }}>
-                        {getLayoutIcon(section.layout)} {section.layout}
+        {/* Sections Overview */}
+        {analysis.data?.sections && (
+          <Accordion defaultExpanded>
+            <AccordionSummary expandIcon={<CaretDown />}>
+              <Typography variant="subtitle1">
+                Detected Sections ({analysis.data.sections.length})
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Grid container spacing={2}>
+                {analysis.data.sections.map((section, index) => (
+                  <Grid item xs={12} key={index}>
+                    <Card variant="outlined">
+                      <CardContent sx={{ p: 2 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                          <Typography variant="subtitle2" sx={{ textTransform: 'capitalize' }}>
+                            {section.type}
+                          </Typography>
+                          <Chip 
+                            label={section.layout} 
+                            size="small" 
+                            variant="outlined"
+                          />
+                        </Box>
+                        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                          {section.description}
+                        </Typography>
+                        {section.confidence && (
+                          <Typography variant="caption" color="text.secondary">
+                            {Math.round(section.confidence * 100)}% match
+                          </Typography>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
+              </Grid>
+            </AccordionDetails>
+          </Accordion>
+        )}
+
+        {/* Enhanced Layout Patterns */}
+        {analysis.data && Object.keys(analysis.data).length > 0 && (
+          <Accordion>
+            <AccordionSummary expandIcon={<CaretDown />}>
+              <Typography variant="subtitle1">
+                Detailed Layout Patterns & Design System
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              {/* Containers */}
+              {analysis.data.containers && analysis.data.containers.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Container System</Typography>
+                  {analysis.data.containers.map((container, index) => (
+                    <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="body2" fontWeight="medium">
+                        {container.value || container.className} - {container.usage}
                       </Typography>
+                      {container.description && (
+                        <Typography variant="caption" color="text.secondary">
+                          {container.description}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              
+              {/* Typography Hierarchy */}
+              {analysis.data.typography && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Typography Hierarchy</Typography>
+                  
+                  {/* Headings */}
+                  {analysis.data.typography.headings && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>Headings</Typography>
+                      {analysis.data.typography.headings.map((heading, index) => (
+                        <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          <Typography variant="body2">
+                            <strong>{heading.element}</strong>: {heading.size} / {heading.weight} / {heading.lineHeight}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {heading.description}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Body Text */}
+                  {analysis.data.typography.body && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>Body Text</Typography>
+                      {analysis.data.typography.body.map((body, index) => (
+                        <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                          <Typography variant="body2">
+                            <strong>{body.element}</strong>: {body.size} / {body.weight} / {body.lineHeight}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {body.description}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
+                  
+                  {/* Typography Scale */}
+                  {analysis.data.typography.scale && (
+                    <Box sx={{ p: 1, bgcolor: 'primary.50', borderRadius: 1, mb: 2 }}>
+                      <Typography variant="caption" color="primary.main">
+                        Scale: {analysis.data.typography.scale.ratio} ratio, {analysis.data.typography.scale.base} base
+                      </Typography>
+                    </Box>
+                  )}
+                </Box>
+              )}
+              
+              {/* Color System */}
+              {analysis.data.colors && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Color System</Typography>
+                  
+                  {/* Primary Colors */}
+                  {analysis.data.colors.primary && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>Primary Colors</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {analysis.data.colors.primary.map((color, index) => (
+                          <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              sx={{
+                                width: 20,
+                                height: 20,
+                                bgcolor: color.hex,
+                                borderRadius: '4px',
+                                border: '1px solid #ddd'
+                              }}
+                              title={color.hex}
+                            />
+                            <Box>
+                              <Typography variant="caption" display="block">{color.hex}</Typography>
+                              <Typography variant="caption" color="text.secondary">{color.usage}</Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                  
+                  {/* Neutral Colors */}
+                  {analysis.data.colors.neutral && (
+                    <Box sx={{ mb: 2 }}>
+                      <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>Neutral Colors</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                        {analysis.data.colors.neutral.map((color, index) => (
+                          <Box key={index} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box
+                              sx={{
+                                width: 20,
+                                height: 20,
+                                bgcolor: color.hex,
+                                borderRadius: '4px',
+                                border: '1px solid #ddd'
+                              }}
+                              title={color.hex}
+                            />
+                            <Box>
+                              <Typography variant="caption" display="block">{color.hex}</Typography>
+                              <Typography variant="caption" color="text.secondary">{color.usage}</Typography>
+                            </Box>
+                          </Box>
+                        ))}
+                      </Box>
+                    </Box>
+                  )}
+                </Box>
+              )}
+              
+              {/* Spacing System */}
+              {analysis.data.spacing && analysis.data.spacing.common && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Spacing System</Typography>
+                  {analysis.data.spacing.common.map((spacing, index) => (
+                    <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="body2">
+                        <strong>{spacing.value}</strong> ({spacing.count}× used) - {spacing.usage}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {spacing.description}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              
+              {/* Icons System */}
+              {analysis.data.icons && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Icon System</Typography>
+                  <Box sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2">
+                      <strong>Style:</strong> {analysis.data.icons.style} | 
+                      <strong> Library:</strong> {analysis.data.icons.library}
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {analysis.data.icons.description}
+                    </Typography>
+                    <Box sx={{ mt: 1 }}>
+                      <Typography variant="caption" color="text.secondary">Sizes: </Typography>
+                      {analysis.data.icons.size?.map((size, index) => (
+                        <Chip key={index} label={size} size="small" variant="outlined" sx={{ mr: 0.5 }} />
+                      ))}
+                    </Box>
+                  </Box>
+                </Box>
+              )}
+              
+              {/* Imagery System */}
+              {analysis.data.imagery && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Imagery System</Typography>
+                  <Box sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Treatment:</strong> {analysis.data.imagery.treatment?.cornerRadius} border radius, {analysis.data.imagery.treatment?.shadow} shadows
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
+                      {analysis.data.imagery.treatment?.description}
+                    </Typography>
+                    {analysis.data.imagery.aspectRatios && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary">Aspect Ratios: </Typography>
+                        {analysis.data.imagery.aspectRatios.map((ratio, index) => (
+                          <Chip key={index} label={`${ratio.ratio} (${ratio.usage})`} size="small" variant="outlined" sx={{ mr: 0.5 }} />
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
+              
+              {/* Design System Tokens */}
+              {analysis.data.designSystem && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Design System Tokens</Typography>
+                  <Box sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    {analysis.data.designSystem.borderRadius && (
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>Border Radius:</strong> {analysis.data.designSystem.borderRadius.join(', ')}
+                      </Typography>
+                    )}
+                    {analysis.data.designSystem.animation && (
+                      <Typography variant="body2" sx={{ mb: 1 }}>
+                        <strong>Animation:</strong> {analysis.data.designSystem.animation.duration?.join(', ')} duration, {analysis.data.designSystem.animation.easing} easing
+                      </Typography>
+                    )}
+                    {analysis.data.designSystem.shadows && (
+                      <Box>
+                        <Typography variant="body2" fontWeight="medium" sx={{ mb: 1 }}>Shadow System:</Typography>
+                        {analysis.data.designSystem.shadows.map((shadow, index) => (
+                          <Typography key={index} variant="caption" display="block" color="text.secondary">
+                            {shadow.name}: {shadow.usage}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
+              
+              {/* Grid Systems */}
+              {analysis.data.grids && analysis.data.grids.length > 0 && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Grid Systems</Typography>
+                  {analysis.data.grids.map((grid, index) => (
+                    <Box key={index} sx={{ mb: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                      <Typography variant="body2" fontWeight="medium">
+                        {grid.type} {grid.columns && `(${grid.columns} columns)`} - {grid.usage}
+                      </Typography>
+                      {grid.description && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          {grid.description}
+                        </Typography>
+                      )}
+                      {grid.template && (
+                        <Typography variant="caption" color="text.secondary" display="block">
+                          Template: {grid.template}
+                        </Typography>
+                      )}
+                    </Box>
+                  ))}
+                </Box>
+              )}
+              
+              {/* Responsive Strategy */}
+              {analysis.data.responsive && (
+                <Box sx={{ mb: 3 }}>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Responsive Strategy</Typography>
+                  <Box sx={{ p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>
+                      <strong>Strategy:</strong> {analysis.data.responsive.strategy}
+                    </Typography>
+                    {analysis.data.responsive.breakpoints && (
+                      <Box>
+                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>Breakpoints:</Typography>
+                        {analysis.data.responsive.breakpoints.map((bp, index) => (
+                          <Typography key={index} variant="caption" display="block" color="text.secondary">
+                            {bp.size} - {bp.name}: {bp.description}
+                          </Typography>
+                        ))}
+                      </Box>
+                    )}
+                  </Box>
+                </Box>
+              )}
+              
+              {/* Frameworks */}
+              {analysis.data.frameworks && analysis.data.frameworks.length > 0 && (
+                <Box>
+                  <Typography variant="subtitle2" sx={{ mb: 1 }}>Detected Frameworks & Systems</Typography>
+                  <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                    {analysis.data.frameworks.map((framework, index) => (
                       <Chip
-                        label={section.container}
+                        key={index}
+                        label={framework}
+                        color="secondary"
                         variant="outlined"
                         size="small"
                       />
-                    </Box>
-                  }
-                  secondary={
-                    <Typography variant="caption" color="text.secondary">
-                      {section.description}
-                    </Typography>
-                  }
-                />
-              </ListItem>
-            ))}
-          </List>
-        </>
-      )}
+                    ))}
+                  </Box>
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        )}
 
-      {/* Help Text */}
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        💡 Try URLs like stripe.com, linear.app, or apple.com for different layout styles
-      </Typography>
-    </Box>
+        {/* AI Insights (if available) */}
+        {analysis.data?.aiInsights && (
+          <Accordion>
+            <AccordionSummary expandIcon={<CaretDown />}>
+              <Typography variant="subtitle1">
+                AI Design Insights
+              </Typography>
+              {analysis.data.aiInsights.error && (
+                <Chip 
+                  label="Limited Data" 
+                  color="warning" 
+                  size="small" 
+                  sx={{ ml: 1 }}
+                />
+              )}
+            </AccordionSummary>
+            <AccordionDetails>
+              {analysis.data.aiInsights.error ? (
+                <Alert severity="warning" sx={{ mb: 2 }}>
+                  AI analysis encountered an issue: {analysis.data.aiInsights.error}
+                </Alert>
+              ) : null}
+              
+              <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                {analysis.data.aiInsights.style && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Style</Typography>
+                    <Typography variant="body2">{analysis.data.aiInsights.style}</Typography>
+                  </Box>
+                )}
+                {analysis.data.aiInsights.approach && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Approach</Typography>
+                    <Typography variant="body2">{analysis.data.aiInsights.approach}</Typography>
+                  </Box>
+                )}
+                {analysis.data.aiInsights.hierarchy && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Hierarchy</Typography>
+                    <Typography variant="body2">{analysis.data.aiInsights.hierarchy}</Typography>
+                  </Box>
+                )}
+                {analysis.data.aiInsights.framework && (
+                  <Box>
+                    <Typography variant="caption" color="text.secondary">Framework</Typography>
+                    <Typography variant="body2">{analysis.data.aiInsights.framework}</Typography>
+                  </Box>
+                )}
+              </Box>
+              
+              {analysis.data.aiInsights.confidence && (
+                <Box sx={{ mt: 2 }}>
+                  <Typography variant="caption" color="text.secondary">
+                    AI Confidence: {Math.round(analysis.data.aiInsights.confidence * 100)}%
+                  </Typography>
+                </Box>
+              )}
+            </AccordionDetails>
+          </Accordion>
+        )}
+
+        {/* Visual Analysis (if screenshots were used) */}
+        {analysis.fullAnalysis?.analysis?.visual && (
+          <Accordion>
+            <AccordionSummary expandIcon={<CaretDown />}>
+              <Typography variant="subtitle1">
+                Visual Analysis (Screenshots)
+              </Typography>
+            </AccordionSummary>
+            <AccordionDetails>
+              <Typography variant="body2" color="text.secondary">
+                Advanced visual analysis with GPT-4 Vision provides detailed insights about spacing, 
+                typography, and responsive behavior patterns.
+              </Typography>
+              {/* Add visual analysis details here */}
+            </AccordionDetails>
+          </Accordion>
+        )}
+      </Box>
+    );
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Link size={24} />
+          <Typography variant="h6">URL Layout Analyzer</Typography>
+        </Box>
+        
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+          Analyze any website's layout patterns and design system to inspire your design.
+        </Typography>
+
+        <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+          <TextField
+            fullWidth
+            label="Website URL"
+            placeholder="https://stripe.com"
+            value={url}
+            onChange={(e) => setUrl(e.target.value)}
+            disabled={isLoading}
+            error={!!error}
+            helperText={error}
+          />
+          <Button
+            variant="contained"
+            onClick={handleAnalyze}
+            disabled={isLoading || !url}
+            startIcon={isLoading ? <CircularProgress size={20} /> : <Eye />}
+            sx={{ whiteSpace: 'nowrap', minWidth: 120 }}
+          >
+            {isLoading ? 'Analyzing...' : 'Analyze'}
+          </Button>
+        </Box>
+
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={useScreenshots}
+                onChange={(e) => setUseScreenshots(e.target.checked)}
+                disabled={isLoading}
+              />
+            }
+            label="Use Screenshots (Enhanced Analysis)"
+          />
+          <Tooltip title="Screenshot analysis provides detailed visual insights about spacing, typography, and imagery">
+            <Info size={16} style={{ color: '#666' }} />
+          </Tooltip>
+        </Box>
+
+        {useScreenshots && (
+          <Alert severity="info" sx={{ mb: 2 }}>
+            Screenshot analysis captures visual layout details including exact spacing, 
+            typography hierarchy, and image treatments for more accurate design replication.
+          </Alert>
+        )}
+
+        {renderAnalysisResults()}
+      </CardContent>
+    </Card>
   );
 }

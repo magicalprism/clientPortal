@@ -1,323 +1,213 @@
 // app/api/ai/generate-layout/route.js
+import { generateIntelligentLayout } from '@/lib/ai/layout-generator';
+
 export async function POST(request) {
   try {
-    const { classifiedCopy, extractedLayout, brandTokens } = await request.json();
+    console.log('🎨 === GENERATE LAYOUT API CALLED ===');
+    
+    const { 
+      copyClassification, 
+      layoutAnalysis, 
+      brandTokens, 
+      brandId 
+    } = await request.json();
 
-    if (!classifiedCopy || !extractedLayout || !brandTokens) {
+    console.log('🎨 Input validation:');
+    console.log('🎨 - Copy classification:', !!copyClassification);
+    console.log('🎨 - Layout analysis:', !!layoutAnalysis);
+    console.log('🎨 - Brand tokens:', !!brandTokens);
+    console.log('🎨 - Brand ID:', brandId);
+
+    // Validate required inputs
+    if (!copyClassification) {
       return Response.json({
         success: false,
-        error: 'Missing required data: classifiedCopy, extractedLayout, and brandTokens'
+        error: 'Copy classification is required'
       }, { status: 400 });
     }
 
-    let variations;
-    
-    // Use AI-enhanced generation if OpenAI is available
-    if (process.env.OPENAI_API_KEY) {
-      try {
-        variations = await generateAIEnhancedLayouts(classifiedCopy, extractedLayout, brandTokens);
-      } catch (aiError) {
-        console.error('AI generation failed, falling back to rule-based:', aiError);
-        variations = generateLayoutVariations(classifiedCopy, extractedLayout, brandTokens);
-      }
-    } else {
-      console.log('OpenAI not configured, using rule-based generation');
-      variations = generateLayoutVariations(classifiedCopy, extractedLayout, brandTokens);
+    if (!layoutAnalysis) {
+      return Response.json({
+        success: false,
+        error: 'Layout analysis is required'
+      }, { status: 400 });
     }
+
+    // If no brand tokens provided, fetch from database
+    let finalBrandTokens = brandTokens;
+    if (!finalBrandTokens && brandId) {
+      console.log('🎨 Fetching brand tokens from database...');
+      finalBrandTokens = await fetchBrandTokens(brandId);
+    }
+
+    // Generate fallback brand tokens if none available
+    if (!finalBrandTokens) {
+      console.log('🎨 Using fallback brand tokens...');
+      finalBrandTokens = generateFallbackBrandTokens();
+    }
+
+    console.log('🎨 Starting intelligent layout generation...');
     
+    // Generate the combined layout
+    const generatedLayout = generateIntelligentLayout(
+      copyClassification,
+      layoutAnalysis,
+      finalBrandTokens
+    );
+
+    console.log('🎨 Layout generation complete!');
+    console.log('🎨 Generated sections:', generatedLayout?.sections?.length || 0);
+
     // Add generation metadata
-    const result = {
-      variations,
-      metadata: {
-        generatedAt: new Date().toISOString(),
-        totalSections: classifiedCopy.length,
-        layoutsExtracted: extractedLayout.length,
-        brandTokensApplied: Object.keys(brandTokens).length,
-        confidence: calculateOverallConfidence(variations),
-        aiEnhanced: !!process.env.OPENAI_API_KEY
+    const response = {
+      success: true,
+      data: {
+        ...generatedLayout,
+        generation: {
+          timestamp: new Date().toISOString(),
+          copySource: copyClassification?.source || 'user-input',
+          layoutSource: layoutAnalysis?.source || 'url-analysis',
+          brandSource: brandTokens ? 'provided' : brandId ? 'database' : 'fallback',
+          version: '1.0'
+        }
       }
     };
-    
-    return Response.json({
-      success: true,
-      data: result
-    });
+
+    return Response.json(response);
 
   } catch (error) {
-    console.error('Layout generation error:', error);
+    console.error('🎨 Layout generation error:', error);
+    
     return Response.json({
       success: false,
-      error: error.message
+      error: 'Layout generation failed',
+      details: error.message
     }, { status: 500 });
   }
 }
 
-// AI-enhanced layout generation
-async function generateAIEnhancedLayouts(classifiedCopy, extractedLayout, brandTokens) {
-  const prompt = `You are a UI/UX design expert. Based on the content analysis and layout patterns, suggest the best layout approaches for each style.
+/**
+ * Fetch brand tokens from Supabase
+ */
+async function fetchBrandTokens(brandId) {
+  try {
+    console.log('🎨 Fetching brand tokens for brand:', brandId);
+    
+    // Import Supabase queries
+    const { fetchDesignTokensByBrandId } = await import('@/lib/supabase/queries/table/design-token');
+    
+    const { data: tokens, error } = await fetchDesignTokensByBrandId(brandId);
+    
+    if (error) {
+      console.error('🎨 Error fetching brand tokens:', error);
+      return null;
+    }
 
-Content Sections:
-${classifiedCopy.map(section => `- ${section.type}: "${section.content}"`).join('\n')}
+    if (!tokens || tokens.length === 0) {
+      console.log('🎨 No brand tokens found for brand:', brandId);
+      return null;
+    }
 
-Available Layout Patterns:
-${extractedLayout.map(layout => `- ${layout.type}: ${layout.layout} (${layout.container})`).join('\n')}
+    console.log('🎨 Found brand tokens:', tokens.length);
+    
+    // Transform Supabase tokens into the format expected by the generator
+    return transformSupabaseTokens(tokens);
 
-Brand Characteristics:
-- Colors: ${Object.keys(brandTokens.colors || {}).join(', ')}
-- Typography: ${Object.keys(brandTokens.typography || {}).join(', ')}
-
-Suggest layout recommendations for these 3 styles:
-1. Stripe Style (professional, conversion-focused)
-2. Apple Style (minimal, visual-first) 
-3. Linear Style (modern, developer-focused)
-
-For each section, recommend:
-- Best layout type (centered, grid, carousel, etc.)
-- Container type (contained, full-width)
-- Style reasoning
-
-Return JSON format:
-{
-  "stripe": [{"type": "hero", "layout": "centered", "container": "contained", "reasoning": "..."}],
-  "apple": [...],
-  "linear": [...]
-}`;
-
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      model: 'gpt-4',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3,
-      max_tokens: 1500
-    })
-  });
-
-  if (!response.ok) {
-    throw new Error('AI layout generation failed');
+  } catch (error) {
+    console.error('🎨 Error in fetchBrandTokens:', error);
+    return null;
   }
-
-  const result = await response.json();
-  const aiRecommendations = JSON.parse(result.choices[0].message.content);
-
-  // Apply AI recommendations to generate variations
-  return [
-    generateStyledVariation('Stripe Style', aiRecommendations.stripe, classifiedCopy, brandTokens, 'stripe'),
-    generateStyledVariation('Apple Style', aiRecommendations.apple, classifiedCopy, brandTokens, 'apple'),
-    generateStyledVariation('Linear Style', aiRecommendations.linear, classifiedCopy, brandTokens, 'linear')
-  ];
 }
 
-// Generate styled variation with AI recommendations
-function generateStyledVariation(name, aiRecommendations, classifiedCopy, brandTokens, styleVariant) {
-  const sections = classifiedCopy.map(copyBlock => {
-    // Find AI recommendation for this section type
-    const aiRec = aiRecommendations.find(rec => rec.type === copyBlock.type) || 
-                  { layout: 'centered', container: 'contained', reasoning: 'Default layout' };
+/**
+ * Transform Supabase design tokens into the format expected by the generator
+ */
+function transformSupabaseTokens(tokens) {
+  console.log('🎨 Transforming Supabase tokens...');
+  
+  const transformedTokens = {
+    colors: {},
+    typography: {},
+    spacing: {}
+  };
+
+  tokens.forEach(token => {
+    const { group, name, value, type } = token;
     
-    return {
-      ...copyBlock,
-      layout: aiRec.layout,
-      container: aiRec.container,
-      style: applyBrandStyling(copyBlock.type, styleVariant, brandTokens),
-      metadata: {
-        confidence: 0.85,
-        reasoning: aiRec.reasoning || 'AI-optimized layout choice'
+    if (group === 'colors') {
+      transformedTokens.colors[name] = value;
+    } else if (group === 'typography') {
+      if (!transformedTokens.typography[type]) {
+        transformedTokens.typography[type] = {};
       }
-    };
+      transformedTokens.typography[type][name] = value;
+    } else if (group === 'spacing') {
+      transformedTokens.spacing[name] = value;
+    }
   });
 
-  return {
-    name,
-    sections,
-    characteristics: getStyleCharacteristics(styleVariant)
-  };
+  console.log('🎨 Transformed tokens:', transformedTokens);
+  return transformedTokens;
 }
 
-// Fallback rule-based generation
-function generateLayoutVariations(classifiedCopy, extractedLayout, brandTokens) {
-  return [
-    generateStripeStyle(classifiedCopy, extractedLayout, brandTokens),
-    generateAppleStyle(classifiedCopy, extractedLayout, brandTokens),
-    generateLinearStyle(classifiedCopy, extractedLayout, brandTokens)
-  ];
-}
-
-// Generate Stripe-style layout
-function generateStripeStyle(classifiedCopy, extractedLayout, brandTokens) {
-  const sections = mapContentToLayout(classifiedCopy, extractedLayout, 'stripe', brandTokens);
+/**
+ * Generate fallback brand tokens when none are available
+ */
+function generateFallbackBrandTokens() {
+  console.log('🎨 Generating fallback brand tokens...');
   
   return {
-    name: 'Stripe Style',
-    sections: sections,
-    characteristics: ['Professional', 'Conversion-focused', 'Clean']
-  };
-}
-
-// Generate Apple-style layout  
-function generateAppleStyle(classifiedCopy, extractedLayout, brandTokens) {
-  const sections = mapContentToLayout(classifiedCopy, extractedLayout, 'apple', brandTokens);
-  
-  return {
-    name: 'Apple Style',
-    sections: sections,
-    characteristics: ['Minimal', 'Visual', 'Premium']
-  };
-}
-
-// Generate Linear-style layout
-function generateLinearStyle(classifiedCopy, extractedLayout, brandTokens) {
-  const sections = mapContentToLayout(classifiedCopy, extractedLayout, 'linear', brandTokens);
-  
-  return {
-    name: 'Linear Style',
-    sections: sections,
-    characteristics: ['Modern', 'Developer-focused', 'Functional']
-  };
-}
-
-// Map content to layout with style variations
-function mapContentToLayout(classifiedCopy, extractedLayout, styleVariant, brandTokens) {
-  const sortedCopy = classifiedCopy.sort((a, b) => a.priority - b.priority);
-  
-  return sortedCopy.map(copyBlock => {
-    // Find matching layout block
-    const layoutBlock = extractedLayout.find(layout => layout.type === copyBlock.type) 
-                       || extractedLayout[0] 
-                       || { layout: 'centered', container: 'contained' };
-    
-    // Apply style-specific modifications
-    const styledLayout = applyStyleVariant(layoutBlock, styleVariant);
-    
-    return {
-      ...copyBlock,
-      layout: styledLayout.layout,
-      container: styledLayout.container,
-      style: applyBrandStyling(copyBlock.type, styleVariant, brandTokens),
-      metadata: {
-        confidence: 0.75,
-        reasoning: 'Rule-based layout selection'
+    colors: {
+      primary: '#0070f3',
+      background: '#ffffff',
+      backgroundSecondary: '#f8fafc',
+      text: '#000000',
+      textSecondary: '#64748b',
+      onPrimary: '#ffffff',
+      border: '#e5e7eb'
+    },
+    typography: {
+      primary: {
+        family: 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'
+      },
+      h1: {
+        size: '48px',
+        weight: '600',
+        lineHeight: '1.1'
+      },
+      h2: {
+        size: '36px',
+        weight: '600',
+        lineHeight: '1.2'
+      },
+      h3: {
+        size: '24px',
+        weight: '500',
+        lineHeight: '1.3'
+      },
+      body: {
+        size: '16px',
+        weight: '400',
+        lineHeight: '1.6'
+      },
+      small: {
+        size: '14px',
+        weight: '400',
+        lineHeight: '1.5'
+      },
+      large: {
+        size: '18px',
+        weight: '400',
+        lineHeight: '1.5'
       }
-    };
-  });
-}
-
-// Apply style variant modifications
-function applyStyleVariant(layoutBlock, styleVariant) {
-  const styles = {
-    stripe: {
-      hero: { layout: 'centered', container: 'contained' },
-      features: { layout: '2-col-grid', container: 'contained' },
-      testimonial: { layout: 'centered', container: 'contained' },
-      cta: { layout: 'centered', container: 'contained' }
     },
-    apple: {
-      hero: { layout: 'image-background', container: 'full-width' },
-      features: { layout: 'stacked', container: 'contained' },
-      testimonial: { layout: 'centered', container: 'contained' },
-      cta: { layout: 'centered', container: 'full-width' }
-    },
-    linear: {
-      hero: { layout: 'centered', container: 'contained' },
-      features: { layout: '3-col-grid', container: 'contained' },
-      testimonial: { layout: 'carousel', container: 'contained' },
-      cta: { layout: 'centered', container: 'contained' }
+    spacing: {
+      xs: '8px',
+      small: '16px',
+      medium: '24px',
+      large: '32px',
+      xl: '48px',
+      xxl: '64px'
     }
   };
-  
-  const styleOverride = styles[styleVariant]?.[layoutBlock.type];
-  return styleOverride ? { ...layoutBlock, ...styleOverride } : layoutBlock;
-}
-
-// Apply brand styling
-function applyBrandStyling(sectionType, styleVariant, brandTokens) {
-  const colors = brandTokens.colors || {};
-  const typography = brandTokens.typography || {};
-  
-  // Get primary color from brand tokens
-  const primaryColor = colors.primary?.primary?.value || 
-                       colors.brand?.primary?.value || 
-                       Object.values(colors)[0]?.primary?.value || 
-                       '#3B82F6';
-  
-  const secondaryColor = colors.secondary?.secondary?.value || 
-                        colors.brand?.secondary?.value ||
-                        '#10B981';
-  
-  const bodyFont = typography.body?.body?.value || 
-                   typography.text?.body?.value ||
-                   'Inter, sans-serif';
-  
-  const headingFont = typography.heading?.heading?.value || 
-                      typography.display?.heading?.value ||
-                      bodyFont;
-
-  const baseStyle = {
-    fontFamily: bodyFont,
-    color: '#333333'
-  };
-  
-  // Section-specific styling
-  switch (sectionType) {
-    case 'hero':
-      return {
-        ...baseStyle,
-        backgroundColor: primaryColor,
-        color: '#ffffff',
-        fontFamily: headingFont
-      };
-    case 'features':
-      return {
-        ...baseStyle,
-        backgroundColor: '#ffffff',
-        color: '#333333'
-      };
-    case 'testimonial':
-      return {
-        ...baseStyle,
-        backgroundColor: '#F8F9FA',
-        color: '#333333'
-      };
-    case 'cta':
-      return {
-        ...baseStyle,
-        backgroundColor: secondaryColor,
-        color: '#ffffff',
-        fontFamily: headingFont
-      };
-    default:
-      return baseStyle;
-  }
-}
-
-// Get style characteristics
-function getStyleCharacteristics(styleVariant) {
-  const characteristics = {
-    stripe: ['Professional', 'Conversion-focused', 'Clean'],
-    apple: ['Minimal', 'Visual', 'Premium'],
-    linear: ['Modern', 'Developer-focused', 'Functional']
-  };
-  
-  return characteristics[styleVariant] || ['Custom'];
-}
-
-// Calculate overall confidence score
-function calculateOverallConfidence(variations) {
-  let totalConfidence = 0;
-  let sectionCount = 0;
-  
-  variations.forEach(variation => {
-    variation.sections?.forEach(section => {
-      if (section.metadata?.confidence) {
-        totalConfidence += section.metadata.confidence;
-        sectionCount++;
-      }
-    });
-  });
-  
-  return sectionCount > 0 ? Math.round((totalConfidence / sectionCount) * 100) : 85;
 }
