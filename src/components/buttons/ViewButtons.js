@@ -1,11 +1,10 @@
-// Updated ViewButtons.jsx with proper onDeleteSuccess handling
+// Updated ViewButtons.jsx using centralized query system
 'use client';
 
 import { IconButton, Box, Tooltip } from '@mui/material';
 import { Eye, CornersOut } from '@phosphor-icons/react';
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
-import { createClient } from '@/lib/supabase/browser';
 import { DeleteRecordButton } from '@/components/buttons/DeleteRecordButton';
 import Image from 'next/image';
 import {
@@ -24,13 +23,14 @@ import {
   Link,
 } from '@phosphor-icons/react';
 import { generateElementorExportZip } from '@/lib/utils/exports/elementorExport';
+import { table } from '@/lib/supabase/queries';
 
 export const ViewButtons = ({ 
   config, 
   id, 
   record,
   onRefresh,
-  onDeleteSuccess, // ✅ NEW: Custom delete success handler
+  onDeleteSuccess, // ✅ Custom delete success handler
   showDelete = true,
   showFullView = true,
   showModal = true,
@@ -40,25 +40,52 @@ export const ViewButtons = ({
 }) => {
   const { openModal, closeModal } = useModal();
   const fullConfig = collections[config.name] || config;
-  const supabase = createClient();
+
+  // ✅ Fetch record using centralized query system
+  const fetchRecordById = async (entityId) => {
+    try {
+      const entityQueries = table[fullConfig.name];
+      
+      if (!entityQueries) {
+        console.error(`[ViewButtons] No queries found for entity: ${fullConfig.name}`);
+        return null;
+      }
+
+      // Use standard SOP naming pattern
+      const fetchFunction = entityQueries[`fetch${capitalizeFirst(fullConfig.name)}ById`] || 
+                           entityQueries[`fetch${capitalizeFirst(fullConfig.singularLabel || fullConfig.name)}ById`];
+      
+      if (!fetchFunction) {
+        console.error(`[ViewButtons] Fetch function not found for entity: ${fullConfig.name}`);
+        return null;
+      }
+
+      const { data, error } = await fetchFunction(entityId);
+      
+      if (error) {
+        console.error(`[ViewButtons] Failed to fetch record ${entityId}:`, error);
+        return null;
+      }
+      
+      return data;
+    } catch (err) {
+      console.error(`[ViewButtons] Error fetching record:`, err);
+      return null;
+    }
+  };
 
   // Open modal view
   const handleOpenModal = async () => {
     let recordData = record;
     
+    // ✅ Fetch record using query system if not provided
     if (!recordData && id) {
-      const { data, error } = await supabase
-        .from(fullConfig.name)
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) {
-        console.error(`[ViewButtons] Failed to fetch record ${id}:`, error);
+      recordData = await fetchRecordById(id);
+      
+      if (!recordData) {
+        console.error('[ViewButtons] No record data available');
         return;
       }
-      
-      recordData = data;
     }
 
     if (!recordData) {
@@ -159,6 +186,14 @@ export const ViewButtons = ({
 };
 
 /**
+ * ✅ Helper function to capitalize first letter (for SOP naming)
+ */
+function capitalizeFirst(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+/**
  * Get collection-specific action buttons (now includes export buttons)
  */
 function getCollectionSpecificButtons(collectionName, item, showExport = true) {
@@ -251,7 +286,7 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
       }
       break;
 
-          case 'event':
+    case 'event':
       if (item.zoom_join_url) {
         buttons.push({
           icon: Link,

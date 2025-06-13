@@ -58,6 +58,15 @@ export const project = {
       showInTable: true,
     
     },
+        {
+      name: 'description',
+      label: 'Short Description',
+      type: 'text',
+      lines: 2,
+      tab: 'Overview',
+      fullWidth: true,
+
+    },
     { 
       name: 'url', 
       label: 'URL', 
@@ -475,7 +484,7 @@ export const project = {
       type: 'multiRelationship',
       tab: 'Overview',
       group: 'Meta',
-      displayMode: 'tags',
+      displayMode: 'table',
       relation: {
         table: 'event',
         labelField: 'title',

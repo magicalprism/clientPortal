@@ -25,7 +25,7 @@ export const event = {
     titleField: 'title',
     subtitleField: 'start_time',
     descriptionField: 'description',
-    extraFields: ['location', 'status', 'author_id'],
+    extraFields: ['location', 'companies', 'contacts'],
     relatedFields: [],
   },
 
@@ -157,7 +157,7 @@ export const event = {
     },
     {
       name: 'companies',
-      label: 'Companies Attending',
+      label: 'Companies Involved',
       type: 'multiRelationship',
       tab: 'Overview',
       group: 'Meta',

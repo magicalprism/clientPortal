@@ -301,55 +301,61 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
   };
 
   // ✅ FALLBACK: Direct Supabase update when operations not available
-  const fallbackUpdateRecord = async (tableName, recordId, recordData, config) => {
-    try {
-      const { createClient } = await import('@/lib/supabase/browser');
-      const supabase = createClient();
-      
-      console.log(`[useCollectionSave] Fallback: Updating ${tableName} record ${recordId}`);
-      
-      // Prepare update payload
-      const updatePayload = {
-        ...recordData,
-        updated_at: getPostgresTimestamp()
-      };
+ // In useCollectionSave.js, update the fallbackUpdateRecord function:
+const fallbackUpdateRecord = async (tableName, recordId, recordData, config) => {
+  try {
+    const { createClient } = await import('@/lib/supabase/browser');
+    const supabase = createClient();
+    
+    console.log(`[useCollectionSave] Fallback: Updating ${tableName} record ${recordId}`);
+    
+    // Prepare update payload
+    const updatePayload = { ...recordData };
 
-      // Remove system fields that shouldn't be updated directly
-      const { id, created_at, ...cleanPayload } = updatePayload;
+    // Remove system fields that shouldn't be updated directly
+    const { id, created_at, ...cleanPayload } = updatePayload;
 
-      // Ensure proper data types based on config
-      if (config?.fields) {
-        config.fields.forEach(field => {
-          if (cleanPayload[field.name] !== undefined && cleanPayload[field.name] !== '') {
-            if (field.name.endsWith('_id') || field.type === 'integer') {
-              cleanPayload[field.name] = parseInt(cleanPayload[field.name], 10);
-            } else if (field.type === 'boolean') {
-              cleanPayload[field.name] = Boolean(cleanPayload[field.name]);
-            }
+    // ✅ ADD THIS: Extract select/status field values before saving
+    if (config?.fields) {
+      config.fields.forEach(field => {
+        if ((field.type === 'select' || field.type === 'status') && cleanPayload[field.name] !== undefined) {
+          cleanPayload[field.name] = extractSelectValue(cleanPayload[field.name]);
+        }
+        
+        // Also handle other data type conversions
+        if (cleanPayload[field.name] !== undefined && cleanPayload[field.name] !== '') {
+          if (field.name.endsWith('_id') || field.type === 'integer') {
+            cleanPayload[field.name] = parseInt(cleanPayload[field.name], 10);
+          } else if (field.type === 'boolean') {
+            cleanPayload[field.name] = Boolean(cleanPayload[field.name]);
           }
-        });
-      }
-
-      const { data, error } = await supabase
-        .from(tableName)
-        .update(cleanPayload)
-        .eq('id', recordId)
-        .select()
-        .single();
-
-      if (error) {
-        console.error(`[useCollectionSave] Fallback error updating ${tableName}:`, error);
-        return { success: false, error: error.message, data: null };
-      }
-
-      console.log(`[useCollectionSave] Fallback: Successfully updated ${tableName} record`);
-      return { success: true, error: null, data };
-
-    } catch (err) {
-      console.error(`[useCollectionSave] Fallback: Unexpected error:`, err);
-      return { success: false, error: err.message, data: null };
+        }
+      });
     }
-  };
+
+    // Add timestamp
+    cleanPayload.updated_at = getPostgresTimestamp();
+
+    const { data, error } = await supabase
+      .from(tableName)
+      .update(cleanPayload)
+      .eq('id', recordId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error(`[useCollectionSave] Fallback error updating ${tableName}:`, error);
+      return { success: false, error: error.message, data: null };
+    }
+
+    console.log(`[useCollectionSave] Fallback: Successfully updated ${tableName} record`);
+    return { success: true, error: null, data };
+
+  } catch (err) {
+    console.error(`[useCollectionSave] Fallback: Unexpected error:`, err);
+    return { success: false, error: err.message, data: null };
+  }
+};
 
   return {
     editingField,

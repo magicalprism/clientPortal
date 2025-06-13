@@ -1,13 +1,14 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Typography } from '@mui/material';
+import { Typography, Box } from '@mui/material';
 import { debounce } from '@/lib/utils/debounce';
 import { SimpleEditor } from '@/components/fields/text/richText/tipTap/components/tiptap-templates/simple/simple-editor';
 
 export const RichTextFieldRenderer = ({
   value,
   field,
+  config = {},
   editable = false,
   mode = 'view',
   onChange = () => {}
@@ -15,6 +16,10 @@ export const RichTextFieldRenderer = ({
   const [localValue, setLocalValue] = useState(value || '');
   const [isDirty, setIsDirty] = useState(false);
   const isEditable = editable || mode === 'create';
+  
+  // Extract lines from field or config, default to 3 for rich text
+  const lines = field.lines || config.lines || 3;
+  const minHeight = lines * 24; // Approximate line height of 24px
 
   // Sync incoming value unless the field is being edited
   useEffect(() => {
@@ -38,18 +43,38 @@ export const RichTextFieldRenderer = ({
 
   if (!isEditable) {
     return localValue ? (
-      <div dangerouslySetInnerHTML={{ __html: localValue }} />
+      <Box 
+        component="div"
+        sx={{ 
+          wordBreak: 'break-word',
+          whiteSpace: 'normal'
+        }}
+        dangerouslySetInnerHTML={{ __html: localValue }} 
+      />
     ) : (
       <Typography variant="body2">—</Typography>
     );
   }
 
   return (
-    <SimpleEditor
-      content={localValue}
-      editable={true}
-      onChange={handleChange}
-    />
+    <Box sx={{
+      width: '100%',
+      minHeight: `${minHeight}px`,
+      '& .ProseMirror': {
+        minHeight: `${minHeight}px`,
+        width: '100%',
+      }
+    }}>
+      <SimpleEditor
+        content={localValue}
+        editable={true}
+        onChange={handleChange}
+        config={{
+          ...config,
+          minHeight: `${minHeight}px`
+        }}
+      />
+    </Box>
   );
 };
 

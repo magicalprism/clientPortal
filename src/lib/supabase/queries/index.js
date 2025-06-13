@@ -120,7 +120,7 @@ let driveOpsCache = null;
 export const recordOps = {
   async updateRecord(...args) {
     if (!recordOpsCache) {
-      recordOpsCache = await loadModule('./table/record.js');
+      recordOpsCache = await loadModule('./operations/recordOps');
     }
     
     if (!recordOpsCache.updateRecord) {
@@ -132,7 +132,7 @@ export const recordOps = {
   
   async createRecord(...args) {
     if (!recordOpsCache) {
-      recordOpsCache = await loadModule('./table/record.js');
+      recordOpsCache = await loadModule('./operations/recordOps');
     }
     
     if (!recordOpsCache.createRecord) {
@@ -144,7 +144,7 @@ export const recordOps = {
   
   async deleteRecord(...args) {
     if (!recordOpsCache) {
-      recordOpsCache = await loadModule('./table/record.js');
+      recordOpsCache = await loadModule('./operations/recordOps');
     }
     
     if (!recordOpsCache.deleteRecord) {
@@ -158,7 +158,7 @@ export const recordOps = {
 export const multiRelOps = {
   async saveMultiRelationshipField(...args) {
     if (!multiRelOpsCache) {
-      multiRelOpsCache = await loadModule('./pivot/multirelationship.js');
+      multiRelOpsCache = await loadModule('./operations/multiRelOps.js');
     }
     
     if (!multiRelOpsCache.saveMultiRelationshipField) {
@@ -171,7 +171,7 @@ export const multiRelOps = {
   
   async saveAllMultiRelationshipFields(...args) {
     if (!multiRelOpsCache) {
-      multiRelOpsCache = await loadModule('./pivot/multirelationship.js');
+      multiRelOpsCache = await loadModule('./operations/multiRelOps.js');
     }
     
     if (!multiRelOpsCache.saveAllMultiRelationshipFields) {

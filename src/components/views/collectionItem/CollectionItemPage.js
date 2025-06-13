@@ -477,16 +477,21 @@ export const CollectionItemPage = ({
     }
     
     // Special handling for select/status fields
-    if (field.type === 'select' || field.type === 'status') {
-      updateLocalValue(fieldName, value);
-      
-      setFormData(prev => ({
-        ...prev,
-        [fieldName]: value
-      }));
-      
-      return;
-    }
+  if (field.type === 'select' || field.type === 'status') {
+  // Extract just the value before passing to updateLocalValue
+  const extractedValue = typeof value === 'object' && value !== null && 'value' in value 
+    ? value.value 
+    : value;
+    
+  updateLocalValue(fieldName, extractedValue);
+  
+  setFormData(prev => ({
+    ...prev,
+    [fieldName]: extractedValue  // Store extracted value
+  }));
+  
+  return;
+}
     
     // Special handling for relationship fields
     if (field.type === 'relationship' && value !== null && value !== undefined) {

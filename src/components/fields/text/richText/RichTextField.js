@@ -5,8 +5,18 @@ import StarterKit from '@tiptap/starter-kit';
 import { Box, Button, ButtonGroup, Typography } from '@mui/material';
 import { useEffect, useCallback, useRef } from 'react';
 
-export const RichTextField = ({ value = '', editable = false, onChange = () => {} }) => {
+export const RichTextField = ({ 
+  value = '', 
+  field = {},
+  config = {},
+  editable = false, 
+  onChange = () => {} 
+}) => {
   const ignoreNextUpdate = useRef(false);
+  
+  // Extract lines from field or config, default to 3 for rich text
+  const lines = field.lines || config.lines || 3;
+  const minHeight = lines * 24; // Approximate line height of 24px
 
   const editor = useEditor({
     content: value || '',
@@ -50,6 +60,7 @@ export const RichTextField = ({ value = '', editable = false, onChange = () => {
 
   return (
     <Box sx={{
+      width: '100%',
       border: editable ? '1px solid #ddd' : 'none',
       borderRadius: 1,
       p: editable ? 2 : 0,
@@ -57,13 +68,34 @@ export const RichTextField = ({ value = '', editable = false, onChange = () => {
     }}>
       {editable && <Toolbar />}
       {editable ? (
-        <EditorContent editor={editor} className="tiptap" />
+        <Box sx={{ 
+          width: '100%',
+          minHeight: `${minHeight}px`,
+          '& .ProseMirror': {
+            minHeight: `${minHeight}px`,
+            width: '100%',
+            padding: '8px 12px',
+            border: '1px solid #ddd',
+            borderRadius: '4px',
+            outline: 'none',
+            '&:focus': {
+              borderColor: '#1976d2',
+              boxShadow: '0 0 0 2px rgba(25, 118, 210, 0.2)'
+            }
+          }
+        }}>
+          <EditorContent editor={editor} className="tiptap" />
+        </Box>
       ) : (
         <Typography
           variant="body2"
           component="div"
           className="tiptap"
-          sx={{ whiteSpace: 'normal' }}
+          sx={{ 
+            width: '100%',
+            whiteSpace: 'normal',
+            wordBreak: 'break-word'
+          }}
           dangerouslySetInnerHTML={{ __html: value }}
         />
       )}

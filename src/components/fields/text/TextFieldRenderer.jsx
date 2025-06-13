@@ -6,6 +6,7 @@ import { TextField, Typography } from '@mui/material';
 export const TextFieldRenderer = ({
   value,
   field,
+  config = {},
   editable = false,
   isEditing = false,
   onChange = () => {}
@@ -13,6 +14,10 @@ export const TextFieldRenderer = ({
   const [localValue, setLocalValue] = useState(value || '');
   const [isDirty, setIsDirty] = useState(false);
   const isEditMode = editable;
+  
+  // Extract lines from field or config, default to 1
+  const lines = field.lines || config.lines || 1;
+  const isMultiline = lines > 1;
 
   // Guard against stale updates
   useEffect(() => {
@@ -32,7 +37,13 @@ export const TextFieldRenderer = ({
 
   if (!isEditMode) {
     return (
-      <Typography variant="body2">
+      <Typography 
+        variant="body2"
+        sx={{ 
+          whiteSpace: 'pre-wrap',
+          wordBreak: 'break-word'
+        }}
+      >
         {localValue?.toString().trim() || '—'}
       </Typography>
     );
@@ -42,6 +53,9 @@ export const TextFieldRenderer = ({
     <TextField
       fullWidth
       size="small"
+      multiline={isMultiline}
+      rows={isMultiline ? lines : undefined}
+      maxRows={isMultiline ? Math.max(lines, 10) : undefined}
       value={localValue}
       onChange={(e) => {
         setLocalValue(e.target.value);
@@ -52,13 +66,18 @@ export const TextFieldRenderer = ({
         setIsDirty(false);
       }}
       onKeyDown={(e) => {
-        if (e.key === 'Enter') {
+        if (e.key === 'Enter' && !isMultiline) {
           e.preventDefault();
           onChange(localValue);
           setIsDirty(false);
         }
       }}
       placeholder={field.label || ''}
+      sx={{
+        '& .MuiInputBase-input': {
+          resize: isMultiline ? 'vertical' : 'none'
+        }
+      }}
     />
   );
 };
