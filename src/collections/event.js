@@ -1,3 +1,4 @@
+// collections/event.js
 export const event = {
   name: 'event',
   label: 'Events',
@@ -37,56 +38,12 @@ export const event = {
       group: 'Details',
       showInTable: true
     },
-    {
-      name: 'description',
-      label: 'Description',
-      type: 'richText',
-      tab: 'Overview',
-      group: 'Details',
-      fullWidth: true
-    },
-    {
-      name: 'location',
-      label: 'Location',
-      type: 'text',
-      tab: 'Overview',
-      group: 'Details'
-    },
-    {
-      name: 'start_time',
-      label: 'Start Time',
-      type: 'date',
-      config: {
-        datetime: true  // Also enables datetime functionality
-      },
-      tab: 'Overview',
-      group: 'Timing',
-      showInTable: true
-    },
-    {
-      name: 'end_time',
-      label: 'End Time',
-      config: {
-        datetime: true  // Also enables datetime functionality
-      },
-      type: 'timestamp',
-      tab: 'Overview',
-      group: 'Timing',
-      showInTable: true
-    },
-    {
-      name: 'all_day',
-      label: 'All Day',
-      type: 'boolean',
-      tab: 'Overview',
-      group: 'Timing'
-    },
         {
       name: 'type',
       label: 'Event Type',
       type: 'select',
       tab: 'Overview',
-      group: 'Meta',
+      group: 'Details',
       options: [
         { label: 'Meeting', value: 'meeting' },
         { label: 'Vacation', value: 'vacation' },
@@ -95,7 +52,88 @@ export const event = {
       ],
       showInTable: true
     },
-          {
+    {
+      name: 'start_time',
+      label: 'Start Time',
+      type: 'date',
+      config: {
+        datetime: true
+      },
+      tab: 'Overview',
+      group: 'Details',
+      showInTable: true
+    },
+    {
+      name: 'end_time',
+      label: 'End Time',
+      config: {
+        datetime: true
+      },
+      type: 'date',
+      tab: 'Overview',
+      group: 'Details',
+      showInTable: true
+    },
+        {
+      name: 'zoom_join_url',
+      label: 'Zoom Join URL',
+      type: 'link',
+      tab: 'Overview',
+      group: 'Details',
+      editable: false,
+      showInTable: true
+    },
+         {
+      name: 'description',
+      label: 'Description',
+      tab: 'Overview',
+      group: 'Details',
+      fullWidth: true
+    },
+    {
+      name: 'content',
+      label: 'Notes',
+      type: 'richText',
+      tab: 'Overview',
+      group: 'Details',
+      fullWidth: true
+    },
+
+    {
+      name: 'action_items',
+      label: 'Action Items',
+      type: 'custom',
+      component: 'ChecklistField',
+      tab: 'Overview',
+      group: 'Details',
+      fullWidth: true,
+      props: {
+        entityType: 'event',
+        variant: 'embedded',
+        allowCreate: true,
+        allowReorder: true,
+        defaultChecklistName: 'Action Items',
+        showProgress: true,
+        maxChecklists: 10 // Optional limit
+      }
+    },
+    {
+      name: 'location',
+      label: 'Location',
+      type: 'text',
+      tab: 'Overview',
+      group: 'Meta',
+    },
+    
+    {
+      name: 'all_day',
+      label: 'All Day',
+      type: 'boolean',
+      tab: 'Overview',
+      group: 'Meta',
+    },
+
+    {
       name: 'contacts',
       label: 'People Attending',
       type: 'multiRelationship',
@@ -113,8 +151,7 @@ export const event = {
         filter: {}
       }
     },
-
-          {
+    {
       name: 'companies',
       label: 'Companies Attending',
       type: 'multiRelationship',
@@ -127,30 +164,29 @@ export const event = {
         linkTo: '/dashboard/company',
         junctionTable: 'company_event',
         sourceKey: 'event_id',
-        targetKey: 'project_id',
+        targetKey: 'company_id',
         tableFields: ['title'],
         filter: {}
       }
     },
-          {
+    {
       name: 'projects',
       label: 'Projects Involved',
       type: 'multiRelationship',
-       group: 'Brand Details',
-      tab: 'Fields', 
+      tab: 'Overview',
+      group: 'Meta',
       displayMode: 'tags',
       relation: {
         table: 'project',
         labelField: 'title',
         linkTo: '/dashboard/project',
-        junctionTable: 'brand_project',
+        junctionTable: 'event_project',
         sourceKey: 'event_id',
         targetKey: 'project_id',
         tableFields: ['title'],
-        filter: {}
+        filter: {},
       }
     },
-
     {
       name: 'status',
       label: 'Status',
@@ -165,6 +201,11 @@ export const event = {
       ],
       showInTable: true
     },
+
+    // ✅ NEW: Action Items Tab with ChecklistField
+    
+
+    // System fields
     {
       name: 'author_id',
       label: 'Author',
@@ -207,7 +248,7 @@ export const event = {
     },
     {
       name: 'parent_id',
-      label: 'Parent Event',
+      label: 'Parent Item',
       type: 'relationship',
       tab: 'Meta',
       group: 'Structure',
@@ -218,35 +259,25 @@ export const event = {
       }
     },
     {
-  name: 'google_event_id',
-  label: 'Google Calendar Event ID',
-  type: 'text',
-  tab: 'Meta',
-  group: 'Integration',
-  database: true,
-  editable: false,
-  includeInViews: ['none']
-},
-{
-  name: 'zoom_meeting_id',
-  label: 'Zoom Meeting ID',
-  type: 'text',
-  tab: 'Meta',
-  group: 'Integration',
-  database: true,
-  editable: false,
-  includeInViews: ['none']
-},
-{
-  name: 'zoom_join_url',
-  label: 'Zoom Join URL',
-  type: 'link',
-  tab: 'Overview',
-  group: 'Details',
-  editable: false,
-  showInTable: true
-}
-
+      name: 'google_event_id',
+      label: 'Google Calendar Event ID',
+      type: 'text',
+      tab: 'Meta',
+      group: 'Integration',
+      database: true,
+      editable: false,
+      includeInViews: ['none']
+    },
+    {
+      name: 'zoom_meeting_id',
+      label: 'Zoom Meeting ID',
+      type: 'text',
+      tab: 'Meta',
+      group: 'Integration',
+      database: true,
+      editable: false,
+      includeInViews: ['none']
+    },
   ],
 
   filters: [
@@ -256,7 +287,7 @@ export const event = {
       type: 'text',
       multiple: false, 
     },
-            {
+    {
       name: 'type',
       label: 'Event Type',
       type: 'select',

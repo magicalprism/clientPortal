@@ -21,6 +21,7 @@ import {
   PaintBrush,
   Blueprint,
   SignIn,
+  Link,
 } from '@phosphor-icons/react';
 import { generateElementorExportZip } from '@/lib/utils/exports/elementorExport';
 
@@ -246,6 +247,16 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
           icon: Phone,
           label: 'Call',
           action: () => window.open(`tel:${item.phone}`, '_blank')
+        });
+      }
+      break;
+
+          case 'event':
+      if (item.zoom_join_url) {
+        buttons.push({
+          icon: Link,
+          label: 'Zoom Link',
+          action: () => window.open(item.zoom_join_url, '_blank')
         });
       }
       break;

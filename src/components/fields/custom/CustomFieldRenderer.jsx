@@ -10,6 +10,7 @@ import { SectionThread } from '@/components/fields/custom/sections/SectionThread
 import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread';
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
+import ChecklistField from '@/components/fields/custom/checklist/ChecklistField';
 // Dynamic import for kanban board
 const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/ProjectKanbanBoard'), {
   ssr: false,
@@ -87,6 +88,35 @@ export const CustomFieldRenderer = ({
           onCreatePendingPayment={(payment) =>
     setPendingPayments(prev => [...prev, payment])
   }
+        />
+      );
+
+       // ✅ ADD THIS CASE
+    case 'ChecklistField':
+      return (
+        <ChecklistField
+          entityType={field.props?.entityType || 'event'}
+          entityId={record?.id}
+          field={field}
+          value={value}
+          editable={editable}
+          onChange={onChange}
+          variant={field.props?.variant || 'embedded'}
+          title={field.label}
+          allowCreate={field.props?.allowCreate !== false}
+          allowReorder={field.props?.allowReorder !== false}
+          defaultChecklistName={field.props?.defaultChecklistName}
+          assignableContacts={
+            // Get assignable contacts based on entity type
+            field.props?.entityType === 'event' 
+              ? record?.contacts_details || []
+              : field.props?.entityType === 'project'
+              ? record?.project_members_details || []
+              : []
+          }
+          maxChecklists={field.props?.maxChecklists}
+          showProgress={field.props?.showProgress !== false}
+          {...field.props}
         />
       );
 

@@ -23,6 +23,7 @@ const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/Proje
   ),
 });
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
+import { useConditionalFields } from '@/hooks/fields/useConditionalFields'; // NEW: Import conditional fields hook
 import { useCollectionSave } from '@/hooks/useCollectionSave';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { useRouter } from 'next/navigation';
@@ -35,8 +36,6 @@ import { generateSupabaseSelect } from '@/lib/supabase/generateSupabaseSelect';
 import { ViewButtons } from '@/components/buttons/ViewButtons';
 
 import * as collections from '@/collections';
-
-
 
 export const CollectionItemPage = ({ 
   config, 
@@ -54,25 +53,26 @@ export const CollectionItemPage = ({
   const initialValues = useRef(null);
   const [initialContractParts, setInitialContractParts] = useState([]);
 
-
-    // Kanban state
+  // Kanban state
   const [kanbanMode, setKanbanMode] = useState('milestone');
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   // Check if this is a contract before calling the hook
   const isContract = config?.name === 'contract';
 
-    // Check if kanban is enabled for this collection
+  // Check if kanban is enabled for this collection
   const hasKanbanTab = config?.showKanbanTab === true || config?.kanban?.enabled === true;
   const kanbanConfig = config?.kanban || {};
-   // Get task configuration for kanban
+  // Get task configuration for kanban
   const taskConfig = kanbanConfig.taskConfig ? collections[kanbanConfig.taskConfig] : collections.task;
 
-
-
   // Always call useContractBuilder, but conditionally use its values
-const contractBuilderResult = useContractBuilder(localRecord?.id);
+  const contractBuilderResult = useContractBuilder(localRecord?.id);
 
-
+  // NEW: Add conditional fields hook for tab-level filtering
+  const { 
+    isTabVisible, 
+    visibleTabs 
+  } = useConditionalFields(config, formData || localRecord || {});
   
   // Only destructure the values we need if this is a contract
   // Add the handler from contractBuilderResult
@@ -243,8 +243,6 @@ useEffect(() => {
     loadContractParts();
   }
 }, [isContract, localRecord?.id, contractBuilderResult?.loading]); // Fixed dependency array
-
-
 
 // 3. Add useEffect to track contract parts changes
 useEffect(() => {
@@ -425,7 +423,6 @@ const handleRemovePartWithDirty = (partId) => {
     }
   }, [hasKanbanTab, kanbanConfig]);
 
-
 // Make sure to import createClient at the top if not already imported:
 // import { createClient } from '@/lib/supabase/browser';
   
@@ -461,37 +458,78 @@ const handleRemovePartWithDirty = (partId) => {
     setActiveId(null);
   };
 
-  // Build tab names
-  // ✅ FIX: Correct tab ordering logic
-  const tabNames = [...baseTabs.tabNames];
-  let currentTabIndex = baseTabs.tabNames.length;
+  // NEW: Build filtered tab names with conditional visibility
+  const buildVisibleTabs = () => {
+    // Start with base tabs - only filter if they have conditional rules
+    const filteredBaseTabs = baseTabs.tabNames.filter(tabName => {
+      // Check if this tab has any conditional rules defined in config
+      const tabConfig = config?.tabs?.[tabName];
+      if (!tabConfig?.showWhen && !tabConfig?.hideWhen) {
+        return true; // Always show tabs without conditions
+      }
+      return isTabVisible(tabName);
+    });
+    
+    let allTabs = [...filteredBaseTabs];
+    
+    // Add special tabs if they should be visible
+    // Contract tab - only check conditions if they exist
+    if (isContract) {
+      if (!config?.contractTab?.showWhen && !config?.contractTab?.hideWhen) {
+        allTabs.push('Contract Sections'); // No conditions = always visible
+      } else if (isTabVisible('Contract Sections')) {
+        allTabs.push('Contract Sections');
+      }
+    }
+    
+    // Kanban tab - only check conditions if they exist
+    if (hasKanbanTab) {
+      if (!config?.kanbanTab?.showWhen && !config?.kanbanTab?.hideWhen) {
+        allTabs.push('Kanban Board'); // No conditions = always visible
+      } else if (isTabVisible('Kanban Board')) {
+        allTabs.push('Kanban Board');
+      }
+    }
+    
+    // Timeline tab - only check conditions if they exist
+    if (showTimelineTab) {
+      if (!config?.timelineTab?.showWhen && !config?.timelineTab?.hideWhen) {
+        allTabs.push('Timeline'); // No conditions = always visible
+      } else if (isTabVisible('Timeline')) {
+        allTabs.push('Timeline');
+      }
+    }
+    
+    return allTabs;
+  };
 
-  // Add tabs in this specific order: contract -> kanban -> timeline
-  if (isContract) {
-    tabNames.push('Contract Sections');
-    currentTabIndex++;
-  }
-  
-  if (hasKanbanTab) {
-    tabNames.push('Kanban Board');
-    currentTabIndex++;
-  }
-  
-  if (showTimelineTab) {
-    tabNames.push('Timeline');
-    currentTabIndex++;
-  }
+  const visibleTabNames = buildVisibleTabs();
 
-  // Determine which tab we're on
-  let tabIndex = baseTabs.tabNames.length;
-  const contractTabIndex = isContract ? tabIndex++ : -1;
-  const kanbanTabIndex = hasKanbanTab ? tabIndex++ : -1;
-  const timelineTabIndex = showTimelineTab ? tabIndex++ : -1;
-  
-  const isContractTab = isContract && activeTab === contractTabIndex;
-  const isKanbanTab = hasKanbanTab && activeTab === kanbanTabIndex;
-  const isTimelineTab = showTimelineTab && activeTab === timelineTabIndex;
-  const isRegularFormTab = !isContractTab && !isKanbanTab && !isTimelineTab;
+  // NEW: Handle active tab validation and auto-switching
+  useEffect(() => {
+    // If current active tab is no longer visible, switch to first visible tab
+    if (activeTab >= visibleTabNames.length && visibleTabNames.length > 0) {
+      setActiveTab(0);
+    }
+  }, [visibleTabNames.length, activeTab]);
+
+  // NEW: Updated tab determination logic using filtered tabs
+  const getTabType = (tabIndex) => {
+    if (tabIndex >= visibleTabNames.length) return 'none';
+    
+    const tabName = visibleTabNames[tabIndex];
+    
+    if (tabName === 'Contract Sections') return 'contract';
+    if (tabName === 'Kanban Board') return 'kanban';  
+    if (tabName === 'Timeline') return 'timeline';
+    return 'form';
+  };
+
+  const currentTabType = getTabType(activeTab);
+  const isContractTab = currentTabType === 'contract';
+  const isKanbanTab = currentTabType === 'kanban';
+  const isTimelineTab = currentTabType === 'timeline';
+  const isRegularFormTab = currentTabType === 'form';
 
   const handleSave = async () => {
   console.log('[CollectionItemPage] ========== SAVE PROCESS STARTING ==========');
@@ -734,10 +772,22 @@ const handleRemovePartWithDirty = (partId) => {
     setShowCompletedTasks(prev => !prev);
   };
 
-
-
-
+  // NEW: Show message if no tabs are visible
+  if (visibleTabNames.length === 0) {
     return (
+      <Card elevation={0}>
+        <CardContent>
+          <Box sx={{ p: 3, textAlign: 'center' }}>
+            <Typography variant="body1" color="text.secondary">
+              No tabs are available based on current field values.
+            </Typography>
+          </Box>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
     <>
       <Card elevation={0}>
         {/* ViewButtons - only show if we have a record with an ID */}
@@ -766,18 +816,19 @@ const handleRemovePartWithDirty = (partId) => {
         )}
         
         <CardContent>
-          <Tabs
-            value={activeTab}
-            onChange={(e, newValue) => setActiveTab(newValue)}
-            sx={{ mb: 3 }}
-            variant="scrollable"
-          >
-            {tabNames.map((tabName, index) => (
-              <Tab key={index} label={tabName} />
-            ))}
-          </Tabs>
-          
-          {/* ✅ FIX: Render content based on correct tab logic */}
+          {/* NEW: Only render tabs if there are visible tabs */}
+          {visibleTabNames.length > 1 && (
+            <Tabs
+              value={activeTab}
+              onChange={(e, newValue) => setActiveTab(newValue)}
+              sx={{ mb: 3 }}
+              variant="scrollable"
+            >
+              {visibleTabNames.map((tabName, index) => (
+                <Tab key={index} label={tabName} />
+              ))}
+            </Tabs>
+          )}
           
           {/* Contract Tab */}
           {isContractTab && (
@@ -828,7 +879,7 @@ const handleRemovePartWithDirty = (partId) => {
               isEditingField={editingField}
               setEditingField={setEditingField}
               loadingField={loadingField}
-              activeTab={activeTab}
+              activeTab={baseTabs.tabNames.indexOf(visibleTabNames[activeTab])} // NEW: Map back to original tab index
               isModal={isModal}
               isSmallScreen={isSmallScreen}
               tempValue={tempValue}

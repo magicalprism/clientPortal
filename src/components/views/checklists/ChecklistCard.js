@@ -28,6 +28,7 @@ import {
     onDelete,
     onToggleComplete,
     onTaskDelete,
+    onOpenModal,
     onTaskAdd, // New prop for adding tasks
     listeners,
     field,
@@ -140,11 +141,12 @@ import {
               value={localTitle}
               onChange={(e) => setLocalTitle(e.target.value)}
               onBlur={() => {
-                setEditingTitle(false);
+                setEditingTitle(true);
                 if (localTitle !== checklist.title) {
                   onChangeTitle(checklist.id, localTitle);
                 }
               }}
+              onDoubleClick={() => onOpenModal && onOpenModal()}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') e.target.blur();
               }}
@@ -154,17 +156,17 @@ import {
           ) : (
             <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
               <Typography
-                variant="h6"
-                onClick={() => !isGenerated && setEditingTitle(true)}
-                sx={{ 
-                  cursor: isGenerated ? 'default' : 'pointer', 
-                  flexGrow: 1,
-                  fontWeight: 600,
-                  color: isGenerated ? 'primary.main' : 'text.primary'
-                }}
-              >
-                {checklist.title}
-              </Typography>
+            variant="h6"
+            onClick={() => !isGenerated && onOpenModal && onOpenModal()}
+            sx={{ 
+              cursor: isGenerated ? 'default' : 'pointer', 
+              flexGrow: 1,
+              fontWeight: 600,
+              color: isGenerated ? 'primary.main' : 'text.primary'
+            }}
+          >
+            {checklist.title}
+          </Typography>
             </Box>
           )}
   

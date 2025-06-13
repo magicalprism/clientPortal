@@ -509,21 +509,25 @@ export default function ChecklistView({ config, overId, dragging }) {
   };
 
   // Custom component for generated checklists to ensure consistent styling
-  const GeneratedChecklistCard = ({ checklist }) => (
-    <ChecklistCard
-      checklist={checklist}
-      config={config}
-      field={{ name: 'checklist_id', label: 'Task' }}
-      record={{ id: checklist.id }}
-      onChangeTitle={() => {}} // No editing for generated
-      onDelete={() => {}} // No deletion for generated
-      onToggleComplete={handleToggleComplete}
-      onTaskDelete={handleTaskDelete}
-      onTaskAdd={handleTaskAdd}
-      enableTaskDrag={false} // Disable drag for generated
-      isGenerated={true}
-    />
-  );
+ const GeneratedChecklistCard = ({ checklist }) => (
+<ChecklistCard
+checklist={checklist}
+config={{
+name: 'task',
+table: 'task', // ✅ GOOD: Proper task config for DeleteRecordButton
+fields: []
+}}
+field={{ name: 'checklist_id', label: 'Task' }}
+record={{ id: checklist.id }}
+onChangeTitle={() => {}} // No editing for generated
+onDelete={() => {}} // No deletion for generated
+onToggleComplete={handleToggleComplete}
+onTaskDelete={handleTaskDelete}
+onTaskAdd={handleTaskAdd}
+enableTaskDrag={false} // Disable drag for generated
+isGenerated={true}
+/>
+);
 
   // Sortable checklist component
   const SortableChecklistCard = ({ checklist }) => {
@@ -543,23 +547,27 @@ export default function ChecklistView({ config, overId, dragging }) {
     };
 
     return (
-      <div ref={setNodeRef} style={style} {...attributes}>
-        <ChecklistCard
-          checklist={checklist}
-          config={config}
-          field={{ name: 'checklist_id', label: 'Task' }}
-          record={{ id: checklist.id }}
-          onChangeTitle={handleChecklistChange}
-          onDelete={handleChecklistDelete}
-          onToggleComplete={handleToggleComplete}
-          onTaskDelete={handleTaskDelete}
-          onTaskAdd={handleTaskAdd}
-          enableTaskDrag
-          listeners={listeners}
-          dragging={isDragging}
-        />
-      </div>
-    );
+  <div ref={setNodeRef} style={style} {...attributes}>
+    <ChecklistCard
+      checklist={checklist}
+      config={{ 
+        name: 'task',
+        table: 'task', // ✅ GOOD: Proper task config for DeleteRecordButton
+        fields: [] 
+      }}
+      field={{ name: 'checklist_id', label: 'Task' }}
+      record={{ id: checklist.id }}
+      onChangeTitle={handleChecklistChange}
+      onDelete={handleChecklistDelete}
+      onToggleComplete={handleToggleComplete}
+      onTaskDelete={handleTaskDelete}
+      onTaskAdd={handleTaskAdd}
+      enableTaskDrag
+      listeners={listeners}
+      dragging={isDragging}
+    />
+  </div>
+);
   };
 
   return (
@@ -710,9 +718,13 @@ export default function ChecklistView({ config, overId, dragging }) {
                       maxWidth: 400,
                       filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.2))'
                     }}>
-                      <ChecklistCard
+                     <ChecklistCard
                         checklist={checklists.find(c => c.id === activeTask.id)}
-                        config={config}
+                        config={{
+                        name: 'task',
+                        table: 'task', // ✅ GOOD: Proper task config for DeleteRecordButton
+                        fields: []
+                        }}
                         onChangeTitle={() => {}}
                         onDelete={() => {}}
                         onToggleComplete={() => {}}
@@ -721,7 +733,7 @@ export default function ChecklistView({ config, overId, dragging }) {
                         field={{ name: 'checklist_id', label: 'Task' }}
                         record={{ id: activeTask.id }}
                         dragging
-                      />
+                        />
                     </Box>
                   ) : null}
                 </DragOverlay>

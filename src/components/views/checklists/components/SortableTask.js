@@ -49,14 +49,17 @@ export default function SortableTask({
         borderTop: '1px solid #eee',
       }}
     >
-      <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+      <Box sx={{ display: 'flex', alignItems: 'flex-start', flexGrow: 1 }}>
         <Checkbox
           checked={task.status === 'complete'}
           onChange={() => onToggleComplete(task.id)}
-          sx={{ mr: 1 }}
+          sx={{ 
+            mr: 1,
+            
+          }}
         />
         <Typography
-          variant="body2"
+          variant="body3"
           sx={{
             userSelect: 'none',
             cursor: 'pointer',

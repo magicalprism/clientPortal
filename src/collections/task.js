@@ -2,6 +2,7 @@ export const task = {
   name: 'task',
   label: 'Tasks',
   singularLabel: 'Task',
+  table: 'task',
   editPathPrefix: '/dashboard/task',
   showEditButton: true, // ✅ just a UI toggle
   subtitleField: 'title',
@@ -48,7 +49,15 @@ export const task = {
       openMode: 'modal',  
       showInTable: true,
     },
+    {
+      name: 'content',
+      label: 'Description',
+      type: 'richText',
+      group: 'Task', 
+      tab: 'Details',
+      fullWidth: true,
 
+    },
      { 
       name: 'task_type', 
       label: 'What kind of task/event is this?', 
@@ -134,15 +143,7 @@ export const task = {
 
     },      
   
-    {
-      name: 'content',
-      label: 'Description',
-      type: 'richText',
-      group: 'Task', 
-      tab: 'Details',
-      fullWidth: true,
 
-    },
     
     //Meta
     {

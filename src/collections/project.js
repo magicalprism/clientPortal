@@ -469,6 +469,24 @@ export const project = {
       editable: false,
       includeInViews: ['none'] // Hidden from all UI views
     },
+              {
+      name: 'events',
+      label: 'Meetings & Vacations',
+      type: 'multiRelationship',
+      tab: 'Overview',
+      group: 'Meta',
+      displayMode: 'tags',
+      relation: {
+        table: 'event',
+        labelField: 'title',
+        linkTo: '/dashboard/event',
+        junctionTable: 'event_project',
+        sourceKey: 'project_id',
+        targetKey: 'event_id',
+        tableFields: ['title'],
+        filter: {},
+      }
+    },
   
   ],
   filters: [

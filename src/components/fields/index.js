@@ -18,6 +18,7 @@ import { PaymentThread } from '@/components/fields/custom/payments/PaymentThread
 import { ColorTokenEditor } from '@/components/fields/custom/brand/colors/ColorTokenEditor';
 import { TypographyTokenEditor } from '@/components/fields/custom/brand/typography/TypographyTokenEditor';
 import KanbanFieldRenderer from '@/components/views/kanban/KanbanFieldRenderer';
+import ChecklistField from '@/components/fields/custom/checklist/ChecklistField';
 
 const CommentsFieldRenderer = ({ field, record }) => {
   return (
@@ -72,6 +73,34 @@ const TypographyTokensFieldRenderer = ({ field, record, editable }) => {
     />
   );
 };
+const ChecklistFieldRenderer = ({ field, record, value, onChange, editable }) => {
+  return (
+    <ChecklistField
+      entityType={field.props?.entityType || 'event'}
+      entityId={record?.id}
+      field={field}
+      value={value}
+      editable={editable}
+      onChange={onChange}
+      variant={field.props?.variant || 'embedded'}
+      title={field.label}
+      allowCreate={field.props?.allowCreate !== false}
+      allowReorder={field.props?.allowReorder !== false}
+      defaultChecklistName={field.props?.defaultChecklistName}
+      assignableContacts={
+        // Get assignable contacts based on entity type
+        field.props?.entityType === 'event' 
+          ? record?.contacts_details || []
+          : field.props?.entityType === 'project'
+          ? record?.project_members_details || []
+          : []
+      }
+      maxChecklists={field.props?.maxChecklists}
+      showProgress={field.props?.showProgress !== false}
+      {...field.props}
+    />
+  );
+};
 
 const RENDERERS = {
   select: SelectFieldRenderer,
@@ -95,6 +124,7 @@ const RENDERERS = {
   colorTokens: ColorTokensFieldRenderer,
   typographyTokens: TypographyTokensFieldRenderer,
   kanban: KanbanFieldRenderer,
+  checklist: ChecklistFieldRenderer,
 };
 
 export const getRendererForField = (type) => {

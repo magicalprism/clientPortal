@@ -67,3 +67,56 @@ export function useAuth() {
 
 	return context;
 }
+/*//removes authorization
+
+"use client";
+
+import * as React from "react";
+
+// 🔁 Don't import Supabase if you're bypassing it
+// import { createClient as createSupabaseClient } from "@/lib/supabase/browser";
+
+export const AuthContext = React.createContext({
+	isAuthenticated: true,
+	isLoading: false,
+	user: {
+		id: "mock-user",
+		email: "bypass@localhost",
+		role: "Super Admin",
+	},
+});
+
+export const AuthProvider = ({ children }) => {
+	// ❌ Skip supabase client entirely
+	// const [supabaseClient] = React.useState(createSupabaseClient());
+
+	const [state, setState] = React.useState({
+		isAuthenticated: true,
+		isLoading: false,
+		user: {
+			id: "mock-user",
+			email: "bypass@localhost",
+			role: "Super Admin",
+		},
+	});
+
+	// ✅ Skip useEffect completely — nothing to fetch or listen to
+	// This keeps it synchronous and stable even offline
+
+	return (
+		<AuthContext.Provider value={{ ...state }}>
+			{children}
+		</AuthContext.Provider>
+	);
+};
+
+export function useAuth() {
+	const context = React.useContext(AuthContext);
+
+	if (context === undefined) {
+		throw new Error("useAuth must be used within an AuthProvider");
+	}
+
+	return context;
+}
+*/

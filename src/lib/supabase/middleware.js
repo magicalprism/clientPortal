@@ -32,7 +32,7 @@ export async function middleware(req) {
 			},
 		}
 	);
-
+/*
 	if (req.nextUrl.pathname.startsWith("/dashboard")) {
 		const { data } = await supabaseClient.auth.getUser();
 
@@ -42,6 +42,6 @@ export async function middleware(req) {
 			return NextResponse.redirect(redirectTo);
 		}
 	}
-
+*/
 	return res;
 }

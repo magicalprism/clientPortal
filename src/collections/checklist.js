@@ -2,6 +2,7 @@ export const checklist = {
     name: 'checklist',
     label: 'Checklists',
     editPathPrefix: '/dashboard/checklist',
+    table: 'checklist',
     showEditButton: true, // ✅ just a UI toggle
     subtitleField: 'title',
     defaultView: 'table',
@@ -64,6 +65,7 @@ export const checklist = {
         linkTo: '/dashboard/checklist', // or dynamically derive from config
       }
     },
+     { name: 'task', table: 'task' } ,
 
      {
       name: 'company_id',

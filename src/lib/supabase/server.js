@@ -25,3 +25,21 @@ export async function createClient() {
 		},
 	});
 }
+	/*
+	// TEMPORARY MOCK SUPABASE CLIENT
+export const createClient = () => ({
+  from: () => ({
+    select: () => ({ data: [], error: null }),
+    insert: () => ({ data: [], error: null }),
+    update: () => ({ data: [], error: null }),
+    delete: () => ({ data: [], error: null }),
+  }),
+  auth: {
+    getUser: async () => ({ data: { user: { id: 'mock-user' } }, error: null }),
+    getSession: async () => ({ data: { session: null }, error: null }),
+    signInWithPassword: async () => ({ data: {}, error: null }),
+    signOut: async () => ({}),
+  },
+});
+
+*/
