@@ -9,14 +9,14 @@ import {
   LINE_HEIGHT_RATIOS, 
   READABILITY_METRICS,
   calculateTypographyScore 
-} from './typography-metrics.js';
+} from './measurements/typography-metrics.js';
 
 import { 
   SPACING_GRID, 
   PROXIMITY_RULES, 
   WHITESPACE_RATIOS,
   calculateSpacingScore 
-} from './spacing-calculations.js';
+} from './measurements/spacing-calculations.js';
 
 import { 
   GOLDEN_RATIO, 
@@ -44,75 +44,75 @@ import {
   CONTENT_COMPLEXITY_ANALYSIS,
   CONTENT_RELATIONSHIPS,
   detectContentPatterns 
-} from './content-to-layout-mapping.js';
+} from './content-analysis/content-to-layout-mapping.js';
 
 import { 
   INTENT_TO_LAYOUT_MAP,
   analyzeContentIntent,
   determineContentStrategy 
-} from './content-intent-recognition.js';
+} from './content-analysis/content-intent-recognition.js';
 
 // Layout Decision Systems
 import { 
   determineOptimalLayout,
   DENSITY_TO_LAYOUT,
   calculateLayoutSuitability 
-} from './layout-suitability-algorithms.js';
+} from './layout-decisions/layout-suitability-algorithms.js';
 
 import { 
   HIERARCHY_DETECTION,
   INFORMATION_FLOW,
   analyzeInformationArchitecture 
-} from './information-architecture-logic.js';
+} from './layout-decisions/information-architecture-logic.js';
 
 import { 
   JOURNEY_STAGE_LAYOUTS,
   COGNITIVE_LOAD_RULES,
   optimizeUserJourney 
-} from './user-journey-optimization.js';
+} from './layout-decisions/user-journey-optimization.js';
 
 // Component Decision Systems
 import { 
   BUTTON_TYPE_DECISIONS,
   BUTTON_HIERARCHY,
   selectButtonStyles 
-} from './button-component-logic.js';
+} from './component-systems/button-component-logic.js';
 
 import { 
   BRAND_PERSONALITY_RADIUS,
   INDUSTRY_RADIUS_STANDARDS,
   determineBorderRadius 
-} from './border-radius-system.js';
+} from './component-systems/border-radius-system.js';
 
 import { 
   SHADOW_ELEVATION_SYSTEM,
   SHADOW_USAGE_RULES,
   calculateShadowDepth 
-} from './shadow-depth-system.js';
+} from './component-systems/shadow-depth-system.js';
 
 import { 
   COMPONENT_STATES,
   STATE_TRANSITIONS,
   generateStateStyles 
-} from './component-state-system.js';
+} from './component-systems/component-state-system.js';
 
 import { 
   COLOR_HIERARCHY_RULES,
   COMPONENT_COLOR_CONTEXT,
   assignComponentColors 
-} from './color-application-logic.js';
+} from './component-systems/color-application-logic.js';
 
 import { 
   COMPONENT_SIZE_HIERARCHY,
   RESPONSIVE_COMPONENT_SCALING,
   calculateComponentSizes 
-} from './component-sizing-logic.js';
+} from './component-systems/component-sizing-logic.js';
 
 import { 
   COMPONENT_PAIRING_LOGIC,
   PROFESSIONAL_COMBINATIONS,
   validateComponentCombinations 
-} from './component-composition-rules.js';
+} from './component-systems/component-composition-rules.js';
 
 // Visual Element Systems
 import { 
@@ -120,42 +120,42 @@ import {
   COMPOSITION_RULES,
   IMAGE_QUALITY,
   analyzeImageRequirements 
-} from './image-composition.js';
+} from './visual-elements/image-composition.js';
 
 import { 
   ICON_SPECIFICATIONS,
   ICON_CONSISTENCY,
   validateIconSystem 
-} from './icon-systems.js';
+} from './visual-elements/icon-systems.js';
 
 import { 
   BACKGROUND_PATTERNS,
   BACKGROUND_CONTRAST,
   optimizeBackgrounds 
-} from './background-design.js';
+} from './visual-elements/background-design.js';
 
 // Performance & Quality Systems
 import { 
   calculateLayoutScore,
   QUALITY_THRESHOLDS,
   generateQualityReport 
-} from './layout-quality-score.js';
+} from './layout-decisions/layout-quality-score.js';
 
 import { 
   LAYOUT_EFFECTIVENESS_FACTORS,
   predictLayoutSuccess 
-} from './layout-effectiveness-prediction.js';
+} from './layout-decisions/layout-effectiveness-prediction.js';
 
 import { 
   PERFORMANCE_BENCHMARKS,
   assessPerformanceImpact 
-} from './performance-metrics.js';
+} from './quality-validation/performance-metrics.js';
 
 import { 
   RESPONSIVE_BREAKPOINTS,
   SCALING_RATIOS,
   optimizeResponsiveBehavior 
-} from './responsive-behavior.js';
+} from './quality-validation/responsive-behavior.js';
 
 // Brand & Pattern Systems
 import { 
@@ -174,7 +174,7 @@ import {
   ANIMATION_TIMING,
   ANIMATION_PERFORMANCE,
   optimizeMotionDesign 
-} from './motion-design.js';
+} from './visual-elements/motion-design.js';
 
 import { 
   INTERACTIVE_SPECS,
