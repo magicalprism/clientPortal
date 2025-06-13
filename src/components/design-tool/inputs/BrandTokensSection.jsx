@@ -25,7 +25,9 @@ export default function BrandTokensSection({
   selectedBrand = null,
   onBrandChange = () => {},
   brandTokens = {},
-  onTokensChange = () => {}
+  onTokensChange = () => {},
+  onBrandSelected,     // Callback for when brand is selected
+  onError             // Callback for errors
 }) {
   const [brands, setBrands] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -53,8 +55,14 @@ export default function BrandTokensSection({
 
       setBrands(data || []);
     } catch (err) {
-      setError('Failed to load brands: ' + err.message);
+      const errorMsg = 'Failed to load brands: ' + err.message;
+      setError(errorMsg);
       console.error('Brand loading error:', err);
+      
+      // Call error callback
+      if (onError) {
+        onError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -124,34 +132,48 @@ export default function BrandTokensSection({
         return acc;
       }, {});
 
-      // Combine into a single tokens object
+      // Add some computed spacing tokens for layout generation
       const combinedTokens = {
         colors: groupedColors,
-        typography: groupedTypography
-      };
-
-      // Add some computed spacing tokens for layout generation
-      combinedTokens.spacing = {
-        xs: { value: '8px', type: 'spacing' },
-        sm: { value: '16px', type: 'spacing' },
-        md: { value: '24px', type: 'spacing' },
-        lg: { value: '48px', type: 'spacing' },
-        xl: { value: '96px', type: 'spacing' }
-      };
-
-      combinedTokens.borderRadius = {
-        sm: { value: '4px', type: 'borderRadius' },
-        md: { value: '8px', type: 'borderRadius' },
-        lg: { value: '16px', type: 'borderRadius' }
+        typography: groupedTypography,
+        spacing: {
+          xs: { value: '8px', type: 'spacing' },
+          sm: { value: '16px', type: 'spacing' },
+          md: { value: '24px', type: 'spacing' },
+          lg: { value: '48px', type: 'spacing' },
+          xl: { value: '96px', type: 'spacing' }
+        },
+        borderRadius: {
+          sm: { value: '4px', type: 'borderRadius' },
+          md: { value: '8px', type: 'borderRadius' },
+          lg: { value: '16px', type: 'borderRadius' }
+        }
       };
 
       onTokensChange(combinedTokens);
+
+      // Call the parent callback
+      if (onBrandSelected) {
+        onBrandSelected(brandId, combinedTokens);
+      }
     } catch (err) {
-      setError('Failed to load brand tokens: ' + err.message);
+      const errorMsg = 'Failed to load brand tokens: ' + err.message;
+      setError(errorMsg);
       console.error('Token loading error:', err);
+
+      // Call error callback
+      if (onError) {
+        onError(errorMsg);
+      }
       
       // Use mock tokens as fallback
-      onTokensChange(generateMockTokens());
+      const mockTokens = generateMockTokens();
+      onTokensChange(mockTokens);
+      
+      // Still call the brand selected callback with mock data
+      if (onBrandSelected) {
+        onBrandSelected(brandId, mockTokens);
+      }
     } finally {
       setIsLoadingTokens(false);
     }
@@ -167,7 +189,13 @@ export default function BrandTokensSection({
     if (brand) {
       loadBrandTokens(brand.id);
     } else {
+      // Clear tokens when no brand is selected
       onTokensChange({});
+      
+      // Call callback with empty state
+      if (onBrandSelected) {
+        onBrandSelected(null, {});
+      }
     }
   };
 
@@ -207,6 +235,104 @@ export default function BrandTokensSection({
       lg: { value: '16px', type: 'borderRadius' }
     }
   });
+
+  // Helper to count total tokens in a group
+  function getTotalTokenCount(tokens) {
+    if (typeof tokens === 'object' && tokens !== null) {
+      return Object.values(tokens).reduce((total, subGroup) => {
+        if (typeof subGroup === 'object' && subGroup !== null) {
+          return total + Object.keys(subGroup).length;
+        }
+        return total + 1;
+      }, 0);
+    }
+    return 0;
+  }
+
+  // Helper to render token previews
+  function renderTokenPreviews(tokens, groupName) {
+    const previews = [];
+    
+    if (groupName === 'colors') {
+      // Flatten color groups and show previews
+      Object.entries(tokens).forEach(([subGroup, colors]) => {
+        Object.entries(colors).slice(0, 4).forEach(([name, token]) => {
+          previews.push(
+            <Box
+              key={`${subGroup}-${name}`}
+              sx={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5,
+                p: 0.5,
+                border: 1,
+                borderColor: 'grey.300',
+                borderRadius: 0.5,
+                bgcolor: 'white'
+              }}
+            >
+              <Box
+                sx={{
+                  width: 16,
+                  height: 16,
+                  bgcolor: token.value,
+                  borderRadius: 0.5,
+                  border: 1,
+                  borderColor: 'grey.300'
+                }}
+              />
+              <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
+                {name}
+              </Typography>
+            </Box>
+          );
+        });
+      });
+    } else if (groupName === 'typography') {
+      // Show typography previews
+      Object.entries(tokens).forEach(([subGroup, fonts]) => {
+        Object.entries(fonts).slice(0, 3).forEach(([name, token]) => {
+          previews.push(
+            <Chip
+              key={`${subGroup}-${name}`}
+              label={`${name}: ${token.value}`}
+              size="small"
+              variant="outlined"
+              sx={{ fontSize: '0.7rem' }}
+            />
+          );
+        });
+      });
+    } else {
+      // Show other tokens as chips
+      Object.entries(tokens).slice(0, 4).forEach(([name, token]) => {
+        previews.push(
+          <Chip
+            key={name}
+            label={`${name}: ${token.value}`}
+            size="small"
+            variant="outlined"
+            sx={{ fontSize: '0.7rem' }}
+          />
+        );
+      });
+    }
+
+    const totalCount = getTotalTokenCount(tokens);
+    if (totalCount > previews.length) {
+      previews.push(
+        <Chip
+          key="more"
+          label={`+${totalCount - previews.length} more`}
+          size="small"
+          color="primary"
+          sx={{ fontSize: '0.7rem' }}
+        />
+      );
+    }
+
+    return previews;
+  }
 
   return (
     <Box>
@@ -310,102 +436,4 @@ export default function BrandTokensSection({
       </Typography>
     </Box>
   );
-
-  // Helper to count total tokens in a group
-  function getTotalTokenCount(tokens) {
-    if (typeof tokens === 'object' && tokens !== null) {
-      return Object.values(tokens).reduce((total, subGroup) => {
-        if (typeof subGroup === 'object' && subGroup !== null) {
-          return total + Object.keys(subGroup).length;
-        }
-        return total + 1;
-      }, 0);
-    }
-    return 0;
-  }
-
-  // Helper to render token previews
-  function renderTokenPreviews(tokens, groupName) {
-    const previews = [];
-    
-    if (groupName === 'colors') {
-      // Flatten color groups and show previews
-      Object.entries(tokens).forEach(([subGroup, colors]) => {
-        Object.entries(colors).slice(0, 4).forEach(([name, token]) => {
-          previews.push(
-            <Box
-              key={`${subGroup}-${name}`}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 0.5,
-                p: 0.5,
-                border: 1,
-                borderColor: 'grey.300',
-                borderRadius: 0.5,
-                bgcolor: 'white'
-              }}
-            >
-              <Box
-                sx={{
-                  width: 16,
-                  height: 16,
-                  bgcolor: token.value,
-                  borderRadius: 0.5,
-                  border: 1,
-                  borderColor: 'grey.300'
-                }}
-              />
-              <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>
-                {name}
-              </Typography>
-            </Box>
-          );
-        });
-      });
-    } else if (groupName === 'typography') {
-      // Show typography previews
-      Object.entries(tokens).forEach(([subGroup, fonts]) => {
-        Object.entries(fonts).slice(0, 3).forEach(([name, token]) => {
-          previews.push(
-            <Chip
-              key={`${subGroup}-${name}`}
-              label={`${name}: ${token.value}`}
-              size="small"
-              variant="outlined"
-              sx={{ fontSize: '0.7rem' }}
-            />
-          );
-        });
-      });
-    } else {
-      // Show other tokens as chips
-      Object.entries(tokens).slice(0, 4).forEach(([name, token]) => {
-        previews.push(
-          <Chip
-            key={name}
-            label={`${name}: ${token.value}`}
-            size="small"
-            variant="outlined"
-            sx={{ fontSize: '0.7rem' }}
-          />
-        );
-      });
-    }
-
-    const totalCount = getTotalTokenCount(tokens);
-    if (totalCount > previews.length) {
-      previews.push(
-        <Chip
-          key="more"
-          label={`+${totalCount - previews.length} more`}
-          size="small"
-          color="primary"
-          sx={{ fontSize: '0.7rem' }}
-        />
-      );
-    }
-
-    return previews;
-  }
 }

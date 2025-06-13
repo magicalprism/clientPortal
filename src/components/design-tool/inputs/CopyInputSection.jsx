@@ -26,7 +26,9 @@ export default function CopyInputSection({
   value,
   onChange,
   classifiedCopy,
-  onClassifiedChange
+  onClassifiedChange,
+  onCopyAnalyzed,      // Callback for when copy is analyzed
+  onError             // Callback for errors
 }) {
   const [isClassifying, setIsClassifying] = useState(false);
   const [uploadError, setUploadError] = useState('');
@@ -87,13 +89,29 @@ export default function CopyInputSection({
       // Transform the response into our expected format
       const classified = result.choices?.[0]?.message?.content 
         ? JSON.parse(result.choices[0].message.content)
-        : mockClassifyContent(value); // Fallback to mock for now
+        : mockClassifyContent(value);
 
       onClassifiedChange(classified);
+      
+      // ADD THIS: Call the new callback for the parent
+      if (onCopyAnalyzed) {
+        onCopyAnalyzed(classified);
+      }
     } catch (error) {
       console.error('Classification error:', error);
+      
+      // ADD THIS: Call error callback
+      if (onError) {
+        onError('Failed to analyze copy: ' + error.message);
+      }
+      
       // Use mock classification as fallback
-      onClassifiedChange(mockClassifyContent(value));
+      const mockClassified = mockClassifyContent(value);
+      onClassifiedChange(mockClassified);
+      
+      if (onCopyAnalyzed) {
+        onCopyAnalyzed(mockClassified);
+      }
     } finally {
       setIsClassifying(false);
     }

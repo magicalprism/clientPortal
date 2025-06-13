@@ -28,16 +28,13 @@ import {
 } from '@phosphor-icons/react';
 
 export default function ExportOptionsSection({
-  generatedLayouts,
-  selectedVariation,
+  generatedLayout,  // Fixed: singular instead of plural
   brandTokens
 }) {
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
   const [exportFormat, setExportFormat] = useState('html');
   const [exportCode, setExportCode] = useState('');
   const [copied, setCopied] = useState(false);
-
-  const currentLayout = generatedLayouts[selectedVariation];
 
   // Export formats
   const exportFormats = [
@@ -70,7 +67,7 @@ export default function ExportOptionsSection({
   // Handle export
   const handleExport = (format) => {
     setExportFormat(format);
-    const code = generateExportCode(format, currentLayout, brandTokens);
+    const code = generateExportCode(format, generatedLayout, brandTokens);
     setExportCode(code);
     setExportDialogOpen(true);
   };
@@ -89,7 +86,7 @@ export default function ExportOptionsSection({
   // Download file
   const handleDownload = () => {
     const format = exportFormats.find(f => f.key === exportFormat);
-    const filename = `${currentLayout.name.toLowerCase().replace(/\s+/g, '-')}.${getFileExtension(exportFormat)}`;
+    const filename = `design-tool-layout.${getFileExtension(exportFormat)}`;
     
     const blob = new Blob([exportCode], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
@@ -114,7 +111,8 @@ export default function ExportOptionsSection({
     return extensions[format] || 'txt';
   };
 
-  if (!currentLayout) {
+  // Don't render if no layout
+  if (!generatedLayout) {
     return null;
   }
 
@@ -125,7 +123,7 @@ export default function ExportOptionsSection({
         <Download size={20} weight="duotone" />
         <Typography variant="h6">Export Options</Typography>
         <Chip 
-          label={currentLayout.name} 
+          label="Generated Layout" 
           color="primary" 
           size="small"
           sx={{ ml: 'auto' }}
@@ -250,7 +248,7 @@ function generateHTMLCode(layout, brandTokens) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${layout.name}</title>
+    <title>Generated Layout</title>
     <style>
         ${css}
         
@@ -261,7 +259,7 @@ function generateHTMLCode(layout, brandTokens) {
         }
         
         body {
-            font-family: var(--font-body, 'Arial, sans-serif');
+            font-family: var(--font-body, 'Inter, Arial, sans-serif');
             line-height: 1.6;
             color: var(--color-text, #333);
         }
@@ -296,11 +294,12 @@ function generateHTMLCode(layout, brandTokens) {
             background-color: var(--color-primary, #3B82F6);
             color: white;
             text-decoration: none;
-            border-radius: 8px;
+            border-radius: var(--radius-md, 8px);
             border: none;
             cursor: pointer;
             font-size: 1rem;
             margin: 0.5rem;
+            transition: opacity 0.2s;
         }
         
         .btn:hover {
@@ -311,6 +310,22 @@ function generateHTMLCode(layout, brandTokens) {
             max-width: 1200px;
             margin: 0 auto;
         }
+        
+        .feature-item {
+            text-align: center;
+            padding: 1.5rem;
+        }
+        
+        @media (max-width: 768px) {
+            .section {
+                padding: 2rem 1rem;
+            }
+            
+            .features {
+                grid-template-columns: 1fr;
+                gap: 1.5rem;
+            }
+        }
     </style>
 </head>
 <body>
@@ -319,13 +334,24 @@ function generateHTMLCode(layout, brandTokens) {
         <div class="container">
             ${generateSectionHTML(section)}
         </div>
-    </section>`).join('') || '<section class="section"><div class="container"><h1>No sections to display</h1></div></section>'}
+    </section>`).join('') || `
+    <section class="section hero">
+        <div class="container">
+            <h1>Generated Layout</h1>
+            <p>Your AI-generated design will appear here</p>
+            <a href="#" class="btn">Get Started</a>
+        </div>
+    </section>`}
 </body>
 </html>`;
 }
 
 // Generate React code
 function generateReactCode(layout, brandTokens) {
+  const primaryColor = extractTokenValue(brandTokens, 'colors.primary.primary') || '#3B82F6';
+  const secondaryColor = extractTokenValue(brandTokens, 'colors.primary.secondary') || '#10B981';
+  const fontFamily = extractTokenValue(brandTokens, 'typography.body.body') || 'Inter, Arial, sans-serif';
+
   return `import React from 'react';
 import { Box, Typography, Button, Grid, Container } from '@mui/material';
 
@@ -333,18 +359,18 @@ import { Box, Typography, Button, Grid, Container } from '@mui/material';
 const brandTheme = {
   palette: {
     primary: {
-      main: '${brandTokens.colors?.primary?.value || '#3B82F6'}'
+      main: '${primaryColor}'
     },
     secondary: {
-      main: '${brandTokens.colors?.secondary?.value || '#10B981'}'
+      main: '${secondaryColor}'
     }
   },
   typography: {
-    fontFamily: '${brandTokens.typography?.body?.value || 'Arial, sans-serif'}'
+    fontFamily: '${fontFamily}'
   }
 };
 
-export default function ${layout.name.replace(/\s+/g, '')}Layout() {
+export default function GeneratedLayout() {
   return (
     <Box>
       ${layout.sections?.map((section, index) => `
@@ -353,14 +379,27 @@ export default function ${layout.name.replace(/\s+/g, '')}Layout() {
         sx={{
           py: 6,
           px: 3,
-          backgroundColor: '${section.style?.backgroundColor || 'transparent'}',
-          color: '${section.style?.color || 'inherit'}'
+          backgroundColor: '${section.styling?.backgroundColor || (section.type === 'hero' ? primaryColor : 'transparent')}',
+          color: '${section.styling?.textColor || (section.type === 'hero' ? 'white' : 'inherit')}'
         }}
       >
         <Container maxWidth="lg">
           ${generateSectionReact(section)}
         </Container>
-      </Box>`).join('') || '      <Typography>No sections to display</Typography>'}
+      </Box>`).join('') || `
+      <Box sx={{ py: 6, px: 3, backgroundColor: '${primaryColor}', color: 'white', textAlign: 'center' }}>
+        <Container maxWidth="lg">
+          <Typography variant="h2" sx={{ fontWeight: 700, mb: 2 }}>
+            Generated Layout
+          </Typography>
+          <Typography variant="h6" sx={{ mb: 3, opacity: 0.8 }}>
+            Your AI-generated design will appear here
+          </Typography>
+          <Button variant="contained" size="large">
+            Get Started
+          </Button>
+        </Container>
+      </Box>`}
     </Box>
   );
 }`;
@@ -370,12 +409,13 @@ export default function ${layout.name.replace(/\s+/g, '')}Layout() {
 function generateJSONCode(layout, brandTokens) {
   return JSON.stringify({
     layout: {
-      name: layout.name,
       sections: layout.sections || [],
+      generation: layout.generation || {},
       brandTokens: brandTokens,
       metadata: {
         generatedAt: new Date().toISOString(),
-        version: '1.0.0'
+        version: '1.0.0',
+        tool: 'AI Design Tool'
       }
     }
   }, null, 2);
@@ -386,35 +426,68 @@ function generateCSSCode(brandTokens) {
   let css = ':root {\n';
   
   // Colors
-  if (brandTokens.colors) {
-    Object.entries(brandTokens.colors).forEach(([name, token]) => {
-      css += `  --color-${name}: ${token.value};\n`;
+  if (brandTokens?.colors) {
+    Object.entries(brandTokens.colors).forEach(([groupName, group]) => {
+      if (typeof group === 'object') {
+        Object.entries(group).forEach(([tokenName, token]) => {
+          css += `  --color-${groupName}-${tokenName}: ${token.value};\n`;
+        });
+      }
     });
   }
   
   // Typography
-  if (brandTokens.typography) {
-    Object.entries(brandTokens.typography).forEach(([name, token]) => {
-      css += `  --font-${name}: ${token.value};\n`;
+  if (brandTokens?.typography) {
+    Object.entries(brandTokens.typography).forEach(([groupName, group]) => {
+      if (typeof group === 'object') {
+        Object.entries(group).forEach(([tokenName, token]) => {
+          css += `  --font-${groupName}-${tokenName}: ${token.value};\n`;
+          if (token.fontSize) css += `  --font-size-${groupName}-${tokenName}: ${token.fontSize};\n`;
+          if (token.fontWeight) css += `  --font-weight-${groupName}-${tokenName}: ${token.fontWeight};\n`;
+          if (token.lineHeight) css += `  --line-height-${groupName}-${tokenName}: ${token.lineHeight};\n`;
+        });
+      }
     });
   }
   
   // Spacing
-  if (brandTokens.spacing) {
+  if (brandTokens?.spacing) {
     Object.entries(brandTokens.spacing).forEach(([name, token]) => {
       css += `  --spacing-${name}: ${token.value};\n`;
     });
   }
   
   // Border Radius
-  if (brandTokens.borderRadius) {
+  if (brandTokens?.borderRadius) {
     Object.entries(brandTokens.borderRadius).forEach(([name, token]) => {
       css += `  --radius-${name}: ${token.value};\n`;
     });
   }
   
+  // Fallback variables
+  css += `
+  /* Fallback variables */
+  --color-primary: var(--color-primary-primary, #3B82F6);
+  --color-secondary: var(--color-primary-secondary, #10B981);
+  --color-text: var(--color-neutral-text, #333333);
+  --font-body: var(--font-body-body, 'Inter, Arial, sans-serif');
+`;
+  
   css += '}';
   return css;
+}
+
+// Helper to extract token values
+function extractTokenValue(brandTokens, path) {
+  const keys = path.split('.');
+  let value = brandTokens;
+  
+  for (const key of keys) {
+    value = value?.[key];
+    if (!value) return null;
+  }
+  
+  return value?.value || value;
 }
 
 // Generate section HTML
@@ -422,36 +495,50 @@ function generateSectionHTML(section) {
   switch (section.type) {
     case 'hero':
       return `
-        <h1>Transform Your Business</h1>
-        <p>Discover powerful solutions that help you achieve your goals.</p>
-        <a href="#" class="btn">Get Started</a>
+        <h1>${section.content?.headline || 'Transform Your Business'}</h1>
+        <p>${section.content?.subheadline || 'Discover powerful solutions that help you achieve your goals.'}</p>
+        <a href="#" class="btn">${section.content?.cta || 'Get Started'}</a>
       `;
     case 'features':
       return `
-        <h2>Powerful Features</h2>
+        <h2>${section.content?.title || 'Powerful Features'}</h2>
         <div class="features">
-          <div>
-            <h3>⚡ Fast Performance</h3>
-            <p>Lightning-fast loading times and smooth interactions</p>
-          </div>
-          <div>
-            <h3>🔒 Secure & Reliable</h3>
-            <p>Enterprise-grade security with 99.9% uptime</p>
-          </div>
-          <div>
-            <h3>🎨 Beautiful Design</h3>
-            <p>Stunning interfaces that users love</p>
-          </div>
+          ${section.content?.features ? section.content.features.map(feature => `
+            <div class="feature-item">
+              <h3>${feature.icon || '⭐'} ${feature.title || 'Feature'}</h3>
+              <p>${feature.description || 'Feature description'}</p>
+            </div>
+          `).join('') : `
+            <div class="feature-item">
+              <h3>⚡ Fast Performance</h3>
+              <p>Lightning-fast loading times and smooth interactions</p>
+            </div>
+            <div class="feature-item">
+              <h3>🔒 Secure & Reliable</h3>
+              <p>Enterprise-grade security with 99.9% uptime</p>
+            </div>
+            <div class="feature-item">
+              <h3>🎨 Beautiful Design</h3>
+              <p>Stunning interfaces that users love</p>
+            </div>
+          `}
         </div>
+      `;
+    case 'testimonial':
+      return `
+        <blockquote>
+          <p>"${section.content?.quote || 'This product has transformed our business completely.'}"</p>
+          <cite>— ${section.content?.author || 'Happy Customer'}</cite>
+        </blockquote>
       `;
     case 'cta':
       return `
-        <h2>Ready to Get Started?</h2>
-        <p>Join thousands of satisfied customers today</p>
-        <a href="#" class="btn">Start Free Trial</a>
+        <h2>${section.content?.headline || 'Ready to Get Started?'}</h2>
+        <p>${section.content?.description || 'Join thousands of satisfied customers today'}</p>
+        <a href="#" class="btn">${section.content?.primaryCTA || 'Start Free Trial'}</a>
       `;
     default:
-      return `<h2>${section.type} Section</h2><p>${section.content || 'Content goes here'}</p>`;
+      return `<h2>${section.type} Section</h2><p>${section.content?.text || 'Content goes here'}</p>`;
   }
 }
 
@@ -461,20 +548,25 @@ function generateSectionReact(section) {
     case 'hero':
       return `
           <Typography variant="h2" sx={{ fontWeight: 700, mb: 2 }}>
-            Transform Your Business
+            ${section.content?.headline || 'Transform Your Business'}
           </Typography>
           <Typography variant="h6" sx={{ mb: 3, opacity: 0.8 }}>
-            Discover powerful solutions that help you achieve your goals.
+            ${section.content?.subheadline || 'Discover powerful solutions that help you achieve your goals.'}
           </Typography>
           <Button variant="contained" size="large">
-            Get Started
+            ${section.content?.cta || 'Get Started'}
           </Button>`;
     case 'features':
       return `
           <Typography variant="h3" sx={{ textAlign: 'center', mb: 4 }}>
-            Powerful Features
+            ${section.content?.title || 'Powerful Features'}
           </Typography>
           <Grid container spacing={4}>
+            ${section.content?.features ? section.content.features.map((feature, index) => `
+            <Grid item xs={12} md={4}>
+              <Typography variant="h5" sx={{ mb: 2 }}>${feature.icon || '⭐'} ${feature.title || 'Feature'}</Typography>
+              <Typography>${feature.description || 'Feature description'}</Typography>
+            </Grid>`).join('') : `
             <Grid item xs={12} md={4}>
               <Typography variant="h5" sx={{ mb: 2 }}>⚡ Fast Performance</Typography>
               <Typography>Lightning-fast loading times and smooth interactions</Typography>
@@ -486,19 +578,29 @@ function generateSectionReact(section) {
             <Grid item xs={12} md={4}>
               <Typography variant="h5" sx={{ mb: 2 }}>🎨 Beautiful Design</Typography>
               <Typography>Stunning interfaces that users love</Typography>
-            </Grid>
+            </Grid>`}
           </Grid>`;
+    case 'testimonial':
+      return `
+          <Box sx={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+            <Typography variant="h4" sx={{ fontStyle: 'italic', mb: 2 }}>
+              "${section.content?.quote || 'This product has transformed our business completely.'}"
+            </Typography>
+            <Typography variant="subtitle1">
+              — ${section.content?.author || 'Happy Customer'}
+            </Typography>
+          </Box>`;
     case 'cta':
       return `
           <Typography variant="h3" sx={{ textAlign: 'center', mb: 2 }}>
-            Ready to Get Started?
+            ${section.content?.headline || 'Ready to Get Started?'}
           </Typography>
           <Typography variant="h6" sx={{ textAlign: 'center', mb: 3 }}>
-            Join thousands of satisfied customers today
+            ${section.content?.description || 'Join thousands of satisfied customers today'}
           </Typography>
           <Box sx={{ textAlign: 'center' }}>
             <Button variant="contained" size="large">
-              Start Free Trial
+              ${section.content?.primaryCTA || 'Start Free Trial'}
             </Button>
           </Box>`;
     default:
@@ -507,7 +609,7 @@ function generateSectionReact(section) {
             ${section.type} Section
           </Typography>
           <Typography>
-            ${section.content || 'Content goes here'}
+            ${section.content?.text || 'Content goes here'}
           </Typography>`;
   }
 }

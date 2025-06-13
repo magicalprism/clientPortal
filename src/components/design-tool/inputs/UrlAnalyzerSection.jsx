@@ -28,16 +28,26 @@ import {
   Info
 } from '@phosphor-icons/react';
 
-export default function UrlAnalyzerSection({ onAnalysisComplete }) {
+export default function UrlAnalyzerSection({ 
+  onAnalysisComplete,
+    onLayoutAnalyzed,    // Callback for when layout is analyzed
+  onError             // Callback for errors
+}) {
   const [url, setUrl] = useState('');
   const [useScreenshots, setUseScreenshots] = useState(false);
   const [analysis, setAnalysis] = useState(null);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleAnalyze = async () => {
+   const handleAnalyze = async () => {
     if (!url) {
-      setError('Please enter a valid URL');
+      const errorMsg = 'Please enter a valid URL';
+      setError(errorMsg);
+      
+      // ADD THIS: Call error callback
+      if (onError) {
+        onError(errorMsg);
+      }
       return;
     }
 
@@ -60,13 +70,32 @@ export default function UrlAnalyzerSection({ onAnalysisComplete }) {
 
       if (result.success) {
         setAnalysis(result);
+        
+        // Keep your existing callback
         onAnalysisComplete?.(result);
+        
+        // ADD THIS: Call the new callback for the parent
+        if (onLayoutAnalyzed) {
+          onLayoutAnalyzed(result);
+        }
       } else {
-        setError(result.error || 'Analysis failed');
+        const errorMsg = result.error || 'Analysis failed';
+        setError(errorMsg);
+        
+        // ADD THIS: Call error callback
+        if (onError) {
+          onError(errorMsg);
+        }
       }
     } catch (err) {
       console.error('Analysis error:', err);
-      setError('Failed to analyze URL. Please try again.');
+      const errorMsg = 'Failed to analyze URL. Please try again.';
+      setError(errorMsg);
+      
+      // ADD THIS: Call error callback
+      if (onError) {
+        onError(errorMsg);
+      }
     } finally {
       setIsLoading(false);
     }
