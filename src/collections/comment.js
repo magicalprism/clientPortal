@@ -1,6 +1,7 @@
  export const comment = {
   name: 'comment',
   label: 'Comments',
+   table:'comment',
   singularLabel: 'Comment',
   editPathPrefix: '/dashboard/comment',
   showEditButton: true, // ✅ just a UI toggle

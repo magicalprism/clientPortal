@@ -210,6 +210,41 @@ export const proposal = {
       editable: false,
       description: 'Calculated yearly total'
     },
+    {
+      name: 'headline',
+      label: 'Headline', 
+      group: 'content',
+      tab: 'Details',
+    },
+    {
+      name: 'subheadline',
+      label: 'Subheadline', 
+      group: 'content',
+      tab: 'Details',
+    },
+
+        {
+      name: 'note_from_me',
+      label: 'Note from Founder', 
+      type: 'richText',
+      group: 'content',
+      tab: 'Details',
+    },
+
+            {
+      name: 'signature',
+      label: 'Signature', 
+      type: 'media',
+      group: 'content',
+      tab: 'Details',
+    },
+
+    {
+      name: 'pricing_headline',
+      label: 'Pricing Headline', 
+      group: 'content',
+      tab: 'Details',
+    },
 
     {
       name: 'parent_id',

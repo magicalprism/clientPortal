@@ -15,24 +15,27 @@ const ENTITY_CONFIGS = {
     checklistField: 'event_id',
     participantQuery: 'fetchEventParticipants',
     defaultName: 'Action Items',
-    createFunction: 'createEventChecklist',
-    fetchFunction: 'fetchEventChecklists'
+    createFunction: 'createEventChecklist',        // ✅ SOP naming
+    fetchFunction: 'fetchEventChecklists',         // ✅ SOP naming  
+    reorderFunction: 'reorderEventChecklists'      // ✅ SOP naming
   },
   project: {
     table: 'project',
     checklistField: 'project_id', 
     participantQuery: 'fetchProjectMembers',
     defaultName: 'Project Tasks',
-    createFunction: 'createProjectChecklist',
-    fetchFunction: 'fetchProjectChecklists'
+    createFunction: 'createProjectChecklist',      // ✅ SOP naming
+    fetchFunction: 'fetchProjectChecklists',       // ✅ SOP naming
+    reorderFunction: 'reorderProjectChecklists'    // ✅ SOP naming
   },
   contract: {
     table: 'contract',
     checklistField: 'contract_id',
     participantQuery: 'fetchContractParties', 
     defaultName: 'Deliverables',
-    createFunction: 'createContractChecklist',
-    fetchFunction: 'fetchContractChecklists'
+    createFunction: 'createContractChecklist',     // ✅ SOP naming
+    fetchFunction: 'fetchContractChecklists',      // ✅ SOP naming
+    reorderFunction: 'reorderContractChecklists'   // ✅ SOP naming
   }
 };
 

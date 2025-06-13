@@ -46,7 +46,7 @@ const TaskTemplateEditModal = ({
     title: '',
     description: '',
     priority: 'medium',
-    task_type: 'task',
+    type: 'task',
     estimated_duration: '',
     milestone_id: null,
     parent_id: null,
@@ -64,7 +64,7 @@ const TaskTemplateEditModal = ({
         title: task.title || '',
         description: task.description || '',
         priority: task.priority || 'medium',
-        task_type: task.task_type || 'task',
+        type: task.type || 'task',
         estimated_duration: task.estimated_duration || '',
         milestone_id: task.milestone_id || null,
         parent_id: task.parent_id || null,
@@ -303,8 +303,8 @@ const TaskTemplateEditModal = ({
                   <FormControl fullWidth>
                     <InputLabel>Task Type</InputLabel>
                     <Select
-                      value={formData.task_type}
-                      onChange={(e) => handleInputChange('task_type', e.target.value)}
+                      value={formData.type}
+                      onChange={(e) => handleInputChange('type', e.target.value)}
                       label="Task Type"
                       sx={{
                         '&.Mui-focused .MuiOutlinedInput-notchedOutline': {

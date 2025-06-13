@@ -66,8 +66,9 @@ export const milestone = {
         { value: 'cancelled', label: 'Cancelled' },
       ]
     },
+
     { 
-      name: 'sort_order', 
+      name: 'order_index', 
       label: 'Sort Order', 
       group: 'Organization', 
       tab: 'Details',
@@ -75,6 +76,8 @@ export const milestone = {
       defaultValue: 1,
       description: 'Order for milestone sequencing'
     },
+
+    /*
     { 
       name: 'due_date', 
       label: 'Due Date', 
@@ -118,6 +121,7 @@ export const milestone = {
         linkTo: '/dashboard/project',
       }
     },
+    */
     {
       name: 'contracts',
       label: 'Related Contracts',
@@ -250,7 +254,7 @@ export const milestone = {
       type: 'select',
       label: 'Sort',
       options: [
-        { value: 'sort_order:asc', label: 'Sort Order (1-9)' },
+        { value: 'order_index:asc', label: 'Sort Order (1-9)' },
         { value: 'due_date:asc', label: 'Due Date (Oldest First)' },
         { value: 'due_date:desc', label: 'Due Date (Newest First)' },
         { value: 'created_at:desc', label: 'Newest Created' },
@@ -258,7 +262,7 @@ export const milestone = {
         { value: 'title:asc', label: 'Title (A–Z)' },
         { value: 'title:desc', label: 'Title (Z–A)' },
       ],
-      defaultValue: 'sort_order:asc',
+      defaultValue: 'order_index:asc',
       excludeFromViews: ['calendar']
     }
   ]

@@ -30,7 +30,6 @@ import {
   Plus,
   ArrowRight
 } from '@phosphor-icons/react';
-import { createClient } from '@/lib/supabase/browser';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { useRouter } from 'next/navigation';
 
@@ -53,7 +52,6 @@ export default function ChecklistWidget({
   const [error, setError] = useState(null);
   const [anchorEl, setAnchorEl] = useState(null);
   const [currentUserId, setCurrentUserId] = useState(null);
-  const supabase = createClient();
   const router = useRouter();
 
   // Get current user ID
@@ -61,7 +59,7 @@ export default function ChecklistWidget({
     getCurrentContactId().then(setCurrentUserId);
   }, []);
 
-  // Fetch tasks based on filters
+  // Fetch tasks using SOP-compliant task queries
   const fetchTasks = async () => {
     if (!currentUserId) return;
 
@@ -69,119 +67,38 @@ export default function ChecklistWidget({
     setError(null);
 
     try {
-      // Build the query based on filters
-      let query = supabase
-        .from('task')
-        .select(`
-          id,
-          title,
-          status,
-          due_date,
-          created_at,
-          checklist:checklist_id(
-            id,
-            title,
-            type,
-            event:event_id(
-              id,
-              title,
-              start_time
-            ),
-            project:project_id(
-              id,
-              title
-            ),
-            contract:contract_id(
-              id,
-              title
-            )
-          ),
-          assigned_contact:contact!assigned_id(
-            id,
-            title,
-            email
-          )
-        `);
+      // Import task queries dynamically following SOP pattern
+      const { table } = await import('@/lib/supabase/queries');
+      const taskQueries = table.task;
 
-      // Apply user filter (default to current user if not specified)
-      if (filter.assigned_to) {
-        query = query.eq('assigned_id', filter.assigned_to);
-      } else {
-        query = query.eq('assigned_id', currentUserId);
+      if (!taskQueries) {
+        throw new Error('Task queries not found');
       }
 
-      // Apply status filter
-      if (filter.status) {
-        if (Array.isArray(filter.status)) {
-          query = query.in('status', filter.status);
-        } else {
-          query = query.eq('status', filter.status);
-        }
-      } else {
-        // Default to non-completed tasks
-        query = query.neq('status', 'complete');
-      }
+      // Prepare filter object for SOP function
+      const taskFilters = {
+        assigned_to: filter.assigned_to || currentUserId,
+        status: filter.status || undefined, // Don't default here, let function handle it
+        due_date: filter.due_date,
+        entityTypes: entityTypes
+      };
 
-      // Apply due date filters
-      if (filter.due_date) {
-        const today = new Date().toISOString().split('T')[0];
-        
-        switch (filter.due_date) {
-          case 'overdue':
-            query = query.lt('due_date', today);
-            break;
-          case 'today':
-            query = query.eq('due_date', today);
-            break;
-          case 'this_week':
-            const weekEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-            query = query.gte('due_date', today).lte('due_date', weekEnd);
-            break;
-          case 'upcoming':
-            query = query.gte('due_date', today);
-            break;
-        }
-      }
-
-      // Apply entity type filter
-      if (entityTypes.length > 0) {
-        // This is more complex as we need to filter by checklist's entity relationships
-        // For now, we'll fetch all and filter in memory
-      }
-
-      const { data, error } = await query
-        .order('due_date', { ascending: true, nullsLast: true })
-        .order('created_at', { ascending: false })
-        .limit(maxItems);
+      // Use SOP-compliant fetchTasksForWidget function
+      const { data, error } = await taskQueries.fetchTasksForWidget(taskFilters, maxItems);
 
       if (error) {
-        console.error('Error fetching tasks:', error);
+        console.error('[ChecklistWidget] Error fetching tasks:', error);
         setError(error.message);
         return;
       }
 
-      // Filter by entity types if specified
+      // Apply default status filter if none specified (exclude completed by default)
       let filteredData = data || [];
-      if (entityTypes.length > 0) {
-        filteredData = data.filter(task => {
-          const checklist = task.checklist;
-          if (!checklist) return false;
-          
-          return entityTypes.some(entityType => {
-            switch (entityType) {
-              case 'event':
-                return checklist.event !== null;
-              case 'project':
-                return checklist.project !== null;
-              case 'contract':
-                return checklist.contract !== null;
-              default:
-                return false;
-            }
-          });
-        });
+      if (!filter.status) {
+        filteredData = data.filter(task => task.status !== 'complete');
       }
 
+      console.log('[ChecklistWidget] Fetched tasks:', filteredData.length);
       setTasks(filteredData);
 
     } catch (err) {
@@ -196,23 +113,24 @@ export default function ChecklistWidget({
     fetchTasks();
   }, [currentUserId, filter, entityTypes, maxItems]);
 
-  // Handle task completion
+  // Handle task completion using SOP function
   const handleToggleComplete = async (taskId, currentStatus) => {
     const newStatus = currentStatus === 'complete' ? 'todo' : 'complete';
     
     try {
-      const { error } = await supabase
-        .from('task')
-        .update({ 
-          status: newStatus,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', taskId);
+      // Import task queries dynamically
+      const { table } = await import('@/lib/supabase/queries');
+      const taskQueries = table.task;
+
+      // Use SOP-compliant update function
+      const { data, error } = await taskQueries.updateTaskStatusSimple(taskId, newStatus);
         
       if (error) {
-        console.error('Error updating task:', error);
+        console.error('[ChecklistWidget] Error updating task:', error);
         return;
       }
+
+      console.log('[ChecklistWidget] Task status updated:', data);
 
       // Update local state
       if (newStatus === 'complete' && !filter.status?.includes('complete')) {
@@ -228,11 +146,11 @@ export default function ChecklistWidget({
       }
 
     } catch (err) {
-      console.error('Error updating task:', err);
+      console.error('[ChecklistWidget] Error updating task:', err);
     }
   };
 
-  // Calculate stats
+  // Calculate stats from current tasks
   const stats = {
     total: tasks.length,
     overdue: tasks.filter(task => 
@@ -245,7 +163,7 @@ export default function ChecklistWidget({
     }).length
   };
 
-  // Get entity info for a task
+  // Get entity info for a task - UPDATED to handle missing contract field in checklist
   const getEntityInfo = (task) => {
     const checklist = task.checklist;
     if (!checklist) return null;
@@ -266,15 +184,10 @@ export default function ChecklistWidget({
         id: checklist.project.id
       };
     }
-    
-    if (checklist.contract) {
-      return {
-        type: 'contract',
-        title: checklist.contract.title,
-        id: checklist.contract.id
-      };
-    }
 
+    // Note: Contract support would require junction table query
+    // This is handled in the fetchTasksForWidget function
+    
     return null;
   };
 

@@ -269,8 +269,8 @@ export const element = {
         table: 'category',
         labelField: 'title',
         linkTo: '/dashboard/category',
-        junctionTable: 'category_project',
-        sourceKey: 'project_id',
+        junctionTable: 'category_element',
+        sourceKey: 'element_id',
         targetKey: 'category_id',
         tableFields: ['title'],
         filter: {}

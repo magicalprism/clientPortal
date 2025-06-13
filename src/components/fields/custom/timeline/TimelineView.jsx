@@ -79,7 +79,7 @@ export default function TimelineView({ projectId, config }) {
     const milestones = (data || [])
       .map((row) => row.milestone)
       .filter(Boolean)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
 
     // Fetch all tasks tied to milestones in this project
     const milestoneIds = milestones.map(m => m.id);

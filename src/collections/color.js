@@ -2,6 +2,7 @@ export const color = {
   name: 'color',
   label: 'Color',
   singularLabel: 'Color',
+   table:'color',
   editPathPrefix: '/dashboard/color',
   subtitleField: 'token',
   showEditButton: true,

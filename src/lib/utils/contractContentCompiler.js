@@ -73,7 +73,7 @@ const processEachBlocks = (content, relatedData) => {
   // ✅ Sort the milestones before mapping
   const sortedMilestones = relatedData.selectedMilestones
     .slice()
-    .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
 
   content = content.replace(milestonesRegex, (match, template) => {
     return sortedMilestones

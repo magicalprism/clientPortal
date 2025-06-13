@@ -1,4 +1,4 @@
-// BrandBoardContent.jsx - Updated with alt color removal functionality
+// components/brand/BrandBoardContent.jsx - Refactored with standardized queries
 import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -31,675 +31,17 @@ import {
   Plus,
   X
 } from '@phosphor-icons/react';
-import { createClient } from '@/lib/supabase/browser';
 import { InlineEditableField } from '@/components/fields/InlineEditableField';
 import { regenerateAllColorTokens } from '@/components/fields/custom/brand/colors/colorTokenGenerator';
 
-// Helper function to determine if a color is light or dark
-const isColorLight = (hexColor) => {
-  if (!hexColor) return true;
-  const hex = hexColor.replace('#', '');
-  const r = parseInt(hex.slice(0, 2), 16);
-  const g = parseInt(hex.slice(2, 4), 16);
-  const b = parseInt(hex.slice(4, 6), 16);
-  
-  // Calculate luminance
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.5;
-};
+// Import standardized queries
+import { table } from '@/lib/supabase/queries';
 
-// Foundation Colors Component
-const FoundationColors = ({ 
-  foundation, 
-  onCopy, 
-  groupedColors, 
-  semanticColors, 
-  onColorEdit, 
-  onAddAltColor, 
-  onRemoveAltColor, 
-  editable = true, 
-  surfaceBg 
-}) => {
-  const coreColors = [
-    { name: 'Primary', value: foundation?.primary_color, group: 'primary', key: 'primary_color' },
-    { name: 'Secondary', value: foundation?.secondary_color, group: 'secondary', key: 'secondary_color' },
-    { name: 'Light', value: foundation?.neutral_color_100, group: 'neutral', key: 'neutral_color_100' },
-    { name: 'Dark', value: foundation?.neutral_color_900, group: 'neutral', key: 'neutral_color_900' }
-  ];
-
-  const altColorSlots = [
-    { name: 'Alt 1', value: foundation?.alt_color_1, group: 'alt1', key: 'alt_color_1', slotNumber: 1 },
-    { name: 'Alt 2', value: foundation?.alt_color_2, group: 'alt2', key: 'alt_color_2', slotNumber: 2 },
-    { name: 'Alt 3', value: foundation?.alt_color_3, group: 'alt3', key: 'alt_color_3', slotNumber: 3 },
-    { name: 'Alt 4', value: foundation?.alt_color_4, group: 'alt4', key: 'alt_color_4', slotNumber: 4 }
-  ];
-
-  const statusColors = [
-    { name: 'Success', value: foundation?.success_color, group: 'success', key: 'success_color' },
-    { name: 'Error', value: foundation?.error_color, group: 'error', key: 'error_color' },
-    { name: 'Warning', value: foundation?.warning_color, group: 'warning', key: 'warning_color' },
-    { name: 'Info', value: foundation?.info_color, group: 'info', key: 'info_color' }
-  ];
-
-  const ColorGroup = ({ title, colors, showGradients = true, allowEdit = false, isAltGroup = false }) => (
-    <Box sx={{ mb: 4 }}>
-      <Typography variant="h6" align="center" sx={{ mb: 3, fontWeight: 600, color: semanticColors?.text.primary }}>
-        {title}
-      </Typography>
-      
-      <Grid container spacing={2} sx={{ mb: showGradients ? 3 : 0 }}>
-        {isAltGroup ? (
-          altColorSlots.map(({ name, value, group, key, slotNumber }) => (
-            <Grid item xs={12} sm={6} md={3} key={key}>
-              {value ? (
-                <Paper 
-                  elevation={3}
-                  sx={{ 
-                    textAlign: 'center', 
-                    p: 2, 
-                    borderRadius: 3,
-                    bgcolor: surfaceBg,
-                    border: '1px solid',
-                    borderColor: semanticColors?.border.base || 'divider',
-                    transition: 'transform 0.2s ease',
-                    position: 'relative',
-                    '&:hover': { transform: 'translateY(-4px)' }
-                  }}
-                >
-                  {/* Remove Button */}
-                  {editable && (
-                    <IconButton
-                      size="small"
-                      onClick={() => onRemoveAltColor && onRemoveAltColor(key, group)}
-                      sx={{
-                        position: 'absolute',
-                        top: 8,
-                        right: 8,
-                        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-                        color: '#d32f2f',
-                        width: 24,
-                        height: 24,
-                        '&:hover': {
-                          backgroundColor: '#d32f2f',
-                          color: 'white'
-                        },
-                        zIndex: 2
-                      }}
-                    >
-                      <X size={14} />
-                    </IconButton>
-                  )}
-
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: 80,
-                      backgroundColor: value,
-                      borderRadius: 2,
-                      mb: 2,
-                      border: '3px solid white',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      '&:hover': allowEdit && editable ? {
-                        '&::after': {
-                          content: '"Click to edit"',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'rgba(0,0,0,0.7)',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.8rem',
-                          borderRadius: 2
-                        }
-                      } : {}
-                    }}
-                    onClick={() => {
-                      if (allowEdit && editable && onColorEdit) {
-                        onColorEdit(key, value, name);
-                      } else {
-                        onCopy(value);
-                      }
-                    }}
-                  />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: semanticColors?.text.primary }}>
-                    {name}
-                  </Typography>
-                  <Chip 
-                    label={value} 
-                    size="small" 
-                    sx={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '0.7rem',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => onCopy(value)}
-                  />
-                </Paper>
-              ) : (
-                <Paper 
-                  elevation={1}
-                  sx={{ 
-                    textAlign: 'center', 
-                    p: 2, 
-                    borderRadius: 3,
-                    bgcolor: 'transparent',
-                    border: '2px dashed',
-                    borderColor: semanticColors?.border.base || 'divider',
-                    transition: 'all 0.2s ease',
-                    cursor: editable ? 'pointer' : 'default',
-                    '&:hover': editable ? { 
-                      borderColor: semanticColors?.brand.primary || 'primary.main',
-                      bgcolor: semanticColors?.background.surface || 'action.hover',
-                      transform: 'translateY(-4px)'
-                    } : {}
-                  }}
-                  onClick={() => editable && onAddAltColor && onAddAltColor(key)}
-                >
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: 80,
-                      borderRadius: 2,
-                      mb: 2,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      border: '2px dashed',
-                      borderColor: semanticColors?.border.base || 'divider',
-                      color: semanticColors?.text.secondary || 'text.secondary',
-                      transition: 'all 0.2s ease'
-                    }}
-                  >
-                    <Plus size={32} />
-                  </Box>
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: semanticColors?.text.secondary }}>
-                    {name}
-                  </Typography>
-                  <Chip 
-                    label="Click to add" 
-                    size="small" 
-                    variant="outlined"
-                    sx={{ 
-                      fontSize: '0.7rem',
-                      borderColor: semanticColors?.border.base || 'divider',
-                      color: semanticColors?.text.secondary
-                    }}
-                  />
-                </Paper>
-              )}
-            </Grid>
-          ))
-        ) : (
-          colors.map(({ name, value, group, key }) => (
-            value && (
-              <Grid item xs={12} sm={6} md={3} key={name}>
-                <Paper 
-                  elevation={3}
-                  sx={{ 
-                    textAlign: 'center', 
-                    p: 2, 
-                    borderRadius: 3,
-                    bgcolor: surfaceBg,
-                    border: '1px solid',
-                    borderColor: semanticColors?.border.base || 'divider',
-                    transition: 'transform 0.2s ease',
-                    '&:hover': { transform: 'translateY(-4px)' }
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: '100%',
-                      height: 80,
-                      backgroundColor: value,
-                      borderRadius: 2,
-                      mb: 2,
-                      border: '3px solid white',
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                      cursor: 'pointer',
-                      position: 'relative',
-                      '&:hover': allowEdit && editable ? {
-                        '&::after': {
-                          content: '"Click to edit"',
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          background: 'rgba(0,0,0,0.7)',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '0.8rem',
-                          borderRadius: 2
-                        }
-                      } : {}
-                    }}
-                    onClick={() => {
-                      if (allowEdit && editable && onColorEdit) {
-                        onColorEdit(key, value, name);
-                      } else {
-                        onCopy(value);
-                      }
-                    }}
-                  />
-                  <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1, color: semanticColors?.text.primary }}>
-                    {name}
-                  </Typography>
-                  <Chip 
-                    label={value} 
-                    size="small" 
-                    sx={{ 
-                      fontFamily: 'monospace', 
-                      fontSize: '0.7rem',
-                      cursor: 'pointer'
-                    }}
-                    onClick={() => onCopy(value)}
-                  />
-                </Paper>
-              </Grid>
-            )
-          ))
-        )}
-      </Grid>
-
-      {/* Gradients - Rest of the gradient rendering code remains the same */}
-      {showGradients && (
-        isAltGroup ? (
-          altColorSlots.map(({ group, name, value }) => {
-            if (!value) return null;
-            
-            const groupColors = groupedColors[group];
-            if (!groupColors || groupColors.length === 0) return null;
-
-            const sortedColors = groupColors.sort((a, b) => {
-              const aScale = parseInt(a.token?.split('.').pop() || '0');
-              const bScale = parseInt(b.token?.split('.').pop() || '0');
-              return aScale - bScale;
-            });
-
-            return (
-              <Box key={group} sx={{ mb: 3 }}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500, textTransform: 'capitalize', color: semanticColors?.text.primary }}>
-                  {group} Scale
-                </Typography>
-                
-                <Box
-                  sx={{
-                    height: 40,
-                    borderRadius: 2,
-                    background: `linear-gradient(to right, ${sortedColors.map(c => c.resolved).join(', ')})`,
-                    border: '2px solid',
-                    borderColor: semanticColors?.border.base || 'divider',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    mb: 2
-                  }}
-                />
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  borderRadius: 2, 
-                  overflow: 'hidden', 
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  border: '1px solid',
-                  borderColor: semanticColors?.border.base || 'divider'
-                }}>
-                  {sortedColors.map((color, index) => {
-                    const scale = color.token?.split('.').pop() || '';
-                    const isLightColor = isColorLight(color.resolved);
-                    const isLast = index === sortedColors.length - 1;
-                    
-                    return (
-                      <Box
-                        key={color.id}
-                        sx={{
-                          flex: 1,
-                          backgroundColor: color.resolved,
-                          p: 1.5,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          transition: 'transform 0.1s ease',
-                          borderRight: !isLast ? '1px solid rgba(255,255,255,0.3)' : 'none',
-                          '&:hover': { 
-                            transform: 'scale(1.02)',
-                            zIndex: 1,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                          }
-                        }}
-                        onClick={() => onCopy(color.resolved)}
-                      >
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontWeight: 600,
-                            color: isLightColor ? '#000' : '#fff',
-                            display: 'block',
-                            mb: 0.5
-                          }}
-                        >
-                          {scale}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontFamily: 'monospace',
-                            fontSize: '0.7rem',
-                            color: isLightColor ? '#000' : '#fff'
-                          }}
-                        >
-                          {color.resolved}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-            );
-          })
-        ) : (
-          colors.map(({ group, name }) => {
-            const groupColors = groupedColors[group];
-            if (!groupColors || groupColors.length === 0) return null;
-
-            const sortedColors = groupColors.sort((a, b) => {
-              const aScale = parseInt(a.token?.split('.').pop() || '0');
-              const bScale = parseInt(b.token?.split('.').pop() || '0');
-              return aScale - bScale;
-            });
-
-            if (group === 'neutral' && name === 'Dark') return null;
-
-            return (
-              <Box key={group} sx={{ mb: 3 }}>
-                <Typography variant="body2" sx={{ mb: 1, fontWeight: 500, textTransform: 'capitalize', color: semanticColors?.text.primary }}>
-                  {group} Scale
-                </Typography>
-                
-                <Box
-                  sx={{
-                    height: 40,
-                    borderRadius: 2,
-                    background: `linear-gradient(to right, ${sortedColors.map(c => c.resolved).join(', ')})`,
-                    border: '2px solid',
-                    borderColor: semanticColors?.border.base || 'divider',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                    mb: 2
-                  }}
-                />
-                
-                <Box sx={{ 
-                  display: 'flex', 
-                  borderRadius: 2, 
-                  overflow: 'hidden', 
-                  boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-                  border: '1px solid',
-                  borderColor: semanticColors?.border.base || 'divider'
-                }}>
-                  {sortedColors.map((color, index) => {
-                    const scale = color.token?.split('.').pop() || '';
-                    const isLightColor = isColorLight(color.resolved);
-                    const isLast = index === sortedColors.length - 1;
-                    
-                    return (
-                      <Box
-                        key={color.id}
-                        sx={{
-                          flex: 1,
-                          backgroundColor: color.resolved,
-                          p: 1.5,
-                          textAlign: 'center',
-                          cursor: 'pointer',
-                          transition: 'transform 0.1s ease',
-                          borderRight: !isLast ? '1px solid rgba(255,255,255,0.3)' : 'none',
-                          '&:hover': { 
-                            transform: 'scale(1.02)',
-                            zIndex: 1,
-                            boxShadow: '0 4px 12px rgba(0,0,0,0.2)'
-                          }
-                        }}
-                        onClick={() => onCopy(color.resolved)}
-                      >
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontWeight: 600,
-                            color: isLightColor ? '#000' : '#fff',
-                            display: 'block',
-                            mb: 0.5
-                          }}
-                        >
-                          {scale}
-                        </Typography>
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            fontFamily: 'monospace',
-                            fontSize: '0.7rem',
-                            color: isLightColor ? '#000' : '#fff'
-                          }}
-                        >
-                          {color.resolved}
-                        </Typography>
-                      </Box>
-                    );
-                  })}
-                </Box>
-              </Box>
-            );
-          })
-        )
-      )}
-    </Box>
-  );
-
-  return (
-    <Box sx={{ mb: 6 }}>
-      <ColorGroup title="Core Colors" colors={coreColors} allowEdit={true} />
-      <ColorGroup title="Alternative Colors" colors={[]} allowEdit={true} isAltGroup={true} />
-      <ColorGroup title="Status Colors" colors={statusColors} allowEdit={true} />
-    </Box>
-  );
-};
-
-// Typography Sample Component - keeping as is
-const TypographySample = ({ token, semanticColors }) => {
-  const [fontLoaded, setFontLoaded] = useState(false);
-  const [fontFamilyName, setFontFamilyName] = useState('');
-
-  useEffect(() => {
-    const loadFont = async () => {
-      if (token.font_family && token.font_family.includes('"')) {
-        const fontName = token.font_family.split('"')[1];
-        setFontFamilyName(fontName);
-        
-        if (fontName && fontName !== 'system-ui' && fontName !== 'sans-serif') {
-          try {
-            const supabase = createClient();
-            const { data } = await supabase
-              .from('media')
-              .select('url, title')
-              .ilike('title', `%${fontName}%`)
-              .or('mime_type.ilike.%font%,mime_type.ilike.%woff%');
-
-            if (data && data.length > 0) {
-              for (const fontFile of data) {
-                try {
-                  const fontFace = new FontFace(fontName, `url(${fontFile.url})`);
-                  await fontFace.load();
-                  document.fonts.add(fontFace);
-                } catch (err) {
-                  console.log('Font load failed:', err);
-                }
-              }
-              setFontLoaded(true);
-            }
-          } catch (err) {
-            console.log('Font fetch failed:', err);
-          }
-        } else {
-          setFontLoaded(true);
-        }
-      }
-    };
-
-    loadFont();
-  }, [token.font_family]);
-
-  const getFontStyle = () => {
-    const style = {};
-    
-    if (token.font_family) style.fontFamily = token.font_family;
-    if (token.font_size) {
-      style.fontSize = token.font_size.startsWith?.('font.size.') 
-        ? getFontSizeValue(token.font_size)
-        : token.font_size;
-    }
-    if (token.font_weight) {
-      style.fontWeight = token.font_weight.startsWith?.('font.weight.') 
-        ? getFontWeightValue(token.font_weight)
-        : token.font_weight;
-    }
-    if (token.line_height) {
-      style.lineHeight = token.line_height.startsWith?.('font.lineHeight.') 
-        ? getLineHeightValue(token.line_height)
-        : token.line_height;
-    }
-    
-    return style;
-  };
-
-  const getFontSizeValue = (tokenRef) => {
-    const sizeMap = {
-      'font.size.2xs': '0.75rem', 'font.size.xs': '0.875rem', 'font.size.sm': '1rem',
-      'font.size.md': '1.125rem', 'font.size.lg': '1.25rem', 'font.size.xl': '1.5rem',
-      'font.size.2xl': '1.875rem', 'font.size.3xl': '2.25rem', 'font.size.4xl': '3rem',
-      'font.size.5xl': '3.75rem', 'font.size.6xl': '4.5rem'
-    };
-    return sizeMap[tokenRef] || '1rem';
-  };
-
-  const getFontWeightValue = (tokenRef) => {
-    const weightMap = {
-      'font.weight.thin': '100', 'font.weight.light': '300', 'font.weight.normal': '400',
-      'font.weight.medium': '500', 'font.weight.semibold': '600', 'font.weight.bold': '700',
-      'font.weight.extrabold': '800', 'font.weight.black': '900'
-    };
-    return weightMap[tokenRef] || '400';
-  };
-
-  const getLineHeightValue = (tokenRef) => {
-    const lineHeightMap = {
-      'font.lineHeight.tight': '1.25', 'font.lineHeight.snug': '1.375',
-      'font.lineHeight.normal': '1.5', 'font.lineHeight.relaxed': '1.625',
-      'font.lineHeight.loose': '2'
-    };
-    return lineHeightMap[tokenRef] || '1.5';
-  };
-
-  const getSampleText = () => {
-    if (token.category === 'display') return 'Display Typography';
-    if (token.category === 'heading') return 'Heading Text';
-    if (token.category === 'body') return 'Body text and content';
-    if (token.category === 'ui') return 'UI Element';
-    return 'Sample Text';
-  };
-
-  const handleDownload = async (style = 'regular') => {
-    if (fontFamilyName) {
-      const supabase = createClient();
-      let query = supabase
-        .from('media')
-        .select('url, title')
-        .ilike('title', `%${fontFamilyName}%`)
-        .or('mime_type.ilike.%font%,mime_type.ilike.%woff%');
-      
-      if (style === 'italic') {
-        query = query.ilike('title', '%italic%');
-      } else {
-        query = query.not('title', 'ilike', '%italic%');
-      }
-      
-      const { data } = await query.limit(1).single();
-      if (data?.url) {
-        window.open(data.url, '_blank');
-      }
-    }
-  };
-
-  return (
-    <Box sx={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'space-between', 
-      py: 2, 
-      px: 3,
-      borderBottom: '1px solid', 
-      borderColor: semanticColors?.border.base || 'divider'
-    }}>
-      <Box sx={{ flexGrow: 1 }}>
-        <Typography 
-          sx={{
-            ...getFontStyle(),
-            color: semanticColors?.text.primary,
-            opacity: fontLoaded ? 1 : 0.7,
-            transition: 'opacity 0.3s ease',
-            mb: 0.5
-          }}
-        >
-          {getSampleText()}
-        </Typography>
-        <Typography variant="caption" color={semanticColors?.text.secondary || 'text.secondary'}>
-          {token.title} • {fontFamilyName}
-        </Typography>
-      </Box>
-      
-      {fontFamilyName && (
-        <Box sx={{ display: 'flex', gap: 1, ml: 2 }}>
-          <Tooltip title="Download Regular">
-            <Button 
-              size="small" 
-              variant="outlined"
-              onClick={() => handleDownload('regular')}
-              startIcon={<DownloadSimple size={14} />}
-              endIcon={<span style={{ fontStyle: 'normal', fontSize: '12px' }}>Aa</span>}
-              sx={{ 
-                borderColor: semanticColors?.border.base || 'divider',
-                color: semanticColors?.text.primary,
-                '&:hover': {
-                  borderColor: semanticColors?.brand.primary || 'primary.main',
-                  backgroundColor: semanticColors?.background.surface || 'action.hover'
-                }
-              }}
-            />
-          </Tooltip>
-          <Tooltip title="Download Italic">
-            <Button 
-              size="small" 
-              variant="outlined"
-              onClick={() => handleDownload('italic')}
-              startIcon={<DownloadSimple size={14} />}
-              endIcon={<span style={{ fontStyle: 'italic', fontSize: '12px' }}>Aa</span>}
-              sx={{ 
-                borderColor: semanticColors?.border.base || 'divider',
-                color: semanticColors?.text.primary,
-                '&:hover': {
-                  borderColor: semanticColors?.brand.primary || 'primary.main',
-                  backgroundColor: semanticColors?.background.surface || 'action.hover'
-                }
-              }}
-            />
-          </Tooltip>
-        </Box>
-      )}
-    </Box>
-  );
-};
+// Import sub-components
+import { FoundationColors } from '@/components/fields/custom/brand/brandBoard/components/FoundationColors';
+import { TypographySample } from '@/components/fields/custom/brand/brandBoard/components/TypographySample';
+import { ColorEditDialog } from '@/components/fields/custom/brand/brandBoard/components/ColorEditDialog';
+import { CopyFeedback } from '@/components/fields/custom/brand/brandBoard/components/CopyFeedback';
 
 // Main BrandBoardContent Component - NAMED EXPORT
 export const BrandBoardContent = ({
@@ -718,22 +60,20 @@ export const BrandBoardContent = ({
   const [allProjects, setAllProjects] = useState([]);
   const [brandData, setBrandData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [colorEditDialog, setColorEditDialog] = useState({ open: false, colorKey: '', currentValue: '', colorName: '' });
+  const [colorEditDialog, setColorEditDialog] = useState({ 
+    open: false, 
+    colorKey: '', 
+    currentValue: '', 
+    colorName: '' 
+  });
   const [regeneratingColor, setRegeneratingColor] = useState(false);
 
   const brandId = brand?.id;
 
-  // Database functions
+  // Database functions using standardized queries
   const fetchColorTokens = async (brandId) => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('color')
-        .select('*')
-        .eq('brand_id', brandId)
-        .order('group', { ascending: true });
-
+      const { data, error } = await table.color.fetchColorsByBrand(brandId);
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -743,15 +83,8 @@ export const BrandBoardContent = ({
   };
 
   const fetchTypographyTokens = async (brandId) => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('typography')
-        .select('*')
-        .eq('brand_id', brandId)
-        .order('group_name', { ascending: true });
-
+      const { data, error } = await table.typography.fetchSemanticTypography(brandId);
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -761,28 +94,8 @@ export const BrandBoardContent = ({
   };
 
   const fetchBrandFoundation = async (brandId) => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('brand')
-        .select(`
-          primary_color,
-          secondary_color,
-          neutral_color_100,
-          neutral_color_900,
-          success_color,
-          error_color,
-          warning_color,
-          info_color,
-          alt_color_1,
-          alt_color_2,
-          alt_color_3,
-          alt_color_4
-        `)
-        .eq('id', brandId)
-        .single();
-
+      const { data, error } = await table.brand.fetchBrandColorTokens(brandId);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -794,22 +107,14 @@ export const BrandBoardContent = ({
   const fetchCompanyInfo = async (companyId) => {
     if (!companyId) return null;
     
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('company')
-        .select('id, title')
-        .eq('id', companyId)
-        .single();
-
+      const { data, error } = await table.company.fetchCompanyBasicInfo(companyId);
       if (error) {
         if (error.code === 'PGRST116') {
-          return null;
+          return null; // Not found
         }
         throw error;
       }
-
       return data;
     } catch (error) {
       console.error('Error fetching company info:', error);
@@ -820,40 +125,13 @@ export const BrandBoardContent = ({
   const fetchBrandProjects = async (brandId) => {
     if (!brandId) return [];
     
-    const supabase = createClient();
-    
     try {
-      const { data: brandProjects, error: brandProjectError } = await supabase
-        .from('brand_project')
-        .select('project_id')
-        .eq('brand_id', brandId);
-
-      if (brandProjectError) {
-        console.error('Brand project error:', brandProjectError);
+      const { data, error } = await table.brand.fetchBrandById(brandId);
+      if (error) {
+        console.error('Brand project error:', error);
         return [];
       }
-
-      if (!brandProjects || brandProjects.length === 0) {
-        return [];
-      }
-
-      const projectIds = brandProjects.map(bp => bp.project_id).filter(Boolean);
-
-      if (projectIds.length === 0) {
-        return [];
-      }
-
-      const { data: projects, error: projectsError } = await supabase
-        .from('project')
-        .select('id, title')
-        .in('id', projectIds);
-
-      if (projectsError) {
-        console.error('Projects error:', projectsError);
-        return [];
-      }
-
-      return projects || [];
+      return data?.projects || [];
     } catch (error) {
       console.error('Error fetching brand projects:', error);
       return [];
@@ -861,14 +139,8 @@ export const BrandBoardContent = ({
   };
 
   const fetchAllCompanies = async () => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('company')
-        .select('id, title')
-        .order('title', { ascending: true });
-
+      const { data, error } = await table.company.fetchAllCompanies();
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -878,14 +150,8 @@ export const BrandBoardContent = ({
   };
 
   const fetchAllProjects = async () => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('project')
-        .select('id, title')
-        .order('title', { ascending: true });
-
+      const { data, error } = await table.project.fetchAllProjects();
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -895,16 +161,8 @@ export const BrandBoardContent = ({
   };
 
   const updateBrandCompany = async (brandId, companyId) => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('brand')
-        .update({ company_id: companyId })
-        .eq('id', brandId)
-        .select()
-        .single();
-
+      const { data, error } = await table.brand.updateBrandCompany(brandId, companyId);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -914,30 +172,10 @@ export const BrandBoardContent = ({
   };
 
   const updateBrandProjects = async (brandId, projectIds) => {
-    const supabase = createClient();
-    
     try {
-      const { error: deleteError } = await supabase
-        .from('brand_project')
-        .delete()
-        .eq('brand_id', brandId);
-        
-      if (deleteError) throw deleteError;
-      
-      if (projectIds && projectIds.length > 0) {
-        const relationships = projectIds.map(projectId => ({
-          brand_id: brandId,
-          project_id: projectId
-        }));
-        
-        const { error: insertError } = await supabase
-          .from('brand_project')
-          .insert(relationships);
-          
-        if (insertError) throw insertError;
-      }
-      
-      return true;
+      const { data, error } = await table.brand.linkProjectsToBrand(brandId, projectIds);
+      if (error) throw error;
+      return data;
     } catch (error) {
       console.error('Error updating brand projects:', error);
       throw error;
@@ -945,16 +183,8 @@ export const BrandBoardContent = ({
   };
 
   const updateBrandColors = async (brandId, colorUpdates) => {
-    const supabase = createClient();
-    
     try {
-      const { data, error } = await supabase
-        .from('brand')
-        .update(colorUpdates)
-        .eq('id', brandId)
-        .select()
-        .single();
-
+      const { data, error } = await table.brand.updateBrandColorTokens(brandId, colorUpdates);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -965,24 +195,13 @@ export const BrandBoardContent = ({
 
   // NEW: Function to remove alt color and associated tokens
   const removeAltColorAndTokens = async (brandId, colorKey, groupName) => {
-    const supabase = createClient();
-    
     try {
-      // Update brand to set the alt color to null
-      const { error: brandError } = await supabase
-        .from('brand')
-        .update({ [colorKey]: null })
-        .eq('id', brandId);
-
+      // Remove the alt color from brand
+      const { error: brandError } = await table.brand.removeAltColor(brandId, colorKey);
       if (brandError) throw brandError;
 
       // Delete all color tokens associated with this alt color group
-      const { error: tokensError } = await supabase
-        .from('color')
-        .delete()
-        .eq('brand_id', brandId)
-        .eq('group', groupName);
-
+      const { error: tokensError } = await table.color.deleteColorsByBrandAndGroup(brandId, groupName);
       if (tokensError) throw tokensError;
 
       return true;
@@ -1069,6 +288,18 @@ export const BrandBoardContent = ({
     return semanticColors?.text?.primary || (mode === 'light' ? '#1a1a1a' : '#ffffff');
   }, [colorTokens, foundation?.primary_color, mode, semanticColors?.text?.primary]);
 
+  // Group colors by their base type
+  const groupedColors = useMemo(() => {
+    return colorTokens.reduce((groups, color) => {
+      if (color.type === 'base') {
+        const group = color.group || 'other';
+        if (!groups[group]) groups[group] = [];
+        groups[group].push(color);
+      }
+      return groups;
+    }, {});
+  }, [colorTokens]);
+
   useEffect(() => {
     if (!brandId) {
       setLoading(false);
@@ -1114,7 +345,7 @@ export const BrandBoardContent = ({
     }
     
     try {
-      const updatedBrand = await updateBrandColors(brandId, { title: newTitle.trim() });
+      const updatedBrand = await table.brand.updateBrandTitle(brandId, newTitle.trim());
       setBrandData(prev => ({ ...prev, title: newTitle.trim() }));
       return updatedBrand;
     } catch (error) {
@@ -1127,7 +358,7 @@ export const BrandBoardContent = ({
     if (!brandId) return;
     
     try {
-      await updateBrandCompany(brandId, companyId);
+      await table.brand.updateBrandCompany(brandId, companyId);
       const selectedCompany = allCompanies.find(c => c.id === companyId);
       setCompany(selectedCompany || null);
       setBrandData(prev => ({ ...prev, company_id: companyId }));
@@ -1239,22 +470,6 @@ export const BrandBoardContent = ({
     setCopiedColor(color);
     setTimeout(() => setCopiedColor(null), 1500);
   };
-
-  // Group colors by their base type
-  const groupedColors = colorTokens.reduce((groups, color) => {
-    if (color.type === 'base') {
-      const group = color.group || 'other';
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(color);
-    }
-    return groups;
-  }, {});
-
-  // Filter typography for display
-  const semanticTypography = typographyTokens.filter(t => 
-    t.type === 'alias' && 
-    ['display', 'heading', 'body', 'ui'].includes(t.category)
-  );
 
   if (!brandId) {
     return (
@@ -1453,7 +668,7 @@ export const BrandBoardContent = ({
       )}
 
       {/* Typography */}
-      {semanticTypography.length > 0 && (
+      {typographyTokens.length > 0 && (
         <Box sx={{ mb: 6 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 4 }}>
             <TextAa size={24} color={semanticColors?.brand.primary || foundation?.primary_color || semanticColors?.text.primary} />
@@ -1468,7 +683,7 @@ export const BrandBoardContent = ({
             border: '1px solid',
             borderColor: semanticColors?.border.base || 'divider'
           }}>
-            {semanticTypography
+            {typographyTokens
               .sort((a, b) => {
                 const order = ['display', 'heading', 'body', 'ui'];
                 return order.indexOf(a.category) - order.indexOf(b.category);
@@ -1481,111 +696,20 @@ export const BrandBoardContent = ({
       )}
 
       {/* Copy Feedback */}
-      {copiedColor && (
-        <Box
-          sx={{
-            position: 'fixed',
-            bottom: 20,
-            right: 20,
-            bgcolor: 'success.main',
-            color: 'white',
-            px: 2,
-            py: 1,
-            borderRadius: 2,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1,
-            zIndex: 1000
-          }}
-        >
-          <Check size={16} />
-          <Typography variant="body2">
-            Copied {copiedColor}
-          </Typography>
-        </Box>
-      )}
+      <CopyFeedback copiedColor={copiedColor} />
 
       {/* Color Edit Dialog */}
-      <Dialog 
-        open={colorEditDialog.open} 
+      <ColorEditDialog
+        open={colorEditDialog.open}
+        colorKey={colorEditDialog.colorKey}
+        currentValue={colorEditDialog.currentValue}
+        colorName={colorEditDialog.colorName}
+        regeneratingColor={regeneratingColor}
         onClose={() => setColorEditDialog({ open: false, colorKey: '', currentValue: '', colorName: '' })}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          Edit {colorEditDialog.colorName} Color
-        </DialogTitle>
-        <DialogContent sx={{ pt: 2 }}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-            <Box
-              sx={{
-                width: '100%',
-                height: 100,
-                backgroundColor: colorEditDialog.currentValue,
-                borderRadius: 2,
-                border: '2px solid',
-                borderColor: 'divider',
-                mb: 2
-              }}
-            />
-            
-            <TextField
-              type="color"
-              label="Color"
-              value={colorEditDialog.currentValue}
-              onChange={(e) => setColorEditDialog(prev => ({ ...prev, currentValue: e.target.value }))}
-              fullWidth
-              sx={{ mb: 1 }}
-            />
-            
-            <TextField
-              label="Hex Value"
-              value={colorEditDialog.currentValue}
-              onChange={(e) => setColorEditDialog(prev => ({ ...prev, currentValue: e.target.value }))}
-              fullWidth
-              placeholder="#000000"
-            />
-
-            <Alert severity="info" sx={{ mt: 2 }}>
-              <Typography variant="body2">
-                <strong>Save Color Only:</strong> Updates just this base color<br/>
-                <strong>Save & Regenerate Scale:</strong> Updates this color and regenerates all 100-900 scale variations plus related tokens
-              </Typography>
-            </Alert>
-
-            {colorEditDialog.colorKey?.includes('alt_color') && (
-              <Alert severity="success" sx={{ mt: 1 }}>
-                <Typography variant="body2">
-                  💡 <strong>Tip:</strong> You can add up to 4 alternative colors using the dotted "+" boxes in the Alternative Colors section.
-                </Typography>
-              </Alert>
-            )}
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button 
-            onClick={() => setColorEditDialog({ open: false, colorKey: '', currentValue: '', colorName: '' })}
-            disabled={regeneratingColor}
-          >
-            Cancel
-          </Button>
-          <Button 
-            onClick={() => handleColorSave(colorEditDialog.currentValue)}
-            variant="outlined"
-            disabled={!colorEditDialog.currentValue || regeneratingColor}
-          >
-            Save Color Only
-          </Button>
-          <Button 
-            onClick={handleRegenerateColorScale}
-            variant="contained"
-            disabled={!colorEditDialog.currentValue || regeneratingColor}
-            startIcon={regeneratingColor ? <CircularProgress size={16} /> : <ArrowsClockwise size={16} />}
-          >
-            {regeneratingColor ? 'Regenerating...' : 'Save & Regenerate Scale'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        onValueChange={(value) => setColorEditDialog(prev => ({ ...prev, currentValue: value }))}
+        onSaveColor={handleColorSave}
+        onRegenerateScale={handleRegenerateColorScale}
+      />
     </Box>
   );
 };

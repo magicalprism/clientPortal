@@ -1,13 +1,39 @@
 'use client';
 
 import { useSearchParams } from 'next/navigation';
+import { Suspense, memo } from 'react';
+import { CircularProgress, Box } from '@mui/material';
 import * as collections from '@/collections';
-import SimpleCreateForm from './SimpleCreateForm';
-import CreateForm from './CreateForm'; // Your complex contract form
 
-export function CollectionCreateLayout({ collectionKey }) {
-  console.log('[CollectionCreateLayout] collectionKey:', collectionKey);
-  
+// Lazy load the forms for better performance
+import dynamic from 'next/dynamic';
+
+const SimpleCreateForm = dynamic(
+  () => import('./SimpleCreateForm'),
+  { 
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    ),
+    ssr: false
+  }
+);
+
+const CreateForm = dynamic(
+  () => import('./CreateForm'),
+  { 
+    loading: () => (
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    ),
+    ssr: false
+  }
+);
+
+// Memoized component for better performance
+const CollectionCreateLayoutContent = memo(({ collectionKey }) => {
   const config = collections[collectionKey];
   const searchParams = useSearchParams();
   
@@ -16,11 +42,11 @@ export function CollectionCreateLayout({ collectionKey }) {
     console.log('[CollectionCreateLayout] Available collections:', Object.keys(collections));
     
     return (
-      <div style={{ padding: '2rem', textAlign: 'center' }}>
+      <Box sx={{ padding: 4, textAlign: 'center' }}>
         <h3>Collection not found</h3>
         <p>Collection key: <strong>{collectionKey}</strong></p>
         <p>Available collections: {Object.keys(collections).join(', ')}</p>
-        <details style={{ marginTop: '1rem', textAlign: 'left' }}>
+        <details style={{ marginTop: 16, textAlign: 'left' }}>
           <summary>Debug Info</summary>
           <pre>{JSON.stringify({ 
             collectionKey, 
@@ -28,7 +54,7 @@ export function CollectionCreateLayout({ collectionKey }) {
             searchParams: Object.fromEntries(searchParams.entries())
           }, null, 2)}</pre>
         </details>
-      </div>
+      </Box>
     );
   }
 
@@ -56,5 +82,21 @@ export function CollectionCreateLayout({ collectionKey }) {
       isModal={isModal}
       onClose={isModal ? () => window.history.back() : undefined}
     />
+  );
+});
+
+CollectionCreateLayoutContent.displayName = 'CollectionCreateLayoutContent';
+
+export function CollectionCreateLayout({ collectionKey }) {
+  console.log('[CollectionCreateLayout] collectionKey:', collectionKey);
+  
+  return (
+    <Suspense fallback={
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+        <CircularProgress />
+      </Box>
+    }>
+      <CollectionCreateLayoutContent collectionKey={collectionKey} />
+    </Suspense>
   );
 }

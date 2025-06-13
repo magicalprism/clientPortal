@@ -55,7 +55,8 @@ export default function ChecklistSummary({
       const { table } = await import('@/lib/supabase/queries');
       const entityQueries = table[entityType];
       
-      if (!entityQueries || !entityQueries.fetchEventChecklists) {
+      const fetchFunction = ENTITY_CONFIGS[entityType]?.fetchFunction || 'fetchEventChecklists';
+      if (!entityQueries || !entityQueries[fetchFunction]) {
         throw new Error(`Missing query function for ${entityType}`);
       }
 

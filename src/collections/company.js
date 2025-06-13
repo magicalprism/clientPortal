@@ -1,6 +1,7 @@
 export const company = {
     name: 'company',
     label: 'Companies',
+     table:'company',
     singularLabel: 'Company',
     table: 'company',
     editPathPrefix: '/dashboard/company',

@@ -2,15 +2,17 @@
 import dynamic from 'next/dynamic';
 import { useState, useRef, useEffect } from 'react';
 import { useTheme } from '@mui/material/styles';
+import { contractOps } from '@/lib/supabase/queries';
 import {
   useMediaQuery, Card, CardContent, Tabs, Tab, Grid, Divider,
   Typography, TextField, CircularProgress, Box, IconButton, Button
 } from '@mui/material';
+
 const CollectionView = dynamic(() => import('@/components/views/CollectionView'), {
   ssr: false,
   loading: () => <div>Loading collection...</div>,
 });
-// Import kanban components
+
 const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/ProjectKanbanBoard').then(mod => mod.default || mod.ProjectKanbanBoard), {
   ssr: false,
   loading: () => (
@@ -22,19 +24,17 @@ const ProjectKanbanBoard = dynamic(() => import('@/components/views/kanban/Proje
     </Box>
   ),
 });
+
 import { useGroupedFields } from '@/components/fields/useGroupedFields';
-import { useConditionalFields } from '@/hooks/fields/useConditionalFields'; // NEW: Import conditional fields hook
+import { useConditionalFields } from '@/hooks/fields/useConditionalFields';
 import { useCollectionSave } from '@/hooks/useCollectionSave';
 import TimelineView from '@/components/fields/custom/timeline/TimelineView';
 import { useRouter } from 'next/navigation';
-
 import { createClient } from '@/lib/supabase/browser';
 import { CollectionItemForm } from '@/components/views/collectionItem/CollectionItemForm';
 import { ContractSectionsTab } from '@/components/dashboard/contract/ContractSectionsTab';
 import { useContractBuilder } from '@/components/dashboard/contract/useContractBuilder';
-import { generateSupabaseSelect } from '@/lib/supabase/generateSupabaseSelect';
 import { ViewButtons } from '@/components/buttons/ViewButtons';
-
 import * as collections from '@/collections';
 
 export const CollectionItemPage = ({ 
@@ -56,44 +56,34 @@ export const CollectionItemPage = ({
   // Kanban state
   const [kanbanMode, setKanbanMode] = useState('milestone');
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
-  // Check if this is a contract before calling the hook
+  
+  // Check if this is a contract
   const isContract = config?.name === 'contract';
 
   // Check if kanban is enabled for this collection
   const hasKanbanTab = config?.showKanbanTab === true || config?.kanban?.enabled === true;
   const kanbanConfig = config?.kanban || {};
-  // Get task configuration for kanban
   const taskConfig = kanbanConfig.taskConfig ? collections[kanbanConfig.taskConfig] : collections.task;
 
-  // Always call useContractBuilder, but conditionally use its values
+  // Contract builder hook
   const contractBuilderResult = useContractBuilder(localRecord?.id);
 
-  // NEW: Add conditional fields hook for tab-level filtering
+  // Conditional fields hook for tab-level filtering
   const { 
     isTabVisible, 
     visibleTabs 
   } = useConditionalFields(config, formData || localRecord || {});
   
-  // Only destructure the values we need if this is a contract
-  // Add the handler from contractBuilderResult
-const {
-  contractParts = [],
-  availableParts = [],
-  handleDragEnd = () => {},
-  handleAddExistingPart = () => {},
-  handleAddCustomPart = () => {},
-  handleRemovePart = () => {},
-  handleAddAllRequired = () => {} // Add this line
-} = isContract ? contractBuilderResult : {};
-
-// Add a wrapper for the new handler
-const handleAddAllRequiredWithDirty = () => {
-  if (!isContract) return;
-  
-  console.log('[CollectionItemPage] Adding all required parts - setting dirty state');
-  handleAddAllRequired();
-  setIsDirty(true);
-};
+  // Destructure contract builder values only if this is a contract
+  const {
+    contractParts = [],
+    availableParts = [],
+    handleDragEnd = () => {},
+    handleAddExistingPart = () => {},
+    handleAddCustomPart = () => {},
+    handleRemovePart = () => {},
+    handleAddAllRequired = () => {}
+  } = isContract ? contractBuilderResult : {};
 
   const [activeId, setActiveId] = useState(null);
 
@@ -105,7 +95,7 @@ const handleAddAllRequiredWithDirty = () => {
     }
   }, [localRecord]);
 
-  // Fetch elements for the project when it loads
+  // Fetch elements for the project when it loads (if applicable)
   useEffect(() => {
     if (localRecord?.id) {
       const elementField = config?.fields?.find(f => 
@@ -148,7 +138,6 @@ const handleAddAllRequiredWithDirty = () => {
 
   // Set record once initialized
   const lastRecordId = useRef(null);
-
   useEffect(() => {
     if (!record) return;
 
@@ -161,259 +150,80 @@ const handleAddAllRequiredWithDirty = () => {
     });
   }, [record?.id]);
 
-  // Add this useEffect to CollectionItemPage.js to load contract parts when editing
-// Place this after your existing useEffects
+  // Load contract parts when editing (using extracted operation)
+  useEffect(() => {
+    if (isContract && localRecord?.id && contractBuilderResult && !contractBuilderResult.loading) {
+      const loadContractParts = async () => {
+        console.log('[CollectionItemPage] Loading contract parts using extracted operation...');
+        
+        const result = await contractOps.fetchContractPartsForContract(localRecord.id);
+        
+        if (!result.success) {
+          console.error('[CollectionItemPage] Error loading contract parts:', result.error);
+          setInitialContractParts([]);
+          return;
+        }
 
-useEffect(() => {
-  // Load contract parts if this is a contract and we have a record ID
-  if (isContract && localRecord?.id && contractBuilderResult) {
-    // Only proceed if the contract builder has finished its initial load
-    if (contractBuilderResult.loading) {
+        const parts = result.data || [];
+        console.log(`[CollectionItemPage] Loaded ${parts.length} contract parts`);
+        
+        // Set the contract parts in the builder
+        if (contractBuilderResult?.setContractParts) {
+          console.log('[CollectionItemPage] Setting contract parts via builder');
+          contractBuilderResult.setContractParts(parts);
+        }
+        
+        // Store initial state for comparison
+        setInitialContractParts(JSON.parse(JSON.stringify(parts)));
+      };
+      
+      loadContractParts();
+    } else if (isContract && !localRecord?.id) {
+      // Reset states when no record ID
+      setInitialContractParts([]);
+    }
+  }, [isContract, localRecord?.id, contractBuilderResult?.loading]);
+
+  // Sync initial contract parts when builder becomes available
+  useEffect(() => {
+    if (isContract && contractParts.length > 0 && initialContractParts.length === 0) {
+      setInitialContractParts(JSON.parse(JSON.stringify(contractParts)));
+    }
+  }, [isContract, contractParts, initialContractParts.length]);
+
+  // Track contract parts changes for dirty state
+  useEffect(() => {
+    if (!isContract) return;
+    
+    // Don't compare if we don't have initial state yet
+    if (initialContractParts.length === 0 && contractParts.length > 0) {
       return;
     }
     
-    const loadContractParts = async () => {
-      try {
-        const supabase = createClient();
-        
-        // Fetch contract parts with their order from pivot table
-        console.log('[CollectionItemPage] Fetching contract parts from pivot table...');
-        const { data: contractPartsData, error } = await supabase
-          .from('contract_contractpart')
-          .select(`
-            order_index,
-            contractpart (
-              id,
-              title,
-              content,
-              is_required,
-              sort_order,
-              created_at,
-              updated_at
-            )
-          `)
-          .eq('contract_id', localRecord.id)
-          .order('order_index'); // This is the correct order!
-
-        if (error) {
-          console.error('[CollectionItemPage] Error loading contract parts:', error);
-          setInitialContractParts([]);
-          return;
-        }
-
-        console.log('[CollectionItemPage] Raw contract parts data from pivot:', contractPartsData);
-
-        if (contractPartsData && contractPartsData.length > 0) {
-          // Transform the data - USE the order_index from pivot table, NOT sort_order
-          const parts = contractPartsData.map(cp => ({
-            ...cp.contractpart,
-            order_index: cp.order_index // This comes from pivot table!
-          }));
-          
-          console.log('[CollectionItemPage] Transformed parts with pivot order:', parts.map(p => ({ 
-            id: p.id, 
-            title: p.title, 
-            order_index: p.order_index,
-            original_sort_order: p.sort_order
-          })));
-          
-          // Set the contract parts in the builder
-          if (contractBuilderResult && contractBuilderResult.setContractParts) {
-            console.log('[CollectionItemPage] Setting contract parts via builder (ordered by pivot table)');
-            contractBuilderResult.setContractParts(parts);
-          }
-          
-          // Store initial state for comparison
-          console.log('[CollectionItemPage] Setting initial contract parts state');
-          setInitialContractParts(JSON.parse(JSON.stringify(parts)));
-        } else {
-          console.log('[CollectionItemPage] No contract parts found for this contract');
-          setInitialContractParts([]);
-          if (contractBuilderResult && contractBuilderResult.setContractParts) {
-            contractBuilderResult.setContractParts([]);
-          }
-        }
-        
-      } catch (error) {
-        console.error('[CollectionItemPage] Error loading contract parts:', error);
-        setInitialContractParts([]);
-      }
-    };
+    // Compare current contract parts with initial state
+    const currentPartsString = JSON.stringify(contractParts.map(p => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      order_index: p.order_index
+    })));
     
-    loadContractParts();
-  }
-}, [isContract, localRecord?.id, contractBuilderResult?.loading]); // Fixed dependency array
-
-// 3. Add useEffect to track contract parts changes
-useEffect(() => {
-  // Load contract parts if this is a contract and we have a record ID
-  if (isContract && localRecord?.id) {
+    const initialPartsString = JSON.stringify(initialContractParts.map(p => ({
+      id: p.id,
+      title: p.title,
+      content: p.content,
+      order_index: p.order_index
+    })));
     
-    const loadContractParts = async () => {
-      try {
-        const supabase = createClient();
-        
-        // Fetch contract parts with their order
-        const { data: contractPartsData, error } = await supabase
-          .from('contract_contractpart')
-          .select(`
-            order_index,
-            contractpart (
-              id,
-              title,
-              content,
-              is_required,
-              sort_order,
-              created_at,
-              updated_at
-            )
-          `)
-          .eq('contract_id', localRecord.id)
-          .order('order_index');
-
-        if (error) {
-          console.error('[CollectionItemPage] Error loading contract parts:', error);
-          setInitialContractParts([]); // Set empty array so we have a proper initial state
-          return;
-        }
-
-        console.log('[CollectionItemPage] Raw contract parts data:', contractPartsData);
-
-        if (contractPartsData && contractPartsData.length > 0) {
-          // Transform the data to match the expected structure
-          const parts = contractPartsData.map(cp => ({
-            ...cp.contractpart,
-            order_index: cp.order_index
-          }));
-          
-          console.log('[CollectionItemPage] Loaded contract parts:', parts.map(p => ({ 
-            id: p.id, 
-            title: p.title, 
-            order_index: p.order_index 
-          })));
-          
-          // Set the contract parts in the builder - use direct state setter if available
-          if (contractBuilderResult && contractBuilderResult.setContractParts) {
-            console.log('[CollectionItemPage] Setting contract parts via builder');
-            contractBuilderResult.setContractParts(parts);
-          } else {
-            console.warn('[CollectionItemPage] contractBuilderResult.setContractParts not available');
-          }
-          
-          // Store initial state for comparison - this is crucial!
-          console.log('[CollectionItemPage] Setting initial contract parts state');
-          setInitialContractParts(JSON.parse(JSON.stringify(parts)));
-        } else {
-          console.log('[CollectionItemPage] No contract parts found for this contract');
-          // Important: Set empty arrays for both states
-          setInitialContractParts([]);
-          if (contractBuilderResult && contractBuilderResult.setContractParts) {
-            contractBuilderResult.setContractParts([]);
-          }
-        }
-        
-      } catch (error) {
-        console.error('[CollectionItemPage] Error loading contract parts:', error);
-        setInitialContractParts([]); // Ensure we always have an initial state
-      }
-    };
+    const contractPartsChanged = currentPartsString !== initialPartsString;
     
-    loadContractParts();
-  } else if (isContract && !localRecord?.id) {
-    console.log('[CollectionItemPage] Contract detected but no record ID yet');
-    // Reset states when no record ID
-    setInitialContractParts([]);
-  }
-}, [isContract, localRecord?.id]); // Remove the dependency on contractBuilderResult.setContractParts
+    if (contractPartsChanged && !isDirty) {
+      console.log('[CollectionItemPage] Setting isDirty=true due to contract parts changes');
+      setIsDirty(true);
+    }
+  }, [contractParts, initialContractParts, isDirty, isContract]);
 
-// Also add a separate useEffect to sync when contractBuilderResult becomes available
-useEffect(() => {
-  if (isContract && contractParts.length > 0 && initialContractParts.length === 0) {
-    // If we have contract parts but no initial state, set it now
-    setInitialContractParts(JSON.parse(JSON.stringify(contractParts)));
-  }
-}, [contractBuilderResult, isContract, contractParts, initialContractParts.length]);
-
-// Fix the contract parts comparison useEffect
-useEffect(() => {
-  if (!isContract) return;
-  
-  // Don't compare if we don't have initial state yet
-  if (initialContractParts.length === 0 && contractParts.length > 0) {
-    return;
-  }
-  
-  // Compare current contract parts with initial state
-  const currentPartsString = JSON.stringify(contractParts.map(p => ({
-    id: p.id,
-    title: p.title,
-    content: p.content,
-    order_index: p.order_index
-  })));
-  
-  const initialPartsString = JSON.stringify(initialContractParts.map(p => ({
-    id: p.id,
-    title: p.title,
-    content: p.content,
-    order_index: p.order_index
-  })));
-  
-  const contractPartsChanged = currentPartsString !== initialPartsString;
-  
-  if (contractPartsChanged && !isDirty) {
-    console.log('[CollectionItemPage] Setting isDirty=true due to contract parts changes');
-    setIsDirty(true);
-  } else if (!contractPartsChanged && isDirty) {
-    console.log('[CollectionItemPage] Parts match initial state, but isDirty is still true');
-  }
-  
-}, [contractParts, initialContractParts, isDirty, isContract]);
-
-// 4. Wrap the contract-specific drag handlers to also set dirty state
-const handleDragStartWithDirty = ({ active }) => {
-  if (!isContract) return;
-  setActiveId(active.id);
-  handleDragStart({ active });
-};
-
-const handleDragEndWrapperWithDirty = (event) => {
-  if (!isContract) return;
-  
-  console.log('[CollectionItemPage] Drag ended - setting dirty state');
-  handleDragEnd(event);
-  setActiveId(null);
-  
-  // Set dirty after a brief delay to allow state to update
-  setTimeout(() => {
-    setIsDirty(true);
-  }, 100);
-};
-
-const handleAddExistingPartWithDirty = (part) => {
-  if (!isContract) return;
-  
-  console.log('[CollectionItemPage] Adding existing part - setting dirty state');
-  handleAddExistingPart(part);
-  setIsDirty(true);
-};
-
-const handleAddCustomPartWithDirty = () => {
-  if (!isContract) return;
-  
-  console.log('[CollectionItemPage] Adding custom part - setting dirty state');
-  handleAddCustomPart();
-  setIsDirty(true);
-};
-
-const handleRemovePartWithDirty = (partId) => {
-  if (!isContract) return;
-  
-  console.log('[CollectionItemPage] Removing part - setting dirty state');
-  handleRemovePart(partId);
-  setIsDirty(true);
-};
-
-// Initialize kanban mode from config
+  // Initialize kanban mode from config
   useEffect(() => {
     if (hasKanbanTab && kanbanConfig.defaultMode) {
       setKanbanMode(kanbanConfig.defaultMode);
@@ -423,9 +233,7 @@ const handleRemovePartWithDirty = (partId) => {
     }
   }, [hasKanbanTab, kanbanConfig]);
 
-// Make sure to import createClient at the top if not already imported:
-// import { createClient } from '@/lib/supabase/browser';
-  
+  // Collection save hook
   const {
     updateLocalValue,
     saveRecord,
@@ -446,7 +254,7 @@ const handleRemovePartWithDirty = (partId) => {
   const baseTabs = useGroupedFields(config?.fields || [], activeTab);
   const showTimelineTab = config?.showTimelineTab === true;
 
-  // Contract-specific drag handlers
+  // Contract-specific drag handlers with dirty state tracking
   const handleDragStart = ({ active }) => {
     if (!isContract) return;
     setActiveId(active.id);
@@ -454,15 +262,52 @@ const handleRemovePartWithDirty = (partId) => {
 
   const handleDragEndWrapper = (event) => {
     if (!isContract) return;
+    
+    console.log('[CollectionItemPage] Drag ended - setting dirty state');
     handleDragEnd(event);
     setActiveId(null);
+    
+    setTimeout(() => {
+      setIsDirty(true);
+    }, 100);
   };
 
-  // NEW: Build filtered tab names with conditional visibility
+  const handleAddExistingPartWithDirty = (part) => {
+    if (!isContract) return;
+    
+    console.log('[CollectionItemPage] Adding existing part - setting dirty state');
+    handleAddExistingPart(part);
+    setIsDirty(true);
+  };
+
+  const handleAddCustomPartWithDirty = () => {
+    if (!isContract) return;
+    
+    console.log('[CollectionItemPage] Adding custom part - setting dirty state');
+    handleAddCustomPart();
+    setIsDirty(true);
+  };
+
+  const handleRemovePartWithDirty = (partId) => {
+    if (!isContract) return;
+    
+    console.log('[CollectionItemPage] Removing part - setting dirty state');
+    handleRemovePart(partId);
+    setIsDirty(true);
+  };
+
+  const handleAddAllRequiredWithDirty = () => {
+    if (!isContract) return;
+    
+    console.log('[CollectionItemPage] Adding all required parts - setting dirty state');
+    handleAddAllRequired();
+    setIsDirty(true);
+  };
+
+  // Build filtered tab names with conditional visibility
   const buildVisibleTabs = () => {
     // Start with base tabs - only filter if they have conditional rules
     const filteredBaseTabs = baseTabs.tabNames.filter(tabName => {
-      // Check if this tab has any conditional rules defined in config
       const tabConfig = config?.tabs?.[tabName];
       if (!tabConfig?.showWhen && !tabConfig?.hideWhen) {
         return true; // Always show tabs without conditions
@@ -473,28 +318,25 @@ const handleRemovePartWithDirty = (partId) => {
     let allTabs = [...filteredBaseTabs];
     
     // Add special tabs if they should be visible
-    // Contract tab - only check conditions if they exist
     if (isContract) {
       if (!config?.contractTab?.showWhen && !config?.contractTab?.hideWhen) {
-        allTabs.push('Contract Sections'); // No conditions = always visible
+        allTabs.push('Contract Sections');
       } else if (isTabVisible('Contract Sections')) {
         allTabs.push('Contract Sections');
       }
     }
     
-    // Kanban tab - only check conditions if they exist
     if (hasKanbanTab) {
       if (!config?.kanbanTab?.showWhen && !config?.kanbanTab?.hideWhen) {
-        allTabs.push('Kanban Board'); // No conditions = always visible
+        allTabs.push('Kanban Board');
       } else if (isTabVisible('Kanban Board')) {
         allTabs.push('Kanban Board');
       }
     }
     
-    // Timeline tab - only check conditions if they exist
     if (showTimelineTab) {
       if (!config?.timelineTab?.showWhen && !config?.timelineTab?.hideWhen) {
-        allTabs.push('Timeline'); // No conditions = always visible
+        allTabs.push('Timeline');
       } else if (isTabVisible('Timeline')) {
         allTabs.push('Timeline');
       }
@@ -505,15 +347,14 @@ const handleRemovePartWithDirty = (partId) => {
 
   const visibleTabNames = buildVisibleTabs();
 
-  // NEW: Handle active tab validation and auto-switching
+  // Handle active tab validation and auto-switching
   useEffect(() => {
-    // If current active tab is no longer visible, switch to first visible tab
     if (activeTab >= visibleTabNames.length && visibleTabNames.length > 0) {
       setActiveTab(0);
     }
   }, [visibleTabNames.length, activeTab]);
 
-  // NEW: Updated tab determination logic using filtered tabs
+  // Tab determination logic
   const getTabType = (tabIndex) => {
     if (tabIndex >= visibleTabNames.length) return 'none';
     
@@ -531,119 +372,41 @@ const handleRemovePartWithDirty = (partId) => {
   const isTimelineTab = currentTabType === 'timeline';
   const isRegularFormTab = currentTabType === 'form';
 
+  // Simplified save handler using extracted operations
   const handleSave = async () => {
-  console.log('[CollectionItemPage] ========== SAVE PROCESS STARTING ==========');
-  console.log('[CollectionItemPage] Is contract?', isContract);
-  console.log('[CollectionItemPage] Contract parts count:', contractParts.length);
-  console.log('[CollectionItemPage] Contract parts:', contractParts.map(p => ({ 
-    id: p.id, 
-    title: p.title, 
-    order_index: p.order_index 
-  })));
+    console.log('[CollectionItemPage] ========== SAVE PROCESS STARTING ==========');
+    console.log('[CollectionItemPage] Is contract?', isContract);
 
-  // Save the main record first
-
-  const result = await saveRecord();
-  
-  if (!result) {
-
-    return;
-  }
-
-
-
-  // If this is a contract, also save the contract parts
-  if (isContract && contractParts.length > 0 && localRecord?.id) {
-    console.log('[CollectionItemPage] Saving contract parts for contract ID:', localRecord.id);
+    // Save the main record first (this includes Drive operations via the hook)
+    const result = await saveRecord();
     
-    try {
-      const supabase = createClient();
-      
-      // Delete existing relationships
-      console.log('[CollectionItemPage] Deleting existing contract parts relationships...');
-      const { error: deleteError } = await supabase
-        .from('contract_contractpart')
-        .delete()
-        .eq('contract_id', localRecord.id);
-
-      if (deleteError) {
-
-        // Don't return here - try to continue with insert
-      } else {
- 
-      }
-
-      // Create new relationships
-
-      const pivotData = contractParts.map(part => {
-        const pivotRecord = {
-          contract_id: localRecord.id,
-          contractpart_id: part.id,
-          order_index: part.order_index
-        };
-        console.log('[CollectionItemPage] Pivot record for part:', part.title, pivotRecord);
-        return pivotRecord;
-      });
-
-      console.log('[CollectionItemPage] All pivot data:', pivotData);
-
-      const { error: pivotError, data: pivotResult } = await supabase
-        .from('contract_contractpart')
-        .insert(pivotData)
-        .select();
-
-      if (pivotError) {
-
-        // You might want to show an error toast here
-        alert('Contract saved but failed to save sections: ' + pivotError.message);
-      } else {
-
-      }
-
-    } catch (error) {
-
-      alert('Contract saved but failed to save sections: ' + error.message);
+    if (!result) {
+      console.error('[CollectionItemPage] Main record save failed');
+      return;
     }
-  }
 
-  // Handle other logic (Google Drive, etc.)
-  if (config?.name === 'element') {
-
-  }
-  
-  if (result && (localRecord?.create_folder === true || formData?.create_folder === true)) {
-    try {
-      const response = await fetch('/api/google-drive', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          type: config?.name,
-          payload: localRecord
-        })
-      });
-
+    // If this is a contract, save the contract parts using extracted operation
+    if (isContract && localRecord?.id) {
+      console.log('[CollectionItemPage] Saving contract parts for contract ID:', localRecord.id);
       
-      const responseText = await response.text();
+      const contractSaveResult = await contractOps.saveContractPartsForContract(
+        localRecord.id, 
+        contractParts
+      );
 
-      
-      let responseData;
-      try {
-        responseData = JSON.parse(responseText);
-
-      } catch (parseError) {
-        console.error('[Debug] JSON parse failed:', parseError);
-        console.log('[Debug] Response was probably HTML error page');
-        return;
+      if (!contractSaveResult.success) {
+        console.error('[CollectionItemPage] Failed to save contract parts:', contractSaveResult.error);
+        alert('Contract saved but failed to save sections: ' + contractSaveResult.error);
+      } else {
+        console.log('[CollectionItemPage] Contract parts saved successfully');
+        // Update initial state after successful save
+        setInitialContractParts(JSON.parse(JSON.stringify(contractParts)));
       }
-      
-    } catch (error) {
-      console.error('[Google Drive] Error:', error);
     }
-  }
-  
-  setIsDirty(false);
-  console.log('[CollectionItemPage] ========== SAVE PROCESS COMPLETED ==========');
-};
+    
+    setIsDirty(false);
+    console.log('[CollectionItemPage] ========== SAVE PROCESS COMPLETED ==========');
+  };
 
   const handleFieldChange = (fieldOrName, value) => {
     const fieldName = typeof fieldOrName === 'object' ? fieldOrName.name : fieldOrName;
@@ -696,7 +459,6 @@ const handleRemovePartWithDirty = (partId) => {
         }));
         
         setIsDirty(true);
-        console.log(`Explicitly setting isDirty=true for ${fieldName} change`);
       } else if (Array.isArray(value)) {
         setLocalRecord(prev => ({
           ...prev,
@@ -709,7 +471,6 @@ const handleRemovePartWithDirty = (partId) => {
         }));
         
         setIsDirty(true);
-        console.log(`Explicitly setting isDirty=true for ${fieldName} change`);
       }
       
       return;
@@ -763,7 +524,7 @@ const handleRemovePartWithDirty = (partId) => {
     setTempValue(currentValue ?? '');
   };
 
- // Kanban mode toggle handler
+  // Kanban mode handlers
   const handleKanbanModeChange = (newMode) => {
     setKanbanMode(newMode);
   };
@@ -772,7 +533,7 @@ const handleRemovePartWithDirty = (partId) => {
     setShowCompletedTasks(prev => !prev);
   };
 
-  // NEW: Show message if no tabs are visible
+  // Show message if no tabs are visible
   if (visibleTabNames.length === 0) {
     return (
       <Card elevation={0}>
@@ -791,7 +552,7 @@ const handleRemovePartWithDirty = (partId) => {
     <>
       <Card elevation={0}>
         {/* ViewButtons - only show if we have a record with an ID */}
-        {isModal &&  localRecord?.id && (
+        {isModal && localRecord?.id && (
           <ViewButtons 
             config={config}
             id={localRecord.id}
@@ -816,7 +577,7 @@ const handleRemovePartWithDirty = (partId) => {
         )}
         
         <CardContent>
-          {/* NEW: Only render tabs if there are visible tabs */}
+          {/* Only render tabs if there are multiple visible tabs */}
           {visibleTabNames.length > 1 && (
             <Tabs
               value={activeTab}
@@ -839,9 +600,9 @@ const handleRemovePartWithDirty = (partId) => {
                 activeId={activeId}
                 handleDragStart={handleDragStart}
                 handleDragEndWrapper={handleDragEndWrapper}
-                handleRemovePart={handleRemovePart}
-                handleAddExistingPart={handleAddExistingPart}
-                handleAddCustomPart={handleAddCustomPart}
+                handleRemovePart={handleRemovePartWithDirty}
+                handleAddExistingPart={handleAddExistingPartWithDirty}
+                handleAddCustomPart={handleAddCustomPartWithDirty}
                 handleAddAllRequired={handleAddAllRequiredWithDirty}
               />
             </Box>
@@ -850,8 +611,6 @@ const handleRemovePartWithDirty = (partId) => {
           {/* Kanban Tab */}
           {isKanbanTab && localRecord?.id && (
             <Box mt={2}>
-              
-              {/* Kanban Board */}
               <ProjectKanbanBoard
                 projectId={localRecord.id}
                 mode={kanbanMode}
@@ -879,7 +638,7 @@ const handleRemovePartWithDirty = (partId) => {
               isEditingField={editingField}
               setEditingField={setEditingField}
               loadingField={loadingField}
-              activeTab={baseTabs.tabNames.indexOf(visibleTabNames[activeTab])} // NEW: Map back to original tab index
+              activeTab={baseTabs.tabNames.indexOf(visibleTabNames[activeTab])}
               isModal={isModal}
               isSmallScreen={isSmallScreen}
               tempValue={tempValue}

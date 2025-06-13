@@ -18,38 +18,49 @@ import {
 } from '@phosphor-icons/react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { BrandBoardContent } from '@/components/fields/custom/brand/brandBoard/BrandBoardContent';
-import { createClient } from "@/lib/supabase/browser";
+import { table } from '@/lib/supabase/queries';
 
 export const BrandBoardFullPage = () => {
   const [mode, setMode] = useState('light');
   const { brandId } = useParams();
   const navigate = useNavigate();
-  
-  // You'll need to fetch the brand data here based on brandId
-  // For now, assuming you have a way to get brand data
   const [brand, setBrand] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load brand data based on brandId
+  // Load brand data using standardized queries
   useEffect(() => {
     const loadBrand = async () => {
-      try {
-        const supabase = createClient();
-        const { data, error } = await supabase
-          .from('brand')
-          .select('*')
-          .eq('id', brandId)
-          .single();
+      if (!brandId) {
+        setError('No brand ID provided');
+        setLoading(false);
+        return;
+      }
 
-        if (error) throw error;
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const { data, error } = await table.brand.fetchBrandById(brandId);
+
+        if (error) {
+          throw error;
+        }
+
+        if (!data) {
+          throw new Error('Brand not found');
+        }
+
         setBrand(data);
       } catch (error) {
         console.error('Error loading brand:', error);
+        setError(error.message || 'Failed to load brand');
+      } finally {
+        setLoading(false);
       }
     };
 
-    if (brandId) {
-      loadBrand();
-    }
+    loadBrand();
   }, [brandId]);
 
   const getBgColor = () => {
@@ -59,6 +70,14 @@ export const BrandBoardFullPage = () => {
     return mode === 'light'
       ? brand.neutral_color_100 || '#ffffff'
       : brand.neutral_color_900 || '#1a1a1a';
+  };
+
+  const getTextColor = () => {
+    return mode === 'light' ? 'text.primary' : 'white';
+  };
+
+  const getSecondaryTextColor = () => {
+    return mode === 'light' ? 'text.secondary' : 'rgba(255,255,255,0.7)';
   };
 
   return (
@@ -81,12 +100,7 @@ export const BrandBoardFullPage = () => {
       >
         <Toolbar sx={{ justifyContent: 'space-between' }}>
           {/* Back Button */}
-          <IconButton
-            onClick={() => navigate(-1)}
-            sx={{ color: mode === 'light' ? 'text.primary' : 'white' }}
-          >
-            <ArrowLeft size={20} />
-          </IconButton>
+        
 
           {/* Center Controls */}
           <Box display="flex" alignItems="center" gap={2}>
@@ -141,7 +155,7 @@ export const BrandBoardFullPage = () => {
             />
             <Typography 
               variant="body2" 
-              sx={{ color: mode === 'light' ? 'text.secondary' : 'rgba(255,255,255,0.7)' }}
+              sx={{ color: getSecondaryTextColor() }}
             >
               {mode === 'light' ? 'Light' : 'Dark'} Mode
             </Typography>
@@ -151,7 +165,7 @@ export const BrandBoardFullPage = () => {
           <IconButton
             onClick={() => window.print()}
             title="Print Brand Board"
-            sx={{ color: mode === 'light' ? 'text.primary' : 'white' }}
+            sx={{ color: getTextColor() }}
           >
             <DownloadSimple size={20} />
           </IconButton>
@@ -160,12 +174,50 @@ export const BrandBoardFullPage = () => {
 
       {/* Brand Board Content - Full page with padding */}
       <Container maxWidth={false} sx={{ py: 4, px: 4 }}>
-          {brand ? (
+        {loading ? (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '50vh',
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ color: getSecondaryTextColor() }}
+            >
+              Loading brand board...
+            </Typography>
+          </Box>
+        ) : error ? (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            minHeight: '50vh',
+            flexDirection: 'column',
+            gap: 2
+          }}>
+            <Typography 
+              variant="h6" 
+              sx={{ color: 'error.main' }}
+            >
+              Error Loading Brand
+            </Typography>
+            <Typography 
+              variant="body2" 
+              sx={{ color: getSecondaryTextColor() }}
+            >
+              {error}
+            </Typography>
+           
+          </Box>
+        ) : brand ? (
           <BrandBoardContent
             brand={brand}
             mode={mode}
             editable={true}
-            showControls={false}
             useBrandBackground={true}
           />
         ) : (
@@ -177,9 +229,9 @@ export const BrandBoardFullPage = () => {
           }}>
             <Typography 
               variant="h6" 
-              sx={{ color: mode === 'light' ? 'text.secondary' : 'rgba(255,255,255,0.7)' }}
+              sx={{ color: getSecondaryTextColor() }}
             >
-              Loading brand board...
+              Brand not found
             </Typography>
           </Box>
         )}

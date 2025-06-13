@@ -198,7 +198,7 @@ async function fetchContractRelatedData(contract, proposal, supabase) {
       .from('milestone')
       .select('*')
       .eq('company_id', contract.company_id)
-      .order('sort_order');
+      .order('order_index');
 
     if (milestones?.length > 0) {
       relatedData.selectedMilestones = milestones.slice(0, 5); // Limit to first 5

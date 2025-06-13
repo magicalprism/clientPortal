@@ -3,6 +3,7 @@
 export const brand = {
   name: 'brand',
   label: 'Brand',
+   table:'brand',
   singularLabel: 'Brand',
   editPathPrefix: '/dashboard/brand',
   brandBoard: { enabled: true },

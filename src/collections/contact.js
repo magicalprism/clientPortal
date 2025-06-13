@@ -1,6 +1,7 @@
 export const contact = {
     name: 'contact',
     label: 'Contacts',
+     table:'contact',
     singularLabel: 'Contact',
     showEditButton: true,
     editPathPrefix: '/dashboard/contact',

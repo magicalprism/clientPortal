@@ -178,7 +178,7 @@ export default function TimelinePdfView({ project, milestones }) {
         </View>
 
         {[...milestones]
-          .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+          .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0))
           .map((m) => (
             <View key={m.id} style={styles.milestone}>
               <Text style={styles.milestoneTitle}>{m.title}</Text>

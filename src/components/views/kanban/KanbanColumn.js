@@ -359,7 +359,7 @@ export const KanbanColumn = ({
     } else if (mode === 'support') {
       const status = container.id.replace('status-', '');
       initialData.status = status;
-      initialData.task_type = 'support';
+      initialData.type = 'support';
       
       // Get project_id from container
       if (container.projectId) {
@@ -370,7 +370,7 @@ export const KanbanColumn = ({
       const status = container.id.replace('status-', '');
       initialData.status = status;
       
-      // Don't set task_type for universal mode - allow all task types
+      // Don't set type for universal mode - allow all task types
       
       // Get project_id from container if available
       if (container.projectId) {

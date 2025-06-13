@@ -50,16 +50,32 @@ export const task = {
       showInTable: true,
     },
     {
+  name: 'description',
+  label: 'Description',
+  type: 'text',
+  group: 'Task',
+  tab: 'Details',
+  description: 'Brief description of the task'
+},
+    {
       name: 'content',
-      label: 'Description',
+      label: 'Full Explanation',
       type: 'richText',
       group: 'Task', 
       tab: 'Details',
       fullWidth: true,
 
     },
+    {
+  name: 'solution',
+  label: 'Solution',
+  type: 'richText',
+  group: 'Task',
+  tab: 'Details',
+  description: 'Solution or resolution notes'
+},
      { 
-      name: 'task_type', 
+      name: 'type', 
       label: 'What kind of task/event is this?', 
       group: 'Task', 
       tab: 'Details', 
@@ -99,6 +115,20 @@ export const task = {
         { value: 'archived', label: 'Archived' },
       ]
     },
+    {
+  name: 'priority',
+  label: 'Priority',
+  type: 'select',
+  group: 'Task',
+  tab: 'Details',
+  showInTable: true,
+  options: [
+    { value: 'low', label: 'Low' },
+    { value: 'medium', label: 'Medium' },
+    { value: 'high', label: 'High' },
+    { value: 'urgent', label: 'Urgent' }
+  ]
+},
             { 
       name: 'start_date', 
           label: 'Start Date', 
@@ -234,6 +264,13 @@ export const task = {
     },
 
         //Meta
+        {
+  name: 'estimated_duration',
+  label: 'Estimated Duration (minutes)',
+  type: 'number',
+  group: 'Task',
+  tab: 'Details'
+},
          {
       name: 'contacts',
       label: 'Contact',
@@ -309,7 +346,7 @@ export const task = {
       defaultValue: ['todo', 'not_started'],
     },
     {
-      name: 'task_type',
+      name: 'type',
       type: 'select',
       label: 'Event Type',
       multiple: true,
@@ -323,7 +360,7 @@ export const task = {
       excludeFromViews: ['table', 'checklist', 'templateTree', 'projectkanban', 'kanban']
     },
      {
-      name: 'task_type',
+      name: 'type',
       type: 'select',
       label: 'Event Type',
       multiple: true,

@@ -77,7 +77,7 @@ export const KanbanTaskCard = ({
   const isSubtask = !!task.parent_id;
   const statusConfig = getStatusColor(task.status, config);
   const priorityConfig = getPriorityColor(task.priority);
-  const typeConfig = getTaskTypeColor(task.task_type);
+  const typeConfig = getTaskTypeColor(task.type);
 
   const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -424,7 +424,7 @@ export const KanbanTaskCard = ({
               {/* Company Logo */}
               {getCompanyLogo()}
               
-              {task.task_type && task.task_type !== 'task' && (
+              {task.type && task.type !== 'task' && (
                 <Chip 
                   label={typeConfig.label}
                   size="small"

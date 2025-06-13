@@ -278,9 +278,9 @@ export default function ChecklistSection({
         // Import the reorder function based on entity type
         const { table } = await import('@/lib/supabase/queries');
         const entityQueries = table[entityType];
-        
-        if (entityQueries && entityQueries.reorderEventChecklists) {
-          const { success, errors } = await entityQueries.reorderEventChecklists(entityId, updates);
+        const reorderFunction = entityConfig.reorderFunction; // Gets correct function name from config
+        if (entityQueries && entityQueries[reorderFunction]) {
+          const { success, errors } = await entityQueries[reorderFunction](entityId, updates);
           
           if (!success) {
             console.error('[ChecklistSection] Error updating checklist order:', errors);

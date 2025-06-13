@@ -21,7 +21,7 @@ export const feature = {
     enabled: true,
     imageField: 'thumbnail_id',
     titleField: 'title',
-    subtitleField: 'feature_type',
+    subtitleField: 'type',
   }, 
 
   fields: [   
@@ -44,7 +44,7 @@ export const feature = {
       description: 'Detailed description of what this feature provides'
     },
     {
-      name: 'feature_type',
+      name: 'type',
       type: 'select',
       label: 'Feature Type',
       group: 'Classification', 
@@ -170,7 +170,7 @@ export const feature = {
   
   filters: [
     {
-      name: 'feature_type',
+      name: 'type',
       type: 'select',
       label: 'Feature Type',
       multiple: true,
@@ -199,7 +199,7 @@ export const feature = {
       options: [
         { value: 'title:asc', label: 'Title (A–Z)' },
         { value: 'title:desc', label: 'Title (Z–A)' },
-        { value: 'feature_type:asc', label: 'Type (Standard First)' },
+        { value: 'type:asc', label: 'Type (Standard First)' },
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
       ]

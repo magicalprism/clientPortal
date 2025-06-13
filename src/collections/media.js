@@ -2,6 +2,7 @@
 export const media = {
   name: 'media',
   label: 'Media',
+  table:'media',
   singularLabel: 'Media',
   editPathPrefix: '/dashboard/media',
   showEditButton: true, // ✅ just a UI toggle
@@ -174,14 +175,6 @@ export const media = {
     }
   }
 },
-    { 
-      name: 'is_external', 
-      label: 'External File or Folder', 
-      type: 'boolean',
-      tab: 'Meta', 
-    
-    },
-
 
 
     {

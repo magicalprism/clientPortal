@@ -23,7 +23,7 @@ export const getContractParts = async (contractId) => {
           id,
           title,
           content,
-          sort_order
+          order_index
         )
       `)
       .eq('contract_id', contractId)
@@ -219,7 +219,7 @@ export const assembleContractContent = async (contractId, templateVariables = {}
             id,
             title,
             content,
-            sort_order
+            order_index
           )
         )
       `)
@@ -334,7 +334,7 @@ export const getAvailableContractParts = async (filters = {}) => {
     let query = supabase
       .from('contractpart')
       .select('*')
-      .order('sort_order', { ascending: true });
+      .order('order_index', { ascending: true });
 
     // Apply filters
     Object.entries(filters).forEach(([key, value]) => {

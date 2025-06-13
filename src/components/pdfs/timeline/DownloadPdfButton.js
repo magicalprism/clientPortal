@@ -26,7 +26,7 @@ export default function DownloadPdfButton({ projectId }) {
     const milestones = milestoneData
       .map(r => r.milestone)
       .filter(Boolean)
-      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+      .sort((a, b) => (a.order_index ?? 0) - (b.order_index ?? 0));
 
     const milestoneIds = milestones.map(m => m.id);
 

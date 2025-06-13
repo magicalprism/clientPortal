@@ -26,7 +26,7 @@ export const useContractBuilder = (contractId = null) => {
       const { data: parts, error } = await supabase
         .from('contractpart')
         .select('*')
-        .order('sort_order', { ascending: true });
+        .order('order_index', { ascending: true });
 
       if (error) throw error;
 
@@ -37,7 +37,7 @@ export const useContractBuilder = (contractId = null) => {
 
         const requiredParts = (parts || [])
           .filter(part => part.is_required)
-          .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+          .sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
           
         setContractParts(requiredParts.map((part, index) => ({
           ...part,
@@ -500,9 +500,9 @@ export const useContractBuilder = (contractId = null) => {
       return;
     }
     
-    // Sort required parts by their original sort_order
+    // Sort required parts by their original order_index
     const sortedRequiredParts = requiredParts.sort((a, b) => 
-      (a.sort_order || 0) - (b.sort_order || 0)
+      (a.order_index || 0) - (b.order_index || 0)
     );
     
     // Add them to the contract with appropriate order_index

@@ -278,7 +278,7 @@ export const createNewTaskTemplate = (taskData = {}) => {
     parent_id: taskData.parent_id || null,
     order_index: taskData.order_index || 0,
     status: 'not_started',
-    task_type: 'task',
+    type: 'task',
     priority: 'medium',
     content: '',
     description: '',

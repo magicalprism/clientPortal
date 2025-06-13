@@ -1,87 +1,197 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { 
   Box, 
   Button, 
   Grid, 
-  Typography, 
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  CircularProgress 
+  Typography,
+  Paper,
+  Tabs,
+  Tab,
+  Divider,
+  Alert,
+  CircularProgress,
+  Stepper,
+  Step,
+  StepLabel
 } from '@mui/material';
-import { createClient } from '@/lib/supabase/browser';
 import { FieldRenderer } from '@/components/FieldRenderer';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
 import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 
-const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
-  const supabase = createClient();
+const CreateForm = ({ config, disableRedirect = false, onCancel, onSuccess }) => {
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const [formData, setFormData] = useState({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [queryModule, setQueryModule] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
 
-  // Get essential fields for creation (usually just title and any required fields)
-  const getEssentialFields = () => {
-    const essentialFieldNames = ['title', 'name', 'company_id', 'project_id', 'checklist_id'];
-    const requiredFields = config.fields.filter(field => field.required);
+  // ✅ Load query module dynamically
+  useEffect(() => {
+    const loadQueryModule = async () => {
+      try {
+        const { table } = await import('@/lib/supabase/queries');
+        const entityQueries = table[config.name];
+        
+        if (!entityQueries) {
+          console.error(`[CreateForm] No queries found for table: ${config.name}`);
+          setError(`Query module not found for table: ${config.name}`);
+          return;
+        }
+        
+        setQueryModule(entityQueries);
+      } catch (err) {
+        console.error('[CreateForm] Error loading query module:', err);
+        setError('Failed to load query functions');
+      }
+    };
     
-    return config.fields.filter(field => {
-      // Always include title/name
-      if (essentialFieldNames.includes(field.name)) return true;
-      
-      // Include required fields
-      if (requiredFields.some(rf => rf.name === field.name)) return true;
-      
-      // Include fields with default values from URL
-      if (searchParams.get(field.name)) return true;
-      
-      return false;
-    });
-  };
+    loadQueryModule();
+  }, [config.name]);
 
-  const essentialFields = getEssentialFields();
+  // ✅ Organize fields by tabs or steps
+  const fieldGroups = useMemo(() => {
+    // Group fields by tab configuration
+    const tabs = config.tabs || [{ label: 'General', fields: config.fields }];
+    
+    return tabs.map(tab => ({
+      ...tab,
+      fields: tab.fields.filter(field => {
+        // Skip system fields
+        if (['id', 'created_at', 'updated_at', 'deleted_at', 'is_deleted'].includes(field.name)) {
+          return false;
+        }
+        
+        // Skip fields marked as hidden in create mode
+        if (field.hideInCreate || field.hideWhen?.includes('create')) {
+          return false;
+        }
+        
+        return true;
+      })
+    })).filter(tab => tab.fields.length > 0);
+  }, [config]);
 
-  // ✅ FIX: Initialize form data with URL params and defaults using useEffect
+  // ✅ Get all fields for form processing
+  const allFields = useMemo(() => {
+    return fieldGroups.flatMap(group => group.fields);
+  }, [fieldGroups]);
+
+  // ✅ Initialize form data
   useEffect(() => {
     const initialData = {};
     
     // Add URL parameters
+    const excludedParams = ['modal', 'id', 'view', 'type', 'tab'];
     searchParams.forEach((value, key) => {
-      if (key !== 'modal' && key !== 'id') {
-        // ✅ FIX: Convert numeric strings to numbers for foreign keys
-        if (key.endsWith('_id') && !isNaN(value)) {
+      if (!excludedParams.includes(key)) {
+        if (key.endsWith('_id') && !isNaN(value) && value !== '') {
           initialData[key] = parseInt(value, 10);
-        } else {
+        } else if (value !== '') {
           initialData[key] = value;
         }
       }
     });
 
-    // Add default values from field configs
-    essentialFields.forEach(field => {
-      if (field.defaultValue && !initialData[field.name]) {
+    // Add default values
+    allFields.forEach(field => {
+      if (field.defaultValue !== undefined && !initialData[field.name]) {
         initialData[field.name] = field.defaultValue;
       }
     });
 
-    console.log('[SimpleCreateForm] Initialized form data:', initialData);
+    console.log('[CreateForm] Initialized form data:', initialData);
     setFormData(initialData);
-  }, [searchParams, essentialFields]);
+  }, [searchParams, allFields]);
 
   const handleChange = useCallback((fieldName, value) => {
-    console.log(`[SimpleCreateForm] Field changed: ${fieldName} =`, value);
     setFormData(prev => ({ ...prev, [fieldName]: value }));
   }, []);
 
+  // ✅ Get the correct function name based on SOP conventions with fallbacks
+  const getCreateFunctionName = useCallback(() => {
+    if (!queryModule) return null;
+    
+    // Capitalize first letter of table name
+    const capitalizedTable = config.name.charAt(0).toUpperCase() + config.name.slice(1);
+    
+    // Try different naming patterns in order of preference
+    const possibleNames = [
+      `insert${capitalizedTable}`,     // SOP standard: insertEvent
+      `create${capitalizedTable}`,     // Common alternative: createEvent
+      'insert',                        // Generic: insert
+      'create',                        // Generic: create
+      'add',                          // Alternative: add
+      'new'                           // Alternative: new
+    ];
+    
+    // Find the first function that exists
+    for (const functionName of possibleNames) {
+      if (queryModule[functionName] && typeof queryModule[functionName] === 'function') {
+        console.log(`[CreateForm] Found create function: ${functionName}`);
+        return functionName;
+      }
+    }
+    
+    console.error(`[CreateForm] No create function found. Available functions:`, Object.keys(queryModule));
+    return null;
+  }, [config.name, queryModule]);
+
+  // ✅ Validation for current step/tab
+  const validateCurrentFields = useCallback(() => {
+    const currentFields = fieldGroups[activeTab]?.fields || [];
+    const requiredFields = currentFields.filter(f => f.required);
+    
+    return requiredFields.every(field => {
+      const value = formData[field.name];
+      return value !== undefined && value !== '' && value !== null;
+    });
+  }, [fieldGroups, activeTab, formData]);
+
+  // ✅ Check if entire form is valid
+  const isFormValid = useMemo(() => {
+    const requiredFields = allFields.filter(f => f.required);
+    return requiredFields.every(field => {
+      const value = formData[field.name];
+      return value !== undefined && value !== '' && value !== null;
+    });
+  }, [allFields, formData]);
+
+  const handleNext = () => {
+    if (validateCurrentFields()) {
+      if (activeTab < fieldGroups.length - 1) {
+        setActiveTab(activeTab + 1);
+        setCurrentStep(currentStep + 1);
+      }
+    }
+  };
+
+  const handleBack = () => {
+    if (activeTab > 0) {
+      setActiveTab(activeTab - 1);
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!queryModule) {
+      setError('Query module not loaded');
+      return;
+    }
+    
+    if (!isFormValid) {
+      setError('Please fill in all required fields');
+      return;
+    }
+    
     setLoading(true);
     setError(null);
 
@@ -89,176 +199,237 @@ const SimpleCreateForm = ({ config, isModal = false, onClose, onSuccess }) => {
       const now = getPostgresTimestamp();
       const currentContactId = await getCurrentContactId();
 
-      // ✅ FIX: Prepare the payload with just essential data, ensuring proper types
+      // Prepare the payload
       const payload = {
         ...formData,
         created_at: now,
         updated_at: now,
       };
 
-      // Add author_id if we have a current contact and the field exists
+      // Add author_id if available
       if (currentContactId && config.fields.some(f => f.name === 'author_id')) {
         payload.author_id = currentContactId;
       }
 
-      // ✅ FIX: Ensure numeric fields are properly typed
-      config.fields.forEach(field => {
-        if (field.name.endsWith('_id') && payload[field.name]) {
-          payload[field.name] = parseInt(payload[field.name], 10);
+      // Ensure proper data types
+      allFields.forEach(field => {
+        if (payload[field.name] !== undefined && payload[field.name] !== '') {
+          if (field.name.endsWith('_id') || field.type === 'integer') {
+            payload[field.name] = parseInt(payload[field.name], 10);
+          } else if (field.type === 'boolean') {
+            payload[field.name] = Boolean(payload[field.name]);
+          }
         }
       });
 
-      console.log('[SimpleCreateForm] Submitting payload:', payload);
+      console.log('[CreateForm] Final payload:', payload);
 
-      // Insert the record
-      const { data: newRecord, error: insertError } = await supabase
-        .from(config.name)
-        .insert([payload])
-        .select()
-        .single();
+      // ✅ Use the standardized query function with intelligent fallback
+      const createFunctionName = getCreateFunctionName();
+      
+      if (!createFunctionName) {
+        throw new Error(`No create function found for table: ${config.name}. Available functions: ${Object.keys(queryModule).join(', ')}`);
+      }
+      
+      const createFunction = queryModule[createFunctionName];
+      console.log(`[CreateForm] Using create function: ${createFunctionName}`);
+      
+      const { data: newRecord, error: insertError } = await createFunction(payload);
 
       if (insertError) {
         throw insertError;
       }
 
-      console.log('[SimpleCreateForm] Created record:', newRecord);
-
-      // ✅ FIX: Always trigger refresh before other actions
-      if (onSuccess) {
-        await onSuccess(newRecord);
-      }
-
-      // Close modal if applicable
-      if (isModal && onClose) {
-        onClose();
-        // ✅ FIX: Clean up URL parameters after successful creation
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.delete('modal');
-        currentUrl.searchParams.delete('id');
-        // Remove any field parameters too
-        essentialFields.forEach(field => {
-          currentUrl.searchParams.delete(field.name);
-        });
-        router.replace(currentUrl.pathname + currentUrl.search);
-        return;
-      }
-
-      // Redirect to edit page for non-modal cases
-      if (newRecord?.id) {
-        const editUrl = `${config.editPathPrefix}/${newRecord.id}?modal=edit&id=${newRecord.id}`;
-        router.push(editUrl);
-      }
+      console.log('[CreateForm] Created record successfully:', newRecord);
+      await handleSuccess(newRecord);
 
     } catch (err) {
-      console.error('[SimpleCreateForm] Error creating record:', err);
+      console.error('[CreateForm] Error creating record:', err);
       setError(err.message || 'An error occurred while creating the record');
     } finally {
       setLoading(false);
     }
   };
 
-  const content = (
-    <Box component="form" onSubmit={handleSubmit}>
-      {error && (
-        <Typography color="error" sx={{ mb: 2 }}>
-          {error}
-        </Typography>
-      )}
+  const handleSuccess = async (newRecord) => {
+    if (onSuccess) {
+      try {
+        await onSuccess(newRecord);
+      } catch (successError) {
+        console.error('[CreateForm] Error in onSuccess callback:', successError);
+      }
+    }
 
-      <Grid container spacing={3}>
-        {essentialFields.map((field) => (
-          <Grid item xs={12} key={field.name}>
-            <Box>
-              <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
-                {field.label}
-                {field.required && <span style={{ color: 'red' }}> *</span>}
-              </Typography>
-              {field.description && (
-                <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
-                  {field.description}
-                </Typography>
-              )}
-              
-              <FieldRenderer
-                field={field}
-                value={formData[field.name] || ''}
-                record={formData}
-                config={config}
-                mode="create"
-                editable
-                onChange={(value) => handleChange(field.name, value)}
-              />
-            </Box>
-          </Grid>
-        ))}
-      </Grid>
+    if (!disableRedirect) {
+      if (newRecord?.id && config.editPathPrefix) {
+        const editUrl = `${config.editPathPrefix}/${newRecord.id}`;
+        router.push(editUrl);
+      }
+    }
+  };
 
-      {!isModal && (
-        <Box sx={{ mt: 4, display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
-          <Button 
-            variant="outlined" 
-            onClick={() => router.back()}
-            disabled={loading}
-          >
-            Cancel
-          </Button>
-          <Button 
-            type="submit"
-            variant="contained" 
-            disabled={loading || !formData.title}
-          >
-            {loading ? <CircularProgress size={20} /> : `Create ${config.singularLabel || 'Record'}`}
-          </Button>
-        </Box>
-      )}
-    </Box>
-  );
-
-  if (isModal) {
+  if (!queryModule && !error) {
     return (
-      <Dialog open={true} onClose={onClose} maxWidth="md" fullWidth>
-        <DialogTitle>
-          Create New {config.singularLabel || config.label}
-          {/* ✅ DEBUG: Show what data we have */}
-          {formData.checklist_id && (
-            <Typography variant="caption" color="text.secondary" sx={{ display: 'block' }}>
-              For Checklist ID: {formData.checklist_id}
-            </Typography>
-          )}
-        </DialogTitle>
-        <DialogContent>
-          {content}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={onClose} disabled={loading}>
-            Cancel
-          </Button>
-          <Button 
-            onClick={handleSubmit}
-            variant="contained" 
-            disabled={loading || !formData.title}
-          >
-            {loading ? <CircularProgress size={20} /> : `Create ${config.singularLabel || 'Record'}`}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+        <CircularProgress />
+        <Typography variant="body2" sx={{ ml: 2 }}>
+          Loading form...
+        </Typography>
+      </Box>
     );
   }
 
   return (
-    <Box sx={{ maxWidth: 600, mx: 'auto', p: 3 }}>
+    <Box sx={{ maxWidth: 800, mx: 'auto', p: 3 }}>
       <Typography variant="h4" gutterBottom>
         Create New {config.singularLabel || config.label}
       </Typography>
       
       <Typography variant="body2" color="text.secondary" sx={{ mb: 4 }}>
-        Fill in the essential information to create your {config.singularLabel?.toLowerCase() || 'record'}. 
-        You can add more details after creation.
+        Fill in the information below to create your {config.singularLabel?.toLowerCase() || 'record'}.
       </Typography>
 
-      {content}
+      {error && (
+        <Alert severity="error" sx={{ mb: 3 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* ✅ Multi-step progress indicator */}
+      {fieldGroups.length > 1 && (
+        <Stepper activeStep={currentStep} sx={{ mb: 4 }}>
+          {fieldGroups.map((group, index) => (
+            <Step key={index}>
+              <StepLabel>{group.label}</StepLabel>
+            </Step>
+          ))}
+        </Stepper>
+      )}
+
+      <Paper sx={{ p: 3 }}>
+        {/* ✅ Tabs for multi-section forms */}
+        {fieldGroups.length > 1 && (
+          <Tabs 
+            value={activeTab} 
+            onChange={(_, newValue) => setActiveTab(newValue)}
+            sx={{ mb: 3 }}
+          >
+            {fieldGroups.map((group, index) => (
+              <Tab key={index} label={group.label} />
+            ))}
+          </Tabs>
+        )}
+
+        <Box component="form" onSubmit={handleSubmit}>
+          {fieldGroups.map((group, groupIndex) => (
+            <Box 
+              key={groupIndex}
+              sx={{ 
+                display: activeTab === groupIndex ? 'block' : 'none' 
+              }}
+            >
+              {group.description && (
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                  {group.description}
+                </Typography>
+              )}
+
+              <Grid container spacing={3}>
+                {group.fields.map((field) => (
+                  <Grid 
+                    item 
+                    xs={12} 
+                    md={field.width === 'half' ? 6 : 12}
+                    key={field.name}
+                  >
+                    <Box>
+                      <Typography variant="body2" fontWeight={500} sx={{ mb: 1 }}>
+                        {field.label}
+                        {field.required && <span style={{ color: 'red' }}> *</span>}
+                      </Typography>
+                      {field.description && (
+                        <Typography variant="caption" color="text.secondary" sx={{ mb: 1, display: 'block' }}>
+                          {field.description}
+                        </Typography>
+                      )}
+                      
+                      <FieldRenderer
+                        field={field}
+                        value={formData[field.name] || ''}
+                        record={formData}
+                        config={config}
+                        mode="create"
+                        editable
+                        onChange={(value) => handleChange(field.name, value)}
+                      />
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Box>
+          ))}
+
+          <Divider sx={{ my: 3 }} />
+
+          <Box sx={{ display: 'flex', gap: 2, justifyContent: 'space-between' }}>
+            <Box>
+              {onCancel && (
+                <Button 
+                  variant="outlined" 
+                  onClick={onCancel}
+                  disabled={loading}
+                >
+                  Cancel
+                </Button>
+              )}
+            </Box>
+
+            <Box sx={{ display: 'flex', gap: 2 }}>
+              {fieldGroups.length > 1 && (
+                <>
+                  <Button 
+                    variant="outlined" 
+                    onClick={handleBack}
+                    disabled={loading || activeTab === 0}
+                  >
+                    Back
+                  </Button>
+                  
+                  {activeTab < fieldGroups.length - 1 ? (
+                    <Button 
+                      variant="contained" 
+                      onClick={handleNext}
+                      disabled={loading || !validateCurrentFields()}
+                    >
+                      Next
+                    </Button>
+                  ) : (
+                    <Button 
+                      type="submit"
+                      variant="contained" 
+                      disabled={loading || !isFormValid}
+                    >
+                      {loading ? <CircularProgress size={20} /> : `Create ${config.singularLabel || 'Record'}`}
+                    </Button>
+                  )}
+                </>
+              )}
+              
+              {fieldGroups.length === 1 && (
+                <Button 
+                  type="submit"
+                  variant="contained" 
+                  disabled={loading || !isFormValid}
+                >
+                  {loading ? <CircularProgress size={20} /> : `Create ${config.singularLabel || 'Record'}`}
+                </Button>
+              )}
+            </Box>
+          </Box>
+        </Box>
+      </Paper>
     </Box>
   );
 };
 
-export default SimpleCreateForm;
+export default CreateForm;

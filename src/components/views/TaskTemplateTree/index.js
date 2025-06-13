@@ -282,7 +282,7 @@ const TaskTemplateTree = ({
       const { data: milestonesData, error: milestonesError } = await supabase
         .from('milestone')
         .select('*')
-        .order('sort_order', { ascending: true, nullsFirst: false })
+        .order('order_index', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: true });
 
       if (milestonesError) {
@@ -301,7 +301,7 @@ const TaskTemplateTree = ({
           description,
           status,
           priority,
-          task_type,
+          type,
           estimated_duration,
           milestone_id,
           parent_id,
@@ -403,7 +403,7 @@ const TaskTemplateTree = ({
         project_id: projectId,
         is_template: true,
         status: 'todo',
-        task_type: 'task',
+        type: 'task',
         priority: 'medium'
       };
 

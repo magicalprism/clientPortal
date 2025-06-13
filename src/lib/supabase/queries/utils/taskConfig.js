@@ -38,7 +38,7 @@ export const getTaskStatusOptions = (taskConfig) => {
  * @returns {Array} - Array of task type option objects {value, label}
  */
 export const getTaskTypeOptions = (taskConfig) => {
-  const typeField = taskConfig?.fields?.find(field => field.name === 'task_type');
+  const typeField = taskConfig?.fields?.find(field => field.name === 'type');
   
   return typeField?.options || [
     { value: 'task', label: 'Task' },
@@ -94,7 +94,7 @@ export const getTaskDefaults = (taskConfig, overrides = {}) => {
   // Apply common defaults if not specified in config
   const commonDefaults = {
     status: 'todo',
-    task_type: 'task',
+    type: 'task',
     is_complete: false,
     order_index: 0,
     ...defaults,

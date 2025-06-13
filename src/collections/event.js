@@ -115,8 +115,12 @@ export const event = {
         defaultChecklistName: 'Action Items',
         showProgress: true,
         maxChecklists: 10 // Optional limit
-      }
+      },
+
     },
+
+
+    
     {
       name: 'location',
       label: 'Location',

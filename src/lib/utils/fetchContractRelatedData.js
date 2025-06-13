@@ -7,7 +7,7 @@ export const fetchContractRelatedData = async (record, config) => {
 if (record.selectedMilestones?.length) {
   const { data } = await supabase
     .from('milestone')
-    .select('id, title, description, sort_order') // ✅ added
+    .select('id, title, description, order_index') // ✅ added
     .in('id', record.selectedMilestones);
 
   relatedData.selectedMilestones = data || [];

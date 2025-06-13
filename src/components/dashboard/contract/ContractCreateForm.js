@@ -101,9 +101,9 @@ const fetchRelatedData = useCallback(async () => {
     if (milestonesField?.relation && formData.selectedMilestones?.length > 0) {
       const { data: milestones, error: milestonesError } = await supabase
         .from(milestonesField.relation.table)
-        .select('id, title, description, sort_order') // Added sort_order
+        .select('id, title, description, order_index') // Added order_index
         .in('id', formData.selectedMilestones)
-        .order('sort_order', { ascending: true }); // Added ordering
+        .order('order_index', { ascending: true }); // Added ordering
       
       if (!milestonesError && milestones) {
         relatedData.selectedMilestones = milestones;

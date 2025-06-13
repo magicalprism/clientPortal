@@ -115,7 +115,7 @@ export const CalendarPage = React.forwardRef(function CalendarPage(
           rerenderDelay={10}
           weekends
           eventClassNames={({ event }) => {
-            const type = event.extendedProps.task_type;
+            const type = event.extendedProps.type;
             const isParent = event.extendedProps.has_children;
             const isComplete = event.extendedProps.status === 'complete';
 
