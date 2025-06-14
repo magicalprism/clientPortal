@@ -30,7 +30,7 @@ import {
 
 export default function UrlAnalyzerSection({ 
   onAnalysisComplete,
-    onLayoutAnalyzed,    // Callback for when layout is analyzed
+  onLayoutAnalyzed,    // NEW: Callback for formatted data for comprehensive API
   onError             // Callback for errors
 }) {
   const [url, setUrl] = useState('');
@@ -39,12 +39,11 @@ export default function UrlAnalyzerSection({
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-   const handleAnalyze = async () => {
+  const handleAnalyze = async () => {
     if (!url) {
       const errorMsg = 'Please enter a valid URL';
       setError(errorMsg);
       
-      // ADD THIS: Call error callback
       if (onError) {
         onError(errorMsg);
       }
@@ -71,18 +70,62 @@ export default function UrlAnalyzerSection({
       if (result.success) {
         setAnalysis(result);
         
-        // Keep your existing callback
-        onAnalysisComplete?.(result);
+        // Keep your existing callback for display
+        if (onAnalysisComplete) {
+          onAnalysisComplete(result);
+        }
         
-        // ADD THIS: Call the new callback for the parent
+        // NEW: Format data specifically for comprehensive API
         if (onLayoutAnalyzed) {
-          onLayoutAnalyzed(result);
+          const formattedForComprehensiveAPI = {
+            // Format buttons for comprehensive API
+            buttons: result.data?.components?.buttons?.map(btn => ({
+              backgroundColor: btn.backgroundColor || 'transparent',
+              fontSize: btn.fontSize || '14px',
+              padding: btn.padding,
+              borderRadius: btn.borderRadius
+            })) || [],
+            
+            // Format icons for comprehensive API
+            icons: result.data?.icons ? [{
+              size: result.data.icons.size?.[0] || '16px',
+              strokeWidth: '1.5px',
+              style: result.data.icons.style,
+              library: result.data.icons.library
+            }] : [],
+            
+            // Format colors for comprehensive API
+            colors: {
+              palette: [
+                ...(result.data?.colors?.primary?.map(c => c.hex) || []),
+                ...(result.data?.colors?.neutral?.map(c => c.hex) || [])
+              ],
+              primary: result.data?.colors?.primary?.[0]?.hex,
+              neutral: result.data?.colors?.neutral?.[0]?.hex
+            },
+            
+            // Pass through typography, spacing, etc.
+            typography: result.data?.typography || {},
+            spacing: result.data?.spacing || {},
+            sections: result.data?.sections || [],
+            designSystem: result.data?.designSystem || {},
+            
+            // Include important metadata
+            source: result.source,
+            confidence: result.data?.confidence,
+            url: url.trim(),
+            
+            // Store original data for reference
+            data: result.data
+          };
+          
+          console.log('🎨 Formatted data for comprehensive API:', formattedForComprehensiveAPI);
+          onLayoutAnalyzed(formattedForComprehensiveAPI);
         }
       } else {
         const errorMsg = result.error || 'Analysis failed';
         setError(errorMsg);
         
-        // ADD THIS: Call error callback
         if (onError) {
           onError(errorMsg);
         }
@@ -92,7 +135,6 @@ export default function UrlAnalyzerSection({
       const errorMsg = 'Failed to analyze URL. Please try again.';
       setError(errorMsg);
       
-      // ADD THIS: Call error callback
       if (onError) {
         onError(errorMsg);
       }

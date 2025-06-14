@@ -1,14 +1,14 @@
+// components/design-tool/EnhancedDesignToolPage.jsx
 'use client';
 
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Container, Grid, Typography, Alert, Chip, LinearProgress } from '@mui/material';
-import { CheckCircle, Warning, Info, TrendingUp } from '@mui/icons-material';
+import { Box, Container, Grid, Typography, Alert, Chip, LinearProgress, Button } from '@mui/material';
+import { CheckCircle, Warning, Info, TrendUp, Circle } from '@phosphor-icons/react';
 
 // Import existing components
 import CopyInputSection from '@/components/design-tool/inputs/CopyInputSection';
 import UrlAnalyzerSection from '@/components/design-tool/inputs/UrlAnalyzerSection';
 import BrandTokensSection from '@/components/design-tool/inputs/BrandTokensSection';
-import EnhancedLivePreviewSection from '@/components/design-tool/preview/EnhancedLivePreviewSection';
 import ExportOptionsSection from '@/components/design-tool/preview/ExportOptionsSection';
 
 export default function EnhancedDesignToolPage() {
@@ -17,18 +17,24 @@ export default function EnhancedDesignToolPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Data state
+  // Data collection state - three separate sources
   const [copyContent, setCopyContent] = useState('');
-  const [contentAnalysis, setContentAnalysis] = useState(null);
-  const [inspirationData, setInspirationData] = useState(null);
+  const [contentAnalysis, setContentAnalysis] = useState(null); // From classify-copy API
+  const [inspirationData, setInspirationData] = useState(null); // From extract-layout API (formatted)
+  const [rawInspirationData, setRawInspirationData] = useState(null); // For display purposes
   const [selectedBrand, setSelectedBrand] = useState(null);
-  const [brandTokens, setBrandTokens] = useState(null);
-  const [layoutResults, setLayoutResults] = useState(null);
+  const [brandTokens, setBrandTokens] = useState(null); // From brand selection
+  
+  // Final generation results
+  const [layoutResults, setLayoutResults] = useState(null); // From generate-with-analysis API
   const [qualityMetrics, setQualityMetrics] = useState(null);
 
   // Analysis state
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [designRecommendations, setDesignRecommendations] = useState(null);
+
+  // Check if all data sources are collected
+  const allDataCollected = contentAnalysis && inspirationData && brandTokens;
 
   // Enhanced content analysis with design intelligence
   const analyzeContent = useCallback(async (content) => {
@@ -76,41 +82,66 @@ export default function EnhancedDesignToolPage() {
     }
   }, [brandTokens, selectedBrand]);
 
-  // Enhanced layout generation
+  // UPDATED: Final comprehensive layout generation
   const generateLayouts = useCallback(async () => {
-    if (!contentAnalysis) return;
+    if (!allDataCollected) {
+      setError('Need content analysis, layout inspiration, and brand tokens for generation');
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
       setAnalysisProgress(20);
 
-      const response = await fetch('/api/ai/generate-layout', {
+      console.log('🎨 Calling comprehensive API with all data sources');
+
+      // Use the comprehensive API with all collected data
+      const response = await fetch('/api/ai/generate-with-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contentAnalysis: {
-            ...contentAnalysis,
-            original_content: copyContent,
-            industry_context: selectedBrand?.industry
-          },
-          brandTokens,
-          layoutStyle: 'stripe', // Can be made configurable
-          inspirationData
+          // Data from content analysis step
+          content: copyContent,
+          
+          // Data from URL analyzer step (formatted for comprehensive API)
+          extractedDesignData: inspirationData,
+          
+          // Data from brand selection step
+          brandTokens: brandTokens,
+          
+          // Additional context
+          industryContext: selectedBrand?.industry || 'saas',
+          layoutStyle: 'stripe',
+          options: {
+            useScreenshots: true,
+            includeResponsive: true,
+            generateCSS: true,
+            inspirationUrl: rawInspirationData?.url,
+            contentAnalysis: contentAnalysis // Pass the full content analysis
+          }
         })
       });
 
       setAnalysisProgress(70);
 
       if (!response.ok) {
-        throw new Error('Layout generation failed');
+        throw new Error('Comprehensive layout generation failed');
       }
 
       const result = await response.json();
       
       if (result.success) {
-        setLayoutResults(result);
-        setDesignRecommendations(result.design_system);
+        console.log('✅ Comprehensive layout generated successfully');
+        
+        // The comprehensive API returns HTML, CSS, CSS variables, and quality metrics
+        setLayoutResults({
+          ...result.webpage,
+          quality_score: result.quality_metrics,
+          design_system: result.webpage.generation_metadata
+        });
+        setQualityMetrics(result.quality_metrics);
+        setDesignRecommendations(result.webpage.generation_metadata);
         setAnalysisProgress(100);
         setCurrentStep(2); // Move to preview step
       } else {
@@ -118,12 +149,12 @@ export default function EnhancedDesignToolPage() {
       }
     } catch (err) {
       setError(err.message);
-      console.error('Layout generation error:', err);
+      console.error('Comprehensive generation error:', err);
     } finally {
       setLoading(false);
       setAnalysisProgress(0);
     }
-  }, [contentAnalysis, copyContent, brandTokens, selectedBrand, inspirationData]);
+  }, [copyContent, contentAnalysis, inspirationData, brandTokens, selectedBrand, rawInspirationData, allDataCollected]);
 
   // Handle content input
   const handleContentChange = useCallback((content) => {
@@ -144,9 +175,13 @@ export default function EnhancedDesignToolPage() {
     }
   }, [copyContent, contentAnalysis, analyzeContent]);
 
-  // Handle inspiration data
-  const handleInspirationData = useCallback((data) => {
-    setInspirationData(data);
+  // UPDATED: Handle inspiration data - keep raw for display, format for API
+  const handleInspirationData = useCallback((rawData) => {
+    setRawInspirationData(rawData);
+  }, []);
+
+  const handleLayoutAnalyzed = useCallback((formattedData) => {
+    setInspirationData(formattedData);
   }, []);
 
   // Auto-analyze content when it changes
@@ -181,7 +216,7 @@ export default function EnhancedDesignToolPage() {
             />
             <Typography variant="caption" color="text.secondary" mt={1}>
               {analysisProgress < 30 ? 'Analyzing content...' :
-               analysisProgress < 70 ? 'Generating layouts...' :
+               analysisProgress < 70 ? 'Generating comprehensive design...' :
                'Finalizing design...'}
             </Typography>
           </Box>
@@ -196,9 +231,9 @@ export default function EnhancedDesignToolPage() {
       </Box>
 
       <Grid container spacing={4}>
-        {/* Left Panel - Inputs and Configuration */}
+        {/* Left Panel - Data Collection */}
         <Grid item xs={12} lg={5}>
-          {/* Step 1: Content Input */}
+          {/* Step 1: Content Input & Analysis */}
           <Box mb={4}>
             <CopyInputSection
               value={copyContent}
@@ -216,15 +251,17 @@ export default function EnhancedDesignToolPage() {
             )}
           </Box>
 
-          {/* Step 2: Inspiration Analysis */}
+          {/* Step 2: URL Layout Analysis */}
           <Box mb={4}>
             <UrlAnalyzerSection
               onAnalysisComplete={handleInspirationData}
+              onLayoutAnalyzed={handleLayoutAnalyzed}
+              onError={setError}
               disabled={!contentAnalysis}
             />
           </Box>
 
-          {/* Step 3: Brand Configuration */}
+          {/* Step 3: Brand Token Selection */}
           <Box mb={4}>
             <BrandTokensSection
               onBrandSelect={handleBrandSelection}
@@ -233,8 +270,41 @@ export default function EnhancedDesignToolPage() {
             />
           </Box>
 
-          {/* Generate Button */}
-          {contentAnalysis && brandTokens && (
+          {/* Data Collection Progress */}
+          <Box mb={4}>
+            <Typography variant="subtitle1" gutterBottom fontWeight="medium">
+              Data Collection Progress
+            </Typography>
+            <Box display="flex" justifyContent="center" gap={1} mb={2} flexWrap="wrap">
+              <Chip 
+                label="Content Analysis" 
+                color={contentAnalysis ? "success" : "default"} 
+                size="small" 
+                icon={contentAnalysis ? <CheckCircle size={16} /> : <Circle size={16} />}
+              />
+              <Chip 
+                label="Layout Inspiration" 
+                color={inspirationData ? "success" : "default"} 
+                size="small" 
+                icon={inspirationData ? <CheckCircle size={16} /> : <Circle size={16} />}
+              />
+              <Chip 
+                label="Brand Tokens" 
+                color={brandTokens ? "success" : "default"} 
+                size="small" 
+                icon={brandTokens ? <CheckCircle size={16} /> : <Circle size={16} />}
+              />
+            </Box>
+            
+            {allDataCollected && (
+              <Alert severity="success" sx={{ textAlign: 'center', mb: 2 }}>
+                All data collected! Ready to generate comprehensive design.
+              </Alert>
+            )}
+          </Box>
+
+          {/* Final Generation Button */}
+          {allDataCollected && (
             <Box textAlign="center" mt={3}>
               <button
                 onClick={generateLayouts}
@@ -252,13 +322,13 @@ export default function EnhancedDesignToolPage() {
                   transition: 'all 0.3s ease'
                 }}
               >
-                {loading ? 'Generating...' : 'Generate AI Layouts'}
+                {loading ? 'Generating Comprehensive Design...' : 'Generate AI Design'}
               </button>
             </Box>
           )}
         </Grid>
 
-        {/* Right Panel - Preview and Export */}
+        {/* Right Panel - Final Generated Result */}
         <Grid item xs={12} lg={7}>
           {layoutResults ? (
             <>
@@ -266,16 +336,64 @@ export default function EnhancedDesignToolPage() {
               <DesignQualityDashboard 
                 qualityScore={layoutResults.quality_score}
                 designSystem={layoutResults.design_system}
+                calculations={layoutResults.generation_metadata?.calculations_utilized}
               />
 
-              {/* Live Preview */}
+              {/* Data Sources Used Display */}
+              <DataSourcesUsed 
+                contentAnalysis={contentAnalysis}
+                inspirationData={rawInspirationData}
+                brandTokens={brandTokens}
+                generationMetadata={layoutResults.generation_metadata}
+              />
+
+              {/* Generated HTML/CSS Preview */}
               <Box mb={4}>
-                <EnhancedLivePreviewSection
-                  layouts={layoutResults.layout}
-                  designSystem={layoutResults.design_system}
-                  contentAnalysis={contentAnalysis}
-                />
+                <Typography variant="h6" gutterBottom>
+                  Comprehensive Generated Design
+                </Typography>
+                
+                <Box
+                  sx={{
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    minHeight: '600px'
+                  }}
+                >
+                  <iframe
+                    srcDoc={`
+                      <!DOCTYPE html>
+                      <html>
+                        <head>
+                          <style>
+                            ${layoutResults.css || ''}
+                            body { 
+                              margin: 0; 
+                              padding: 0; 
+                              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif; 
+                            }
+                          </style>
+                        </head>
+                        <body>
+                          ${layoutResults.html || '<div style="padding: 40px; text-align: center;">No content generated</div>'}
+                        </body>
+                      </html>
+                    `}
+                    style={{
+                      width: '100%',
+                      height: '600px',
+                      border: 'none'
+                    }}
+                    title="Comprehensive Generated Design"
+                  />
+                </Box>
               </Box>
+
+              {/* CSS Variables Display */}
+              {layoutResults.css_variables && (
+                <CSSVariablesDisplay variables={layoutResults.css_variables} />
+              )}
 
               {/* Export Options */}
               <ExportOptionsSection
@@ -294,11 +412,16 @@ export default function EnhancedDesignToolPage() {
               border="2px dashed"
               borderColor="grey.300"
             >
-              <Typography variant="h6" color="text.secondary">
-                {!contentAnalysis 
-                  ? 'Add content to see live preview' 
-                  : 'Select brand and generate layouts to preview'}
-              </Typography>
+              <Box textAlign="center">
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  {!allDataCollected 
+                    ? 'Complete all three steps to generate design' 
+                    : 'Ready to generate comprehensive design'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Content Analysis → Layout Inspiration → Brand Tokens → Generate
+                </Typography>
+              </Box>
             </Box>
           )}
         </Grid>
@@ -367,7 +490,7 @@ function ContentAnalysisDisplay({ analysis, qualityMetrics }) {
 }
 
 // Design Quality Dashboard Component
-function DesignQualityDashboard({ qualityScore, designSystem }) {
+function DesignQualityDashboard({ qualityScore, designSystem, calculations }) {
   const getScoreColor = (score) => {
     if (score >= 0.8) return 'success';
     if (score >= 0.6) return 'warning';
@@ -375,25 +498,25 @@ function DesignQualityDashboard({ qualityScore, designSystem }) {
   };
 
   const getScoreIcon = (score) => {
-    if (score >= 0.8) return <CheckCircle color="success" />;
-    if (score >= 0.6) return <Warning color="warning" />;
-    return <Info color="error" />;
+    if (score >= 0.8) return <CheckCircle size={24} style={{ color: '#4caf50' }} />;
+    if (score >= 0.6) return <Warning size={24} style={{ color: '#ff9800' }} />;
+    return <Info size={24} style={{ color: '#f44336' }} />;
   };
 
   return (
     <Box mb={4} p={3} bgcolor="background.paper" borderRadius={2} boxShadow={1}>
       <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-        <TrendingUp color="primary" />
+        <TrendUp size={24} />
         Design Quality Assessment
       </Typography>
       
       <Grid container spacing={3}>
         <Grid item xs={6} md={3}>
           <Box textAlign="center">
-            {getScoreIcon(qualityScore.overall_quality)}
+            {getScoreIcon(qualityScore.overall_score || qualityScore.overall_quality)}
             <Typography variant="h4" fontWeight="bold" 
-              color={`${getScoreColor(qualityScore.overall_quality)}.main`}>
-              {Math.round(qualityScore.overall_quality * 100)}
+              color={`${getScoreColor(qualityScore.overall_score || qualityScore.overall_quality)}.main`}>
+              {Math.round((qualityScore.overall_score || qualityScore.overall_quality) * 100)}
             </Typography>
             <Typography variant="caption" color="text.secondary">
               Overall Score
@@ -416,14 +539,106 @@ function DesignQualityDashboard({ qualityScore, designSystem }) {
         ))}
       </Grid>
 
+      {/* Design System Calculations Used */}
+      {calculations && calculations.length > 0 && (
+        <Box mt={2}>
+          <Typography variant="subtitle2" gutterBottom>Design System Calculations Applied</Typography>
+          <Box display="flex" gap={1} flexWrap="wrap">
+            {calculations.map((calc, index) => (
+              <Chip key={index} label={calc} size="small" variant="outlined" color="primary" />
+            ))}
+          </Box>
+        </Box>
+      )}
+
       {/* Quality Recommendations */}
-      {qualityScore.overall_quality < 0.8 && (
+      {(qualityScore.overall_score || qualityScore.overall_quality) < 0.8 && (
         <Alert severity="info" sx={{ mt: 2 }}>
           <Typography variant="body2">
             <strong>Suggestions:</strong> Consider refining content length, improving section hierarchy, 
             or adjusting brand token application for better design quality.
           </Typography>
         </Alert>
+      )}
+    </Box>
+  );
+}
+
+// Component to show what data sources were used
+function DataSourcesUsed({ contentAnalysis, inspirationData, brandTokens, generationMetadata }) {
+  return (
+    <Box mb={4} p={3} bgcolor="grey.50" borderRadius={2}>
+      <Typography variant="h6" gutterBottom>
+        Data Sources Used in Generation
+      </Typography>
+      
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={4}>
+          <Typography variant="subtitle2" gutterBottom>Content Analysis</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {contentAnalysis?.sections?.length || 0} sections detected
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {Math.round((contentAnalysis?.quality_metrics?.overall_quality || 0) * 100)}% quality score
+          </Typography>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
+          <Typography variant="subtitle2" gutterBottom>Layout Inspiration</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {inspirationData?.url || 'No URL'}
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {inspirationData?.source || 'Unknown source'}
+          </Typography>
+        </Grid>
+        
+        <Grid item xs={12} md={4}>
+          <Typography variant="subtitle2" gutterBottom>Brand Tokens</Typography>
+          <Typography variant="body2" color="text.secondary">
+            {Object.keys(brandTokens || {}).length} tokens applied
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {generationMetadata?.brand_tokens_applied ? 'Applied successfully' : 'Not applied'}
+          </Typography>
+        </Grid>
+      </Grid>
+    </Box>
+  );
+}
+
+// CSS Variables Display Component
+function CSSVariablesDisplay({ variables }) {
+  const [showVariables, setShowVariables] = useState(false);
+
+  return (
+    <Box mb={4}>
+      <Button
+        onClick={() => setShowVariables(!showVariables)}
+        variant="outlined"
+        size="small"
+        sx={{ mb: 2 }}
+      >
+        {showVariables ? 'Hide' : 'Show'} CSS Variables ({Object.keys(variables).length})
+      </Button>
+      
+      {showVariables && (
+        <Box
+          sx={{
+            maxHeight: '300px',
+            overflow: 'auto',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px',
+            backgroundColor: '#f8f9fa',
+            p: 2
+          }}
+        >
+          <pre style={{ margin: 0, fontSize: '12px', lineHeight: '1.4' }}>
+            {Object.entries(variables)
+              .map(([key, value]) => `${key}: ${value};`)
+              .join('\n')}
+          </pre>
+        </Box>
       )}
     </Box>
   );

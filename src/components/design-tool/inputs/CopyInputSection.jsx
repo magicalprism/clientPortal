@@ -23,15 +23,20 @@ import {
 } from '@phosphor-icons/react';
 
 export default function CopyInputSection({
-  value,
+  value = '',
   onChange,
-  classifiedCopy,
+  classifiedCopy = [], // Add default empty array
   onClassifiedChange,
   onCopyAnalyzed,      // Callback for when copy is analyzed
-  onError             // Callback for errors
+  onError,             // Callback for errors
+  analysis,            // Analysis results from parent
+  loading = false      // Loading state from parent
 }) {
   const [isClassifying, setIsClassifying] = useState(false);
   const [uploadError, setUploadError] = useState('');
+
+  // Use classifiedCopy prop or fall back to empty array
+  const sections = Array.isArray(classifiedCopy) ? classifiedCopy : [];
 
   // Handle file upload
   const handleFileUpload = useCallback(async (event) => {
@@ -59,7 +64,9 @@ export default function CopyInputSection({
         return;
       }
 
-      onChange(content);
+      if (onChange) {
+        onChange(content);
+      }
       
       // Clear the file input
       event.target.value = '';
@@ -68,46 +75,37 @@ export default function CopyInputSection({
     }
   }, [onChange]);
 
-  // Classify copy using AI
+  // Classify copy using AI - this creates the initial classification
   const handleClassify = async () => {
     if (!value.trim()) return;
 
     setIsClassifying(true);
     try {
-      const response = await fetch('/api/ai/classify-copy', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: value })
-      });
+      // Use mock classification to trigger the workflow
+      // The comprehensive API call will happen in the parent component
+      const mockClassified = mockClassifyContent(value);
 
-      if (!response.ok) {
-        throw new Error('Classification failed');
+      if (onClassifiedChange) {
+        onClassifiedChange(mockClassified);
       }
-
-      const result = await response.json();
       
-      // Transform the response into our expected format
-      const classified = result.choices?.[0]?.message?.content 
-        ? JSON.parse(result.choices[0].message.content)
-        : mockClassifyContent(value);
-
-      onClassifiedChange(classified);
-      
-      // ADD THIS: Call the new callback for the parent
+      // Call the parent callback to trigger the comprehensive API
       if (onCopyAnalyzed) {
-        onCopyAnalyzed(classified);
+        onCopyAnalyzed(mockClassified);
       }
     } catch (error) {
       console.error('Classification error:', error);
       
-      // ADD THIS: Call error callback
+      // Call error callback
       if (onError) {
         onError('Failed to analyze copy: ' + error.message);
       }
       
       // Use mock classification as fallback
       const mockClassified = mockClassifyContent(value);
-      onClassifiedChange(mockClassified);
+      if (onClassifiedChange) {
+        onClassifiedChange(mockClassified);
+      }
       
       if (onCopyAnalyzed) {
         onCopyAnalyzed(mockClassified);
@@ -117,7 +115,7 @@ export default function CopyInputSection({
     }
   };
 
-  // Mock classification for development
+  // Mock classification for development - creates section structure
   const mockClassifyContent = (text) => {
     const sections = [];
     
@@ -144,8 +142,10 @@ export default function CopyInputSection({
 
   // Remove a classified section
   const removeClassifiedSection = (index) => {
-    const updated = classifiedCopy.filter((_, i) => i !== index);
-    onClassifiedChange(updated);
+    const updated = sections.filter((_, i) => i !== index);
+    if (onClassifiedChange) {
+      onClassifiedChange(updated);
+    }
   };
 
   // Section type colors
@@ -205,35 +205,45 @@ export default function CopyInputSection({
         fullWidth
         placeholder="Paste your website copy here... Include headlines, features, testimonials, call-to-actions, etc."
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={(e) => onChange && onChange(e.target.value)}
         sx={{ mb: 2 }}
         variant="outlined"
+        disabled={loading}
       />
 
       {/* Classify Button */}
       <Button
         variant="contained"
-        startIcon={isClassifying ? <CircularProgress size={16} /> : <Sparkle size={16} />}
+        startIcon={isClassifying || loading ? <CircularProgress size={16} /> : <Sparkle size={16} />}
         onClick={handleClassify}
-        disabled={!value.trim() || isClassifying}
+        disabled={!value.trim() || isClassifying || loading}
         fullWidth
         sx={{ mb: 2 }}
       >
-        {isClassifying ? 'Analyzing Content...' : 'Analyze Content with AI'}
+        {isClassifying || loading ? 'Analyzing Content...' : 'Analyze Content with AI'}
       </Button>
 
+      {/* Analysis Results from Parent */}
+      {analysis && (
+        <Alert severity="success" sx={{ mb: 2 }}>
+          <Typography variant="body2">
+            <strong>Analysis Complete:</strong> {analysis.sections?.length || 0} sections detected
+          </Typography>
+        </Alert>
+      )}
+
       {/* Classified Sections */}
-      {classifiedCopy.length > 0 && (
+      {sections.length > 0 && (
         <>
           <Divider sx={{ my: 2 }} />
           <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CheckCircle size={16} weight="fill" color="green" />
-            Content Sections ({classifiedCopy.length})
+            <CheckCircle size={16} weight="fill" style={{ color: 'green' }} />
+            Content Sections ({sections.length})
           </Typography>
           
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {classifiedCopy
-              .sort((a, b) => a.priority - b.priority)
+            {sections
+              .sort((a, b) => (a.priority || 0) - (b.priority || 0))
               .map((section, index) => (
                 <Box
                   key={index}
@@ -247,7 +257,7 @@ export default function CopyInputSection({
                   }}
                 >
                   <Chip
-                    label={section.type}
+                    label={section.type || 'content'}
                     color={getSectionColor(section.type)}
                     size="small"
                   />
@@ -260,7 +270,7 @@ export default function CopyInputSection({
                       whiteSpace: 'nowrap'
                     }}
                   >
-                    {section.content.substring(0, 50)}...
+                    {(section.content || '').substring(0, 50)}...
                   </Typography>
                   <Tooltip title="Remove section">
                     <IconButton

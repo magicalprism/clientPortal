@@ -14,13 +14,13 @@ import {
   Alert
 } from '@mui/material';
 import { 
-  Smartphone, 
-  Tablet, 
-  Computer, 
+  DeviceMobile, 
+  DeviceTablet, 
+  Desktop, 
   Palette, 
-  Speed, 
-  Visibility 
-} from '@mui/icons-material';
+  Gauge, 
+  Eye 
+} from '@phosphor-icons/react';
 
 export default function EnhancedLivePreviewSection({ 
   layouts, 
@@ -118,21 +118,21 @@ export default function EnhancedLivePreviewSection({
               onClick={() => setPreviewMode('mobile')}
               size="small"
             >
-              <Smartphone />
+              <DeviceMobile size={20} />
             </IconButton>
             <IconButton
               color={previewMode === 'tablet' ? 'primary' : 'default'}
               onClick={() => setPreviewMode('tablet')}
               size="small"
             >
-              <Tablet />
+              <DeviceTablet size={20} />
             </IconButton>
             <IconButton
               color={previewMode === 'desktop' ? 'primary' : 'default'}
               onClick={() => setPreviewMode('desktop')}
               size="small"
             >
-              <Computer />
+              <Desktop size={20} />
             </IconButton>
           </Box>
 
@@ -172,7 +172,7 @@ export default function EnhancedLivePreviewSection({
                 label={`${indicator.label} (${indicator.score}%)`}
                 color={indicator.type}
                 size="small"
-                icon={indicator.type === 'success' ? <Speed /> : <Visibility />}
+                icon={indicator.type === 'success' ? <Gauge size={16} /> : <Eye size={16} />}
               />
             ))}
           </Box>
@@ -396,7 +396,7 @@ function DesignSpecsPanel({ designSystem, layout, variation }) {
   return (
     <Box mt={3} p={3} bgcolor="grey.50" borderRadius={2}>
       <Typography variant="h6" gutterBottom display="flex" alignItems="center" gap={1}>
-        <Palette color="primary" />
+        <Palette size={24} />
         Design Specifications
       </Typography>
 

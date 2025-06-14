@@ -19,6 +19,19 @@ export const dashboardConfig = {
 			],
 		},
 		{
+			key: "tools",
+			title: "Tools",
+			items: [
+				{
+					key: "design",
+					title: "Design Generator",
+					href: "/design-tool",
+					icon: "gear",
+			
+				},
+			],
+			},
+		{
 			key: "general",
 			title: "General",
 			items: [
