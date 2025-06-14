@@ -23,14 +23,14 @@ import {
   LAYOUT_PROPORTIONS, 
   GRID_SYSTEMS,
   calculateLayoutProportions 
-} from './layout-geometry.js';
+} from './measurements/layout-geometry.js';
 
 import { 
   calculateContrastRatio, 
   COLOR_HARMONY, 
   COLOR_DISTRIBUTION,
   validateColorAccessibility 
-} from './color-science.js';
+} from './measurements/color-science.js';
 
 // Content Analysis Systems
 import { 
@@ -38,7 +38,7 @@ import {
   DENSITY_THRESHOLDS,
   calculateContentDensity,
   analyzeReadingComplexity 
-} from './content-density.js';
+} from './content-analysis/content-density.js';
 
 import { 
   CONTENT_COMPLEXITY_ANALYSIS,
