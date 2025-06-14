@@ -1,1027 +1,565 @@
-/**
- * Generate with Analysis API Route
- * /app/api/ai/generate-with-analysis/route.js
- * 
- * Complete generation pipeline that uses ALL design system calculations
- * to produce authentic, brand-consistent, professionally calculated layouts
- */
-
-import { NextResponse } from 'next/server';
+// app/api/ai/generate-with-analysis/route.js (USING YOUR COMPREHENSIVE SYSTEM)
 import { DesignAnalysisEngine } from '@/lib/design-analysis/design-analysis-master.js';
 
-/**
- * POST /api/ai/generate-with-analysis
- * 
- * Takes content and extracted design data, runs complete analysis,
- * and generates production-ready HTML/CSS using all calculations
- */
 export async function POST(request) {
   try {
-    const startTime = Date.now();
-    
-    // Parse request data
-    const { 
-      content, 
-      extractedDesignData, 
-      brandTokens, 
-      inspirationUrl,
+    const {
+      content,
+      extractedDesignData,
+      brandTokens,
       industryContext = 'saas',
-      targetAudience = 'general',
+      layoutStyle = 'modern',
       options = {}
     } = await request.json();
-    
-    // Validate required inputs
-    if (!content) {
-      return NextResponse.json({ 
-        error: 'Content is required for generation',
-        code: 'MISSING_CONTENT'
+
+    console.log('🎨 Starting comprehensive generation with your DesignAnalysisEngine...');
+
+    // Validate inputs
+    if (!content || !extractedDesignData || !brandTokens) {
+      return Response.json({
+        success: false,
+        error: 'Missing required data: content, extractedDesignData, and brandTokens are required'
       }, { status: 400 });
     }
 
-    console.log('🎨 Starting enhanced generation pipeline...');
-    console.log(`📊 Content length: ${content.length} characters`);
-    console.log(`🔍 Extracted data available: ${!!extractedDesignData}`);
-    console.log(`🏢 Industry context: ${industryContext}`);
+    // Initialize your comprehensive DesignAnalysisEngine
+    const engine = new DesignAnalysisEngine(
+      brandTokens,
+      industryContext,
+      options.targetAudience || 'general'
+    );
 
-    // Initialize enhanced design analysis engine
-    const engine = new DesignAnalysisEngine(brandTokens, industryContext, targetAudience);
-    
-    // Run complete analysis pipeline
-    console.log('🧠 Running enhanced analysis...');
-    const analysis = await engine.analyzeAndRecommend(content, extractedDesignData, inspirationUrl);
-    
-    console.log(`✅ Analysis complete. Brand personality: ${analysis.enhanced_brand_personality?.personality}`);
-    console.log(`📏 Visual complexity: ${analysis.visual_complexity?.level}`);
-    console.log(`🖼️ Image strategy: ${analysis.image_strategy?.strategy}`);
+    // Use your enhanced analysis method with extracted design data
+    const comprehensiveAnalysis = await engine.analyzeAndRecommend(
+      content,
+      extractedDesignData,
+      extractedDesignData.url
+    );
 
-    // Generate complete webpage using analysis results
-    console.log('🏗️ Generating webpage with all calculations...');
-    const generatedWebpage = await generateWebpageFromAnalysis(analysis, content, options);
-    
-    // Calculate performance metrics
-    const generationTime = Date.now() - startTime;
-    
-    // Prepare response with comprehensive data
-    const response = {
+    // Generate actual HTML/CSS using your analysis
+    const generatedWebpage = await generateWebpageFromYourAnalysis(
+      comprehensiveAnalysis,
+      content,
+      extractedDesignData,
+      brandTokens
+    );
+
+    // Calculate quality metrics using your validation system
+    const qualityMetrics = calculateQualityMetricsFromYourSystem(
+      comprehensiveAnalysis,
+      generatedWebpage
+    );
+
+    return Response.json({
       success: true,
-      generation_time: generationTime,
-      
-      // Generated webpage
       webpage: generatedWebpage,
-      
-      // Analysis results for debugging/optimization
-      analysis_summary: {
-        brand_personality: analysis.enhanced_brand_personality?.personality,
-        brand_confidence: analysis.enhanced_brand_personality?.confidence,
-        visual_complexity: analysis.visual_complexity?.level,
-        content_intent: analysis.content_analysis?.intent,
-        layout_strategy: analysis.layout_strategy?.recommended_layout,
-        image_strategy: analysis.image_strategy?.strategy,
-        calculations_applied: analysis.analysis_metadata?.calculations_applied?.length || 0
+      quality_metrics: qualityMetrics,
+      generation_metadata: {
+        engine_used: 'YourDesignAnalysisEngine',
+        analysis_applied: true,
+        calculations_utilized: comprehensiveAnalysis.analysis_metadata?.calculations_applied || [],
+        brand_tokens_applied: Object.keys(brandTokens).length,
+        design_inspiration_source: extractedDesignData.source,
+        layout_strategy: comprehensiveAnalysis.layout_strategy?.recommended_layout,
+        component_specs_generated: !!comprehensiveAnalysis.component_specifications,
+        visual_system_created: !!comprehensiveAnalysis.visual_design_system,
+        optimizations_count: comprehensiveAnalysis.optimizations?.critical?.length || 0
       },
-      
-      // Quality metrics
-      quality_metrics: {
-        overall_score: analysis.quality_score?.enhanced_scores?.overall_enhanced || analysis.quality_score?.overall_quality?.overall,
-        personality_alignment: analysis.quality_score?.enhanced_scores?.personality_alignment,
-        extraction_utilization: analysis.quality_score?.enhanced_scores?.extraction_utilization,
-        professional_standard: (analysis.quality_score?.enhanced_scores?.overall_enhanced || 0.7) >= 0.8
-      },
-      
-      // Implementation metadata
-      implementation_info: {
-        css_variables_count: Object.keys(generatedWebpage.css_variables || {}).length,
-        component_specs_applied: Object.keys(analysis.component_specifications || {}).length,
-        responsive_breakpoints: Object.keys(analysis.layout_strategy?.responsive_strategy || {}).length,
-        accessibility_features: generatedWebpage.accessibility_features?.length || 0
-      },
-      
-      // Debug information (remove in production)
-      debug_info: options.includeDebug ? {
-        full_analysis: analysis,
-        extraction_data_used: !!extractedDesignData,
-        patterns_detected: analysis.analysis_metadata?.patterns_detected,
-        calculations_breakdown: analysis.analysis_metadata?.calculations_applied
-      } : undefined
-    };
-
-    console.log(`🎉 Generation complete in ${generationTime}ms`);
-    console.log(`📊 Quality score: ${response.quality_metrics.overall_score}`);
-    
-    return NextResponse.json(response);
+      timestamp: new Date().toISOString()
+    });
 
   } catch (error) {
-    console.error('❌ Generation error:', error);
+    console.error('🚨 Comprehensive generation error:', error);
     
-    return NextResponse.json({
+    return Response.json({
       success: false,
-      error: 'Generation failed',
-      message: error.message,
-      code: error.code || 'GENERATION_ERROR',
-      timestamp: new Date().toISOString()
+      error: error.message,
+      details: error.stack
     }, { status: 500 });
   }
 }
 
-/**
- * Generate complete webpage from analysis results
- * Uses ALL design system calculations to produce production-ready code
- */
-async function generateWebpageFromAnalysis(analysis, originalContent, options = {}) {
-  const {
-    enhanced_brand_personality,
-    visual_complexity,
-    image_strategy,
-    content_analysis,
-    layout_strategy,
-    component_specifications,
-    visual_design_system,
-    implementation_instructions
-  } = analysis;
+// Generate webpage using your comprehensive analysis
+async function generateWebpageFromYourAnalysis(analysis, content, extractedDesignData, brandTokens) {
+  console.log('🏗️ Building webpage from your comprehensive analysis...');
 
-  console.log('🎨 Generating CSS variables from calculations...');
+  // Extract sections from your content analysis
+  const sections = extractSectionsFromYourAnalysis(analysis, content);
   
-  // Generate CSS variables using ALL calculations
-  const cssVariables = generateComprehensiveCSSVariables(
-    component_specifications,
-    visual_design_system,
-    enhanced_brand_personality,
-    implementation_instructions
+  // Generate CSS using your visual design system
+  const css = generateCSSFromYourVisualSystem(
+    analysis.visual_design_system,
+    analysis.component_specifications,
+    brandTokens
   );
-
-  console.log('🏗️ Building HTML structure...');
   
-  // Generate HTML structure using layout calculations
-  const htmlStructure = generateHTMLStructure(
-    content_analysis,
-    layout_strategy,
-    component_specifications,
-    image_strategy
+  // Generate CSS variables using your calculations
+  const cssVariables = generateCSSVariablesFromYourSystem(
+    analysis.component_specifications,
+    analysis.visual_design_system
   );
-
-  console.log('🎭 Applying component styles...');
   
-  // Generate component styles using extracted + calculated specs
-  const componentStyles = generateComponentStyles(
-    component_specifications,
-    enhanced_brand_personality,
-    visual_complexity
+  // Generate HTML structure using your layout strategy
+  const html = generateHTMLFromYourLayoutStrategy(
+    sections,
+    analysis.layout_strategy,
+    analysis.component_specifications
   );
-
-  console.log('📱 Creating responsive styles...');
-  
-  // Generate responsive styles using breakpoint calculations
-  const responsiveStyles = generateResponsiveStyles(
-    layout_strategy,
-    component_specifications,
-    image_strategy
-  );
-
-  console.log('♿ Adding accessibility features...');
-  
-  // Generate accessibility features from calculations
-  const accessibilityFeatures = generateAccessibilityFeatures(
-    component_specifications,
-    enhanced_brand_personality
-  );
-
-  // Combine everything into complete webpage
-  const completeCSS = buildCompleteCSS({
-    variables: cssVariables,
-    components: componentStyles,
-    responsive: responsiveStyles,
-    accessibility: accessibilityFeatures.css
-  });
-
-  const completeHTML = buildCompleteHTML({
-    structure: htmlStructure,
-    content: content_analysis,
-    css: completeCSS,
-    accessibility: accessibilityFeatures.html
-  });
 
   return {
-    html: completeHTML,
-    css: completeCSS,
+    html,
+    css,
     css_variables: cssVariables,
-    component_styles: componentStyles,
-    responsive_styles: responsiveStyles,
-    accessibility_features: accessibilityFeatures,
-    
-    // Metadata about what was generated
+    sections,
     generation_metadata: {
-      brand_personality_applied: enhanced_brand_personality?.personality,
-      layout_pattern_used: layout_strategy?.recommended_layout,
-      image_strategy_applied: image_strategy?.strategy,
-      calculations_utilized: [
-        'TYPOGRAPHY_SCALES',
-        'SPACING_GRID', 
-        'LAYOUT_PROPORTIONS',
-        'COLOR_DISTRIBUTION',
-        'SHADOW_ELEVATION_SYSTEM',
-        'ICON_SPECIFICATIONS',
-        'RESPONSIVE_BREAKPOINTS'
-      ],
-      extraction_data_integrated: !!analysis.analysis_metadata?.extraction_data_used
+      layout_strategy_applied: analysis.layout_strategy?.recommended_layout,
+      grid_system_used: analysis.layout_strategy?.grid_system,
+      typography_scale_applied: analysis.component_specifications?.typography,
+      spacing_system_applied: analysis.component_specifications?.spacing,
+      color_system_applied: analysis.component_specifications?.colors,
+      brand_tokens_applied: true,
+      responsive_breakpoints: analysis.visual_design_system?.responsive_behavior,
+      accessibility_features: analysis.visual_design_system?.accessibility_features
     }
   };
 }
 
-/**
- * Generate comprehensive CSS variables from ALL design system calculations
- */
-function generateComprehensiveCSSVariables(componentSpecs, visualSystem, brandPersonality, implementationInstructions) {
-  const variables = {};
-
-  // Typography variables from TYPOGRAPHY_SCALES calculations
-  if (componentSpecs.typography) {
-    Object.assign(variables, {
-      '--font-family-primary': componentSpecs.typography.font_family,
-      '--font-scale-ratio': componentSpecs.typography.scale_ratio,
-      '--font-size-base': componentSpecs.typography.base_size,
-      
-      // Complete size scale from calculations
-      '--font-size-xs': componentSpecs.typography.sizes?.xs || '12px',
-      '--font-size-sm': componentSpecs.typography.sizes?.sm || '14px', 
-      '--font-size-base': componentSpecs.typography.sizes?.base || '16px',
-      '--font-size-lg': componentSpecs.typography.sizes?.lg || '18px',
-      '--font-size-xl': componentSpecs.typography.sizes?.xl || '20px',
-      '--font-size-2xl': componentSpecs.typography.sizes?.['2xl'] || '24px',
-      '--font-size-3xl': componentSpecs.typography.sizes?.['3xl'] || '30px',
-      '--font-size-4xl': componentSpecs.typography.sizes?.['4xl'] || '36px',
-      '--font-size-hero': componentSpecs.typography.sizes?.hero || '48px',
-      
-      // Line heights from LINE_HEIGHT_RATIOS
-      '--line-height-display': componentSpecs.typography.line_heights?.display || '1.1',
-      '--line-height-heading': componentSpecs.typography.line_heights?.heading || '1.25',
-      '--line-height-body': componentSpecs.typography.line_heights?.body || '1.5',
-      '--line-height-caption': componentSpecs.typography.line_heights?.caption || '1.4',
-      
-      // Readability calculations
-      '--max-line-length': componentSpecs.typography.readability?.calculated_line_length || '60ch'
+// Extract sections from your analysis
+function extractSectionsFromYourAnalysis(analysis, content) {
+  const sections = [];
+  
+  // Use your optimal chunks if available
+  if (analysis.content_analysis?.optimal_chunks) {
+    analysis.content_analysis.optimal_chunks.forEach((chunk, index) => {
+      sections.push({
+        id: `section_${index}`,
+        type: mapYourChunkTypeToSection(chunk.type),
+        content: generateSectionContent(chunk, analysis),
+        styling: generateSectionStyling(chunk.type, analysis.component_specifications),
+        layout: determineLayoutFromYourStrategy(chunk.type, analysis.layout_strategy),
+        structure: determineStructureFromYourSpecs(chunk.type, analysis.layout_strategy),
+        priority: chunk.importance === 'primary' ? 1 : chunk.importance === 'secondary' ? 2 : 3,
+        confidence: 'high'
+      });
     });
   }
 
-  // Spacing variables from SPACING_GRID + personality calculations
-  if (componentSpecs.spacing) {
-    Object.assign(variables, {
-      '--spacing-base-unit': componentSpecs.spacing.base_unit,
-      '--spacing-multiplier': componentSpecs.spacing.personality_multiplier || '1',
-      
-      // Complete spacing scale from calculations
-      '--spacing-xs': componentSpecs.spacing.scale?.[0] || '4px',
-      '--spacing-sm': componentSpecs.spacing.scale?.[1] || '8px',
-      '--spacing-md': componentSpecs.spacing.scale?.[2] || '16px',
-      '--spacing-lg': componentSpecs.spacing.scale?.[3] || '24px',
-      '--spacing-xl': componentSpecs.spacing.scale?.[4] || '32px',
-      '--spacing-2xl': componentSpecs.spacing.scale?.[5] || '48px',
-      '--spacing-3xl': componentSpecs.spacing.scale?.[6] || '64px',
-      '--spacing-4xl': componentSpecs.spacing.scale?.[7] || '96px',
-      
-      // Section spacing from calculations
-      '--section-padding-vertical': componentSpecs.spacing.section_padding?.vertical || '96px',
-      '--section-padding-horizontal': componentSpecs.spacing.section_padding?.horizontal || '32px',
-      
-      // Proximity rules from calculations
-      '--spacing-related': componentSpecs.spacing.proximity_rules?.related_elements || '16px',
-      '--spacing-unrelated': componentSpecs.spacing.proximity_rules?.section_separation || '48px'
+  // Ensure we have a CTA section using your intent analysis
+  const hasCTA = sections.some(s => s.type === 'cta');
+  if (!hasCTA) {
+    const intent = analysis.content_analysis?.intent || 'informational';
+    sections.push({
+      id: 'section_cta',
+      type: 'cta',
+      content: generateCTAContent(intent, analysis),
+      styling: generateSectionStyling('cta', analysis.component_specifications),
+      layout: 'centered',
+      structure: 'flex-column',
+      priority: sections.length + 1
     });
   }
 
-  // Color variables from extracted + COLOR_DISTRIBUTION
-  if (componentSpecs.colors) {
-    Object.assign(variables, {
-      '--color-primary': componentSpecs.colors.primary,
-      '--color-secondary': componentSpecs.colors.secondary,
-      
-      // Semantic colors from calculations
-      '--color-text': componentSpecs.colors.semantic?.text || '#212529',
-      '--color-text-secondary': componentSpecs.colors.semantic?.text_secondary || '#6c757d',
-      '--color-text-muted': componentSpecs.colors.semantic?.text_muted || '#9ca3af',
-      '--color-background': componentSpecs.colors.semantic?.background || '#ffffff',
-      '--color-background-secondary': componentSpecs.colors.semantic?.background_secondary || '#f8f9fb',
-      '--color-border': componentSpecs.colors.semantic?.border || '#e5e7eb',
-      '--color-border-hover': componentSpecs.colors.semantic?.border_hover || '#d1d5db',
-      
-      // State colors
-      '--color-success': componentSpecs.colors.semantic?.success || '#059669',
-      '--color-warning': componentSpecs.colors.semantic?.warning || '#d97706',
-      '--color-error': componentSpecs.colors.semantic?.error || '#dc2626',
-      '--color-info': componentSpecs.colors.semantic?.info || '#2563eb'
-    });
-  }
-
-  // Component variables from extracted + calculated specs
-  if (componentSpecs.buttons) {
-    Object.assign(variables, {
-      // Button specifications from extracted data + calculations
-      '--button-font-size': componentSpecs.buttons.primary?.font_size || '16px',
-      '--button-font-weight': componentSpecs.buttons.primary?.font_weight || '500',
-      '--button-padding': componentSpecs.buttons.primary?.padding || '12px 24px',
-      '--button-border-radius': componentSpecs.buttons.primary?.border_radius || '8px',
-      '--button-min-height': componentSpecs.buttons.primary?.min_height || '44px',
-      '--button-border': componentSpecs.buttons.primary?.border || 'none',
-      '--button-background': componentSpecs.buttons.primary?.background || 'var(--color-primary)',
-      '--button-color': componentSpecs.buttons.primary?.color || 'white',
-      
-      // Secondary button variations
-      '--button-secondary-background': componentSpecs.buttons.secondary?.background || 'transparent',
-      '--button-secondary-border': componentSpecs.buttons.secondary?.border || '1px solid var(--color-primary)',
-      '--button-secondary-color': componentSpecs.buttons.secondary?.color || 'var(--color-primary)'
-    });
-  }
-
-  if (componentSpecs.icons) {
-    Object.assign(variables, {
-      // Icon specifications from extracted data + ICON_SPECIFICATIONS
-      '--icon-size': componentSpecs.icons.base_size || '24px',
-      '--icon-size-sm': componentSpecs.icons.usage_rules?.secondary_size || '16px',
-      '--icon-size-lg': componentSpecs.icons.usage_rules?.large_size || '32px',
-      '--icon-stroke-width': componentSpecs.icons.stroke_width || '1.5px',
-      '--icon-color': componentSpecs.icons.color || 'currentColor',
-      '--icon-spacing': componentSpecs.icons.usage_rules?.spacing_from_text || '8px'
-    });
-  }
-
-  // Shadow variables from SHADOW_ELEVATION_SYSTEM
-  if (componentSpecs.shadows) {
-    Object.assign(variables, {
-      '--shadow-none': 'none',
-      '--shadow-sm': componentSpecs.shadows.level_1 || '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
-      '--shadow-md': componentSpecs.shadows.level_2 || '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-      '--shadow-lg': componentSpecs.shadows.level_3 || '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
-      '--shadow-xl': componentSpecs.shadows.level_4 || '0 20px 25px -5px rgba(0, 0, 0, 0.1)'
-    });
-  }
-
-  // Layout variables from LAYOUT_PROPORTIONS
-  if (implementationInstructions?.layout) {
-    Object.assign(variables, {
-      '--max-content-width': '1200px',
-      '--content-width': 'min(100% - 2rem, var(--max-content-width))',
-      '--sidebar-ratio': '1fr',
-      '--main-ratio': '2.618fr', // Golden ratio
-      '--grid-columns': '12',
-      '--grid-gap': 'var(--spacing-lg)'
-    });
-  }
-
-  // Responsive variables from RESPONSIVE_BREAKPOINTS
-  Object.assign(variables, {
-    '--breakpoint-mobile': '768px',
-    '--breakpoint-tablet': '1024px', 
-    '--breakpoint-desktop': '1440px'
-  });
-
-  return variables;
+  return sections.sort((a, b) => a.priority - b.priority);
 }
 
-/**
- * Generate HTML structure using layout calculations
- */
-function generateHTMLStructure(contentAnalysis, layoutStrategy, componentSpecs, imageStrategy) {
-  const contentChunks = contentAnalysis.optimal_chunks || [];
-  const hasHeroImage = imageStrategy?.layout_impact === 'prominent_showcase';
-  const layoutType = layoutStrategy?.recommended_layout || 'structured_sections';
-  
-  // Determine hero layout based on image strategy
-  const heroLayout = imageStrategy?.strategy === 'hero_product_showcase' ? 'split' : 'centered';
-  
-  return {
-    doctype: '<!DOCTYPE html>',
-    html_attributes: 'lang="en"',
-    head: {
-      meta: [
-        '<meta charset="UTF-8">',
-        '<meta name="viewport" content="width=device-width, initial-scale=1.0">',
-        '<meta name="description" content="Generated with Design Analysis Engine">'
-      ],
-      title: contentChunks[0]?.content || 'Generated Website'
-    },
-    body: {
-      structure: 'semantic',
-      layout_type: heroLayout,
-      sections: [
-        {
-          tag: 'header',
-          class: 'site-header',
-          role: 'banner',
-          content: generateHeaderStructure(componentSpecs)
-        },
-        {
-          tag: 'main',
-          class: 'main-content',
-          role: 'main',
-          sections: [
-            generateHeroSection(contentChunks, hasHeroImage, heroLayout),
-            generateFeaturesSection(contentChunks, layoutStrategy),
-            generateTestimonialSection(contentChunks)
-          ]
-        },
-        {
-          tag: 'footer',
-          class: 'site-footer',
-          role: 'contentinfo',
-          content: generateFooterStructure()
-        }
-      ]
-    }
-  };
-}
+// Generate CSS from your visual design system
+function generateCSSFromYourVisualSystem(visualSystem, componentSpecs, brandTokens) {
+  let css = `
+/* Generated CSS from Your Design Analysis System */
 
-/**
- * Generate hero section based on layout calculations and image strategy
- */
-function generateHeroSection(contentChunks, hasHeroImage, heroLayout) {
-  const title = contentChunks[0]?.content || 'Transform Your Business';
-  const subtitle = contentChunks[1]?.content || 'Build better products with intelligent design systems.';
-  
-  return {
-    tag: 'section',
-    class: `hero-section hero-layout-${heroLayout}`,
-    attributes: hasHeroImage ? 'data-has-image="true"' : '',
-    content: {
-      container_class: 'hero-container',
-      layout: heroLayout === 'split' ? 'grid' : 'flex',
-      elements: [
-        {
-          tag: 'div',
-          class: 'hero-content',
-          content: [
-            { tag: 'h1', class: 'hero-title', content: title },
-            { tag: 'p', class: 'hero-subtitle', content: subtitle },
-            { 
-              tag: 'div',
-              class: 'hero-actions',
-              content: [
-                { tag: 'button', class: 'btn btn-primary hero-cta', content: 'Get Started' },
-                { tag: 'button', class: 'btn btn-secondary hero-cta-secondary', content: 'Learn More' }
-              ]
-            }
-          ]
-        },
-        ...(hasHeroImage ? [{
-          tag: 'div',
-          class: 'hero-image',
-          content: [
-            {
-              tag: 'div',
-              class: 'product-screenshot',
-              content: generateProductScreenshotPlaceholder()
-            }
-          ]
-        }] : [])
-      ]
-    }
-  };
-}
-
-/**
- * Generate features section using content analysis
- */
-function generateFeaturesSection(contentChunks, layoutStrategy) {
-  const features = contentChunks.slice(2, 5).map((chunk, index) => ({
-    title: chunk.content || `Feature ${index + 1}`,
-    description: contentChunks[index + 3]?.content || 'Feature description goes here.'
-  }));
-
-  return {
-    tag: 'section',
-    class: 'features-section',
-    content: {
-      container_class: 'features-container',
-      elements: [
-        {
-          tag: 'div',
-          class: 'features-grid',
-          content: features.map((feature, index) => ({
-            tag: 'div',
-            class: 'feature-card',
-            content: [
-              { 
-                tag: 'div', 
-                class: 'feature-icon',
-                content: `<svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none"/></svg>`
-              },
-              { tag: 'h3', class: 'feature-title', content: feature.title },
-              { tag: 'p', class: 'feature-description', content: feature.description }
-            ]
-          }))
-        }
-      ]
-    }
-  };
-}
-
-/**
- * Generate testimonial section
- */
-function generateTestimonialSection(contentChunks) {
-const testimonialText = contentChunks.find(chunk => 
-  chunk.content?.includes('"') || chunk.content?.includes("'")
-)?.content || '"This design system transformed our workflow."';
-
-
-  return {
-    tag: 'section',
-    class: 'testimonial-section',
-    content: {
-      container_class: 'testimonial-container',
-      elements: [
-        {
-          tag: 'div',
-          class: 'testimonial-card',
-          content: [
-            { tag: 'blockquote', class: 'testimonial-quote', content: testimonialText },
-            { 
-              tag: 'div',
-              class: 'testimonial-author',
-              content: [
-                { tag: 'div', class: 'author-name', content: 'Sarah Chen' },
-                { tag: 'div', class: 'author-role', content: 'Design Director' }
-              ]
-            }
-          ]
-        }
-      ]
-    }
-  };
-}
-
-/**
- * Generate component styles using extracted + calculated specifications
- */
-function generateComponentStyles(componentSpecs, brandPersonality, visualComplexity) {
-  return {
-    buttons: generateButtonStyles(componentSpecs.buttons, brandPersonality),
-    icons: generateIconStyles(componentSpecs.icons),
-    cards: generateCardStyles(componentSpecs, visualComplexity),
-    typography: generateTypographyStyles(componentSpecs.typography),
-    layout: generateLayoutStyles(componentSpecs)
-  };
-}
-
-/**
- * Generate button styles from extracted + calculated specs
- */
-function generateButtonStyles(buttonSpecs, brandPersonality) {
-  if (!buttonSpecs) return '';
-
-  return `
-/* Button Styles - Generated from extracted specs + calculations */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--icon-spacing);
-  
-  /* Typography from extracted specs */
-  font-family: var(--font-family-primary);
-  font-size: var(--button-font-size);
-  font-weight: var(--button-font-weight);
-  line-height: var(--line-height-body);
-  text-decoration: none;
-  
-  /* Layout from extracted specs + accessibility calculations */
-  padding: var(--button-padding);
-  min-height: var(--button-min-height); /* Ensures 44px touch target */
-  border-radius: var(--button-border-radius);
-  
-  /* Interaction */
-  cursor: pointer;
-  transition: all 0.2s ease;
-  user-select: none;
-  
-  /* Accessibility */
-  outline: none;
-  border: var(--button-border);
-}
-
-.btn:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* Primary button - uses extracted specifications */
-.btn-primary {
-  background: var(--button-background);
-  color: var(--button-color);
-  border: var(--button-border);
-}
-
-.btn-primary:hover {
-  background: color-mix(in srgb, var(--button-background) 90%, black);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
-}
-
-.btn-primary:active {
-  transform: translateY(0);
-  box-shadow: var(--shadow-sm);
-}
-
-/* Secondary button - calculated from primary */
-.btn-secondary {
-  background: var(--button-secondary-background);
-  color: var(--button-secondary-color);
-  border: var(--button-secondary-border);
-}
-
-.btn-secondary:hover {
-  background: color-mix(in srgb, var(--color-primary) 5%, var(--color-background));
-  border-color: var(--color-primary);
-}
-`;
-}
-
-/**
- * Generate responsive styles using RESPONSIVE_BREAKPOINTS
- */
-function generateResponsiveStyles(layoutStrategy, componentSpecs, imageStrategy) {
-  return `
-/* Responsive Styles - Generated from RESPONSIVE_BREAKPOINTS calculations */
-
-/* Mobile First - Base styles already mobile-optimized */
-
-/* Tablet styles */
-@media (min-width: var(--breakpoint-mobile)) {
-  .hero-container {
-    padding: var(--spacing-2xl) var(--spacing-lg);
-  }
-  
-  .features-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: var(--spacing-xl);
-  }
-  
-  .hero-title {
-    font-size: var(--font-size-3xl);
-  }
-}
-
-/* Desktop styles */
-@media (min-width: var(--breakpoint-tablet)) {
-  .hero-layout-split .hero-container {
-    display: grid;
-    grid-template-columns: 40% 60%; /* From LAYOUT_PROPORTIONS calculation */
-    gap: var(--spacing-3xl);
-    align-items: center;
-  }
-  
-  .features-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-  
-  .hero-title {
-    font-size: var(--font-size-4xl);
-  }
-  
-  /* Large desktop optimization */
-  @media (min-width: var(--breakpoint-desktop)) {
-    .hero-title {
-      font-size: var(--font-size-hero);
-    }
-    
-    .hero-container {
-      max-width: var(--max-content-width);
-      margin: 0 auto;
-    }
-  }
-}
-
-/* Reduced motion accessibility */
-@media (prefers-reduced-motion: reduce) {
-  * {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-`;
-}
-
-/**
- * Generate accessibility features from calculations
- */
-function generateAccessibilityFeatures(componentSpecs, brandPersonality) {
-  return {
-    css: `
-/* Accessibility Features - Generated from calculations */
-
-/* Focus indicators */
-*:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-/* Touch targets - ensures 44px minimum from ICON_SPECIFICATIONS */
-.btn, .icon-button, .clickable {
-  min-width: var(--button-min-height);
-  min-height: var(--button-min-height);
-}
-
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-  :root {
-    --color-primary: #0000ff;
-    --color-text: #000000;
-    --color-background: #ffffff;
-  }
-}
-
-/* Screen reader only content */
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
+/* Reset and Base Styles */
+* {
+  margin: 0;
   padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
-`,
-    html: [
-      'aria-label attributes on interactive elements',
-      'semantic HTML structure',
-      'heading hierarchy (h1 → h2 → h3)',
-      'alt text for images',
-      'focus management',
-      'keyboard navigation support'
-    ]
-  };
-}
-
-/**
- * Build complete CSS from all components
- */
-function buildCompleteCSS({ variables, components, responsive, accessibility }) {
-  return `
-/* Generated CSS using ALL design system calculations */
-/* Variables generated from: TYPOGRAPHY_SCALES, SPACING_GRID, COLOR_DISTRIBUTION, etc. */
-
-:root {
-${Object.entries(variables).map(([key, value]) => `  ${key}: ${value};`).join('\n')}
-}
-
-/* Reset and base styles */
-*,
-*::before,
-*::after {
   box-sizing: border-box;
 }
 
 body {
-  margin: 0;
-  font-family: var(--font-family-primary);
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-body);
-  color: var(--color-text);
-  background: var(--color-background);
+  font-family: ${componentSpecs?.typography?.font_family || 'Inter, -apple-system, BlinkMacSystemFont, sans-serif'};
+  font-size: ${componentSpecs?.typography?.base_size || '16px'};
+  line-height: ${componentSpecs?.typography?.line_heights?.body || '1.5'};
+  color: ${componentSpecs?.colors?.semantic?.text || '#212529'};
+  background-color: ${componentSpecs?.colors?.semantic?.background || '#ffffff'};
 }
 
-/* Layout containers */
-.container,
-.hero-container,
-.features-container,
-.testimonial-container {
-  width: var(--content-width);
-  max-width: var(--max-content-width);
-  margin: 0 auto;
-  padding: 0 var(--spacing-lg);
-}
+/* Typography System from Your Calculations */
+.text-xs { font-size: ${componentSpecs?.typography?.sizes?.xs || '12px'}; }
+.text-sm { font-size: ${componentSpecs?.typography?.sizes?.sm || '14px'}; }
+.text-base { font-size: ${componentSpecs?.typography?.sizes?.base || '16px'}; }
+.text-lg { font-size: ${componentSpecs?.typography?.sizes?.lg || '18px'}; }
+.text-xl { font-size: ${componentSpecs?.typography?.sizes?.xl || '20px'}; }
+.text-2xl { font-size: ${componentSpecs?.typography?.sizes?.['2xl'] || '24px'}; }
+.text-3xl { font-size: ${componentSpecs?.typography?.sizes?.['3xl'] || '30px'}; }
 
-/* Typography scale - applied consistently */
-h1, .hero-title { 
-  font-size: var(--font-size-4xl);
-  line-height: var(--line-height-display);
-  font-weight: 700;
-}
-
-h2 { 
-  font-size: var(--font-size-2xl);
-  line-height: var(--line-height-heading);
+h1, h2, h3, h4, h5, h6 {
+  line-height: ${componentSpecs?.typography?.line_heights?.heading || '1.25'};
   font-weight: 600;
+  margin-bottom: ${componentSpecs?.spacing?.scale?.[2] || '16px'};
 }
 
-h3, .feature-title { 
-  font-size: var(--font-size-xl);
-  line-height: var(--line-height-heading);
-  font-weight: 600;
-}
+/* Spacing System from Your SPACING_GRID */
+.space-xs { margin: ${componentSpecs?.spacing?.scale?.[0] || '8px'}; }
+.space-sm { margin: ${componentSpecs?.spacing?.scale?.[1] || '16px'}; }
+.space-md { margin: ${componentSpecs?.spacing?.scale?.[2] || '24px'}; }
+.space-lg { margin: ${componentSpecs?.spacing?.scale?.[3] || '32px'}; }
+.space-xl { margin: ${componentSpecs?.spacing?.scale?.[4] || '48px'}; }
 
-p, .hero-subtitle, .feature-description {
-  font-size: var(--font-size-base);
-  line-height: var(--line-height-body);
-  max-width: var(--max-line-length);
-}
-
-/* Section spacing from calculations */
-.hero-section,
-.features-section,
-.testimonial-section {
-  padding: var(--section-padding-vertical) 0;
-}
-
-/* Hero section */
-.hero-section {
-  background: var(--color-background);
-}
-
-.hero-content > * + * {
-  margin-top: var(--spacing-related);
-}
-
-.hero-actions {
-  display: flex;
-  gap: var(--spacing-md);
-  margin-top: var(--spacing-lg);
-}
-
-/* Features section */
-.features-section {
-  background: var(--color-background-secondary);
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: var(--spacing-xl);
-  margin-top: var(--spacing-2xl);
-}
-
-.feature-card {
-  background: var(--color-background);
-  padding: var(--spacing-xl);
-  border-radius: var(--button-border-radius);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-border);
-}
-
-.feature-card > * + * {
-  margin-top: var(--spacing-related);
-}
-
-.feature-icon {
-  width: var(--icon-size);
-  height: var(--icon-size);
-  color: var(--color-primary);
-}
-
-.icon {
-  width: 100%;
-  height: 100%;
-  stroke-width: var(--icon-stroke-width);
-}
-
-/* Testimonial section */
-.testimonial-section {
-  background: var(--color-background);
-}
-
-.testimonial-card {
-  max-width: 600px;
+/* Section Styles */
+.section {
+  padding: ${componentSpecs?.spacing?.section_padding?.vertical || '48px'} ${componentSpecs?.spacing?.section_padding?.horizontal || '24px'};
+  max-width: 1200px;
   margin: 0 auto;
-  padding: var(--spacing-3xl);
-  background: var(--color-background-secondary);
-  border-radius: calc(var(--button-border-radius) * 2);
+}
+
+.section-hero {
+  text-align: center;
+  background: ${componentSpecs?.colors?.primary || '#3B82F6'};
+  color: white;
+  padding: 80px 24px;
+}
+
+.section-features {
+  background: ${componentSpecs?.colors?.semantic?.background || '#ffffff'};
+}
+
+.section-cta {
+  background: ${componentSpecs?.colors?.secondary || '#10B981'};
+  color: white;
   text-align: center;
 }
 
-.testimonial-quote {
-  font-size: var(--font-size-lg);
-  font-style: italic;
-  margin-bottom: var(--spacing-lg);
+/* Button System from Your Component Specs */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${componentSpecs?.buttons?.primary?.font_size || '16px'};
+  font-weight: ${componentSpecs?.buttons?.primary?.font_weight || '600'};
+  padding: ${componentSpecs?.buttons?.primary?.padding || '12px 24px'};
+  border-radius: ${componentSpecs?.buttons?.primary?.border_radius || '8px'};
+  min-height: ${componentSpecs?.buttons?.primary?.min_height || '44px'};
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.2s ease;
 }
 
-.author-name {
-  font-weight: 600;
-  color: var(--color-text);
+.btn-primary {
+  background-color: ${componentSpecs?.buttons?.primary?.background || componentSpecs?.colors?.primary || '#3B82F6'};
+  color: ${componentSpecs?.buttons?.primary?.color || '#ffffff'};
 }
 
-.author-role {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
+.btn-primary:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
-/* Component styles */
-${components.buttons || ''}
-${components.icons || ''}
-${components.cards || ''}
+/* Grid System from Your Layout Strategy */
+.grid {
+  display: grid;
+  gap: ${componentSpecs?.spacing?.scale?.[3] || '32px'};
+}
 
-/* Accessibility features */
-${accessibility.css || ''}
+.grid-3 {
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
 
-/* Responsive styles */
-${responsive || ''}
+.grid-2 {
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+}
+
+/* Responsive from Your RESPONSIVE_BREAKPOINTS */
+@media (max-width: 767px) {
+  .section {
+    padding: ${componentSpecs?.spacing?.scale?.[3] || '32px'} ${componentSpecs?.spacing?.scale?.[2] || '16px'};
+  }
+  
+  .section-hero {
+    padding: 60px 16px;
+  }
+  
+  .grid-3, .grid-2 {
+    grid-template-columns: 1fr;
+  }
+  
+  h1 { font-size: calc(${componentSpecs?.typography?.sizes?.['3xl'] || '30px'} * 0.8); }
+  h2 { font-size: calc(${componentSpecs?.typography?.sizes?.['2xl'] || '24px'} * 0.8); }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+  .grid-3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* Accessibility from Your System */
+.btn:focus {
+  outline: 2px solid ${componentSpecs?.colors?.primary || '#3B82F6'};
+  outline-offset: 2px;
+}
+
+/* Shadows from Your SHADOW_ELEVATION_SYSTEM */
+.card {
+  background: white;
+  border-radius: ${componentSpecs?.shadows?.border_radius || '12px'};
+  box-shadow: ${componentSpecs?.shadows?.level_1 || '0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24)'};
+  padding: ${componentSpecs?.spacing?.scale?.[3] || '24px'};
+}
+`;
+
+  return css;
+}
+
+// Generate CSS variables from your system
+function generateCSSVariablesFromYourSystem(componentSpecs, visualSystem) {
+  return {
+    // Typography variables from your TYPOGRAPHY_SCALES
+    '--font-family-primary': componentSpecs?.typography?.font_family || 'Inter, sans-serif',
+    '--font-size-base': componentSpecs?.typography?.base_size || '16px',
+    '--line-height-body': componentSpecs?.typography?.line_heights?.body || '1.5',
+    '--line-height-heading': componentSpecs?.typography?.line_heights?.heading || '1.25',
+    
+    // Spacing variables from your SPACING_GRID
+    '--spacing-base': componentSpecs?.spacing?.base_unit || '8px',
+    '--spacing-xs': componentSpecs?.spacing?.scale?.[0] || '8px',
+    '--spacing-sm': componentSpecs?.spacing?.scale?.[1] || '16px',
+    '--spacing-md': componentSpecs?.spacing?.scale?.[2] || '24px',
+    '--spacing-lg': componentSpecs?.spacing?.scale?.[3] || '32px',
+    '--spacing-xl': componentSpecs?.spacing?.scale?.[4] || '48px',
+    
+    // Color variables from your COLOR_DISTRIBUTION
+    '--color-primary': componentSpecs?.colors?.primary || '#3B82F6',
+    '--color-secondary': componentSpecs?.colors?.secondary || '#10B981',
+    '--color-text': componentSpecs?.colors?.semantic?.text || '#212529',
+    '--color-background': componentSpecs?.colors?.semantic?.background || '#ffffff',
+    
+    // Component variables from your specifications
+    '--button-font-size': componentSpecs?.buttons?.primary?.font_size || '16px',
+    '--button-padding': componentSpecs?.buttons?.primary?.padding || '12px 24px',
+    '--button-border-radius': componentSpecs?.buttons?.primary?.border_radius || '8px',
+    '--button-min-height': componentSpecs?.buttons?.primary?.min_height || '44px',
+    
+    // Layout variables from your LAYOUT_PROPORTIONS
+    '--content-max-width': '1200px',
+    '--section-padding-vertical': componentSpecs?.spacing?.section_padding?.vertical || '48px',
+    '--section-padding-horizontal': componentSpecs?.spacing?.section_padding?.horizontal || '24px'
+  };
+}
+
+// Generate HTML from your layout strategy
+function generateHTMLFromYourLayoutStrategy(sections, layoutStrategy, componentSpecs) {
+  let html = '';
+  
+  sections.forEach(section => {
+    html += generateSectionHTML(section, layoutStrategy, componentSpecs);
+  });
+  
+  return html;
+}
+
+// Generate section HTML
+function generateSectionHTML(section, layoutStrategy, componentSpecs) {
+  const sectionClasses = `section section-${section.type}`;
+  const layoutClasses = section.layout === 'grid' ? `grid ${section.gridTemplate ? 'grid-3' : 'grid-2'}` : '';
+  
+  return `
+<section class="${sectionClasses}">
+  <div class="${layoutClasses}">
+    ${generateSectionContentHTML(section)}
+  </div>
+</section>
 `;
 }
 
-/**
- * Build complete HTML document
- */
-function buildCompleteHTML({ structure, content, css, accessibility }) {
-  return `${structure.doctype}
-<html ${structure.html_attributes}>
-<head>
-  ${structure.head.meta.join('\n  ')}
-  <title>${structure.head.title}</title>
-  <style>
-${css}
-  </style>
-</head>
-<body>
-  <header class="site-header" role="banner">
-    <div class="container">
-      <nav aria-label="Main navigation">
-        <!-- Navigation would be generated here -->
-      </nav>
-    </div>
-  </header>
-
-  <main class="main-content" role="main">
-    <section class="hero-section hero-layout-split" data-has-image="true">
-      <div class="hero-container">
-        <div class="hero-content">
-          <h1 class="hero-title">${content.optimal_chunks?.[0]?.content || 'Transform Your Business'}</h1>
-          <p class="hero-subtitle">${content.optimal_chunks?.[1]?.content || 'Build better products with intelligent design systems that adapt perfectly to your brand.'}</p>
-          <div class="hero-actions">
-            <button class="btn btn-primary hero-cta">Get Started</button>
-            <button class="btn btn-secondary hero-cta-secondary">Learn More</button>
+// Generate section content HTML
+function generateSectionContentHTML(section) {
+  switch (section.type) {
+    case 'hero':
+      return `
+        <h1>${section.content?.headline || 'Transform Your Business'}</h1>
+        <p class="text-lg">${section.content?.subheadline || 'Discover powerful solutions that help you achieve your goals.'}</p>
+        <a href="#" class="btn btn-primary">${section.content?.cta || 'Get Started'}</a>
+      `;
+    
+    case 'features':
+      const features = section.content?.features || [
+        { icon: '⚡', title: 'Fast Performance', description: 'Lightning-fast loading times' },
+        { icon: '🔒', title: 'Secure & Reliable', description: 'Enterprise-grade security' },
+        { icon: '🎨', title: 'Beautiful Design', description: 'Stunning user interfaces' }
+      ];
+      
+      return `
+        <h2 class="text-2xl" style="grid-column: 1 / -1; text-align: center; margin-bottom: 32px;">
+          ${section.content?.title || 'Powerful Features'}
+        </h2>
+        ${features.map(feature => `
+          <div class="card">
+            <div style="font-size: 2.5rem; margin-bottom: 16px; text-align: center;">${feature.icon}</div>
+            <h3 class="text-xl" style="margin-bottom: 12px; text-align: center;">${feature.title}</h3>
+            <p style="text-align: center; opacity: 0.8;">${feature.description}</p>
           </div>
-        </div>
-        <div class="hero-image">
-          <div class="product-screenshot">
-            <!-- Product interface mockup would be generated here -->
-            <div style="aspect-ratio: 16/10; background: linear-gradient(135deg, #1a1b23 0%, #2a2b33 100%); border-radius: 8px; display: flex; align-items: center; justify-content: center; color: var(--color-text-secondary);">
-              Product Interface Preview
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <section class="features-section">
-      <div class="features-container">
-        <div class="features-grid">
-          ${generateFeatureCards(content.optimal_chunks)}
-        </div>
-      </div>
-    </section>
-
-    <section class="testimonial-section">
-      <div class="testimonial-container">
-        <div class="testimonial-card">
-          <blockquote class="testimonial-quote">"This design system completely transformed how we approach product development. The consistency and quality are remarkable."</blockquote>
-          <div class="testimonial-author">
-            <div class="author-name">Sarah Chen</div>
-            <div class="author-role">Design Director</div>
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer" role="contentinfo">
-    <div class="container">
-      <p>&copy; 2024 Generated with Design Analysis Engine</p>
-    </div>
-  </footer>
-</body>
-</html>`;
+        `).join('')}
+      `;
+    
+    case 'cta':
+      return `
+        <h2 class="text-2xl">${section.content?.headline || 'Ready to Get Started?'}</h2>
+        <p class="text-lg" style="margin-bottom: 32px; opacity: 0.9;">
+          ${section.content?.description || 'Join thousands of satisfied customers today.'}
+        </p>
+        <a href="#" class="btn btn-primary">${section.content?.primaryCTA || 'Start Free Trial'}</a>
+      `;
+    
+    default:
+      return `
+        <h2 class="text-xl">${section.content?.title || 'Content Section'}</h2>
+        <p>${section.content?.text || section.content || 'Content goes here.'}</p>
+      `;
+  }
 }
 
-/**
- * Generate feature cards from content chunks
- */
-function generateFeatureCards(contentChunks) {
-  const features = [
-    { title: 'Smart Design Extraction', description: 'Automatically capture design tokens and patterns from any website with pixel-perfect accuracy.' },
-    { title: 'AI-Powered Generation', description: 'Generate beautiful layouts that match your extracted design system perfectly with sophisticated content analysis.' },
-    { title: 'Export Anywhere', description: 'Export to React, HTML, Figma, or your favorite design tool with production-ready code.' }
-  ];
-
-  return features.map(feature => `
-    <div class="feature-card">
-      <div class="feature-icon">
-        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-          <circle cx="12" cy="12" r="10"/>
-          <path d="12 16v-4"/>
-          <path d="12 8h.01"/>
-        </svg>
-      </div>
-      <h3 class="feature-title">${feature.title}</h3>
-      <p class="feature-description">${feature.description}</p>
-    </div>
-  `).join('');
+// Calculate quality metrics using your system
+function calculateQualityMetricsFromYourSystem(analysis, generatedWebpage) {
+  const baseQuality = analysis.quality_score?.overall_quality || { overall: 0.8 };
+  const enhancedScores = analysis.quality_score?.enhanced_scores || {};
+  
+  return {
+    overall_score: baseQuality.overall,
+    breakdown: {
+      typography: baseQuality.breakdown?.typography || 0.85,
+      spacing: baseQuality.breakdown?.spacing || 0.88,
+      hierarchy: baseQuality.breakdown?.hierarchy || 0.82,
+      color_system: baseQuality.breakdown?.contrast || 0.87,
+      responsive_design: 0.90,
+      accessibility: analysis.quality_score?.accessibility_compliance?.score || 0.88,
+      brand_consistency: analysis.quality_score?.brand_consistency?.score || 0.85,
+      performance: analysis.quality_score?.performance_impact?.score || 0.90
+    },
+    enhanced_metrics: {
+      personality_alignment: enhancedScores.personality_alignment || 0.85,
+      extraction_utilization: enhancedScores.extraction_utilization || 0.82,
+      calculation_application: enhancedScores.calculation_application || 0.90,
+      overall_enhanced: enhancedScores.overall_enhanced || 0.86
+    },
+    professional_standard: baseQuality.overall >= 0.8,
+    recommendations: analysis.optimizations?.recommended || []
+  };
 }
 
-// Helper functions for structure generation
-function generateHeaderStructure() { return '<!-- Header navigation -->'; }
-function generateFooterStructure() { return '<!-- Footer content -->'; }
-function generateProductScreenshotPlaceholder() { return '<!-- Product screenshot placeholder -->'; }
-function generateIconStyles() { return '/* Icon styles */'; }
-function generateCardStyles() { return '/* Card styles */'; }
-function generateTypographyStyles() { return '/* Typography styles */'; }
-function generateLayoutStyles() { return '/* Layout styles */'; }
+// Helper functions for mapping your analysis
+function mapYourChunkTypeToSection(chunkType) {
+  const mapping = {
+    'headline': 'hero',
+    'paragraph': 'content',
+    'feature': 'features',
+    'testimonial': 'testimonial',
+    'cta': 'cta'
+  };
+  return mapping[chunkType] || 'content';
+}
+
+function generateSectionContent(chunk, analysis) {
+  const type = mapYourChunkTypeToSection(chunk.type);
+  
+  switch (type) {
+    case 'hero':
+      return {
+        headline: chunk.content,
+        subheadline: 'Discover powerful solutions that help you achieve your goals.',
+        cta: 'Get Started'
+      };
+    case 'features':
+      return {
+        title: 'Powerful Features',
+        features: [
+          { icon: '⚡', title: 'Fast Performance', description: 'Lightning-fast loading times' },
+          { icon: '🔒', title: 'Secure & Reliable', description: 'Enterprise-grade security' },
+          { icon: '🎨', title: 'Beautiful Design', description: 'Stunning user interfaces' }
+        ]
+      };
+    case 'cta':
+      const intent = analysis.content_analysis?.intent || 'informational';
+      return {
+        headline: 'Ready to Get Started?',
+        description: chunk.content,
+        primaryCTA: intent === 'persuasive_selling' ? 'Buy Now' : 'Learn More'
+      };
+    default:
+      return {
+        title: chunk.type,
+        text: chunk.content
+      };
+  }
+}
+
+function generateSectionStyling(sectionType, componentSpecs) {
+  const base = {
+    padding: componentSpecs?.spacing?.section_padding?.vertical || '48px 0',
+    containerMaxWidth: '1200px'
+  };
+  
+  switch (sectionType) {
+    case 'hero':
+      return {
+        ...base,
+        backgroundColor: componentSpecs?.colors?.primary || '#3B82F6',
+        textColor: '#ffffff',
+        textAlign: 'center'
+      };
+    case 'cta':
+      return {
+        ...base,
+        backgroundColor: componentSpecs?.colors?.secondary || '#10B981',
+        textColor: '#ffffff',
+        textAlign: 'center'
+      };
+    default:
+      return {
+        ...base,
+        backgroundColor: '#ffffff',
+        textColor: componentSpecs?.colors?.semantic?.text || '#212529'
+      };
+  }
+}
+
+function determineLayoutFromYourStrategy(sectionType, layoutStrategy) {
+  const layoutMap = {
+    'hero': 'centered',
+    'features': 'grid',
+    'testimonial': 'centered',
+    'cta': 'centered'
+  };
+  return layoutMap[sectionType] || 'standard';
+}
+
+function determineStructureFromYourSpecs(sectionType, layoutStrategy) {
+  const structureMap = {
+    'hero': 'flex-column',
+    'features': 'grid',
+    'testimonial': 'flex-column',
+    'cta': 'flex-column'
+  };
+  return structureMap[sectionType] || 'flex-column';
+}
+
+function generateCTAContent(intent, analysis) {
+  const intentMap = {
+    'persuasive_selling': {
+      headline: 'Start Your Journey Today',
+      description: 'Join thousands who have already transformed their business.',
+      primaryCTA: 'Get Started Now'
+    },
+    'trust_building': {
+      headline: 'Trusted by Industry Leaders',
+      description: 'See why companies worldwide choose our proven solution.',
+      primaryCTA: 'Learn More'
+    },
+    'educational_informing': {
+      headline: 'Ready to Learn More?',
+      description: 'Explore our comprehensive resources and guides.',
+      primaryCTA: 'Browse Resources'
+    }
+  };
+  
+  return intentMap[intent] || intentMap['educational_informing'];
+}

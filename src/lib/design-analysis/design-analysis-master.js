@@ -989,15 +989,3 @@ export class DesignAnalysisEngine {
   getDefaultComponentSpecs() { return { buttons: BUTTON_TYPE_DECISIONS }; }
 }
 
-// Export everything
-export {
-  DesignAnalysisEngine as default,
-  TYPOGRAPHY_SCALES,
-  SPACING_GRID,
-  LAYOUT_PROPORTIONS,
-  COLOR_DISTRIBUTION,
-  SHADOW_ELEVATION_SYSTEM,
-  ICON_SPECIFICATIONS,
-  RESPONSIVE_BREAKPOINTS,
-  QUALITY_THRESHOLDS
-};

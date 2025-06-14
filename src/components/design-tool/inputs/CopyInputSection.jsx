@@ -1,4 +1,4 @@
-// components/design-tool/inputs/CopyInputSection.jsx
+// components/design-tool/inputs/CopyInputSection.jsx (FIXED VERSION)
 'use client';
 
 import { useState, useCallback } from 'react';
@@ -19,7 +19,8 @@ import {
   Upload,
   Sparkle,
   X,
-  CheckCircle
+  CheckCircle,
+  Warning
 } from '@phosphor-icons/react';
 
 export default function CopyInputSection({
@@ -34,6 +35,7 @@ export default function CopyInputSection({
 }) {
   const [isClassifying, setIsClassifying] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [apiError, setApiError] = useState('');
 
   // Use classifiedCopy prop or fall back to empty array
   const sections = Array.isArray(classifiedCopy) ? classifiedCopy : [];
@@ -80,28 +82,63 @@ export default function CopyInputSection({
     if (!value.trim()) return;
 
     setIsClassifying(true);
+    setApiError('');
+    
     try {
-      // Use mock classification to trigger the workflow
-      // The comprehensive API call will happen in the parent component
-      const mockClassified = mockClassifyContent(value);
-
-      if (onClassifiedChange) {
-        onClassifiedChange(mockClassified);
-      }
+      console.log('🎨 Starting content analysis...');
       
-      // Call the parent callback to trigger the comprehensive API
-      if (onCopyAnalyzed) {
-        onCopyAnalyzed(mockClassified);
+      // Call the API with the correct parameter name
+      const response = await fetch('/api/ai/classify-copy', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          content: value.trim(), // Using 'content' as the API now handles both
+          brandTokens: {},
+          industryContext: 'saas'
+        })
+      });
+
+      console.log('🔍 API Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ API Error Response:', errorText);
+        throw new Error(`API Error (${response.status}): ${errorText}`);
+      }
+
+      const result = await response.json();
+      console.log('📊 API Result:', result);
+
+      if (result.success && result.analysis) {
+        // Use the analysis.sections as the classified copy
+        const classifiedSections = result.analysis.sections || [];
+        
+        if (onClassifiedChange) {
+          onClassifiedChange(classifiedSections);
+        }
+        
+        // Call the parent callback to trigger the comprehensive API
+        if (onCopyAnalyzed) {
+          onCopyAnalyzed(classifiedSections);
+        }
+        
+        console.log('✅ Content analysis successful');
+        setApiError('');
+      } else {
+        throw new Error(result.error || 'API returned success=false');
       }
     } catch (error) {
-      console.error('Classification error:', error);
+      console.error('❌ Classification error:', error);
+      const errorMessage = error.message || 'Failed to analyze copy';
+      setApiError(errorMessage);
       
       // Call error callback
       if (onError) {
-        onError('Failed to analyze copy: ' + error.message);
+        onError('Failed to analyze copy: ' + errorMessage);
       }
       
       // Use mock classification as fallback
+      console.log('🔄 Using mock classification as fallback');
       const mockClassified = mockClassifyContent(value);
       if (onClassifiedChange) {
         onClassifiedChange(mockClassified);
@@ -198,6 +235,26 @@ export default function CopyInputSection({
         </Alert>
       )}
 
+      {/* API Error */}
+      {apiError && (
+        <Alert 
+          severity="error" 
+          sx={{ mb: 2 }}
+          action={
+            <Button size="small" onClick={() => setApiError('')}>
+              Dismiss
+            </Button>
+          }
+        >
+          <Typography variant="body2">
+            <strong>API Error:</strong> {apiError}
+          </Typography>
+          <Typography variant="caption" display="block" sx={{ mt: 1, opacity: 0.8 }}>
+            Using fallback mock classification. Check console for details.
+          </Typography>
+        </Alert>
+      )}
+
       {/* Text Input */}
       <TextField
         multiline
@@ -208,7 +265,7 @@ export default function CopyInputSection({
         onChange={(e) => onChange && onChange(e.target.value)}
         sx={{ mb: 2 }}
         variant="outlined"
-        disabled={loading}
+        disabled={loading || isClassifying}
       />
 
       {/* Classify Button */}
@@ -229,6 +286,11 @@ export default function CopyInputSection({
           <Typography variant="body2">
             <strong>Analysis Complete:</strong> {analysis.sections?.length || 0} sections detected
           </Typography>
+          {analysis.quality_metrics && (
+            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
+              Quality Score: {Math.round(analysis.quality_metrics.overall_quality * 100)}%
+            </Typography>
+          )}
         </Alert>
       )}
 
@@ -272,6 +334,15 @@ export default function CopyInputSection({
                   >
                     {(section.content || '').substring(0, 50)}...
                   </Typography>
+                  {section.confidence && (
+                    <Chip
+                      label={section.confidence}
+                      size="small"
+                      variant="outlined"
+                      color={section.confidence === 'high' ? 'success' : 'default'}
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
                   <Tooltip title="Remove section">
                     <IconButton
                       size="small"
@@ -290,6 +361,18 @@ export default function CopyInputSection({
       <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
         💡 Tip: Include different content types (headlines, features, testimonials) for better AI classification
       </Typography>
+      
+      {/* Debug Info (Development Only) */}
+      {process.env.NODE_ENV === 'development' && (
+        <Alert severity="info" sx={{ mt: 2 }}>
+          <Typography variant="caption">
+            <strong>Debug Info:</strong><br />
+            API Status: {apiError ? '❌ Error' : '✅ Ready'}<br />
+            Sections: {sections.length}<br />
+            Analysis: {analysis ? '✅ Available' : '❌ Not available'}
+          </Typography>
+        </Alert>
+      )}
     </Box>
   );
 }
