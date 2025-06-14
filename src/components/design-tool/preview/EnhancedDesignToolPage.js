@@ -8,7 +8,7 @@ import { CheckCircle, Warning, Info, TrendingUp } from '@mui/icons-material';
 import CopyInputSection from '@/components/design-tool/inputs/CopyInputSection';
 import UrlAnalyzerSection from '@/components/design-tool/inputs/UrlAnalyzerSection';
 import BrandTokensSection from '@/components/design-tool/inputs/BrandTokensSection';
-import LivePreviewSection from '@/components/design-tool/preview/LivePreviewSection';
+import EnhancedLivePreviewSection from '@/components/design-tool/preview/EnhancedLivePreviewSection';
 import ExportOptionsSection from '@/components/design-tool/preview/ExportOptionsSection';
 
 export default function EnhancedDesignToolPage() {
@@ -270,7 +270,7 @@ export default function EnhancedDesignToolPage() {
 
               {/* Live Preview */}
               <Box mb={4}>
-                <LivePreviewSection
+                <EnhancedLivePreviewSection
                   layouts={layoutResults.layout}
                   designSystem={layoutResults.design_system}
                   contentAnalysis={contentAnalysis}

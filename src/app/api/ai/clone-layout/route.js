@@ -1,3 +1,4 @@
+import { DesignAnalysisEngine, quickAnalysis } from '@/lib/design-analysis'
 // app/api/ai/clone-layout/route.js
 export async function POST(request) {
   try {

@@ -1,117 +1,194 @@
-// app/api/ai/classify-copy/route.js
+// app/api/ai/classify-copy/route.js (REPLACE EXISTING - QUICK VERSION)
+import { DesignAnalysisEngine, quickAnalysis } from '@/lib/design-analysis'
+
 export async function POST(request) {
   try {
-    const { text } = await request.json();
+    const { text, brandTokens } = await request.json();
 
     if (!text || text.trim().length === 0) {
       return Response.json({ error: 'Text content is required' }, { status: 400 });
     }
 
-    // Check if OpenAI API key is configured
-    if (!process.env.OPENAI_API_KEY) {
-      console.warn('OpenAI API key not configured, using mock classification');
-      const mockClassification = generateMockClassification(text);
+    console.log('🎨 Using DesignAnalysisEngine instead of OpenAI...')
+
+    // TRY: Use sophisticated analysis
+    try {
+      const engine = new DesignAnalysisEngine(brandTokens || { primary: '#007bff' })
+      const analysis = await engine.analyzeContent(text)
+      
+      // Convert to your existing format quickly
+      const sections = convertAnalysisToSections(analysis, text)
+      
       return Response.json({
         choices: [{
           message: {
-            content: JSON.stringify(mockClassification)
+            content: JSON.stringify(sections)
           }
-        }]
+        }],
+        // Extra data for debugging
+        engine_used: 'DesignAnalysisEngine',
+        analysis_summary: {
+          intent: analysis.intent,
+          complexity: analysis.complexity?.complexity_level,
+          recommended_layout: analysis.patterns?.recommended_layout
+        }
+      });
+      
+    } catch (engineError) {
+      console.error('DesignAnalysisEngine failed:', engineError)
+      console.log('🔄 Falling back to enhanced mock...')
+      
+      // FALLBACK: Enhanced mock (better than basic mock)
+      const sections = generateEnhancedMockClassification(text)
+      return Response.json({
+        choices: [{
+          message: {
+            content: JSON.stringify(sections)
+          }
+        }],
+        engine_used: 'enhanced_mock',
+        fallback_reason: engineError.message
       });
     }
 
-    // Use real OpenAI API
-    const openaiResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'gpt-4',
-        messages: [{
-          role: 'system',
-          content: `You are a website content analyzer. Classify the provided website copy into logical sections for layout generation.
-
-Return a JSON array with objects containing:
-- type: One of 'hero', 'features', 'testimonial', 'cta', 'about', 'gallery', 'content'  
-- content: The relevant text content for that section (keep original text, max 200 chars)
-- priority: Number 1-10 indicating display order
-
-Guidelines:
-- 'hero' = main headline/value proposition, usually first
-- 'features' = product features, benefits, capabilities  
-- 'testimonial' = customer quotes, reviews, social proof
-- 'cta' = call-to-action, sign up, contact, get started
-- 'about' = company info, mission, story
-- 'gallery' = images, portfolio, showcases
-- 'content' = general information that doesn't fit other categories
-
-Analyze the content and intelligently break it into these sections. Be smart about extracting the right content for each section type.
-
-Return only valid JSON, no other text.`
-        }, {
-          role: 'user',
-          content: text
-        }],
-        temperature: 0.3,
-        max_tokens: 1000
-      })
-    });
-
-    if (!openaiResponse.ok) {
-      const errorText = await openaiResponse.text();
-      console.error('OpenAI API error:', errorText);
-      throw new Error(`OpenAI API error: ${openaiResponse.statusText}`);
-    }
-
-    const result = await openaiResponse.json();
-    
-    // Validate the response
-    let classification;
-    try {
-      const content = result.choices?.[0]?.message?.content;
-      if (!content) {
-        throw new Error('No content in OpenAI response');
-      }
-      
-      classification = JSON.parse(content);
-      
-      // Ensure it's an array
-      if (!Array.isArray(classification)) {
-        throw new Error('OpenAI returned non-array response');
-      }
-      
-    } catch (parseError) {
-      console.error('Failed to parse OpenAI response:', parseError);
-      // Fallback to mock
-      classification = generateMockClassification(text);
-    }
-
-    return Response.json({
-      choices: [{
-        message: {
-          content: JSON.stringify(classification)
-        }
-      }]
-    });
-
   } catch (error) {
-    console.error('Copy classification error:', error);
+    console.error('Classification error:', error);
     
-    // Return mock classification as fallback
+    // FINAL FALLBACK: Your original mock
     const mockClassification = generateMockClassification(text);
     return Response.json({
       choices: [{
         message: {
           content: JSON.stringify(mockClassification)
         }
-      }]
+      }],
+      engine_used: 'basic_mock'
     });
   }
 }
 
-// Generate mock classification for development/fallback
+// Quick conversion from analysis to sections
+function convertAnalysisToSections(analysis, text) {
+  const sections = []
+  
+  // Use analysis chunks if available
+  if (analysis.optimal_chunks && analysis.optimal_chunks.length > 0) {
+    analysis.optimal_chunks.forEach((chunk, index) => {
+      if (chunk.importance === 'primary' || index === 0) {
+        sections.push({
+          type: 'hero',
+          content: chunk.content.substring(0, 200),
+          priority: 1,
+          confidence: 'high'
+        })
+      } else {
+        sections.push({
+          type: 'features',
+          content: chunk.content.substring(0, 200),
+          priority: index + 1,
+          confidence: 'high'
+        })
+      }
+    })
+  } else {
+    // Fallback to first sentence
+    const firstSentence = text.split(/[.!?]+/)[0]?.trim()
+    if (firstSentence) {
+      sections.push({
+        type: 'hero',
+        content: firstSentence.substring(0, 200),
+        priority: 1,
+        confidence: 'medium'
+      })
+    }
+  }
+  
+  // Smart CTA based on intent
+  const ctaText = analysis.intent === 'persuasive_selling' 
+    ? 'Get started today and transform your business'
+    : analysis.intent === 'trust_building'
+    ? 'Learn more about our secure solution'
+    : 'Discover what we can do for you'
+    
+  sections.push({
+    type: 'cta',
+    content: ctaText,
+    priority: sections.length + 1,
+    confidence: 'high',
+    intent_based: true
+  })
+  
+  return sections
+}
+
+// Better mock than original (uses content analysis)
+function generateEnhancedMockClassification(text) {
+  const sections = [];
+  const lowerText = text.toLowerCase();
+  const wordCount = text.split(/\s+/).length;
+  
+  // Smarter hero detection
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 0);
+  if (sentences.length > 0) {
+    sections.push({
+      type: 'hero',
+      content: sentences[0].trim().substring(0, 200),
+      priority: 1,
+      confidence: 'medium'
+    });
+  }
+  
+  // Intent-based section detection
+  let intent = 'informational'
+  if (lowerText.includes('buy') || lowerText.includes('purchase') || lowerText.includes('get started')) {
+    intent = 'persuasive_selling'
+  } else if (lowerText.includes('secure') || lowerText.includes('trusted') || lowerText.includes('proven')) {
+    intent = 'trust_building'
+  } else if (lowerText.includes('learn') || lowerText.includes('guide') || lowerText.includes('how to')) {
+    intent = 'educational'
+  }
+  
+  // Add features if content is substantial
+  if (wordCount > 50) {
+    sections.push({
+      type: 'features',
+      content: 'Key features and benefits of our solution',
+      priority: 2,
+      confidence: 'medium',
+      word_count_driven: true
+    });
+  }
+  
+  // Add testimonials if social proof detected
+  if (lowerText.includes('customer') || lowerText.includes('review') || lowerText.includes('"') || lowerText.includes('testimonial')) {
+    sections.push({
+      type: 'testimonial',
+      content: 'Customer testimonials and success stories',
+      priority: 3,
+      confidence: 'high'
+    });
+  }
+  
+  // Intent-based CTA
+  const ctaMap = {
+    'persuasive_selling': 'Get started today and see results',
+    'trust_building': 'Learn more about our proven solution',
+    'educational': 'Explore our comprehensive resources',
+    'informational': 'Discover more about what we offer'
+  }
+  
+  sections.push({
+    type: 'cta',
+    content: ctaMap[intent],
+    priority: sections.length + 1,
+    confidence: 'high',
+    intent: intent
+  });
+  
+  return sections;
+}
+
+// Keep your original mock as final fallback
 function generateMockClassification(text) {
   const sections = [];
   const lowerText = text.toLowerCase();
