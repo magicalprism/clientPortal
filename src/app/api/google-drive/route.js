@@ -1,11 +1,13 @@
-// Enhanced /app/api/google-drive/route.js
+// Enhanced /app/api/google-drive/route.js - WITH GOOGLE DOCS SUPPORT
 import { handleCompanyDrive } from '@/app/api/integrations/google-drive/company';
 import { handleProjectFolder } from '@/app/api/integrations/google-drive/project';
 import { handleElementFolder } from '@/app/api/integrations/google-drive/element';
+import { handleGoogleDocsRead } from '@/app/api/integrations/google-drive/google-docs'; // NEW
 import { createClient } from '@/lib/supabase/server';
 
 /**
  * Enhanced API route that properly handles relationship data fetching
+ * NOW WITH GOOGLE DOCS CONTENT READING SUPPORT
  */
 export async function POST(req) {
   try {
@@ -32,9 +34,11 @@ export async function POST(req) {
         return handleProjectFolder(enhancedPayload);
       case 'element':
         return handleElementFolder(enhancedPayload);
+      case 'google-docs': // NEW: Google Docs content reading
+        return handleGoogleDocsRead(enhancedPayload);
       default:
         return new Response(JSON.stringify({ 
-          error: `Unsupported type: ${type}` 
+          error: `Unsupported type: ${type}. Supported: company, project, element, google-docs` 
         }), {
           status: 400,
           headers: { 'Content-Type': 'application/json' }
@@ -119,6 +123,11 @@ async function enhancePayloadWithRelationships(type, payload) {
         // Company doesn't need additional relationship data
         break;
 
+      case 'google-docs':
+        // Google Docs might need context about which company/project it belongs to
+        // This is handled in the google-docs handler
+        break;
+
       default:
         console.warn('[API] Unknown type for relationship enhancement:', type);
     }
@@ -145,8 +154,8 @@ export async function GET(req) {
       return new Response(JSON.stringify({
         status: 'healthy',
         timestamp: new Date().toISOString(),
-        supportedTypes: ['company', 'project', 'element'],
-        version: '1.0.0'
+        supportedTypes: ['company', 'project', 'element', 'google-docs'], // Updated
+        version: '1.1.0' // Updated version
       }), {
         status: 200,
         headers: { 'Content-Type': 'application/json' }
@@ -164,7 +173,8 @@ export async function GET(req) {
         checks: {
           serviceAccountEmail: hasApiKey,
           privateKey: hasPrivateKey,
-          clientsDriveId: hasDriveId
+          clientsDriveId: hasDriveId,
+          googleDocsSupport: true // NEW: Indicates Google Docs reading is supported
         },
         timestamp: new Date().toISOString()
       }), {
@@ -174,7 +184,7 @@ export async function GET(req) {
     }
 
     return new Response(JSON.stringify({ 
-      error: 'Invalid action parameter' 
+      error: 'Invalid action parameter. Use ?action=health or ?action=validate' 
     }), {
       status: 400,
       headers: { 'Content-Type': 'application/json' }

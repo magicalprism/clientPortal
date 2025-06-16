@@ -14,17 +14,18 @@ export async function POST(request) {
 
     console.log('🎨 Starting comprehensive generation with your DesignAnalysisEngine...');
 
-    // Validate inputs
-    if (!content || !extractedDesignData || !brandTokens) {
+        // Validate inputs
+    if (!content || !extractedDesignData) {
       return Response.json({
         success: false,
-        error: 'Missing required data: content, extractedDesignData, and brandTokens are required'
+        error: 'Missing required data: content and extractedDesignData are required'
       }, { status: 400 });
     }
 
+    const appliedBrandTokens = brandTokens || {};
     // Initialize your comprehensive DesignAnalysisEngine
     const engine = new DesignAnalysisEngine(
-      brandTokens,
+       appliedBrandTokens,
       industryContext,
       options.targetAudience || 'general'
     );
@@ -41,7 +42,7 @@ export async function POST(request) {
       comprehensiveAnalysis,
       content,
       extractedDesignData,
-      brandTokens
+      appliedBrandTokens
     );
 
     // Calculate quality metrics using your validation system
@@ -58,7 +59,7 @@ export async function POST(request) {
         engine_used: 'YourDesignAnalysisEngine',
         analysis_applied: true,
         calculations_utilized: comprehensiveAnalysis.analysis_metadata?.calculations_applied || [],
-        brand_tokens_applied: Object.keys(brandTokens).length,
+        brand_tokens_applied: Object.keys(appliedBrandTokens).length,
         design_inspiration_source: extractedDesignData.source,
         layout_strategy: comprehensiveAnalysis.layout_strategy?.recommended_layout,
         component_specs_generated: !!comprehensiveAnalysis.component_specifications,

@@ -1,377 +1,276 @@
-// components/design-tool/inputs/CopyInputSection.jsx (FIXED VERSION)
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import {
   Box,
   Typography,
-  TextField,
   Button,
   Chip,
   Alert,
   CircularProgress,
-  Divider,
-  IconButton,
-  Tooltip
+  Card,
+  CardContent,
+  Tab,
+  Tabs,
+  Grid,
+  Paper
 } from '@mui/material';
 import {
-  FileText,
-  Upload,
-  Sparkle,
-  X,
   CheckCircle,
-  Warning
+  Eye,
+  Code,
+  Layout,
 } from '@phosphor-icons/react';
+
+// Import our refactored modules
+import { parseHTMLToSemanticStructure } from './utils/htmlParser';
+import { parseContentQuantitatively } from './utils/quantitativeParser';
+import { WireframeSection, WireframeAnalysis } from './components/WireframeComponents';
+
+
 
 export default function CopyInputSection({
   value = '',
   onChange,
-  classifiedCopy = [], // Add default empty array
+  classifiedCopy = [],
   onClassifiedChange,
-  onCopyAnalyzed,      // Callback for when copy is analyzed
-  onError,             // Callback for errors
-  analysis,            // Analysis results from parent
-  loading = false      // Loading state from parent
+  onCopyAnalyzed,
+  onError,
+  analysis,
+  loading = false
 }) {
   const [isClassifying, setIsClassifying] = useState(false);
   const [uploadError, setUploadError] = useState('');
   const [apiError, setApiError] = useState('');
+  const [activeTab, setActiveTab] = useState(0);
+  const [wireframeData, setWireframeData] = useState(null);
+  const [richTextContent, setRichTextContent] = useState('');
+  const [htmlStructure, setHtmlStructure] = useState(null);
 
-  // Use classifiedCopy prop or fall back to empty array
-  const sections = Array.isArray(classifiedCopy) ? classifiedCopy : [];
+  // Handle rich text paste with HTML structure preservation
+  const handleRichTextPaste = (e) => {
+    e.preventDefault();
+    const clipboardData = e.clipboardData;
+    const htmlData = clipboardData.getData('text/html');
+    const textData = clipboardData.getData('text/plain');
+    
+    console.log('📋 Rich text paste detected:', {
+      hasHTML: !!htmlData,
+      htmlLength: htmlData?.length,
+      textLength: textData?.length,
+      htmlPreview: htmlData?.substring(0, 300)
+    });
 
-  // Handle file upload
-  const handleFileUpload = useCallback(async (event) => {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    setUploadError('');
-
-    // Check file type
-    const allowedTypes = ['text/plain', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-    if (!allowedTypes.includes(file.type)) {
-      setUploadError('Please upload a .txt, .pdf, or .docx file');
-      return;
-    }
-
-    try {
-      let content = '';
+    if (htmlData && htmlData.length > 0) {
+      e.target.innerHTML = htmlData;
+      setRichTextContent(htmlData);
       
-      if (file.type === 'text/plain') {
-        content = await file.text();
-      } else {
-        // For PDF/DOCX, we'd need additional libraries
-        // For now, show an error asking for plain text
-        setUploadError('PDF and DOCX support coming soon. Please use plain text files for now.');
-        return;
-      }
-
+      const parsedContent = parseHTMLToSemanticStructure(htmlData);
+      console.log('📊 Parsed semantic structure:', parsedContent);
+      
+      setHtmlStructure(parsedContent);
+      
       if (onChange) {
-        onChange(content);
+        onChange(parsedContent.plainText);
       }
-      
-      // Clear the file input
-      event.target.value = '';
-    } catch (error) {
-      setUploadError('Failed to read file: ' + error.message);
+    } else if (textData) {
+      e.target.innerHTML = textData.replace(/\n/g, '<br>');
+      setRichTextContent(textData);
+      setHtmlStructure(null);
+      if (onChange) {
+        onChange(textData);
+      }
     }
-  }, [onChange]);
+  };
 
-  // Classify copy using AI - this creates the initial classification
+  const handleRichTextInput = (e) => {
+    const htmlContent = e.target.innerHTML;
+    const textContent = e.target.innerText || e.target.textContent;
+    
+    setRichTextContent(htmlContent);
+    
+    if (htmlContent.includes('<')) {
+      const parsedContent = parseHTMLToSemanticStructure(htmlContent);
+      setHtmlStructure(parsedContent);
+      if (onChange) {
+        onChange(parsedContent.plainText);
+      }
+    } else {
+      setHtmlStructure(null);
+      if (onChange) {
+        onChange(textContent);
+      }
+    }
+  };
+
+  // Generate wireframe data whenever content changes
+  useEffect(() => {
+    if (value.trim()) {
+      console.log('🔬 Using RESEARCH-BASED universal parser with AIDA, PAS, and landing page patterns');
+      const wireframes = parseContentQuantitatively(value, htmlStructure);
+      setWireframeData(wireframes);
+    }
+  }, [value, htmlStructure]);
+
   const handleClassify = async () => {
     if (!value.trim()) return;
-
     setIsClassifying(true);
     setApiError('');
     
     try {
-      console.log('🎨 Starting content analysis...');
-      
-      // Call the API with the correct parameter name
       const response = await fetch('/api/ai/classify-copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          content: value.trim(), // Using 'content' as the API now handles both
+          content: value.trim(),
           brandTokens: {},
           industryContext: 'saas'
         })
       });
 
-      console.log('🔍 API Response status:', response.status);
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('❌ API Error Response:', errorText);
-        throw new Error(`API Error (${response.status}): ${errorText}`);
-      }
-
+      if (!response.ok) throw new Error(`API Error (${response.status})`);
       const result = await response.json();
-      console.log('📊 API Result:', result);
 
       if (result.success && result.analysis) {
-        // Use the analysis.sections as the classified copy
         const classifiedSections = result.analysis.sections || [];
-        
-        if (onClassifiedChange) {
-          onClassifiedChange(classifiedSections);
-        }
-        
-        // Call the parent callback to trigger the comprehensive API
-        if (onCopyAnalyzed) {
-          onCopyAnalyzed(classifiedSections);
-        }
-        
-        console.log('✅ Content analysis successful');
-        setApiError('');
+        if (onClassifiedChange) onClassifiedChange(classifiedSections);
+        if (onCopyAnalyzed) onCopyAnalyzed(classifiedSections);
       } else {
-        throw new Error(result.error || 'API returned success=false');
+        throw new Error(result.error || 'Analysis failed');
       }
     } catch (error) {
-      console.error('❌ Classification error:', error);
-      const errorMessage = error.message || 'Failed to analyze copy';
-      setApiError(errorMessage);
-      
-      // Call error callback
-      if (onError) {
-        onError('Failed to analyze copy: ' + errorMessage);
-      }
-      
-      // Use mock classification as fallback
-      console.log('🔄 Using mock classification as fallback');
-      const mockClassified = mockClassifyContent(value);
-      if (onClassifiedChange) {
-        onClassifiedChange(mockClassified);
-      }
-      
-      if (onCopyAnalyzed) {
-        onCopyAnalyzed(mockClassified);
-      }
+      setApiError(error.message);
+      if (onError) onError('Failed to analyze copy: ' + error.message);
     } finally {
       setIsClassifying(false);
     }
   };
 
-  // Mock classification for development - creates section structure
-  const mockClassifyContent = (text) => {
-    const sections = [];
-    
-    if (text.toLowerCase().includes('hero') || text.toLowerCase().includes('welcome')) {
-      sections.push({ type: 'hero', content: text.substring(0, 200), priority: 1 });
+  const handleLoadDemo = () => {
+    if (onChange) {
+      onChange(DEMO_CONTENT);
     }
-    if (text.toLowerCase().includes('feature') || text.toLowerCase().includes('benefit')) {
-      sections.push({ type: 'features', content: 'Feature content...', priority: 2 });
-    }
-    if (text.toLowerCase().includes('testimonial') || text.toLowerCase().includes('review')) {
-      sections.push({ type: 'testimonial', content: 'Testimonial content...', priority: 3 });
-    }
-    if (text.toLowerCase().includes('contact') || text.toLowerCase().includes('get started')) {
-      sections.push({ type: 'cta', content: 'CTA content...', priority: 4 });
-    }
-    
-    // Default section if no matches
-    if (sections.length === 0) {
-      sections.push({ type: 'content', content: text.substring(0, 200), priority: 1 });
-    }
-    
-    return sections;
-  };
-
-  // Remove a classified section
-  const removeClassifiedSection = (index) => {
-    const updated = sections.filter((_, i) => i !== index);
-    if (onClassifiedChange) {
-      onClassifiedChange(updated);
-    }
-  };
-
-  // Section type colors
-  const getSectionColor = (type) => {
-    const colors = {
-      hero: 'primary',
-      features: 'secondary',
-      testimonial: 'success',
-      cta: 'warning',
-      about: 'info',
-      content: 'default'
-    };
-    return colors[type] || 'default';
   };
 
   return (
     <Box>
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-        <FileText size={20} weight="duotone" />
-        <Typography variant="h6">Copy Content</Typography>
+        <Layout size={20} weight="duotone" />
+        <Typography variant="h6">Universal Content Parser</Typography>
       </Box>
 
-      {/* File Upload */}
-      <Box sx={{ mb: 2 }}>
-        <input
-          type="file"
-          id="copy-file-upload"
-          accept=".txt,.pdf,.docx"
-          onChange={handleFileUpload}
-          style={{ display: 'none' }}
+      
+      {/* Rich Text Input */}
+      <Typography variant="subtitle2" sx={{ mb: 1 }}>Paste your content here:</Typography>
+      
+      <Alert severity="info" sx={{ mb: 2 }}>
+        <Typography variant="body2">
+          <strong>🔬 Universal Parsing:</strong> Works with any content type! 
+          Uses <strong>research-based patterns</strong> from AIDA, PAS, landing pages, and web content analysis for accurate detection.
+        </Typography>
+      </Alert>
+
+      <Box 
+        sx={{ 
+          border: '2px solid #1976d2', 
+          borderRadius: '8px', 
+          p: 1, 
+          mb: 3,
+          backgroundColor: '#f8f9fa'
+        }}
+      >
+        <Typography variant="caption" sx={{ color: 'text.secondary', mb: 1, display: 'block' }}>
+          ✨ Rich Text Paste Area (preserves semantic structure):
+        </Typography>
+        <Box
+          contentEditable
+          suppressContentEditableWarning={true}
+          onPaste={handleRichTextPaste}
+          onInput={handleRichTextInput}
+          sx={{
+            minHeight: '200px',
+            p: 2,
+            backgroundColor: 'white',
+            border: '1px solid #e0e0e0',
+            borderRadius: '4px',
+            fontSize: '14px',
+            lineHeight: 1.5,
+            maxHeight: '400px',
+            overflowY: 'auto',
+            '&:focus': {
+              outline: '2px solid #1976d2',
+              outlineOffset: '-2px'
+            },
+            '&:empty::before': {
+              content: '"Paste your Google Docs content here... Semantic HTML structure will be preserved!"',
+              color: '#999',
+              fontStyle: 'italic'
+            }
+          }}
         />
-        <label htmlFor="copy-file-upload">
-          <Button
-            component="span"
-            variant="outlined"
-            startIcon={<Upload size={16} />}
-            size="small"
-            fullWidth
-          >
-            Upload Text File
-          </Button>
-        </label>
       </Box>
 
-      {/* Upload Error */}
-      {uploadError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          {uploadError}
-        </Alert>
-      )}
-
-      {/* API Error */}
-      {apiError && (
-        <Alert 
-          severity="error" 
-          sx={{ mb: 2 }}
-          action={
-            <Button size="small" onClick={() => setApiError('')}>
-              Dismiss
-            </Button>
-          }
-        >
-          <Typography variant="body2">
-            <strong>API Error:</strong> {apiError}
-          </Typography>
-          <Typography variant="caption" display="block" sx={{ mt: 1, opacity: 0.8 }}>
-            Using fallback mock classification. Check console for details.
-          </Typography>
-        </Alert>
-      )}
-
-      {/* Text Input */}
-      <TextField
-        multiline
-        rows={8}
-        fullWidth
-        placeholder="Paste your website copy here... Include headlines, features, testimonials, call-to-actions, etc."
-        value={value}
-        onChange={(e) => onChange && onChange(e.target.value)}
-        sx={{ mb: 2 }}
-        variant="outlined"
-        disabled={loading || isClassifying}
-      />
-
-      {/* Classify Button */}
+      {/* Auto-Generate Button */}
       <Button
         variant="contained"
-        startIcon={isClassifying || loading ? <CircularProgress size={16} /> : <Sparkle size={16} />}
+        startIcon={isClassifying || loading ? <CircularProgress size={16} /> : <Layout size={16} />}
         onClick={handleClassify}
         disabled={!value.trim() || isClassifying || loading}
         fullWidth
         sx={{ mb: 2 }}
       >
-        {isClassifying || loading ? 'Analyzing Content...' : 'Analyze Content with AI'}
+        {isClassifying || loading ? 'Analyzing with Research Patterns...' : 'Generate Wireframes (Universal Analysis)'}
       </Button>
 
-      {/* Analysis Results from Parent */}
-      {analysis && (
-        <Alert severity="success" sx={{ mb: 2 }}>
+      {/* API Error */}
+      {apiError && (
+        <Alert severity="error" sx={{ mb: 2 }}>
           <Typography variant="body2">
-            <strong>Analysis Complete:</strong> {analysis.sections?.length || 0} sections detected
+            <strong>Error:</strong> {apiError}
           </Typography>
-          {analysis.quality_metrics && (
-            <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-              Quality Score: {Math.round(analysis.quality_metrics.overall_quality * 100)}%
-            </Typography>
-          )}
         </Alert>
       )}
 
-      {/* Classified Sections */}
-      {sections.length > 0 && (
-        <>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <CheckCircle size={16} weight="fill" style={{ color: 'green' }} />
-            Content Sections ({sections.length})
-          </Typography>
-          
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-            {sections
-              .sort((a, b) => (a.priority || 0) - (b.priority || 0))
-              .map((section, index) => (
-                <Box
-                  key={index}
-                  sx={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 1,
-                    p: 1,
-                    bgcolor: 'grey.50',
-                    borderRadius: 1
-                  }}
-                >
-                  <Chip
-                    label={section.type || 'content'}
-                    color={getSectionColor(section.type)}
-                    size="small"
-                  />
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      flex: 1,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap'
-                    }}
-                  >
-                    {(section.content || '').substring(0, 50)}...
-                  </Typography>
-                  {section.confidence && (
-                    <Chip
-                      label={section.confidence}
-                      size="small"
-                      variant="outlined"
-                      color={section.confidence === 'high' ? 'success' : 'default'}
-                      sx={{ fontSize: '0.7rem' }}
-                    />
+      {/* SEMANTIC LOW-FI WIREFRAMES */}
+      {wireframeData && (
+        <Card sx={{ mt: 3 }}>
+          <CardContent>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+              <Tabs value={activeTab} onChange={(e, newValue) => setActiveTab(newValue)}>
+                <Tab icon={<Eye size={16} />} label="Universal Wireframes" />
+                <Tab icon={<Code size={16} />} label="Framework Analysis" />
+              </Tabs>
+            </Box>
+
+            {activeTab === 0 && (
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                  <Typography variant="h6">🔬 Research-Based Wireframes</Typography>
+                  <Chip label={`${wireframeData.sections.length} sections`} size="small" color="primary" />
+                  <Chip label="Universal Patterns" size="small" color="success" />
+                  {wireframeData.hasSemanticStructure && (
+                    <Chip label="Rich Text Detected" size="small" color="secondary" />
                   )}
-                  <Tooltip title="Remove section">
-                    <IconButton
-                      size="small"
-                      onClick={() => removeClassifiedSection(index)}
-                    >
-                      <X size={14} />
-                    </IconButton>
-                  </Tooltip>
                 </Box>
-              ))}
-          </Box>
-        </>
-      )}
 
-      {/* Help Text */}
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-        💡 Tip: Include different content types (headlines, features, testimonials) for better AI classification
-      </Typography>
-      
-      {/* Debug Info (Development Only) */}
-      {process.env.NODE_ENV === 'development' && (
-        <Alert severity="info" sx={{ mt: 2 }}>
-          <Typography variant="caption">
-            <strong>Debug Info:</strong><br />
-            API Status: {apiError ? '❌ Error' : '✅ Ready'}<br />
-            Sections: {sections.length}<br />
-            Analysis: {analysis ? '✅ Available' : '❌ Not available'}
-          </Typography>
-        </Alert>
+                <Alert severity="success" sx={{ mb: 3 }}>
+                  <Typography variant="body2">
+                    <strong>🔬 Research-Based Wireframes Generated!</strong> Created {wireframeData.sections.length} wireframe sections using universal copywriting patterns. Framework matches: {wireframeData.stats?.frameworkPatterns || 'analyzing...'}
+                  </Typography>
+                </Alert>
+
+                {wireframeData.sections.map((section, index) => (
+                  <WireframeSection key={section.id} section={section} index={index} />
+                ))}
+              </Box>
+            )}
+
+            {activeTab === 1 && (
+              <WireframeAnalysis wireframeData={wireframeData} />
+            )}
+          </CardContent>
+        </Card>
       )}
     </Box>
   );

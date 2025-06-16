@@ -1,4 +1,4 @@
-// src/app/design-tool/page.jsx
+// src/app/design-tool/page.jsx - FIXED VERSION
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -7,23 +7,26 @@ import {
   Container,
   Typography,
   Paper,
-  Grid,
   Alert,
   Stepper,
   Step,
   StepLabel,
-  StepContent,
   Button,
   Card,
   CardContent,
-  Chip
+  Chip,
+  Collapse,
+  IconButton,
+  Divider
 } from '@mui/material';
 import {
   FileText,
   Link as LinkIcon,
   Palette,
   Eye,
-  CheckCircle
+  CheckCircle,
+  CaretDown,
+  CaretUp
 } from '@phosphor-icons/react';
 
 // Import components
@@ -41,11 +44,11 @@ export default function DesignToolPage() {
   const [existingBrandTokens, setExistingBrandTokens] = useState({});
   
   // === STATE FOR COMPREHENSIVE API ===
-  const [copyClassification, setCopyClassification] = useState(null); // From classify-copy API
-  const [layoutAnalysis, setLayoutAnalysis] = useState(null); // From extract-layout API (formatted)
-  const [brandTokens, setBrandTokens] = useState(null); // From brand selection
+  const [copyClassification, setCopyClassification] = useState(null);
+  const [layoutAnalysis, setLayoutAnalysis] = useState(null);
+  const [brandTokens, setBrandTokens] = useState(null);
   const [brandId, setBrandId] = useState(null);
-  const [generatedLayout, setGeneratedLayout] = useState(null); // Final comprehensive result
+  const [generatedLayout, setGeneratedLayout] = useState(null);
 
   // === LOADING & ERROR STATES ===
   const [isAnalyzingCopy, setIsAnalyzingCopy] = useState(false);
@@ -57,6 +60,7 @@ export default function DesignToolPage() {
 
   // === STEP TRACKING ===
   const [activeStep, setActiveStep] = useState(0);
+  const [expandedSteps, setExpandedSteps] = useState({ 0: true }); // Track which steps are expanded
 
   // === COMPREHENSIVE API INTEGRATION ===
 
@@ -66,7 +70,6 @@ export default function DesignToolPage() {
     setClassifiedCopy(classificationData);
     setCopyError('');
     
-    // Call the comprehensive classify-copy API for full analysis
     if (copyText.trim()) {
       setIsAnalyzingCopy(true);
       try {
@@ -86,10 +89,9 @@ export default function DesignToolPage() {
             setCopyClassification(result.analysis);
             console.log('✅ Content analysis complete:', result.analysis);
             
-            // Move to next step
-            if (activeStep === 0) {
-              setActiveStep(1);
-            }
+            // Move to next step and expand it
+            setActiveStep(1);
+            setExpandedSteps(prev => ({ ...prev, 1: true }));
           }
         } else {
           throw new Error('Content analysis failed');
@@ -113,7 +115,6 @@ export default function DesignToolPage() {
   const handleLayoutAnalyzed = (analysisData) => {
     console.log('🎨 Layout analyzed:', analysisData);
     
-    // Format the data for the comprehensive API
     const formattedData = {
       buttons: analysisData.data?.components?.buttons?.map(btn => ({
         backgroundColor: btn.backgroundColor || 'transparent',
@@ -143,21 +144,18 @@ export default function DesignToolPage() {
       sections: analysisData.data?.sections || [],
       designSystem: analysisData.data?.designSystem || {},
       
-      // Include metadata
       source: analysisData.source,
       confidence: analysisData.data?.confidence,
       url: analysisData.url,
-      
-      // Store original data for reference
       data: analysisData.data
     };
     
     setLayoutAnalysis(formattedData);
     setLayoutError('');
     
-    // Move to next step
     if (analysisData && activeStep === 1) {
       setActiveStep(2);
+      setExpandedSteps(prev => ({ ...prev, 2: true }));
     }
   };
 
@@ -171,14 +169,13 @@ export default function DesignToolPage() {
   const handleBrandSelected = (selectedBrandId, tokens) => {
     console.log('🏷️ Brand selected:', { selectedBrandId, tokens });
     
-    // Set both brand ID and tokens
     setBrandId(selectedBrandId);
     setBrandTokens(tokens || existingBrandTokens);
     setBrandError('');
     
-    // Move to final step
     if ((selectedBrandId || tokens) && activeStep === 2) {
       setActiveStep(3);
+      setExpandedSteps(prev => ({ ...prev, 3: true }));
     }
   };
 
@@ -210,19 +207,13 @@ export default function DesignToolPage() {
 
   const allInputsReady = hasValidCopy && hasValidLayout && hasValidBrand;
 
-  // === DEBUG LOGGING ===
-  useEffect(() => {
-    console.log('🔍 State Update:', {
-      copyClassification: !!copyClassification,
-      layoutAnalysis: !!layoutAnalysis,
-      brandTokens: !!brandTokens,
-      brandId: !!brandId,
-      allInputsReady,
-      hasValidCopy,
-      hasValidLayout,
-      hasValidBrand
-    });
-  }, [copyClassification, layoutAnalysis, brandTokens, brandId, allInputsReady]);
+  // === STEP EXPANSION TOGGLE ===
+  const toggleStepExpansion = (stepIndex) => {
+    setExpandedSteps(prev => ({
+      ...prev,
+      [stepIndex]: !prev[stepIndex]
+    }));
+  };
 
   // === STEPS CONFIGURATION ===
   const steps = [
@@ -231,28 +222,48 @@ export default function DesignToolPage() {
       description: 'Paste or upload your marketing content',
       icon: <FileText size={20} />,
       completed: hasValidCopy,
-      error: copyError
+      error: copyError,
+      results: copyClassification ? {
+        type: 'copy_analysis',
+        data: copyClassification,
+        summary: `${copyClassification.sections?.length || 0} sections analyzed`
+      } : null
     },
     {
       label: 'Analyze Layout Inspiration',
       description: 'Enter a URL to extract design patterns',
       icon: <LinkIcon size={20} />,
       completed: hasValidLayout,
-      error: layoutError
+      error: layoutError,
+      results: layoutAnalysis ? {
+        type: 'layout_analysis',
+        data: layoutAnalysis,
+        summary: `Design system extracted from ${layoutAnalysis.url || 'URL'}`
+      } : null
     },
     {
       label: 'Select Your Brand',
       description: 'Choose brand and load design tokens',
       icon: <Palette size={20} />,
       completed: hasValidBrand,
-      error: brandError
+      error: brandError,
+      results: (brandTokens || brandId) ? {
+        type: 'brand_selection',
+        data: { brandTokens, brandId, selectedBrand },
+        summary: `Brand ${brandId || 'tokens'} configured`
+      } : null
     },
     {
       label: 'Generate & Export',
       description: 'Create your AI-powered layout',
       icon: <Eye size={20} />,
       completed: !!generatedLayout,
-      error: ''
+      error: '',
+      results: generatedLayout ? {
+        type: 'generated_layout',
+        data: generatedLayout,
+        summary: 'Comprehensive layout generated'
+      } : null
     }
   ];
 
@@ -300,186 +311,227 @@ export default function DesignToolPage() {
         </CardContent>
       </Card>
 
-      {/* Main Content */}
-      <Grid container spacing={3}>
-        {/* Left Column - Input Steps */}
-        <Grid item xs={12} lg={4}>
-          <Stepper orientation="vertical" activeStep={activeStep}>
-            
-            {/* Step 1: Copy Input */}
-            <Step>
-              <StepLabel 
-                error={!!copyError}
-                StepIconComponent={() => (
-                  <Box sx={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%',
-                    bgcolor: hasValidCopy ? 'success.main' : copyError ? 'error.main' : 'grey.300',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                  }}>
-                    {hasValidCopy ? <CheckCircle size={16} /> : <FileText size={16} />}
-                  </Box>
-                )}
+      {/* Main Content - Full Width */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        
+        {/* Input Steps with Persistent Results - Full Width */}
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          
+          {steps.map((step, stepIndex) => (
+              <Card 
+                key={stepIndex}
+                sx={{ 
+                  border: activeStep === stepIndex ? '2px solid' : '1px solid',
+                  borderColor: activeStep === stepIndex ? 'primary.main' : 'divider',
+                  backgroundColor: step.completed ? 'success.light' : 'background.paper',
+                  opacity: step.completed ? 1 : activeStep === stepIndex ? 1 : 0.7
+                }}
               >
-                <Typography variant="subtitle1">Add Your Copy</Typography>
-              </StepLabel>
-              <StepContent>
-                <Paper sx={{ p: 3, mb: 2 }}>
-                  <CopyInputSection
-                    value={copyText}
-                    onChange={(text) => {
-                      setCopyText(text);
-                      // Clear previous classification when text changes
-                      if (copyClassification && text !== copyText) {
-                        setCopyClassification(null);
-                      }
-                    }}
-                    classifiedCopy={classifiedCopy}
-                    onClassifiedChange={setClassifiedCopy}
-                    onCopyAnalyzed={handleCopyAnalyzed}
-                    onError={handleCopyError}
-                    analysis={copyClassification}
-                    loading={isAnalyzingCopy}
-                  />
-                  {copyError && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                      {copyError}
+                <CardContent sx={{ pb: 1 }}>
+                  {/* Step Header */}
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                    <Box sx={{ 
+                      width: 32, 
+                      height: 32, 
+                      borderRadius: '50%',
+                      bgcolor: step.completed ? 'success.main' : step.error ? 'error.main' : activeStep === stepIndex ? 'primary.main' : 'grey.300',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: 'white'
+                    }}>
+                      {step.completed ? <CheckCircle size={20} /> : step.icon}
+                    </Box>
+                    
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                        {step.label}
+                      </Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {step.description}
+                      </Typography>
+                    </Box>
+
+                    {/* Expand/Collapse Button */}
+                    <IconButton 
+                      size="small" 
+                      onClick={() => toggleStepExpansion(stepIndex)}
+                      disabled={!step.completed && activeStep !== stepIndex}
+                    >
+                      {expandedSteps[stepIndex] ? <CaretUp size={16} /> : <CaretDown size={16} />}
+                    </IconButton>
+                  </Box>
+
+                  {/* Results Summary (Always Visible for Completed Steps) */}
+                  {step.completed && step.results && (
+                    <Alert severity="success" sx={{ mb: 1, py: 0.5 }}>
+                      <Typography variant="caption">
+                        ✅ {step.results.summary}
+                      </Typography>
                     </Alert>
                   )}
-                </Paper>
-              </StepContent>
-            </Step>
 
-            {/* Step 2: URL Analysis */}
-            <Step>
-              <StepLabel 
-                error={!!layoutError}
-                StepIconComponent={() => (
-                  <Box sx={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%',
-                    bgcolor: hasValidLayout ? 'success.main' : layoutError ? 'error.main' : 'grey.300',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                  }}>
-                    {hasValidLayout ? <CheckCircle size={16} /> : <LinkIcon size={16} />}
-                  </Box>
-                )}
-              >
-                <Typography variant="subtitle1">Analyze Layout Inspiration</Typography>
-              </StepLabel>
-              <StepContent>
-                <Paper sx={{ p: 3, mb: 2 }}>
-                  <UrlAnalyzerSection
-                    onAnalysisComplete={(result) => {
-                      // Keep for display purposes
-                      console.log('Raw analysis result:', result);
-                    }}
-                    onLayoutAnalyzed={handleLayoutAnalyzed}
-                    onError={handleLayoutError}
-                  />
-                  {layoutError && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                      {layoutError}
+                  {/* Error Display */}
+                  {step.error && (
+                    <Alert severity="error" sx={{ mb: 1, py: 0.5 }}>
+                      <Typography variant="caption">
+                        ❌ {step.error}
+                      </Typography>
                     </Alert>
                   )}
-                </Paper>
-              </StepContent>
-            </Step>
+                </CardContent>
 
-            {/* Step 3: Brand Selection */}
-            <Step>
-              <StepLabel 
-                error={!!brandError}
-                StepIconComponent={() => (
-                  <Box sx={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%',
-                    bgcolor: hasValidBrand ? 'success.main' : brandError ? 'error.main' : 'grey.300',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                  }}>
-                    {hasValidBrand ? <CheckCircle size={16} /> : <Palette size={16} />}
-                  </Box>
-                )}
-              >
-                <Typography variant="subtitle1">Select Your Brand</Typography>
-              </StepLabel>
-              <StepContent>
-                <Paper sx={{ p: 3, mb: 2 }}>
-                  <BrandTokensSection
-                    selectedBrand={selectedBrand}
-                    onBrandChange={(brand) => {
-                      setSelectedBrand(brand);
-                      if (brand && brand.id) {
-                        setBrandId(brand.id);
-                      }
-                    }}
-                    brandTokens={existingBrandTokens}
-                    onTokensChange={(tokens) => {
-                      setExistingBrandTokens(tokens);
-                      if (selectedBrand?.id) {
-                        handleBrandSelected(selectedBrand.id, tokens);
-                      }
-                    }}
-                    onBrandSelected={handleBrandSelected}
-                    onError={handleBrandError}
-                  />
-                  {brandError && (
-                    <Alert severity="error" sx={{ mt: 2 }}>
-                      {brandError}
-                    </Alert>
-                  )}
-                </Paper>
-              </StepContent>
-            </Step>
+                {/* Expandable Content */}
+                <Collapse in={expandedSteps[stepIndex]} timeout="auto" unmountOnExit>
+                  <CardContent sx={{ pt: 0 }}>
+                    <Divider sx={{ mb: 2 }} />
+                    
+                    {/* Step 1: Copy Input */}
+                    {stepIndex === 0 && (
+                      <CopyInputSection
+                        value={copyText}
+                        onChange={(text) => {
+                          setCopyText(text);
+                          if (copyClassification && text !== copyText) {
+                            setCopyClassification(null);
+                          }
+                        }}
+                        classifiedCopy={classifiedCopy}
+                        onClassifiedChange={setClassifiedCopy}
+                        onCopyAnalyzed={handleCopyAnalyzed}
+                        onError={handleCopyError}
+                        analysis={copyClassification}
+                        loading={isAnalyzingCopy}
+                      />
+                    )}
 
-            {/* Step 4: Generate */}
-            <Step>
-              <StepLabel
-                StepIconComponent={() => (
-                  <Box sx={{ 
-                    width: 24, 
-                    height: 24, 
-                    borderRadius: '50%',
-                    bgcolor: generatedLayout ? 'success.main' : 'grey.300',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    color: 'white'
-                  }}>
-                    {generatedLayout ? <CheckCircle size={16} /> : <Eye size={16} />}
-                  </Box>
-                )}
-              >
-                <Typography variant="subtitle1">Generate & Export</Typography>
-              </StepLabel>
-              <StepContent>
-                <Paper sx={{ p: 3 }}>
-                  <Typography variant="body2" color="text.secondary">
-                    {allInputsReady 
-                      ? "🎉 Ready! Your comprehensive design will appear on the right."
-                      : "Complete the steps above to unlock comprehensive layout generation."}
-                  </Typography>
-                </Paper>
-              </StepContent>
-            </Step>
+                    {/* Step 2: URL Analysis */}
+                    {stepIndex === 1 && (
+                      <UrlAnalyzerSection
+                        onAnalysisComplete={(result) => {
+                          console.log('Raw analysis result:', result);
+                        }}
+                        onLayoutAnalyzed={handleLayoutAnalyzed}
+                        onError={handleLayoutError}
+                      />
+                    )}
 
-          </Stepper>
-        </Grid>
+                    {/* Step 3: Brand Selection */}
+                    {stepIndex === 2 && (
+                      <BrandTokensSection
+                        selectedBrand={selectedBrand}
+                        onBrandChange={(brand) => {
+                          setSelectedBrand(brand);
+                          if (brand && brand.id) {
+                            setBrandId(brand.id);
+                          }
+                        }}
+                        brandTokens={existingBrandTokens}
+                        onTokensChange={(tokens) => {
+                          setExistingBrandTokens(tokens);
+                          if (selectedBrand?.id) {
+                            handleBrandSelected(selectedBrand.id, tokens);
+                          }
+                        }}
+                        onBrandSelected={handleBrandSelected}
+                        onError={handleBrandError}
+                      />
+                    )}
 
-        {/* Right Column - Comprehensive Preview & Results */}
-        <Grid item xs={12} lg={8}>
+                    {/* Step 4: Results Info */}
+                    {stepIndex === 3 && (
+                      <Box>
+                        <Typography variant="body2" color="text.secondary">
+                          {allInputsReady 
+                            ? "🎉 Ready! Your comprehensive design will appear on the right."
+                            : "Complete the steps above to unlock comprehensive layout generation."}
+                        </Typography>
+                        
+                        {generatedLayout && (
+                          <Alert severity="success" sx={{ mt: 1 }}>
+                            <Typography variant="body2">
+                              <strong>Layout Generated Successfully!</strong><br />
+                              View your design on the right and use export options below.
+                            </Typography>
+                          </Alert>
+                        )}
+                      </Box>
+                    )}
+
+                    {/* Detailed Results Display */}
+                    {step.completed && step.results && (
+                      <Box sx={{ mt: 2, p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                        <Typography variant="subtitle2" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <CheckCircle size={16} weight="fill" style={{ color: 'green' }} />
+                          Results Summary
+                        </Typography>
+                        
+                        {/* Copy Analysis Results */}
+                        {step.results.type === 'copy_analysis' && (
+                          <Box>
+                            <Typography variant="caption" display="block">
+                              Sections: {step.results.data.sections?.length || 0}
+                            </Typography>
+                            {step.results.data.quality_metrics && (
+                              <Typography variant="caption" display="block">
+                                Quality Score: {Math.round(step.results.data.quality_metrics.overall_quality * 100)}%
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+
+                        {/* Layout Analysis Results */}
+                        {step.results.type === 'layout_analysis' && (
+                          <Box>
+                            <Typography variant="caption" display="block">
+                              Colors: {step.results.data.colors?.palette?.length || 0}
+                            </Typography>
+                            <Typography variant="caption" display="block">
+                              Components: {step.results.data.buttons?.length || 0} buttons
+                            </Typography>
+                            {step.results.data.url && (
+                              <Typography variant="caption" display="block">
+                                Source: {step.results.data.url}
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+
+                        {/* Brand Selection Results */}
+                        {step.results.type === 'brand_selection' && (
+                          <Box>
+                            {step.results.data.brandId && (
+                              <Typography variant="caption" display="block">
+                                Brand ID: {step.results.data.brandId}
+                              </Typography>
+                            )}
+                            {step.results.data.brandTokens && (
+                              <Typography variant="caption" display="block">
+                                Tokens: {Object.keys(step.results.data.brandTokens).length} configured
+                              </Typography>
+                            )}
+                          </Box>
+                        )}
+
+                        {/* Generated Layout Results */}
+                        {step.results.type === 'generated_layout' && (
+                          <Box>
+                            <Typography variant="caption" display="block">
+                              Layout successfully generated and ready for export
+                            </Typography>
+                          </Box>
+                        )}
+                      </Box>
+                    )}
+                  </CardContent>
+                </Collapse>
+              </Card>
+            ))}
+          </Box>
+        </Box>
+
+        {/* Comprehensive Preview & Results - Full Width */}
+        <Box>
           <ComprehensivePreviewSection
             copyClassification={copyClassification}
             layoutAnalysis={layoutAnalysis}
@@ -516,8 +568,8 @@ export default function DesignToolPage() {
               </CardContent>
             </Card>
           )}
-        </Grid>
-      </Grid>
+        </Box>
+
     </Container>
   );
 }
