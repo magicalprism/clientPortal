@@ -51,6 +51,8 @@ export const paths = {
 	},
 	dashboard: {
 		overview: "/dashboard",
+		design: "/dashboard/design-tool",
+		calendar: "/dashboard/calendar",
 		settings: {
 			account: "/dashboard/settings/account",
 			billing: "/dashboard/settings/billing",
@@ -58,6 +60,7 @@ export const paths = {
 			notifications: "/dashboard/settings/notifications",
 			security: "/dashboard/settings/security",
 			team: "/dashboard/settings/team",
+			
 		},
 		 search: "/dashboard/search",
     searchCompany: "/dashboard/search/company",

@@ -86,27 +86,38 @@ export const CalendarPage = React.forwardRef(function CalendarPage(
           selectable={false}
           events={tasks} // still required as `events`
           eventClick={async ({ event }) => {
-            const id = event.id;
-            const type = event.extendedProps?.type;
-            const configName = event.extendedProps?.collection || 'task'; // Or pass `config` as a prop if available
+            try {
+              // If onTaskClick is provided, use it instead of fetching data again
+              if (onTaskClick && typeof onTaskClick === 'function') {
+                // Pass the entire event object with extendedProps to the handler
+                onTaskClick(event.extendedProps);
+                return;
+              }
+              
+              // Fallback to original behavior if no onTaskClick handler
+              const id = event.id;
+              const configName = event.extendedProps?.collection || 'task';
+              const fullConfig = collections[configName];
 
-            const fullConfig = collections[configName];
+              // Only fetch if we need to
+              const { data, error } = await supabase
+                .from(configName)
+                .select('*')
+                .eq('id', id)
+                .single();
 
-            const { data, error } = await supabase
-              .from(configName)
-              .select('*')
-              .eq('id', id)
-              .single();
+              if (error) {
+                console.error('[CalendarPage] Failed to fetch event record:', error);
+                return;
+              }
 
-            if (error) {
-              console.error('[CalendarPage] Failed to fetch event record:', error);
-              return;
+              openModal('edit', {
+                config: fullConfig,
+                defaultValues: data,
+              });
+            } catch (err) {
+              console.error('[CalendarPage] Error handling event click:', err);
             }
-
-            openModal('edit', {
-              config: fullConfig,
-              defaultValues: data,
-            });
           }}
           // these are FullCalendar’s internal props — cannot rename
           eventDisplay="block"

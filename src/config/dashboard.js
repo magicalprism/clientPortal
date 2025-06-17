@@ -18,19 +18,7 @@ export const dashboardConfig = {
 				{ key: "analytics", title: "Analytics", href: paths.dashboard.analytics, icon: "chart-pie" },
 			],
 		},
-		{
-			key: "tools",
-			title: "Tools",
-			items: [
-				{
-					key: "design",
-					title: "Design Generator",
-					href: "/design-tool",
-					icon: "gear",
-			
-				},
-			],
-			},
+		
 		{
 			key: "general",
 			title: "General",
@@ -41,6 +29,13 @@ export const dashboardConfig = {
 					href: paths.dashboard.settings.account,
 					icon: "gear",
 					matcher: { type: "startsWith", href: "/dashboard/settings" },
+				},
+				{
+					key: "design",
+					title: "Design Generator",
+					href: "/dashboard/design-tool",
+					icon: "gear",
+			
 				},
 				{
 					key: "project",
@@ -86,9 +81,19 @@ export const dashboardConfig = {
 					key: "calendar",
 					title: "Calendar",
 					icon: "calendar",
+
 					items: [
+						{
+							key: "calendar",
+							title: "Calendar",
+							href: "/dashboard/calendar",
+							icon: "event",
+					
+						},
 						{ key: "event", title: "List events", href: paths.dashboard.event.list },
 						{ key: "event:create", title: "Create event", href: paths.dashboard.event.create },
+						
+								
 
 					],
 				},

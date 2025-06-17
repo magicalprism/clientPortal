@@ -19,7 +19,7 @@ import { DotsThree as DotsThreeIcon } from "@phosphor-icons/react/dist/ssr/DotsT
 
 import { dayjs } from "@/lib/dayjs";
 
-export function Events({ events }) {
+export function Events({ events = [] }) {
 	return (
 		<Card>
 			<CardHeader
@@ -38,9 +38,26 @@ export function Events({ events }) {
 			/>
 			<CardContent sx={{ py: "8px" }}>
 				<List disablePadding>
-					{events.map((event) => (
-						<EventItem event={event} key={event.id} />
-					))}
+					{events && events.length > 0 ? (
+						events.map((event) => (
+							<EventItem event={event} key={event.id} />
+						))
+					) : (
+						<ListItem>
+							<ListItemText
+								primary={
+									<Typography variant="subtitle2">
+										No upcoming events
+									</Typography>
+								}
+								secondary={
+									<Typography color="text.secondary" variant="body2">
+										Events will appear here when they are scheduled
+									</Typography>
+								}
+							/>
+						</ListItem>
+					)}
 				</List>
 			</CardContent>
 			<Divider />
