@@ -1,15 +1,12 @@
 // src/components/fields/custom/comments/useComments.js
 import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/browser';
+import { pivot } from '@/lib/supabase/queries';
 
 export const useComments = ({ entity, entityId }) => {
   const supabase = createClient();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // Use the correct table name
-  const linkTable = `comment_${entity.toLowerCase()}`;
-  const entityField = `${entity.toLowerCase()}_id`;
 
   useEffect(() => {
     const fetchComments = async () => {
@@ -17,33 +14,49 @@ export const useComments = ({ entity, entityId }) => {
       console.log('[Comments] Entity ID:', entityId);
 
       try {
-        const { data, error } = await supabase
-          .from(linkTable)
-          .select(`
-            comment(*, author:author_id(id, title, thumbnail:thumbnail_id(url))),
-            id
-          `)
-          .eq(entityField, entityId);
-
-        console.log('[Comments] Query:', { linkTable, entityField, entityId });
-        
-        if (error) {
-          console.error('[Comments] Error fetching:', error);
-          setComments([]);
+        // Use the appropriate method based on entity type
+        if (entity.toLowerCase() === 'project') {
+          // Use the dedicated pivot module for project comments
+          const projectComments = await pivot.comment_project.fetchCommentsForProject(entityId);
+          console.log('[Comments] Project comments:', projectComments);
+          
+          // Sort by created_at
+          projectComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          
+          setComments(projectComments || []);
         } else {
-          console.log('[Comments] Raw data:', data);
-          const processedComments = data?.map(row => row.comment).filter(Boolean) || [];
+          // For other entities, use the dynamic approach
+          const linkTable = `comment_${entity.toLowerCase()}`;
+          const entityField = `${entity.toLowerCase()}_id`;
           
-          // Debug: Log the author data
-          processedComments.forEach(comment => {
-            console.log('[Comments] Comment author data:', comment.author);
-          });
+          console.log('[Comments] Query:', { linkTable, entityField, entityId });
           
-          // Sort by created_at after processing
-          processedComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+          const { data, error } = await supabase
+            .from(linkTable)
+            .select(`
+              comment(*, author:author_id(id, title, thumbnail:thumbnail_id(url))),
+              id
+            `)
+            .eq(entityField, entityId);
           
-          console.log('[Comments] Processed comments:', processedComments);
-          setComments(processedComments);
+          if (error) {
+            console.error('[Comments] Error fetching:', error);
+            setComments([]);
+          } else {
+            console.log('[Comments] Raw data:', data);
+            const processedComments = data?.map(row => row.comment).filter(Boolean) || [];
+            
+            // Debug: Log the author data
+            processedComments.forEach(comment => {
+              console.log('[Comments] Comment author data:', comment.author);
+            });
+            
+            // Sort by created_at after processing
+            processedComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+            
+            console.log('[Comments] Processed comments:', processedComments);
+            setComments(processedComments);
+          }
         }
       } catch (err) {
         console.error('[Comments] Fetch error:', err);
@@ -56,7 +69,7 @@ export const useComments = ({ entity, entityId }) => {
     if (entityId) {
       fetchComments();
     }
-  }, [entity, entityId, linkTable, entityField]);
+  }, [entity, entityId]);
 
   const addComment = async (content) => {
     try {
@@ -88,7 +101,7 @@ export const useComments = ({ entity, entityId }) => {
           content: content,
           author_id: contactId
         }])
-        .select();
+        .select('*, author:author_id(id, title, email, thumbnail:thumbnail_id(url))');
 
       if (insertError || !newComments || newComments.length === 0) {
         console.error('Error adding comment:', insertError);
@@ -97,14 +110,28 @@ export const useComments = ({ entity, entityId }) => {
 
       const commentId = newComments[0].id;
 
-      // Create link between comment and entity
-      const { error: linkError } = await supabase
-        .from(linkTable)
-        .insert([{ [entityField]: entityId, comment_id: commentId }]);
+      // Create link between comment and entity based on entity type
+      if (entity.toLowerCase() === 'project') {
+        // Use the dedicated pivot module for project comments
+        const { success, error } = await pivot.comment_project.linkCommentToProject(commentId, entityId);
+        
+        if (!success) {
+          console.error('Error linking comment to project:', error);
+          return;
+        }
+      } else {
+        // For other entities, use the dynamic approach
+        const linkTable = `comment_${entity.toLowerCase()}`;
+        const entityField = `${entity.toLowerCase()}_id`;
+        
+        const { error: linkError } = await supabase
+          .from(linkTable)
+          .insert([{ [entityField]: entityId, comment_id: commentId }]);
 
-      if (linkError) {
-        console.error('Error creating link:', linkError);
-        return;
+        if (linkError) {
+          console.error('Error creating link:', linkError);
+          return;
+        }
       }
 
       // Update local state
@@ -116,15 +143,28 @@ export const useComments = ({ entity, entityId }) => {
 
   const deleteComment = async (commentId) => {
     try {
-      // Delete the link first
-      const { error: linkError } = await supabase
-        .from(linkTable)
-        .delete()
-        .eq('comment_id', commentId);
+      if (entity.toLowerCase() === 'project') {
+        // Use the dedicated pivot module for project comments
+        const { success, error } = await pivot.comment_project.unlinkCommentFromProject(commentId, entityId);
+        
+        if (!success) {
+          console.error('Error unlinking comment from project:', error);
+          return;
+        }
+      } else {
+        // For other entities, use the dynamic approach
+        const linkTable = `comment_${entity.toLowerCase()}`;
+        
+        // Delete the link first
+        const { error: linkError } = await supabase
+          .from(linkTable)
+          .delete()
+          .eq('comment_id', commentId);
 
-      if (linkError) {
-        console.error('Error deleting comment link:', linkError);
-        return;
+        if (linkError) {
+          console.error('Error deleting comment link:', linkError);
+          return;
+        }
       }
 
       // Delete the comment

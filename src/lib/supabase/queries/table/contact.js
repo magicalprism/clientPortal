@@ -662,3 +662,66 @@ export const toggleContactStatus = async (contactId) => {
   const { data, error } = await updateContact(contactId, { status: newStatus });
   return { data, error };
 };
+
+/**
+ * Fetch contacts who have active tasks (todo or not_started)
+ * This is specifically for the Universal Kanban view
+ */
+export const fetchContactsWithActiveTasks = async (filters = {}) => {
+  try {
+    // First, get all task IDs with active statuses
+    const activeStatuses = ['not_started', 'todo', 'in_progress'];
+    
+    let taskQuery = supabase
+      .from('task')
+      .select('assigned_id')
+      .in('status', activeStatuses)
+      .eq('is_template', false)
+      .not('assigned_id', 'is', null);
+    
+    // Apply company filter if provided
+    if (filters.company_id && filters.company_id !== 'all') {
+      taskQuery = taskQuery.eq('company_id', filters.company_id);
+    }
+    
+    // Apply project filter if provided
+    if (filters.project_id && filters.project_id !== 'all') {
+      taskQuery = taskQuery.eq('project_id', filters.project_id);
+    }
+    
+    const { data: taskData, error: taskError } = await taskQuery;
+    
+    if (taskError) throw taskError;
+    
+    // Extract unique contact IDs
+    const contactIds = [...new Set(taskData.map(task => task.assigned_id))];
+    
+    if (contactIds.length === 0) {
+      return { data: [], error: null };
+    }
+    
+    // Now fetch the contact details
+    const { data: contactData, error: contactError } = await supabase
+      .from('contact')
+      .select(`
+        id,
+        title,
+        first_name,
+        last_name,
+        email,
+        role,
+        status,
+        thumbnail:thumbnail_id(url, alt_text)
+      `)
+      .in('id', contactIds)
+      .eq('status', 'active')
+      .order('title', { ascending: true });
+    
+    if (contactError) throw contactError;
+    
+    return { data: contactData, error: null };
+  } catch (error) {
+    console.error('[fetchContactsWithActiveTasks] Error:', error);
+    return { data: [], error };
+  }
+};

@@ -4,6 +4,19 @@ import { createClient } from '@/lib/supabase/browser';
 const supabase = createClient();
 
 /**
+ * Get checklists for a specific user (including priority checklists with null author_id)
+ */
+export const fetchUserChecklists = async (userId) => {
+  const { data, error } = await supabase
+    .from('checklist')
+    .select('*')
+    .or(`author_id.eq.${userId},author_id.is.null`)
+    .order('order_index', { ascending: true, nullsFirst: false });
+
+  return { data, error };
+};
+
+/**
  * Get a single checklist by ID with all related data
  */
 export const fetchChecklistById = async (id) => {

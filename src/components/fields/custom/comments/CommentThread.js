@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import {
-  Box, Typography, Stack, Button, Avatar, CircularProgress, Link
+  Box, Typography, Stack, Button, Avatar, CircularProgress, Link,
+  IconButton, Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
+import { Trash, X, MagnifyingGlass } from '@phosphor-icons/react';
 import { useComments } from '@/components/fields/custom/comments/useComments';
 import { useCurrentContact } from '@/hooks/useCurrentContact';
 import RichTextFieldRenderer from '@/components/fields/text/richText/RichTextFieldRenderer';
@@ -11,19 +13,39 @@ import NextLink from 'next/link';
 
 export const CommentThread = ({ entity, entityId }) => {
   const [input, setInput] = useState('');
+  const [editorKey, setEditorKey] = useState(0); // Add a key to force re-render
+  const [viewingComment, setViewingComment] = useState(null); // Track which comment is being viewed
   const { contact, loading: contactLoading } = useCurrentContact();
-  const { comments, addComment, loading: commentsLoading } = useComments({ entity, entityId });
+  const { comments, addComment, deleteComment, loading: commentsLoading } = useComments({ entity, entityId });
 
   const handleSubmit = async () => {
     if (!input.trim()) return;
     if (!contact?.id) return;
 
     await addComment(input.trim());
-    setInput('');
+    setInput(''); // Clear the input state
+    setEditorKey(prev => prev + 1); // Increment key to force re-render
   };
 
   const handleInputChange = (value) => {
     setInput(value);
+  };
+  
+  // Handle opening the comment view modal
+  const handleOpenModal = (comment) => {
+    setViewingComment(comment);
+  };
+  
+  // Handle closing the comment view modal
+  const handleCloseModal = () => {
+    setViewingComment(null);
+  };
+  
+  // Handle deleting a comment
+  const handleDeleteComment = async (commentId) => {
+    if (window.confirm('Are you sure you want to delete this comment?')) {
+      await deleteComment(commentId);
+    }
   };
 
   if (commentsLoading || contactLoading) return <CircularProgress size={24} />;
@@ -39,8 +61,34 @@ export const CommentThread = ({ entity, entityId }) => {
             borderRadius: 2, 
             backgroundColor: 'primary.50',
             border: '1px solid',
-            borderColor: '#e5e5e5'
+            borderColor: '#e5e5e5',
+            position: 'relative' // Add position relative for absolute positioning of buttons
           }}>
+            {/* View and Delete buttons */}
+            <Box sx={{ 
+              position: 'absolute', 
+              top: 12, 
+              right: 12,
+              display: 'flex',
+              gap: 1
+            }}>
+              <IconButton
+                size="small"
+                onClick={() => handleOpenModal(comment)}
+                sx={{ color: 'primary.main' }}
+                title="View details"
+              >
+                <MagnifyingGlass size={16} />
+              </IconButton>
+              <IconButton
+                size="small"
+                onClick={() => handleDeleteComment(comment.id)}
+                sx={{ color: 'error.main' }}
+                title="Delete comment"
+              >
+                <Trash size={16} />
+              </IconButton>
+            </Box>
             <Stack direction="row" spacing={2} alignItems="flex-start">
               <Box 
                 component={NextLink} 
@@ -102,6 +150,7 @@ export const CommentThread = ({ entity, entityId }) => {
                       value={comment.content}
                       editable={false}
                       mode="view"
+                      field={{ name: 'comment_content', lines: 5 }}
                     />
                   ) : (
                     <Typography variant="body2" color="text.secondary" fontStyle="italic">
@@ -127,11 +176,12 @@ export const CommentThread = ({ entity, entityId }) => {
             Add a comment
           </Typography>
           <RichTextFieldRenderer
+            key={editorKey} // Add key prop to force re-render
             value={input}
             editable={true}
             mode="create"
             onChange={handleInputChange}
-            field={{ name: 'comment_input' }}
+            field={{ name: 'comment_input', lines: 5 }}
           />
           <Button 
             variant="contained" 
@@ -149,6 +199,76 @@ export const CommentThread = ({ entity, entityId }) => {
           Please log in to add comments.
         </Typography>
       )}
+      
+      {/* Comment View Modal */}
+      <Dialog 
+        open={!!viewingComment} 
+        onClose={handleCloseModal} 
+        maxWidth="md" 
+        fullWidth
+      >
+        <DialogTitle>
+          Comment Details
+          <IconButton
+            aria-label="close"
+            onClick={handleCloseModal}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <X size={20} />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          {viewingComment && (
+            <Box sx={{ p: 2 }}>
+              <Stack direction="row" spacing={2} alignItems="flex-start" sx={{ mb: 3 }}>
+                {/* Avatar */}
+                <Box>
+                  {viewingComment.author?.thumbnail?.url ? (
+                    <Avatar 
+                      src={viewingComment.author.thumbnail.url} 
+                      sx={{ width: 80, height: 80 }}
+                    >
+                      {viewingComment.author?.title?.charAt(0) || 'U'}
+                    </Avatar>
+                  ) : (
+                    <Avatar sx={{ bgcolor: '#9333ea', color: 'white', width: 80, height: 80 }}>
+                      {viewingComment.author?.title?.charAt(0) || 'U'}
+                    </Avatar>
+                  )}
+                </Box>
+                
+                {/* Author and date */}
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h6">
+                    {viewingComment.author?.title || 'Unknown User'}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {new Date(viewingComment.created_at).toLocaleString()}
+                  </Typography>
+                </Box>
+              </Stack>
+              
+              {/* Comment content */}
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Comment:
+                </Typography>
+                <Box sx={{ p: 2, bgcolor: 'grey.50', borderRadius: 1 }}>
+                  <RichTextFieldRenderer
+                    value={viewingComment.content}
+                    editable={false}
+                    mode="view"
+                    field={{ name: 'comment_content_modal', lines: 10 }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal}>Close</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

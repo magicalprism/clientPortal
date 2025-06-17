@@ -22,6 +22,7 @@ export const RichTextField = ({
     content: value || '',
     editable,
     extensions: [StarterKit],
+    immediatelyRender: false, // Fix SSR hydration mismatch
     onUpdate: ({ editor }) => {
       if (ignoreNextUpdate.current) {
         ignoreNextUpdate.current = false;

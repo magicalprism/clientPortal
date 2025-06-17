@@ -95,6 +95,7 @@ export function SimpleEditor({
   const editor = useEditor({
     content,
     editable,
+    immediatelyRender: false, // Fix SSR hydration mismatch
     extensions: [
       StarterKit,
       TextAlign.configure({ types: ["heading", "paragraph"] }),
@@ -145,7 +146,6 @@ export function SimpleEditor({
         autocomplete: "off",
         autocorrect: "off",
         autocapitalize: "off",
-        immediatelyRender: "false",
         "aria-label": "Main content area, start typing to enter text.",
       },
       // Add this to preserve HTML attributes and styles

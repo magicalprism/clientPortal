@@ -12,6 +12,7 @@ import {
   AvatarGroup,
   Tooltip
 } from '@mui/material';
+import { getContactThumbnailUrl } from '@/lib/supabase/queries/utils/getContactThumbnailUrl';
 import { 
   Calendar, 
   CheckCircle,
@@ -117,19 +118,59 @@ export const KanbanTaskCard = ({
     event.preventDefault();
     event.stopPropagation();
     
-    console.log('[KanbanTaskCard] Task clicked:', task.title);
+    console.log('[KanbanTaskCard] Task clicked:', task.title, 'Task ID:', task.id);
+    console.log('[KanbanTaskCard] Task object:', task);
+    console.log('[KanbanTaskCard] Config object:', config);
 
-    if (onTaskClick) {
-      onTaskClick(task);
-    } else {
-      // Open global modal
+    try {
+      // Always use the ModalContext directly to open the modal
+      // This bypasses any potential issues with the onTaskClick prop
       const fullConfig = collections[config.name] || config;
+      console.log('[KanbanTaskCard] Full config:', fullConfig);
+      console.log('[KanbanTaskCard] Collections available:', Object.keys(collections));
       console.log('[KanbanTaskCard] Opening modal for task:', task.id);
+      
+      // Check if modal context is available
+      if (!openModal) {
+        console.error('[KanbanTaskCard] openModal function is not available!');
+        return;
+      }
+      
+      // Log the modal state before opening
+      console.log('[KanbanTaskCard] Modal context:', { openModal });
+      
+      // Use the ModalContext directly with more detailed logging
+      console.log('[KanbanTaskCard] Calling openModal with:', {
+        type: 'edit',
+        props: {
+          config: fullConfig,
+          recordId: task.id,
+          onRefresh: onTaskUpdate ? 'function provided' : 'no function'
+        }
+      });
+      
+      // Use the ModalContext directly
       openModal('edit', { 
         config: fullConfig,
         recordId: task.id,
         onRefresh: onTaskUpdate
       });
+      
+      console.log('[KanbanTaskCard] openModal called successfully');
+      
+      // Also call onTaskClick if provided (for backward compatibility)
+      if (onTaskClick) {
+        console.log('[KanbanTaskCard] Also calling provided onTaskClick handler');
+        try {
+          onTaskClick(task);
+        } catch (clickError) {
+          console.error('[KanbanTaskCard] Error in onTaskClick handler:', clickError);
+          // Continue even if onTaskClick fails, since we've already opened the modal
+        }
+      }
+    } catch (error) {
+      console.error('[KanbanTaskCard] Error handling task click:', error);
+      console.error('[KanbanTaskCard] Error details:', error.message, error.stack);
     }
   };
 
@@ -156,11 +197,30 @@ export const KanbanTaskCard = ({
     }
   };
 
+  const [assigneeAvatarUrl, setAssigneeAvatarUrl] = useState(null);
+  
+  // Fetch the contact thumbnail URL when the task changes
+  React.useEffect(() => {
+    const fetchContactThumbnail = async () => {
+      const assignee = task.assigned_contact;
+      if (!assignee) return;
+      
+      try {
+        // Use the getContactThumbnailUrl utility to fetch the URL
+        const url = await getContactThumbnailUrl(assignee);
+        setAssigneeAvatarUrl(url);
+      } catch (error) {
+        console.error('[KanbanTaskCard] Error fetching contact thumbnail:', error);
+      }
+    };
+    
+    fetchContactThumbnail();
+  }, [task.assigned_contact]);
+  
   const getAssigneeAvatars = () => {
     const assignee = task.assigned_contact;
     if (!assignee) return null;
-
-    const avatarUrl = assignee.thumbnail_media?.url;
+    
     const initials = assignee.first_name && assignee.last_name 
       ? `${assignee.first_name[0]}${assignee.last_name[0]}`.toUpperCase()
       : assignee.title?.substring(0, 2).toUpperCase() || '?';
@@ -168,7 +228,7 @@ export const KanbanTaskCard = ({
     return (
       <Tooltip title={assignee.title || `${assignee.first_name} ${assignee.last_name}`}>
         <Avatar
-          src={avatarUrl}
+          src={assigneeAvatarUrl}
           sx={{ 
             width: isSubtask ? 16 : 20, 
             height: isSubtask ? 16 : 20, 
@@ -362,8 +422,40 @@ export const KanbanTaskCard = ({
           
           {/* Task Title - clickable area (NO drag listeners) */}
           <Box
+            onClick={(e) => {
+              console.log('🖱️ Title area CLICKED (onClick):', task.title);
+              // Stop event propagation to prevent drag
+              e.stopPropagation();
+              e.preventDefault();
+              
+              // Directly call openModal here to bypass any potential issues
+              try {
+                const fullConfig = collections[config.name] || config;
+                console.log('[KanbanTaskCard] Direct onClick - Opening modal for task:', task.id);
+                
+                if (openModal) {
+                  openModal('edit', { 
+                    config: fullConfig,
+                    recordId: task.id,
+                    onRefresh: onTaskUpdate
+                  });
+                  console.log('[KanbanTaskCard] Direct onClick - Modal opened successfully');
+                } else {
+                  console.error('[KanbanTaskCard] Direct onClick - openModal function is not available!');
+                }
+              } catch (error) {
+                console.error('[KanbanTaskCard] Direct onClick - Error:', error);
+              }
+            }}
             onMouseDown={(e) => {
-              console.log('🖱️ Title area clicked:', task.title);
+              console.log('🖱️ Title area MOUSE DOWN:', task.title);
+              // Only handle left-click
+              if (e.button !== 0) return;
+              
+              // Stop event propagation to prevent drag
+              e.stopPropagation();
+              e.preventDefault();
+              
               handleTaskClick(e);
             }}
             sx={{ 
@@ -374,7 +466,10 @@ export const KanbanTaskCard = ({
               py: 0.5,
               '&:hover': {
                 backgroundColor: 'action.hover'
-              }
+              },
+              // Increase z-index to ensure it's above other elements
+              position: 'relative',
+              zIndex: 10
             }}
           >
             <Typography 
@@ -389,8 +484,7 @@ export const KanbanTaskCard = ({
                 textDecoration: isCompleted ? 'line-through' : 'none',
                 color: isCompleted ? 'text.secondary' : 'text.primary',
                 fontSize: shouldShowAsSubtask ? '0.75rem' : '0.875rem',
-                lineHeight: shouldShowAsSubtask ? 1.2 : 1.4,
-                pointerEvents: 'none' // Prevent text selection interference
+                lineHeight: shouldShowAsSubtask ? 1.2 : 1.4
               }}
             >
               {task.title}

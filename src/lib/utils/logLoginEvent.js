@@ -1,6 +1,7 @@
 // src/lib/utils/logLoginEvent.js
 
 import { createClient } from "@/lib/supabase/browser";
+import { logLoginEvent as insertLoginEvent } from "@/lib/supabase/queries/table/event_login";
 
 export async function logLoginEvent({ type, ip, userAgent }) {
   const supabase = createClient();
@@ -26,9 +27,8 @@ export async function logLoginEvent({ type, ip, userAgent }) {
     return;
   }
 
-  const { error: insertError } = await supabase.from("login_events").insert({
-    contact_id: contact.id,
-    type,
+  // Use the query function instead of direct Supabase query
+  const { error: insertError } = await insertLoginEvent(contact.id, type, {
     ip,
     user_agent: userAgent,
   });

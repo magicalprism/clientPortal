@@ -76,8 +76,19 @@ export const dashboardConfig = {
 							items: [
 								{ key: "product", title: "Products", href: paths.dashboard.product.list },
 								{ key: "deliverable", title: "Deliverables", href: paths.dashboard.deliverable.list },
-						] },
+						] 
+					},
 						
+
+					],
+				},
+				{
+					key: "calendar",
+					title: "Calendar",
+					icon: "calendar",
+					items: [
+						{ key: "event", title: "List events", href: paths.dashboard.event.list },
+						{ key: "event:create", title: "Create event", href: paths.dashboard.event.create },
 
 					],
 				},

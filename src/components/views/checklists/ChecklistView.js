@@ -5,6 +5,9 @@ import { useEffect, useState, useMemo, useCallback } from 'react';
 import { Box, Typography, Grid, IconButton, Tooltip, Tab, Tabs } from '@mui/material';
 import { createClient } from '@/lib/supabase/browser';
 import { useRouter } from 'next/navigation';
+import { fetchUserChecklists, updateChecklist, deleteChecklist } from '@/lib/supabase/queries/table/checklist';
+import { fetchTasksByAssignedId, updateTask, deleteTask } from '@/lib/supabase/queries/table/task';
+import { reorderTasksInChecklist } from '@/lib/supabase/queries/pivot/checklist_task';
 import {
   DndContext,
   closestCenter,
@@ -36,7 +39,7 @@ const TAB_CONFIGS = {
 };
 
 export default function ChecklistView({ config, overId, dragging }) {
-  const supabase = createClient();
+  const supabase = createClient(); // Keep for auth and other operations
   const router = useRouter();
   const [checklists, setChecklists] = useState([]);
   const [tasks, setTasks] = useState([]);
@@ -130,20 +133,9 @@ export default function ChecklistView({ config, overId, dragging }) {
       const currentUserId = await getCurrentContactId();
       console.log('[ChecklistView] Current user ID:', currentUserId);
 
-      // Fetch checklists for current user OR priority checklist (author_id IS NULL)
-      const { data: checklistsData, error: checklistError } = await supabase
-        .from('checklist')
-        .select('*')
-        .or(`author_id.eq.${currentUserId},author_id.is.null`)
-        .order('order_index', { ascending: true, nullsFirst: false });
-
-      // Fetch tasks assigned to current user only
-      const { data: tasksData, error: taskError } = await supabase
-        .from('task')
-        .select('*')
-        .eq('assigned_id', currentUserId)
-        .neq('status', 'complete')
-        .order('order_index', { ascending: true });
+      // Use centralized query functions instead of direct Supabase queries
+      const { data: checklistsData, error: checklistError } = await fetchUserChecklists(currentUserId);
+      const { data: tasksData, error: taskError } = await fetchTasksByAssignedId(currentUserId);
 
       if (checklistError) {
         console.error('Checklist fetch error:', checklistError);
@@ -162,13 +154,15 @@ export default function ChecklistView({ config, overId, dragging }) {
       }));
 
       setChecklists(processedChecklists);
-      setTasks(tasksData || []);
+      // Filter out completed tasks
+      const activeTasks = tasksData?.filter(task => task.status !== 'complete') || [];
+      setTasks(activeTasks);
     } catch (error) {
       console.error('[ChecklistView] Fetch error:', error);
     } finally {
       setIsLoading(false);
     }
-  }, [supabase]);
+  }, []);
 
   useEffect(() => {
     fetchData();
@@ -187,10 +181,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
     
     try {
-      const { error } = await supabase
-        .from('task')
-        .update({ status: 'complete' })
-        .eq('id', taskId);
+      const { error } = await updateTask(taskId, { status: 'complete' });
         
       if (error) {
         console.error('[ChecklistView] Error marking task complete:', error);
@@ -214,10 +205,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     });
     
     try {
-      const { error } = await supabase
-        .from('task')
-        .delete()
-        .eq('id', taskId);
+      const { error } = await deleteTask(taskId);
         
       if (error) {
         console.error('[ChecklistView] Error deleting task:', error);
@@ -263,10 +251,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     ));
     
     try {
-      const { error } = await supabase
-        .from('checklist')
-        .update({ title })
-        .eq('id', id);
+      const { error } = await updateChecklist(id, { title });
         
       if (error) {
         console.error('[ChecklistView] Error updating checklist:', error);
@@ -290,10 +275,8 @@ export default function ChecklistView({ config, overId, dragging }) {
     setTasks(prev => prev.filter(t => t.checklist_id !== id));
     
     try {
-      // Delete all tasks in this checklist first
-      await supabase.from('task').delete().eq('checklist_id', id);
-      // Then delete the checklist
-      const { error } = await supabase.from('checklist').delete().eq('id', id);
+      // Use deleteChecklist with hardDelete=true to delete the checklist and its tasks
+      const { error } = await deleteChecklist(id, false);
       
       if (error) {
         console.error('[ChecklistView] Error deleting checklist:', error);
@@ -391,22 +374,18 @@ export default function ChecklistView({ config, overId, dragging }) {
         // Update order_index for each checklist
         const updates = newOrder.map((cl, index) => ({ 
           id: cl.id, 
-          order_index: index,
-          title: cl.title,
-          type: cl.type,
-          created_at: cl.created_at,
-          updated_at: new Date().toISOString()
+          order_index: index
         }));
         
         console.log('[ChecklistView] Updating order:', updates);
         
         // Update database first
         try {
+          // Use updateChecklist for each checklist to update its order_index
           for (const update of updates) {
-            const { error } = await supabase
-              .from('checklist')
-              .update({ order_index: update.order_index, updated_at: update.updated_at })
-              .eq('id', update.id);
+            const { error } = await updateChecklist(update.id, { 
+              order_index: update.order_index
+            });
             
             if (error) {
               console.error('[ChecklistView] Error updating checklist order:', error);
@@ -439,16 +418,20 @@ export default function ChecklistView({ config, overId, dragging }) {
         const newChecklistId = parseInt(over.id);
         if (task.checklist_id === newChecklistId) return;
 
-        await supabase
-          .from('task')
-          .update({ checklist_id: newChecklistId })
-          .eq('id', taskId);
+        // Use updateTask to move the task to a different checklist
+        const { error } = await updateTask(taskId, { 
+          checklist_id: newChecklistId 
+        });
 
-        setTasks((prev) =>
-          prev.map((t) =>
-            t.id === taskId ? { ...t, checklist_id: newChecklistId } : t
-          )
-        );
+        if (!error) {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.id === taskId ? { ...t, checklist_id: newChecklistId } : t
+            )
+          );
+        } else {
+          console.error('[ChecklistView] Error moving task to checklist:', error);
+        }
         return;
       }
 
@@ -462,18 +445,22 @@ export default function ChecklistView({ config, overId, dragging }) {
 
         // Move to different checklist
         if (!isSameChecklist) {
-          await supabase
-            .from('task')
-            .update({ checklist_id: overTask.checklist_id })
-            .eq('id', taskId);
+          // Use updateTask to move the task to a different checklist
+          const { error } = await updateTask(taskId, { 
+            checklist_id: overTask.checklist_id 
+          });
 
-          setTasks((prev) =>
-            prev.map((t) =>
-              t.id === taskId
-                ? { ...t, checklist_id: overTask.checklist_id }
-                : t
-            )
-          );
+          if (!error) {
+            setTasks((prev) =>
+              prev.map((t) =>
+                t.id === taskId
+                  ? { ...t, checklist_id: overTask.checklist_id }
+                  : t
+              )
+            );
+          } else {
+            console.error('[ChecklistView] Error moving task to checklist:', error);
+          }
         } else {
           // Reorder within same checklist
           const checklistTasks = tasks
@@ -484,20 +471,28 @@ export default function ChecklistView({ config, overId, dragging }) {
           const newIndex = checklistTasks.findIndex((t) => t.id === overTaskId);
 
           const reordered = arrayMove(checklistTasks, oldIndex, newIndex);
-
-          const updates = reordered.map((t, index) => ({
-            id: t.id,
-            order_index: index
-          }));
-
-          await supabase.from('task').upsert(updates, { onConflict: ['id'] });
-          setTasks((prev) =>
-            prev.map((t) =>
-              updates.find((u) => u.id === t.id)
-                ? { ...t, order_index: updates.find((u) => u.id === t.id).order_index }
-                : t
-            )
-          );
+          
+          // Get just the task IDs in the new order
+          const taskIds = reordered.map(t => t.id);
+          
+          // Use reorderTasksInChecklist to update the order
+          const { error } = await reorderTasksInChecklist(task.checklist_id, taskIds);
+          
+          if (!error) {
+            // Update local state with new order_index values
+            setTasks((prev) => {
+              const updated = [...prev];
+              reordered.forEach((task, index) => {
+                const taskIndex = updated.findIndex(t => t.id === task.id);
+                if (taskIndex !== -1) {
+                  updated[taskIndex] = { ...updated[taskIndex], order_index: index };
+                }
+              });
+              return updated;
+            });
+          } else {
+            console.error('[ChecklistView] Error reordering tasks:', error);
+          }
         }
       }
     }

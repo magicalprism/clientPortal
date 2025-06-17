@@ -1,4 +1,4 @@
-// components/brand/BrandBoardContent.jsx - Refactored with standardized queries
+// components/brand/BrandBoardContent.jsx - Enhanced to handle brand arrays and related collections
 import { useState, useEffect, useMemo } from 'react';
 import {
   Box,
@@ -19,7 +19,9 @@ import {
   MenuItem,
   FormControl,
   Autocomplete,
-  IconButton
+  IconButton,
+  Tabs,
+  Tab
 } from '@mui/material';
 import { 
   DownloadSimple,
@@ -34,8 +36,21 @@ import {
 import { InlineEditableField } from '@/components/fields/InlineEditableField';
 import { regenerateAllColorTokens } from '@/components/fields/custom/brand/colors/colorTokenGenerator';
 
-// Import standardized queries
-import { table } from '@/lib/supabase/queries';
+// Import functions directly from table modules
+import { 
+  fetchBrandColorTokens, 
+  fetchBrandById, 
+  updateBrandTitle, 
+  updateBrandCompany, 
+  linkProjectsToBrand, 
+  updateBrandColorTokens, 
+  removeAltColor,
+  fetchAllBrands
+} from '@/lib/supabase/queries/table/brand';
+import { fetchColorsByBrand, deleteColorsByBrandAndGroup } from '@/lib/supabase/queries/table/color';
+import { fetchSemanticTypography } from '@/lib/supabase/queries/table/typography';
+import { fetchCompanyBasicInfo, fetchAllCompanies } from '@/lib/supabase/queries/table/company';
+import { fetchAllProjects } from '@/lib/supabase/queries/table/project';
 
 // Import sub-components
 import { FoundationColors } from '@/components/fields/custom/brand/brandBoard/components/FoundationColors';
@@ -67,13 +82,71 @@ export const BrandBoardContent = ({
     colorName: '' 
   });
   const [regeneratingColor, setRegeneratingColor] = useState(false);
+  
+  // For handling multiple brands
+  const [availableBrands, setAvailableBrands] = useState([]);
+  const [selectedBrandId, setSelectedBrandId] = useState(null);
+  const [activeTab, setActiveTab] = useState(0);
 
-  const brandId = brand?.id;
+  // Determine if we're dealing with a single brand or multiple brands
+  const isMultipleBrands = useMemo(() => {
+    // Check if brand is an array
+    if (Array.isArray(brand)) return true;
+    
+    // Check if brand has a brands property that is an array
+    if (brand?.brands && Array.isArray(brand.brands) && brand.brands.length > 0) return true;
+    
+    // Check if brand has a brands_details property that is an array
+    if (brand?.brands_details && Array.isArray(brand.brands_details) && brand.brands_details.length > 0) return true;
+    
+    return false;
+  }, [brand]);
 
-  // Database functions using standardized queries
+  // Extract brand ID based on the current context
+  const brandId = useMemo(() => {
+    if (!brand) return null;
+    
+    // If selectedBrandId is set, use it
+    if (selectedBrandId) return selectedBrandId;
+    
+    // If dealing with a single brand, use its ID
+    if (!isMultipleBrands) return brand.id;
+    
+    // If brand is an array, use the first brand's ID
+    if (Array.isArray(brand) && brand.length > 0) {
+      return brand[0].id;
+    }
+    
+    // If brand has a brands property, use the first brand's ID
+    if (brand.brands && Array.isArray(brand.brands) && brand.brands.length > 0) {
+      // Check if it's an array of objects or IDs
+      if (typeof brand.brands[0] === 'object') {
+        return brand.brands[0].id;
+      } else {
+        return brand.brands[0];
+      }
+    }
+    
+    // If brand has a brands_details property, use the first brand's ID
+    if (brand.brands_details && Array.isArray(brand.brands_details) && brand.brands_details.length > 0) {
+      // Check if it has a nested brand property
+      if (brand.brands_details[0].brand) {
+        return brand.brands_details[0].brand.id;
+      } else {
+        return brand.brands_details[0].id;
+      }
+    }
+    
+    // Fallback to the brand's own ID if available
+    return brand.id || null;
+  }, [brand, isMultipleBrands, selectedBrandId]);
+
+  // Database functions using direct imports
   const fetchColorTokens = async (brandId) => {
+    if (!brandId) return [];
+    
     try {
-      const { data, error } = await table.color.fetchColorsByBrand(brandId);
+      const { data, error } = await fetchColorsByBrand(brandId);
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -83,8 +156,10 @@ export const BrandBoardContent = ({
   };
 
   const fetchTypographyTokens = async (brandId) => {
+    if (!brandId) return [];
+    
     try {
-      const { data, error } = await table.typography.fetchSemanticTypography(brandId);
+      const { data, error } = await fetchSemanticTypography(brandId);
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -94,8 +169,10 @@ export const BrandBoardContent = ({
   };
 
   const fetchBrandFoundation = async (brandId) => {
+    if (!brandId) return null;
+    
     try {
-      const { data, error } = await table.brand.fetchBrandColorTokens(brandId);
+      const { data, error } = await fetchBrandColorTokens(brandId);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -108,7 +185,7 @@ export const BrandBoardContent = ({
     if (!companyId) return null;
     
     try {
-      const { data, error } = await table.company.fetchCompanyBasicInfo(companyId);
+      const { data, error } = await fetchCompanyBasicInfo(companyId);
       if (error) {
         if (error.code === 'PGRST116') {
           return null; // Not found
@@ -126,7 +203,7 @@ export const BrandBoardContent = ({
     if (!brandId) return [];
     
     try {
-      const { data, error } = await table.brand.fetchBrandById(brandId);
+      const { data, error } = await fetchBrandById(brandId);
       if (error) {
         console.error('Brand project error:', error);
         return [];
@@ -138,9 +215,9 @@ export const BrandBoardContent = ({
     }
   };
 
-  const fetchAllCompanies = async () => {
+  const fetchCompaniesData = async () => {
     try {
-      const { data, error } = await table.company.fetchAllCompanies();
+      const { data, error } = await fetchAllCompanies();
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -149,9 +226,9 @@ export const BrandBoardContent = ({
     }
   };
 
-  const fetchAllProjects = async () => {
+  const fetchProjectsData = async () => {
     try {
-      const { data, error } = await table.project.fetchAllProjects();
+      const { data, error } = await fetchAllProjects();
       if (error) throw error;
       return data || [];
     } catch (error) {
@@ -160,9 +237,62 @@ export const BrandBoardContent = ({
     }
   };
 
-  const updateBrandCompany = async (brandId, companyId) => {
+  const fetchAvailableBrands = async () => {
+    // If we already have brand data in various formats, extract it
+    if (Array.isArray(brand)) {
+      return brand;
+    }
+    
+    if (brand?.brands && Array.isArray(brand.brands)) {
+      // If brands is an array of IDs, fetch the full brand objects
+      if (brand.brands.length > 0 && typeof brand.brands[0] !== 'object') {
+        try {
+          const brandPromises = brand.brands.map(async (brandId) => {
+            const { data } = await fetchBrandById(brandId);
+            return data;
+          });
+          
+          const brandsData = await Promise.all(brandPromises);
+          return brandsData.filter(Boolean);
+        } catch (error) {
+          console.error('Error fetching brands by IDs:', error);
+          return [];
+        }
+      }
+      
+      return brand.brands;
+    }
+    
+    if (brand?.brands_details && Array.isArray(brand.brands_details)) {
+      // Extract brand objects from brands_details
+      return brand.brands_details.map(detail => detail.brand || detail).filter(Boolean);
+    }
+    
+    // If we have a company_id, fetch all brands for that company
+    if (brand?.company_id) {
+      try {
+        const { data, error } = await fetchAllBrands();
+        if (error) throw error;
+        
+        // Filter brands by company_id
+        return data.filter(b => b.company_id === brand.company_id) || [];
+      } catch (error) {
+        console.error('Error fetching brands for company:', error);
+        return [];
+      }
+    }
+    
+    // If we have a single brand, return it as an array
+    if (brand?.id) {
+      return [brand];
+    }
+    
+    return [];
+  };
+
+  const updateBrandCompanyData = async (brandId, companyId) => {
     try {
-      const { data, error } = await table.brand.updateBrandCompany(brandId, companyId);
+      const { data, error } = await updateBrandCompany(brandId, companyId);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -171,9 +301,9 @@ export const BrandBoardContent = ({
     }
   };
 
-  const updateBrandProjects = async (brandId, projectIds) => {
+  const updateBrandProjectsData = async (brandId, projectIds) => {
     try {
-      const { data, error } = await table.brand.linkProjectsToBrand(brandId, projectIds);
+      const { data, error } = await linkProjectsToBrand(brandId, projectIds);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -182,9 +312,9 @@ export const BrandBoardContent = ({
     }
   };
 
-  const updateBrandColors = async (brandId, colorUpdates) => {
+  const updateBrandColorsData = async (brandId, colorUpdates) => {
     try {
-      const { data, error } = await table.brand.updateBrandColorTokens(brandId, colorUpdates);
+      const { data, error } = await updateBrandColorTokens(brandId, colorUpdates);
       if (error) throw error;
       return data;
     } catch (error) {
@@ -193,15 +323,15 @@ export const BrandBoardContent = ({
     }
   };
 
-  // NEW: Function to remove alt color and associated tokens
+  // Function to remove alt color and associated tokens
   const removeAltColorAndTokens = async (brandId, colorKey, groupName) => {
     try {
       // Remove the alt color from brand
-      const { error: brandError } = await table.brand.removeAltColor(brandId, colorKey);
+      const { error: brandError } = await removeAltColor(brandId, colorKey);
       if (brandError) throw brandError;
 
       // Delete all color tokens associated with this alt color group
-      const { error: tokensError } = await table.color.deleteColorsByBrandAndGroup(brandId, groupName);
+      const { error: tokensError } = await deleteColorsByBrandAndGroup(brandId, groupName);
       if (tokensError) throw tokensError;
 
       return true;
@@ -300,6 +430,24 @@ export const BrandBoardContent = ({
     }, {});
   }, [colorTokens]);
 
+  // Load available brands when component mounts
+  useEffect(() => {
+    const loadAvailableBrands = async () => {
+      const brands = await fetchAvailableBrands();
+      setAvailableBrands(brands);
+      
+      // Set the selected brand ID if we have brands and no selection yet
+      if (brands.length > 0 && !selectedBrandId) {
+        // Try to find a primary brand first
+        const primaryBrand = brands.find(b => b.status === 'primary');
+        setSelectedBrandId(primaryBrand?.id || brands[0].id);
+      }
+    };
+    
+    loadAvailableBrands();
+  }, [brand]);
+
+  // Load brand data when brandId changes
   useEffect(() => {
     if (!brandId) {
       setLoading(false);
@@ -309,16 +457,25 @@ export const BrandBoardContent = ({
     const loadBrandData = async () => {
       setLoading(true);
       try {
-        setBrandData(brand);
+        // Find the current brand object
+        let currentBrand;
+        
+        if (isMultipleBrands) {
+          currentBrand = availableBrands.find(b => b.id === brandId);
+        } else {
+          currentBrand = brand;
+        }
+        
+        setBrandData(currentBrand);
         
         const [colors, typography, foundationData, companyData, projectsData, companiesData, allProjectsData] = await Promise.all([
           fetchColorTokens(brandId),
           fetchTypographyTokens(brandId),
           fetchBrandFoundation(brandId),
-          brand?.company_id ? fetchCompanyInfo(brand.company_id) : Promise.resolve(null),
+          currentBrand?.company_id ? fetchCompanyInfo(currentBrand.company_id) : Promise.resolve(null),
           fetchBrandProjects(brandId),
-          fetchAllCompanies(),
-          fetchAllProjects()
+          fetchCompaniesData(),
+          fetchProjectsData()
         ]);
         
         setColorTokens(colors || []);
@@ -336,7 +493,7 @@ export const BrandBoardContent = ({
     };
 
     loadBrandData();
-  }, [brandId, brand]);
+  }, [brandId, brand, isMultipleBrands, availableBrands]);
 
   // Event handlers
   const handleTitleUpdate = async (newTitle) => {
@@ -345,7 +502,7 @@ export const BrandBoardContent = ({
     }
     
     try {
-      const updatedBrand = await table.brand.updateBrandTitle(brandId, newTitle.trim());
+      const updatedBrand = await updateBrandTitle(brandId, newTitle.trim());
       setBrandData(prev => ({ ...prev, title: newTitle.trim() }));
       return updatedBrand;
     } catch (error) {
@@ -358,7 +515,7 @@ export const BrandBoardContent = ({
     if (!brandId) return;
     
     try {
-      await table.brand.updateBrandCompany(brandId, companyId);
+      await updateBrandCompany(brandId, companyId);
       const selectedCompany = allCompanies.find(c => c.id === companyId);
       setCompany(selectedCompany || null);
       setBrandData(prev => ({ ...prev, company_id: companyId }));
@@ -371,7 +528,7 @@ export const BrandBoardContent = ({
     if (!brandId) return;
     
     try {
-      await updateBrandProjects(brandId, projectIds);
+      await updateBrandProjectsData(brandId, projectIds);
       const selectedProjects = allProjects.filter(p => projectIds.includes(p.id));
       setProjects(selectedProjects);
     } catch (error) {
@@ -396,7 +553,7 @@ export const BrandBoardContent = ({
       const defaultColor = '#6366F1';
       const updates = { [colorKey]: defaultColor };
       
-      await updateBrandColors(brandId, updates);
+      await updateBrandColorsData(brandId, updates);
       setFoundation(prev => ({ ...prev, [colorKey]: defaultColor }));
       setBrandData(prev => ({ ...prev, [colorKey]: defaultColor }));
     } catch (error) {
@@ -404,7 +561,6 @@ export const BrandBoardContent = ({
     }
   };
 
-  // NEW: Handler for removing alt colors
   const handleRemoveAltColor = async (colorKey, groupName) => {
     if (!editable || !brandId || !colorKey) return;
     
@@ -427,7 +583,7 @@ export const BrandBoardContent = ({
     
     try {
       const updates = { [colorEditDialog.colorKey]: newColor };
-      await updateBrandColors(brandId, updates);
+      await updateBrandColorsData(brandId, updates);
       
       setFoundation(prev => ({ ...prev, [colorEditDialog.colorKey]: newColor }));
       setBrandData(prev => ({ ...prev, [colorEditDialog.colorKey]: newColor }));
@@ -448,7 +604,7 @@ export const BrandBoardContent = ({
         [colorEditDialog.colorKey]: colorEditDialog.currentValue
       };
       
-      await updateBrandColors(brandId, { [colorEditDialog.colorKey]: colorEditDialog.currentValue });
+      await updateBrandColorsData(brandId, { [colorEditDialog.colorKey]: colorEditDialog.currentValue });
       await regenerateAllColorTokens(brandId, 25, updatedFoundation);
       
       setFoundation(updatedFoundation);
@@ -465,13 +621,19 @@ export const BrandBoardContent = ({
     }
   };
 
+  const handleBrandChange = (event, newValue) => {
+    setActiveTab(newValue);
+    setSelectedBrandId(availableBrands[newValue]?.id);
+  };
+
   const copyToClipboard = async (color) => {
     await navigator.clipboard.writeText(color);
     setCopiedColor(color);
     setTimeout(() => setCopiedColor(null), 1500);
   };
 
-  if (!brandId) {
+  // If no brand data is available
+  if (!brand) {
     return (
       <Alert severity="info" sx={{ my: 2 }}>
         <Typography variant="body2">
@@ -481,6 +643,28 @@ export const BrandBoardContent = ({
     );
   }
 
+  // If we have multiple brands but none are loaded yet
+  if (isMultipleBrands && availableBrands.length === 0) {
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
+        <CircularProgress size={24} sx={{ mr: 2 }} />
+        <Typography>Loading brands...</Typography>
+      </Box>
+    );
+  }
+
+  // If we have a single brand but no ID
+  if (!isMultipleBrands && !brandId) {
+    return (
+      <Alert severity="info" sx={{ my: 2 }}>
+        <Typography variant="body2">
+          No brand ID available to preview.
+        </Typography>
+      </Alert>
+    );
+  }
+
+  // If loading brand data
   if (loading) {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 4 }}>
@@ -492,6 +676,40 @@ export const BrandBoardContent = ({
 
   return (
     <Box sx={{ color: semanticColors?.text.primary || (mode === 'light' ? '#000000' : '#ffffff') }}>
+      {/* Brand Tabs - Only show if we have multiple brands */}
+      {isMultipleBrands && availableBrands.length > 1 && (
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 4 }}>
+          <Tabs 
+            value={activeTab} 
+            onChange={handleBrandChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            sx={{
+              '& .MuiTab-root': {
+                color: semanticColors?.text.secondary,
+                '&.Mui-selected': {
+                  color: semanticColors?.brand.primary
+                }
+              },
+              '& .MuiTabs-indicator': {
+                backgroundColor: semanticColors?.brand.primary
+              }
+            }}
+          >
+            {availableBrands.map((brand, index) => (
+              <Tab 
+                key={brand.id} 
+                label={brand.title || `Brand ${index + 1}`}
+                sx={{ 
+                  textTransform: 'none',
+                  fontWeight: brand.status === 'primary' ? 600 : 400,
+                }}
+              />
+            ))}
+          </Tabs>
+        </Box>
+      )}
+      
       {/* Brand Header */}
       <Box sx={{ textAlign: 'center', mb: 6 }}>
         {/* Company Information */}
@@ -541,7 +759,7 @@ export const BrandBoardContent = ({
 
         {/* Brand Title */}
         <InlineEditableField
-          value={brandData?.title || brand?.title || 'Brand Board'}
+          value={brandData?.title || 'Brand Board'}
           onChange={handleTitleUpdate}
           variant="h3"
           sx={{

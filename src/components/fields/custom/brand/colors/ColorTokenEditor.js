@@ -33,7 +33,7 @@ import {
   PencilSimple,
   DownloadSimple,
   Eye,
-  EyeOff,
+  EyeSlash,
   Link,
   Tag,
   Sun,
@@ -947,7 +947,7 @@ export const ColorTokenEditor = ({ record, field, editable = true }) => {
             }
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {showAliases ? <Eye size={16} /> : <EyeOff size={16} />}
+              {showAliases ? <Eye size={16} /> : <EyeSlash size={16} />}
                 <span>Show alias tokens</span>
               </Box>
             }

@@ -211,7 +211,7 @@ export const SectionThread = ({
             />
         </Stack>
 
-        <Dialog fullScreen open={builderOpen} onClose={() => setBuilderOpen(false)}>
+        <Dialog key="section-builder-dialog" fullScreen open={builderOpen} onClose={() => setBuilderOpen(false)}>
         <DialogContent sx={{ p: 4 }}>
           <Typography variant="h4" gutterBottom>
             Section Builder (Coming Soon)
@@ -314,7 +314,7 @@ export const SectionThread = ({
                             editable={true}
                             mode="edit"
                             onChange={setEditContent}
-                            field={{ name: 'section_content' }}
+                            field={{ name: 'section_content', lines: 5 }}
                           />
                         </Box>
                         
@@ -382,6 +382,7 @@ export const SectionThread = ({
                               value={section.content}
                               editable={false}
                               mode="view"
+                              field={{ name: 'section_content', lines: 5 }}
                             />
                           </Box>
                         )}

@@ -29,10 +29,11 @@ import { PencilSimple as PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 import { X as XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { createBrowserClient } from '@supabase/ssr';
+import { updateTask } from '@/lib/supabase/queries/table/task';
 
 import { dayjs } from "@/lib/dayjs";
 
-
+// For auth and other Supabase operations that aren't covered by query functions
 const supabase = createBrowserClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
 	process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY
@@ -247,11 +248,6 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 
 	const [edit, setEdit] = React.useState(false);
 
-	const supabase = createBrowserClient(
-		process.env.NEXT_PUBLIC_SUPABASE_URL,
-		process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY
-	);
-
 	React.useEffect(() => {
 		setTitle(initialTitle);
 	}, [initialTitle]);
@@ -263,10 +259,10 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 	const handleSave = React.useCallback(async () => {
 		if (!title) return;
 
-		const { error } = await supabase.from("task").update({
+		const { data, error } = await updateTask(id, {
 			title,
 			description
-		}).eq("id", id);
+		});
 
 		if (error) {
 			console.error("Failed to update task:", error.message);

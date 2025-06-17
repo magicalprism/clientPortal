@@ -10,8 +10,9 @@ import { useCollectionSelection } from '@/components/views/components/Collection
 import { DeleteSelectedButton } from '@/components/core/delete-selected-button';
 import { createClient } from '@/lib/supabase/browser';
 import { resolveDynamicFilter } from '@/lib/utils/filters/listfilters/filters';
+import { fetchRelationshipOptions } from '@/lib/supabase/queries/utils/relationshipOptions';
 
-const supabase = createClient();
+const supabase = createClient(); // Keep for auth and other operations
 
 function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
   const [options, setOptions] = useState([]);
@@ -38,42 +39,32 @@ function FilterPopoverContent({ filter, value, setValue, filters = {} }) {
       setError(null);
       
       try {
-        let query = supabase.from(filter.relation.table).select(`id, ${filter.relation.labelField}`);
-  
+        // Use centralized query function instead of direct Supabase query
+        const resolvedFilter = filter.relation.filter 
+          ? resolveDynamicFilter(filter.relation.filter, { record: filters }) 
+          : {};
         
-        // Apply any dynamic filters
-        if (filter.relation.filter) {
-
-          const resolvedFilter = resolveDynamicFilter(filter.relation.filter, { record: filters });
-
-          
-          Object.entries(resolvedFilter).forEach(([key, val]) => {
-            if (val) {
-
-              query = query.eq(key, val);
-            }
-          });
-        }
-
-
-        const { data, error } = await query;
-
+        // Only include filters with values
+        const filtersToApply = {};
+        Object.entries(resolvedFilter).forEach(([key, val]) => {
+          if (val !== undefined && val !== null) {
+            filtersToApply[key] = val;
+          }
+        });
+        
+        const { data, error } = await fetchRelationshipOptions(
+          filter.relation.table, 
+          filter.relation.labelField,
+          filtersToApply
+        );
         
         if (error) {
- 
           setError(error.message);
           setOptions([]);
         } else if (data) {
-          const labelField = filter.relation.labelField;
-
-          
-          const sortedData = [...data].sort((a, b) =>
-            (a[labelField] || '').localeCompare(b[labelField] || '')
-          );
-          setOptions(sortedData);
-       
+          // Data is already sorted by the query function
+          setOptions(data);
         } else {
-
           setOptions([]);
         }
       } catch (err) {

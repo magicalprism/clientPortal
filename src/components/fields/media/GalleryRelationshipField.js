@@ -14,28 +14,32 @@ import { createClient } from '@/lib/supabase/browser';
 import { MediaActions } from '@/components/fields/media/components/MediaActions';
 import { MediaPreviewCard } from '@/components/fields/media/components/MediaPreviewCard';
 import * as collections from '@/collections';
-// Import the media components properly with error handling
-let MediaUploadModal, MediaLibraryPicker, MediaEditModal;
 
+// Initialize variables to hold component references
+let MediaUploadModal = null;
+let MediaLibraryPicker = null;
+let MediaEditModal = null;
+
+// Import components with error handling
 try {
   const mediaUploadModule = require('@/components/fields/media/modals/MediaUploadModal');
   MediaUploadModal = mediaUploadModule.MediaUploadModal;
 } catch (e) {
-  console.warn('MediaUploadModal not found:', e.message);
+  console.warn('Error loading MediaUploadModal:', e.message);
 }
 
 try {
   const libraryModule = require('@/components/fields/media/components/MediaLibraryPicker');
   MediaLibraryPicker = libraryModule.MediaLibraryPicker;
 } catch (e) {
-  console.warn('MediaLibraryPicker not found:', e.message);
+  console.warn('Error loading MediaLibraryPicker:', e.message);
 }
 
 try {
   const editModule = require('@/components/fields/media/modals/MediaEditModal');
   MediaEditModal = editModule.MediaEditModal;
 } catch (e) {
-  console.warn('MediaEditModal not found:', e.message);
+  console.warn('Error loading MediaEditModal:', e.message);
 }
 
 const supabase = createClient();

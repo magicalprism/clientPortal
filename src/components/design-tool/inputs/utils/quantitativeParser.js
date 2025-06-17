@@ -3,11 +3,22 @@
 
 export const parseContentQuantitatively = (content, htmlStructure = null) => {
   console.log('🔬 RESEARCH-BASED CONTENT PARSING - Universal Patterns');
+  console.log('🔍 HTML Structure available:', !!htmlStructure);
+  console.log('🔍 HTML Elements count:', htmlStructure?.elements?.length || 0);
+  
+  // PRIORITY: Use HTML structure if available
+  if (htmlStructure && htmlStructure.elements && htmlStructure.elements.length > 0) {
+    console.log('🎯 Using HTML semantic structure - preserving tags and hierarchy');
+    return parseFromHTMLStructure(htmlStructure, content);
+  }
+  
+  // FALLBACK: Plain text parsing with enhanced splitting
+  console.log('📝 No HTML structure - using enhanced text parsing');
   
   // STEP 1: Clean and normalize content
   const cleanContent = normalizeContent(content);
   
-  // STEP 2: Split into atomic lines with comprehensive metadata
+  // STEP 2: Split into atomic lines with comprehensive metadata  
   const atomicLines = createAtomicLines(cleanContent);
   console.log(`📊 Created ${atomicLines.length} atomic lines`);
   
@@ -25,7 +36,7 @@ export const parseContentQuantitatively = (content, htmlStructure = null) => {
   return {
     sections: wireframeSections,
     totalSections: wireframeSections.length,
-    hasSemanticStructure: !!htmlStructure,
+    hasSemanticStructure: false,
     stats: {
       totalLines: atomicLines.length,
       bulletLines: classifiedLines.filter(l => l.type === 'bullet').length,
@@ -34,6 +45,344 @@ export const parseContentQuantitatively = (content, htmlStructure = null) => {
       frameworkPatterns: sections.map(s => s.frameworkPattern).join(', ')
     }
   };
+};
+
+// ENHANCED: Parse from HTML structure with better debugging
+export const parseFromHTMLStructure = (htmlStructure, originalContent) => {
+  console.log('🏗️ PARSING FROM HTML STRUCTURE');
+  console.log('📋 HTML Structure:', htmlStructure);
+  
+  const elements = htmlStructure.elements || [];
+  console.log(`📋 Processing ${elements.length} HTML elements`);
+  
+  // Debug: Log first few elements to see what we're working with
+  elements.slice(0, 5).forEach((el, idx) => {
+    console.log(`📋 Element ${idx}: type="${el.type}", tag="${el.tag}", content="${el.content?.substring(0, 50)}"`);
+  });
+  
+  if (elements.length === 0) {
+    console.log('❌ No HTML elements found, falling back to text parsing');
+    return parseContentQuantitatively(originalContent, null);
+  }
+  
+  // Group elements into logical sections
+  const sections = groupHTMLElementsIntoSections(elements);
+  console.log(`📊 Grouped into ${sections.length} semantic sections`);
+  
+  if (sections.length === 0) {
+    console.log('❌ No sections created, falling back to text parsing');
+    return parseContentQuantitatively(originalContent, null);
+  }
+  
+  // Convert to wireframe format
+  const wireframeSections = sections.map((section, index) => {
+    const contentAnalysis = analyzeHTMLSectionContent(section);
+    const sectionType = determineHTMLSectionType(section, index);
+    const template = selectTemplateForHTMLSection(sectionType, contentAnalysis);
+    
+    console.log(`📋 Section ${index + 1}: ${sectionType} -> ${template.name} (${contentAnalysis.listItemCount} lists)`);
+    
+    return {
+      id: `section-${index}`,
+      type: sectionType,
+      templateName: template.name,
+      templateKey: template.layout.replace(/[_-]/g, '_'),
+      elements: section.elements,
+      wireframeLayout: {
+        layout: template.layout,
+        hasImage: template.hasImage,
+        imagePos: template.imagePos || (sectionType === 'hero' ? 'left' : 'right')
+      },
+      template: template,
+      index: index,
+      hasSemanticStructure: true,
+      contentAnalysis: contentAnalysis
+    };
+  });
+
+  return {
+    sections: wireframeSections,
+    totalSections: wireframeSections.length,
+    hasSemanticStructure: true,
+    stats: {
+      totalElements: elements.length,
+      headingElements: elements.filter(e => e.type === 'heading').length,
+      listElements: elements.filter(e => e.type === 'list_item' || e.tag === 'li').length,
+      paragraphElements: elements.filter(e => e.type === 'paragraph').length,
+      frameworkPatterns: 'HTML Structure Preserved'
+    }
+  };
+};
+
+// FIXED: Better HTML element grouping with debugging
+export const groupHTMLElementsIntoSections = (elements) => {
+  console.log('🏗️ GROUPING HTML ELEMENTS INTO SECTIONS');
+  console.log(`📋 Input elements:`, elements.map(e => `${e.type}:${e.tag} "${e.content?.substring(0, 30)}"`));
+  
+  const sections = [];
+  let currentSection = null;
+  
+  elements.forEach((element, index) => {
+    // Log each element being processed
+    console.log(`📋 Processing element ${index}: ${element.type}:${element.tag} "${element.content?.substring(0, 50)}"`);
+    
+    // Don't skip list containers - they might contain important structure info
+    if (element.type === 'list_container') {
+      console.log(`📋 Found list container with ${element.itemCount} items`);
+      // Add a marker for list structure but continue processing
+    }
+    
+    const shouldStartNewSection = shouldStartNewHTMLSection(element, currentSection, index);
+    
+    if (shouldStartNewSection) {
+      // Save current section
+      if (currentSection && currentSection.elements.length > 0) {
+        console.log(`💾 Saving section with ${currentSection.elements.length} elements`);
+        sections.push(currentSection);
+      }
+      
+      // Start new section
+      const sectionType = determineHTMLSectionType([element], index);
+      currentSection = {
+        type: sectionType,
+        elements: [element],
+        startIndex: index
+      };
+      
+      console.log(`🆕 New HTML section: ${sectionType} at element ${index}`);
+    } else {
+      // Add to current section
+      if (currentSection) {
+        currentSection.elements.push(element);
+        console.log(`   ➕ Added ${element.type}:${element.tag} to ${currentSection.type}`);
+      } else {
+        // Failsafe - create section if none exists
+        currentSection = {
+          type: 'content',
+          elements: [element],
+          startIndex: index
+        };
+        console.log(`🆕 Created failsafe section at element ${index}`);
+      }
+    }
+  });
+  
+  // Don't forget the last section
+  if (currentSection && currentSection.elements.length > 0) {
+    console.log(`💾 Saving final section with ${currentSection.elements.length} elements`);
+    sections.push(currentSection);
+  }
+  
+  console.log(`✅ Created ${sections.length} HTML sections total`);
+  sections.forEach((section, idx) => {
+    console.log(`   ${idx + 1}. ${section.type} (${section.elements.length} elements)`);
+  });
+  
+  return sections;
+};
+
+// FIXED: Much more conservative HTML section breaking
+export const shouldStartNewHTMLSection = (element, currentSection, index) => {
+  if (!currentSection) return true;
+  
+  // ONLY break on H1 headings (main sections)
+  if (element.type === 'heading' && element.level === 1) {
+    console.log(`   🔬 HTML Section break: H1 main heading`);
+    return true;
+  }
+  
+  // Break after many elements (increased threshold)
+  if (currentSection.elements.length >= 15) {
+    console.log(`   🔬 HTML Section break: Too many elements (${currentSection.elements.length})`);
+    return true;
+  }
+  
+  // ONLY break on MAJOR section keywords at the START of headings
+  if (element.type === 'heading' && element.level === 2 && 
+      /^(About|Services|Features|Benefits|Results|Experience|Contact|Looking to|The ABD|Proven Results|You've Outgrown)/i.test(element.content.trim())) {
+    console.log(`   🔬 HTML Section break: Major section heading: "${element.content.substring(0, 50)}"`);
+    return true;
+  }
+  
+  // Break on very long content (word-based)
+  const totalWords = currentSection.elements.reduce((sum, el) => 
+    sum + (el.content?.split(' ').length || 0), 0);
+  if (totalWords > 800) {
+    console.log(`   🔬 HTML Section break: Word limit (${totalWords} words)`);
+    return true;
+  }
+  
+  return false;
+};
+
+// FIXED: Better HTML section content analysis with proper list detection
+export const analyzeHTMLSectionContent = (section) => {
+  const elements = section.elements || [];
+  const headings = elements.filter(e => e.type === 'heading');
+  const lists = elements.filter(e => e.type === 'list_item' || e.tag === 'li');
+  const paragraphs = elements.filter(e => e.type === 'paragraph' || e.tag === 'p');
+  
+  // Also check for bullet patterns in text content
+  const textWithBullets = elements.filter(e => 
+    e.content && (
+      /^[-•*]\s/.test(e.content) || 
+      /^\d+\.\s/.test(e.content) ||
+      e.content.includes('• ') ||
+      e.content.includes('- ') ||
+      e.content.includes('* ')
+    )
+  );
+  
+  const totalListItems = lists.length + textWithBullets.length;
+  
+  console.log(`📊 Section analysis: ${elements.length} elements, ${headings.length} headings, ${totalListItems} list items, ${paragraphs.length} paragraphs`);
+  
+  return {
+    elementCount: elements.length,
+    headingCount: headings.length,
+    listItemCount: totalListItems,
+    paragraphCount: paragraphs.length,
+    hasHeadings: headings.length > 0,
+    hasLists: totalListItems > 0,
+    hasParagraphs: paragraphs.length > 0,
+    totalWords: elements.reduce((sum, e) => sum + (e.content?.split(' ').length || 0), 0),
+    shouldUseBulletList: totalListItems >= 3,
+    shouldUseIconGrid: totalListItems >= 2 && totalListItems <= 6,
+    forceImageTemplate: true
+  };
+};
+
+// FIXED: More intelligent section type determination
+export const determineHTMLSectionType = (sectionOrElements, index) => {
+  const elements = Array.isArray(sectionOrElements) ? sectionOrElements : sectionOrElements.elements;
+  
+  if (!elements || elements.length === 0) return 'content';
+  
+  // First section is always hero
+  if (index === 0) return 'hero';
+  
+  // Combine all content to analyze
+  const allContent = elements.map(e => e.content || '').join(' ').toLowerCase();
+  const firstElement = elements[0];
+  const firstContent = (firstElement?.content || '').toLowerCase();
+  
+  // Check for specific section markers in the FIRST element
+  if (/^(about|hi\.|after|as my work|background|bio)/i.test(firstContent)) {
+    console.log(`📋 Detected ABOUT section from: "${firstContent.substring(0, 50)}"`);
+    return 'about';
+  }
+  
+  if (/^(proven results|these aren't just ideas|real-world results|drawing from experience)/i.test(firstContent)) {
+    console.log(`📋 Detected TESTIMONIALS section from: "${firstContent.substring(0, 50)}"`);
+    return 'testimonials';
+  }
+  
+  if (/^(the cost|i've worked with people)/i.test(firstContent)) {
+    console.log(`📋 Detected PROBLEM section from: "${firstContent.substring(0, 50)}"`);
+    return 'problem';
+  }
+  
+  if (/^(looking to|get my official|contact|partner with us)/i.test(firstContent)) {
+    console.log(`📋 Detected CTA section from: "${firstContent.substring(0, 50)}"`);
+    return 'cta';
+  }
+  
+  if (/^(the abd ventures|most consultants|we blend)/i.test(firstContent)) {
+    console.log(`📋 Detected FEATURES section from: "${firstContent.substring(0, 50)}"`);
+    return 'features';
+  }
+  
+  // Check for high concentration of list items (features)
+  const listItems = elements.filter(e => 
+    e.type === 'list_item' || 
+    (e.content && (/^[-•*]\s/.test(e.content) || e.content.includes('• ')))
+  ).length;
+  
+  if (listItems >= 3) {
+    console.log(`📋 Detected FEATURES section from ${listItems} list items`);
+    return 'features';
+  }
+  
+  // Check content patterns for section type
+  if (allContent.includes('results') || allContent.includes('proven') || 
+      allContent.includes('success') || allContent.includes('clients')) {
+    return 'testimonials';
+  }
+  
+  if (allContent.includes('services') || allContent.includes('features') || 
+      allContent.includes('we offer') || allContent.includes('capabilities')) {
+    return 'features';
+  }
+  
+  console.log(`📋 Defaulting to CONTENT section for: "${firstContent.substring(0, 50)}"`);
+  return 'content';
+};
+
+// FIXED: Better template selection for HTML sections with debugging
+export const selectTemplateForHTMLSection = (sectionType, contentAnalysis) => {
+  console.log(`🎨 Selecting template for ${sectionType} section with ${contentAnalysis.listItemCount} lists`);
+  
+  const templates = {
+    hero: {
+      name: 'Hero - Image Split',
+      layout: 'image_text_split',
+      hasImage: true,
+      imagePos: 'left',
+      description: 'Hero section with image and text'
+    },
+    about: {
+      name: 'About - Image Right',
+      layout: 'image_text_split',
+      hasImage: true,
+      imagePos: 'right',
+      description: 'About section with image on right'
+    },
+    features: contentAnalysis.shouldUseBulletList ? {
+      name: 'Feature List',
+      layout: 'bullet_list',
+      hasImage: false,
+      description: 'Structured list with bullets'
+    } : contentAnalysis.shouldUseIconGrid ? {
+      name: 'Features - Icon Grid',
+      layout: 'icon_grid',
+      hasImage: true,
+      description: 'Grid layout with icons'
+    } : {
+      name: 'Features - Two Column',
+      layout: 'two_column_list',
+      hasImage: false,
+      description: 'Two column feature list'
+    },
+    testimonials: {
+      name: 'Social Proof',
+      layout: 'social_proof',
+      hasImage: true,
+      description: 'Testimonials and social proof'
+    },
+    problem: {
+      name: 'Problem - Centered',
+      layout: 'centered_emphasis',
+      hasImage: false,
+      description: 'Problem statement with emphasis'
+    },
+    cta: {
+      name: 'CTA - Centered',
+      layout: 'centered_cta',
+      hasImage: false,
+      description: 'Centered call to action'
+    },
+    content: {
+      name: 'Content Block',
+      layout: 'text_block',
+      hasImage: false,
+      description: 'General content block'
+    }
+  };
+  
+  const selectedTemplate = templates[sectionType] || templates.content;
+  console.log(`🎨 Selected template: ${selectedTemplate.name} (${selectedTemplate.layout})`);
+  
+  return selectedTemplate;
 };
 
 // STEP 1: Normalize content
@@ -45,9 +394,16 @@ export const normalizeContent = (content) => {
     .trim();
 };
 
-// STEP 2: Create atomic lines with comprehensive metadata
+// STEP 2: Enhanced content splitting for better section generation
 export const createAtomicLines = (content) => {
-  const lines = content.split('\n');
+  // First try normal line splitting
+  let lines = content.split('\n');
+  
+  // If we only get 1-2 lines but content is long, try intelligent splitting
+  if (lines.length <= 2 && content.length > 200) {
+    console.log('🔧 Content too long for single line, attempting intelligent split...');
+    lines = intelligentContentSplit(content);
+  }
   
   return lines.map((line, index) => {
     const trimmed = line.trim();
@@ -58,22 +414,94 @@ export const createAtomicLines = (content) => {
       text: trimmed,
       length: trimmed.length,
       isEmpty: trimmed.length === 0,
-      // Quantitative metrics
       wordCount: trimmed.split(/\s+/).filter(w => w.length > 0).length,
       hasEndPunctuation: /[.!?]$/.test(trimmed),
       startsWithCapital: /^[A-Z]/.test(trimmed),
-      // Research-based bullet detection
       bulletPatterns: analyzeBulletPatterns(trimmed),
-      // Research-based heading indicators
       headingIndicators: analyzeHeadingIndicators(trimmed, index),
-      // Calculate confidence separately to avoid circular dependency
       headingConfidence: calculateHeadingConfidence(trimmed, index),
-      // Copywriting framework indicators
       frameworkIndicators: analyzeFrameworkIndicators(trimmed),
-      // Web content patterns
       webPatterns: analyzeWebPatterns(trimmed)
     };
   }).filter(line => !line.isEmpty);
+};
+
+// FIXED: Intelligent content splitting that respects sentence boundaries
+export const intelligentContentSplit = (content) => {
+  const lines = [];
+  
+  // FIRST: Try to preserve existing structure if it exists
+  if (content.includes('\n\n')) {
+    const paragraphs = content.split('\n\n').filter(p => p.trim().length > 20);
+    if (paragraphs.length > 1) {
+      console.log(`📝 Found ${paragraphs.length} paragraph breaks`);
+      return paragraphs;
+    }
+  }
+  
+  // SECOND: Look for section keywords at sentence boundaries
+  const sectionKeywords = /(\. |^)(About|Services|Features|Benefits|How|Why|What|Get Started|Contact|Subscribe|Download|Looking to|The [A-Z])/g;
+  let lastIndex = 0;
+  let match;
+  
+  while ((match = sectionKeywords.exec(content)) !== null) {
+    if (lastIndex < match.index) {
+      const section = content.substring(lastIndex, match.index + 1).trim();
+      if (section.length > 50) {
+        lines.push(section);
+      }
+    }
+    lastIndex = match.index + (match[1].length === 1 ? 1 : 0); // Keep the period but not the keyword
+  }
+  
+  // Add remaining content
+  if (lastIndex < content.length) {
+    const remaining = content.substring(lastIndex).trim();
+    if (remaining.length > 50) {
+      lines.push(remaining);
+    }
+  }
+  
+  if (lines.length > 1) {
+    console.log(`🎯 Found ${lines.length} section-based splits`);
+    return lines;
+  }
+  
+  // THIRD: Split on complete sentences for very long content
+  if (content.length > 800) {
+    const sentences = content.match(/[^\.!?]+[\.!?]+/g) || [];
+    let currentChunk = '';
+    
+    sentences.forEach(sentence => {
+      const trimmed = sentence.trim();
+      
+      // Start new chunk if current is getting long AND we're at a logical break
+      if (currentChunk.length > 300 && isLogicalBreakPoint(trimmed)) {
+        if (currentChunk.trim()) lines.push(currentChunk.trim());
+        currentChunk = trimmed;
+      } else {
+        currentChunk += (currentChunk ? ' ' : '') + trimmed;
+      }
+    });
+    
+    if (currentChunk.trim()) lines.push(currentChunk.trim());
+    
+    if (lines.length > 1) {
+      console.log(`📝 Split into ${lines.length} sentence-aware chunks`);
+      return lines;
+    }
+  }
+  
+  // FALLBACK: Return original if we can't split intelligently
+  return [content];
+};
+
+// Helper function to identify logical break points
+export const isLogicalBreakPoint = (sentence) => {
+  return /^(About|After|But|That|This|Here|Now|Today|Looking|The cost|The result|You|I)/i.test(sentence) ||
+         sentence.includes('experience') ||
+         sentence.includes('background') ||
+         sentence.includes('results');
 };
 
 // Research-based bullet pattern detection
@@ -83,10 +511,8 @@ export const analyzeBulletPatterns = (text) => {
     numbered: /^\d+\.\s/.test(text),
     hyphen: /^\-\s/.test(text),
     asterisk: /^\*\s/.test(text),
-    // Research: Common web bullet variations
     arrow: /^[→➤►]\s/.test(text),
     check: /^[✓✔]\s/.test(text),
-    // Confidence score based on multiple indicators
     confidence: calculateBulletConfidence(text)
   };
 };
@@ -94,32 +520,25 @@ export const analyzeBulletPatterns = (text) => {
 export const calculateBulletConfidence = (text) => {
   let score = 0;
   
-  // Standard bullet patterns
   if (/^[•\-\*]\s/.test(text)) score += 0.9;
   if (/^\d+\.\s/.test(text)) score += 0.9;
   if (/^[→➤►✓✔]\s/.test(text)) score += 0.8;
   
-  // Contextual indicators
-  if (text.length > 20 && text.length < 200) score += 0.1; // Typical list item length
-  if (!text.includes('.') || text.endsWith('.')) score += 0.1; // List items often don't have internal periods
+  if (text.length > 20 && text.length < 200) score += 0.1;
+  if (!text.includes('.') || text.endsWith('.')) score += 0.1;
   
   return Math.min(1, score);
 };
 
-// Research-based heading detection (from PDF analysis papers)
+// Research-based heading detection
 export const analyzeHeadingIndicators = (text, index) => {
   return {
-    // Length-based indicators (research shows headings are typically <80 chars)
     lengthScore: calculateLengthScore(text),
-    // Position-based scoring (early elements more likely to be headings)
     positionScore: calculatePositionScore(index),
-    // Typography indicators
     hasColon: text.endsWith(':'),
     isShort: text.length < 80,
     hasNoInternalPunctuation: !/[.!?]/.test(text.slice(0, -1)),
-    // Semantic indicators
     semanticScore: calculateSemanticHeadingScore(text)
-    // Note: confidence calculated separately to avoid circular dependency
   };
 };
 
@@ -140,19 +559,12 @@ export const calculatePositionScore = (index) => {
 export const calculateSemanticHeadingScore = (text) => {
   let score = 0;
   
-  // Research-based heading patterns from web content analysis
   const headingPatterns = [
-    // Generic section starters
     /^(About|Services|Products|Features|Benefits|How|Why|What|Get|Start)/i,
-    // Problem-solution patterns (PAS framework)
     /^(Problem|Solution|Challenge|Issue|Trouble|Struggle)/i,
-    // AIDA patterns
     /^(Attention|Interest|Desire|Action|Discover|Learn|Find)/i,
-    // Landing page patterns
     /^(Hero|Welcome|Introduction|Overview|Summary)/i,
-    // Social proof patterns
     /^(Testimonials|Reviews|Results|Success|Proven|Trusted)/i,
-    // CTA patterns
     /^(Contact|Subscribe|Download|Buy|Get|Start|Join|Sign)/i
   ];
   
@@ -160,14 +572,12 @@ export const calculateSemanticHeadingScore = (text) => {
     if (pattern.test(text)) score += 0.2;
   });
   
-  // Colon indicates list/section heading
   if (text.endsWith(':')) score += 0.3;
   
   return Math.min(1, score);
 };
 
 export const calculateHeadingConfidence = (text, index) => {
-  // Calculate indicators directly to avoid circular dependency
   const lengthScore = calculateLengthScore(text);
   const positionScore = calculatePositionScore(index);
   const semanticScore = calculateSemanticHeadingScore(text);
@@ -179,8 +589,15 @@ export const calculateHeadingConfidence = (text, index) => {
   confidence += positionScore;
   confidence += semanticScore;
   
+  // ENHANCED: Boost confidence for typical heading patterns
+  if (text.length < 60 && /^[A-Z]/.test(text)) confidence += 0.2;
   if (hasColon) confidence += 0.3;
   if (hasNoInternalPunctuation) confidence += 0.2;
+  
+  // ENHANCED: Look for heading-like content
+  if (/^(About|Services|Features|Benefits|Results|Experience|Background|Contact)/i.test(text)) {
+    confidence += 0.4;
+  }
   
   return Math.max(0, Math.min(1, confidence));
 };
@@ -190,20 +607,17 @@ export const analyzeFrameworkIndicators = (text) => {
   const lower = text.toLowerCase();
   
   return {
-    // AIDA Framework indicators
     aida: {
       attention: testAttentionPatterns(lower),
       interest: testInterestPatterns(lower),
       desire: testDesirePatterns(lower),
       action: testActionPatterns(lower)
     },
-    // PAS Framework indicators  
     pas: {
       problem: testProblemPatterns(lower),
       agitation: testAgitationPatterns(lower),
       solution: testSolutionPatterns(lower)
     },
-    // Landing page patterns
     landingPage: {
       hero: testHeroPatterns(lower),
       features: testFeaturePatterns(lower),
@@ -213,7 +627,7 @@ export const analyzeFrameworkIndicators = (text) => {
   };
 };
 
-// AIDA Pattern Detection (from research)
+// AIDA Pattern Detection
 export const testAttentionPatterns = (text) => {
   const patterns = [
     /discover|imagine|what if|did you know|stop|wait|look|attention|alert/,
@@ -278,7 +692,7 @@ export const testSolutionPatterns = (text) => {
   return patterns.some(p => p.test(text)) ? 0.8 : 0;
 };
 
-// Landing Page Pattern Detection (from research)
+// Landing Page Pattern Detection
 export const testHeroPatterns = (text) => {
   const patterns = [
     /welcome|hello|meet|introducing|this is/,
@@ -318,13 +732,9 @@ export const testCTAPatterns = (text) => {
 // Web content pattern analysis
 export const analyzeWebPatterns = (text) => {
   return {
-    // F-pattern indicators (research shows most important content on left)
-    isLeftAligned: true, // Assume left-aligned text
-    // Above-the-fold indicators
+    isLeftAligned: true,
     likelyAboveFold: text.length < 100 && /^(welcome|hero|main|primary)/.test(text.toLowerCase()),
-    // Scannable content indicators
     isScannableLenght: text.length > 20 && text.length < 150,
-    // CTA indicators
     containsCTA: /click|download|subscribe|buy|contact|get|start|try/.test(text.toLowerCase())
   };
 };
@@ -346,33 +756,33 @@ export const classifyLinesUniversally = (atomicLines) => {
 };
 
 export const classifyLineUniversally = (line, index, allLines) => {
-  const { text, bulletPatterns, headingIndicators, headingConfidence, frameworkIndicators } = line;
+  const { text, bulletPatterns, headingConfidence, frameworkIndicators } = line;
   
-  // 1. BULLET POINTS (highest confidence from research)
-  if (bulletPatterns.confidence > 0.7) {
+  // 1. ENHANCED BULLET POINTS - Look for more patterns
+  if (bulletPatterns.confidence > 0.7 || isListItem(text)) {
     return {
       type: 'bullet',
-      confidence: bulletPatterns.confidence,
+      confidence: Math.max(bulletPatterns.confidence, 0.8),
       subtype: bulletPatterns.numbered ? 'numbered' : 'bulleted',
       frameworkMatch: 'features'
     };
   }
   
-  // 2. HEADINGS (based on research indicators)
-  if (headingConfidence > 0.6) {
-    let level = 2; // default
+  // 2. ENHANCED HEADINGS - More lenient detection
+  if (headingConfidence > 0.5 || isHeadingLike(text)) { // Reduced from 0.6
+    let level = 2;
     if (index === 0 || headingConfidence > 0.8) level = 1;
-    if (headingIndicators.isShort && headingIndicators.hasColon) level = 3;
+    if (text.length < 40 && text.endsWith(':')) level = 3;
     
     return {
       type: 'heading',
-      confidence: headingConfidence,
+      confidence: Math.max(headingConfidence, 0.7),
       subtype: `h${level}`,
       frameworkMatch: detectFrameworkFromIndicators(frameworkIndicators)
     };
   }
   
-  // 3. PARAGRAPHS (everything else)
+  // 3. PARAGRAPHS - Everything else
   return {
     type: 'paragraph',
     confidence: 0.8,
@@ -381,14 +791,25 @@ export const classifyLineUniversally = (line, index, allLines) => {
   };
 };
 
+// Helper functions for better detection
+export const isListItem = (text) => {
+  return /^[-•*]\s/.test(text) || 
+         /^\d+\.\s/.test(text) ||
+         /^[→➤►✓✔]\s/.test(text) ||
+         (text.length < 150 && text.includes('—') && !text.includes('. '));
+};
+
+export const isHeadingLike = (text) => {
+  return (text.length < 80 && 
+          (/^[A-Z]/.test(text) && 
+           !text.includes('. ') && 
+           (text.endsWith(':') || 
+            /^(About|Services|Features|Benefits|Results|Experience|Background|Contact|The [A-Z])/i.test(text))));
+};
+
 export const detectFrameworkFromIndicators = (indicators) => {
-  // Check AIDA patterns
   const aidaScore = Object.values(indicators.aida).reduce((sum, val) => sum + val, 0);
-  
-  // Check PAS patterns
   const pasScore = Object.values(indicators.pas).reduce((sum, val) => sum + val, 0);
-  
-  // Check landing page patterns
   const landingScore = Object.values(indicators.landingPage).reduce((sum, val) => sum + val, 0);
   
   if (aidaScore > pasScore && aidaScore > landingScore) return 'aida';
@@ -398,15 +819,29 @@ export const detectFrameworkFromIndicators = (indicators) => {
   return 'generic';
 };
 
+// FIXED: More conservative section break scoring
 export const calculateUniversalSectionBreakScore = (line, index, allLines) => {
   let score = 0;
   
-  // Research-based section break indicators
-  if (line.headingConfidence > 0.7) score += 0.6;
-  if (index === 0) score += 0.3;
-  if (line.frameworkIndicators.aida.attention > 0.5) score += 0.4;
-  if (line.frameworkIndicators.pas.problem > 0.5) score += 0.4;
-  if (line.frameworkIndicators.landingPage.hero > 0.5) score += 0.4;
+  // Only high-confidence headings get significant scores
+  if (line.headingConfidence > 0.8) score += 0.5; // Higher threshold
+  if (index === 0) score += 0.4;
+  
+  // Only strong framework signals
+  if (line.frameworkIndicators.aida.attention > 0.6) score += 0.3;
+  if (line.frameworkIndicators.pas.problem > 0.6) score += 0.3;
+  if (line.frameworkIndicators.landingPage.hero > 0.6) score += 0.3;
+  
+  // Strong section starters only
+  if (/^(About|Services|Features|Benefits|Looking to|The [A-Z])/i.test(line.text)) {
+    score += 0.4;
+  }
+  
+  // Significantly longer content
+  if (allLines.length > 1) {
+    const avgLength = allLines.reduce((sum, l) => sum + l.length, 0) / allLines.length;
+    if (line.length > avgLength * 2) score += 0.2; // Doubled threshold
+  }
   
   return Math.max(0, Math.min(1, score));
 };
@@ -422,12 +857,10 @@ export const groupIntoFrameworkSections = (classifiedLines) => {
     const shouldStartNewSection = shouldStartNewSectionUniversal(line, currentSection, index);
     
     if (shouldStartNewSection) {
-      // Save current section
       if (currentSection && currentSection.lines.length > 0) {
         sections.push(finalizeUniversalSection(currentSection));
       }
       
-      // Start new section
       currentSection = {
         startIndex: index,
         lines: [line],
@@ -440,7 +873,6 @@ export const groupIntoFrameworkSections = (classifiedLines) => {
       
       console.log(`📊 New section: ${currentSection.frameworkPattern} at line ${index}`);
     } else {
-      // Add to current section
       if (currentSection) {
         currentSection.lines.push(line);
         if (line.type === 'bullet') currentSection.bulletCount++;
@@ -450,7 +882,6 @@ export const groupIntoFrameworkSections = (classifiedLines) => {
     }
   });
   
-  // Don't forget the last section
   if (currentSection && currentSection.lines.length > 0) {
     sections.push(finalizeUniversalSection(currentSection));
   }
@@ -458,33 +889,42 @@ export const groupIntoFrameworkSections = (classifiedLines) => {
   return sections;
 };
 
+// FIXED: Conservative section breaks to prevent over-splitting
 export const shouldStartNewSectionUniversal = (line, currentSection, index) => {
   if (!currentSection) return true;
   
-  // Research-based section break rules
-  
-  // 1. High section break score
-  if (line.sectionBreakScore > 0.5) {
-    console.log(`   🔬 Section break: High score (${line.sectionBreakScore})`);
+  // 1. Only break on STRONG section indicators
+  if (line.sectionBreakScore > 0.7) { // Increased threshold
+    console.log(`   🔬 Section break: Strong score (${line.sectionBreakScore})`);
     return true;
   }
   
-  // 2. Word count threshold (research shows 300-500 words per section optimal)
-  if (currentSection.totalWords > 350) {
+  // 2. INCREASED word count to prevent tiny sections
+  if (currentSection.totalWords > 500) { // Increased from 150
     console.log(`   🔬 Section break: Word limit (${currentSection.totalWords} words)`);
     return true;
   }
   
-  // 3. Framework pattern change
+  // 3. Only break on very clear framework changes
   if (line.frameworkMatch !== currentSection.dominantFramework && 
-      line.confidence > 0.7 && currentSection.lines.length > 1) {
-    console.log(`   🔬 Section break: Framework change (${currentSection.dominantFramework} → ${line.frameworkMatch})`);
+      line.confidence > 0.8 && currentSection.lines.length > 3) { // Higher thresholds
+    console.log(`   🔬 Section break: Strong framework change (${currentSection.dominantFramework} → ${line.frameworkMatch})`);
     return true;
   }
   
-  // 4. Too many elements (usability research)
-  if (currentSection.lines.length > 6) {
-    console.log(`   🔬 Section break: Too many elements (${currentSection.lines.length})`);
+  // 4. INCREASED element limit to prevent over-splitting
+  if (currentSection.lines.length > 8) { // Increased from 3
+    console.log(`   🔬 Section break: Element limit (${currentSection.lines.length})`);
+    return true;
+  }
+  
+  // 5. Only break on very strong semantic indicators
+  if (line.text.length > 100 && currentSection.lines.length > 2 && (
+    line.frameworkIndicators.aida.attention > 0.7 || // Higher thresholds
+    line.frameworkIndicators.pas.problem > 0.7 ||
+    line.frameworkIndicators.landingPage.hero > 0.7
+  )) {
+    console.log(`   🔬 Section break: Strong semantic indicator`);
     return true;
   }
   
@@ -492,7 +932,6 @@ export const shouldStartNewSectionUniversal = (line, currentSection, index) => {
 };
 
 export const finalizeUniversalSection = (section) => {
-  // Convert lines to elements
   const elements = section.lines.map((line, idx) => ({
     type: line.type,
     tag: line.type === 'heading' ? line.subtype : (line.type === 'bullet' ? 'li' : 'p'),
@@ -505,7 +944,6 @@ export const finalizeUniversalSection = (section) => {
     frameworkMatch: line.frameworkMatch
   }));
   
-  // Determine section type from framework patterns
   const sectionType = determineSectionTypeFromFramework(section);
   
   return {
@@ -526,7 +964,6 @@ export const determineSectionTypeFromFramework = (section) => {
   const hasHighBullets = section.bulletCount >= 3;
   const firstLine = section.lines[0];
   
-  // Framework-based section type determination
   if (section.startIndex === 0) return 'hero';
   
   if (framework === 'aida') {
@@ -556,11 +993,9 @@ export const determineSectionTypeFromFramework = (section) => {
 
 export const convertToWireframeSections = (sections) => {
   return sections.map((section, index) => {
-    // Research-based template selection
     let templateLayout = 'text_block';
     let templateName = 'Text Block';
     
-    // Framework-informed template selection
     if (section.type === 'hero') {
       templateLayout = 'image_text_split';
       templateName = 'Hero - Image Split';
@@ -630,7 +1065,6 @@ export const getClassificationStats = (classifiedLines) => {
     
     if (line.confidence > 0.7) stats.highConfidence++;
     
-    // Count framework matches
     if (line.frameworkMatch) {
       stats.frameworkMatches[line.frameworkMatch] = (stats.frameworkMatches[line.frameworkMatch] || 0) + 1;
     }

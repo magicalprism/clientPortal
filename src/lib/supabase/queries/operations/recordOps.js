@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/browser';
 import { getPostgresTimestamp } from '@/lib/utils/getPostgresTimestamp';
+import { setBrandAsPrimary } from '@/lib/supabase/queries/table/brand';
 
 const supabase = createClient();
 
@@ -114,6 +115,36 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
     }
     
     console.log(`[recordOps] Successfully saved multiRelationship ${fieldName}`);
+    
+    // Special handling for project-brand relationship
+    // If this is a project's brands field and we have at least one brand, set the first one as primary
+    if (tableName === 'project' && fieldName === 'brands' && relatedIds && relatedIds.length > 0) {
+      try {
+        // Get the project to find its company_id
+        const { data: project } = await supabase
+          .from('project')
+          .select('company_id')
+          .eq('id', recordId)
+          .single();
+        
+        if (project?.company_id) {
+          // Set the first brand as primary for this company
+          const brandId = relatedIds[0];
+          console.log(`[recordOps] Setting brand ${brandId} as primary for company ${project.company_id}`);
+          
+          const result = await setBrandAsPrimary(brandId, project.company_id);
+          if (result.error) {
+            console.warn(`[recordOps] Error setting primary brand: ${result.error.message}`);
+          } else {
+            console.log(`[recordOps] Successfully set brand ${brandId} as primary`);
+          }
+        }
+      } catch (err) {
+        console.warn(`[recordOps] Error in primary brand handling: ${err.message}`);
+        // Don't fail the whole operation if this part fails
+      }
+    }
+    
     return { success: true };
     
   } catch (err) {

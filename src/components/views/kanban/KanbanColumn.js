@@ -336,70 +336,95 @@ export const KanbanColumn = ({
   // No need for taskIds since we're not reordering within columns
 
   const handleAddTask = () => {
-    const fullConfig = collections[config.name] || config;
-    
-    // Prepare initial data based on mode and container
-    const initialData = {};
-    
-    if (mode === 'milestone') {
-      const milestoneId = container.id.replace('milestone-', '');
-      initialData.milestone_id = milestoneId;
+    try {
+      const fullConfig = collections[config.name] || config;
       
-      // Get project_id from container data or first task
-      if (container.data?.project_id) {
-        initialData.project_id = container.data.project_id;
-      } else if (tasks.length > 0 && tasks[0].project_id) {
-        initialData.project_id = tasks[0].project_id;
+      // Prepare initial data based on mode and container
+      const initialData = {};
+      
+      if (mode === 'milestone') {
+        const milestoneId = container.id.replace('milestone-', '');
+        initialData.milestone_id = milestoneId;
+        
+        // Get project_id from container data or first task
+        if (container.data?.project_id) {
+          initialData.project_id = container.data.project_id;
+        } else if (tasks.length > 0 && tasks[0].project_id) {
+          initialData.project_id = tasks[0].project_id;
+        }
+        
+        // Get company_id from first task if available
+        if (tasks.length > 0 && tasks[0].company_id) {
+          initialData.company_id = tasks[0].company_id;
+        }
+      } else if (mode === 'support') {
+        const status = container.id.replace('status-', '');
+        initialData.status = status;
+        initialData.type = 'support';
+        
+        // Get project_id from container
+        if (container.projectId) {
+          initialData.project_id = container.projectId;
+        }
+      } else if (mode === 'universal') {
+        // Universal mode - set status from container
+        const status = container.id.replace('status-', '');
+        initialData.status = status;
+        
+        // Don't set type for universal mode - allow all task types
+        
+        // Get project_id from container if available
+        if (container.projectId) {
+          initialData.project_id = container.projectId;
+        }
+        
+        // Get project_id from first task if available
+        if (tasks.length > 0 && tasks[0].project_id) {
+          initialData.project_id = tasks[0].project_id;
+        }
+        
+        // Get company_id from first task if available
+        if (tasks.length > 0 && tasks[0].company_id) {
+          initialData.company_id = tasks[0].company_id;
+        }
       }
       
-      // Get company_id from first task if available
-      if (tasks.length > 0 && tasks[0].company_id) {
-        initialData.company_id = tasks[0].company_id;
-      }
-    } else if (mode === 'support') {
-      const status = container.id.replace('status-', '');
-      initialData.status = status;
-      initialData.type = 'support';
+      console.log('[KanbanColumn] Adding task in column:', container.title);
       
-      // Get project_id from container
-      if (container.projectId) {
-        initialData.project_id = container.projectId;
-      }
-    } else if (mode === 'universal') {
-      // Universal mode - set status from container
-      const status = container.id.replace('status-', '');
-      initialData.status = status;
+      // Use router to update URL parameters instead of using ModalContext
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('modal', 'create');
+      currentUrl.searchParams.set('type', config.name || 'task');
       
-      // Don't set type for universal mode - allow all task types
+      // Add initial data as URL parameters
+      Object.entries(initialData).forEach(([key, value]) => {
+        if (value) {
+          currentUrl.searchParams.set(key, value);
+        }
+      });
       
-      // Get project_id from container if available
-      if (container.projectId) {
-        initialData.project_id = container.projectId;
-      }
-      
-      // Get project_id from first task if available
-      if (tasks.length > 0 && tasks[0].project_id) {
-        initialData.project_id = tasks[0].project_id;
-      }
-      
-      // Get company_id from first task if available
-      if (tasks.length > 0 && tasks[0].company_id) {
-        initialData.company_id = tasks[0].company_id;
-      }
+      console.log('[KanbanColumn] Navigating to:', currentUrl.pathname + currentUrl.search);
+      router.push(currentUrl.pathname + currentUrl.search);
+    } catch (error) {
+      console.error('[KanbanColumn] Error handling add task:', error);
     }
-    
-    openModal('create', { 
-      config: fullConfig,
-      initialData
-    });
   };
 
   const handleTaskClick = (task) => {
-    const fullConfig = collections[config.name] || config;
-    openModal('edit', { 
-      config: fullConfig,
-      recordId: task.id
-    });
+    try {
+      console.log('[KanbanColumn] Task clicked:', task.title, task.id);
+      
+      // Use router to update URL parameters instead of using ModalContext
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set('modal', 'edit');
+      currentUrl.searchParams.set('type', config.name || 'task');
+      currentUrl.searchParams.set('id', task.id);
+      
+      console.log('[KanbanColumn] Navigating to:', currentUrl.pathname + currentUrl.search);
+      router.push(currentUrl.pathname + currentUrl.search);
+    } catch (error) {
+      console.error('[KanbanColumn] Error handling task click:', error);
+    }
   };
 
   // Get appropriate color based on mode

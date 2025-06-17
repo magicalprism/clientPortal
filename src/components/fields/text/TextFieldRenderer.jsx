@@ -54,7 +54,7 @@ export const TextFieldRenderer = ({
       fullWidth
       size="small"
       multiline={isMultiline}
-      rows={isMultiline ? lines : undefined}
+      minRows={isMultiline ? lines : undefined}
       maxRows={isMultiline ? Math.max(lines, 10) : undefined}
       value={localValue}
       onChange={(e) => {

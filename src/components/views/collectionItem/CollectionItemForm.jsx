@@ -496,10 +496,11 @@ export const CollectionItemForm = ({
                             <Typography variant="subtitle2" fontWeight={500} paddingBottom={1}>
                               {field.label}
                             </Typography>
-                            <CommentThread
-                              entity={field.props?.entity}
-                              entityId={formData?.id}
-                            />
+                      <CommentThread
+                        key={`comment-thread-${formData?.id || 'new'}`}
+                        entity={field.props?.entity}
+                        entityId={formData?.id}
+                      />
                           </Grid>
                         );
                       }
@@ -508,6 +509,7 @@ export const CollectionItemForm = ({
                         return (
                           <Grid item {...gridProps} key={field.name}>
                             <SectionThread
+                              key={`section-thread-${formData?.id || 'new'}`}
                               pivotTable={field.props?.pivotTable}
                               entityField={field.props?.entityField}
                               entityId={formData?.id}

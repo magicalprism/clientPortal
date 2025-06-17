@@ -14,7 +14,7 @@ export default function GlobalModals() {
         onClose={closeModal}
         config={modal.props.config}
         defaultValues={modal.props.defaultValues}
-        record={modal.type === 'edit' ? modal.props.defaultValues : {}}
+        record={modal.type === 'edit' ? { id: modal.props.recordId, ...(modal.props.defaultValues || {}) } : {}}
         // Pass through refresh callbacks from the modal props
         onRefresh={modal.props.onRefresh}
         onUpdate={(updatedRecord) => {

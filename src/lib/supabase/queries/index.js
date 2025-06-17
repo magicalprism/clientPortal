@@ -3,7 +3,7 @@
 
 // ✅ Import modules for nested structure (these work fine)
 import * as projectModule from './table/project';
-import * as taskModule from './table/task';
+import * as taskModule from './table/task-adapters'; // Use task-adapters instead of task
 import * as companyModule from './table/company';
 import * as elementModule from './table/element';
 import * as mediaModule from './table/media';
@@ -23,10 +23,25 @@ import * as featureModule from './table/feature';
 import * as loginModule from './table/login';
 import * as colorModule from './table/color';
 import * as eventModule from './table/event';
+import * as eventLoginModule from './table/event_login';
+import * as onboardingModule from './table/onboarding';
+import * as onboardingsectionModule from './table/onboardingsection';
 import * as typographyModule from './table/typography';
 
 // Import all pivot modules
 import * as brandProjectModule from './pivot/brand_project';
+import * as categoryProjectModule from './pivot/category_project';
+import * as checklistTaskModule from './pivot/checklist_task';
+import * as commentProjectModule from './pivot/comment_project';
+import * as companyProjectModule from './pivot/company_project';
+import * as contactProjectModule from './pivot/contact_project';
+import * as eventProjectModule from './pivot/event_project';
+import * as fieldOnboardingModule from './pivot/field_onboarding';
+import * as mediaProjectModule from './pivot/media_project';
+import * as milestoneProjectModule from './pivot/milestone_project';
+
+// Import utils modules
+import * as relationshipOptionsModule from './utils/relationshipOptions';
 
 // ✅ Nested table structure for components (this is what you actually need)
 export const table = {
@@ -51,12 +66,29 @@ export const table = {
   feature: featureModule,
   login: loginModule,
   color: colorModule,
-  event: eventModule
+  event: eventModule,
+  event_login: eventLoginModule,
+  onboarding: onboardingModule,
+  onboardingsection: onboardingsectionModule
 };
 
 // ✅ For pivot tables
 export const pivot = {
-  brand_project: brandProjectModule
+  brand_project: brandProjectModule,
+  category_project: categoryProjectModule,
+  checklist_task: checklistTaskModule,
+  comment_project: commentProjectModule,
+  company_project: companyProjectModule,
+  contact_project: contactProjectModule,
+  event_project: eventProjectModule,
+  field_onboarding: fieldOnboardingModule,
+  media_project: mediaProjectModule,
+  milestone_project: milestoneProjectModule
+};
+
+// ✅ For utility functions
+export const utils = {
+  relationshipOptions: relationshipOptionsModule
 };
 
 // ✅ BACKWARD COMPATIBILITY: Export individual modules if needed
@@ -82,31 +114,64 @@ export { featureModule as feature };
 export { loginModule as login };
 export { colorModule as color };
 export { eventModule as event };
+export { eventLoginModule as event_login };
+export { onboardingModule as onboarding };
+export { onboardingsectionModule as onboardingsection };
 
 
 //Pivot
 export { brandProjectModule as brand_project };
+export { categoryProjectModule as category_project };
+export { checklistTaskModule as checklist_task };
+export { commentProjectModule as comment_project };
+export { companyProjectModule as company_project };
+export { contactProjectModule as contact_project };
+export { eventProjectModule as event_project };
+export { fieldOnboardingModule as field_onboarding };
+export { mediaProjectModule as media_project };
+export { milestoneProjectModule as milestone_project };
+export { milestoneProjectModule as milestoneProject }; // Add this line for backward compatibility
 
-// ✅ Dynamic import helper with explicit .js extensions
+// Utils
+export { relationshipOptionsModule as relationshipOptions };
+
+// ✅ Static import helper that webpack can analyze
 const loadModule = async (path) => {
   try {
     console.log(`[queries/index] Loading module: ${path}`);
-    const module = await import(path);
+    
+    // Use a switch statement to provide static import paths that webpack can analyze
+    let module;
+    switch (path) {
+      case './operations/recordOps':
+      case './operations/recordOps.js':
+        module = await import('./operations/recordOps.js');
+        break;
+      case './operations/multiRelOps':
+      case './operations/multiRelOps.js':
+        module = await import('./operations/multiRelOps.js');
+        break;
+      case './pivot/contract_contractpart':
+      case './pivot/contract_contractpart.js':
+        module = await import('./pivot/contract_contractpart.js');
+        break;
+      case './operations/drive':
+      case './operations/drive.js':
+        module = await import('./operations/drive.js');
+        break;
+      case './operations/deleteOps':
+      case './operations/deleteOps.js':
+        module = await import('./operations/deleteOps.js');
+        break;
+      default:
+        console.warn(`[queries/index] Unknown module path: ${path}`);
+        return {};
+    }
+    
     console.log(`[queries/index] Successfully loaded: ${path}`);
     return module;
   } catch (error) {
     console.warn(`[queries/index] Failed to load module ${path}:`, error.message);
-    // Try with .js extension if not already included
-    if (!path.endsWith('.js')) {
-      try {
-        console.log(`[queries/index] Retrying with .js extension: ${path}.js`);
-        const moduleWithJs = await import(`${path}.js`);
-        console.log(`[queries/index] Successfully loaded with .js: ${path}.js`);
-        return moduleWithJs;
-      } catch (retryError) {
-        console.warn(`[queries/index] Retry with .js also failed:`, retryError.message);
-      }
-    }
     return {};
   }
 };
@@ -278,12 +343,55 @@ export const driveOps = {
   }
 };
 
+// ✅ Add deleteOps cache
+let deleteOpsCache = null;
+
+// ✅ Add deleteOps object with lazy-loaded functions
+export const deleteOps = {
+  async deleteWithDependencies(...args) {
+    if (!deleteOpsCache) {
+      deleteOpsCache = await loadModule('./operations/deleteOps');
+    }
+    
+    if (!deleteOpsCache.deleteWithDependencies) {
+      throw new Error('deleteWithDependencies function not available in delete operations');
+    }
+    
+    return deleteOpsCache.deleteWithDependencies(...args);
+  },
+  
+  async deleteFromTable(...args) {
+    if (!deleteOpsCache) {
+      deleteOpsCache = await loadModule('./operations/deleteOps');
+    }
+    
+    if (!deleteOpsCache.deleteFromTable) {
+      throw new Error('deleteFromTable function not available in delete operations');
+    }
+    
+    return deleteOpsCache.deleteFromTable(...args);
+  },
+  
+  async deleteFromPivotTable(...args) {
+    if (!deleteOpsCache) {
+      deleteOpsCache = await loadModule('./operations/deleteOps');
+    }
+    
+    if (!deleteOpsCache.deleteFromPivotTable) {
+      throw new Error('deleteFromPivotTable function not available in delete operations');
+    }
+    
+    return deleteOpsCache.deleteFromPivotTable(...args);
+  }
+};
+
 // ✅ Grouped operations export
 export const operations = {
   record: recordOps,
   multiRel: multiRelOps,
   contract: contractOps,
-  drive: driveOps
+  drive: driveOps,
+  delete: deleteOps
 };
 
 // ✅ DEBUGGING FUNCTIONS

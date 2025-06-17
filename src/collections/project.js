@@ -195,6 +195,7 @@ export const project = {
     linkTo: '/dashboard/brand',
     junctionTable: 'brand_project',
     sourceKey: 'project_id',
+    isOneToMany: false,
     targetKey: 'brand_id',
     filter: {
 

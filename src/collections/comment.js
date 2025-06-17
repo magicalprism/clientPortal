@@ -22,7 +22,6 @@
       //Quickview
       quickView: {
         enabled: true,
-        imageField: 'thumbnail_id',
         titleField: 'title',
         subtitleField: 'status',
       }, 
@@ -52,12 +51,9 @@
       label: 'Status',
       group: 'Primary', 
       tab: 'Meta', 
-      defaultValue: 'todo',
+      defaultValue: 'published',
       options: [
-        { value: 'todo', label: 'To do' },
-        { value: 'in_progress', label: 'In Progress' },
-        { value: 'complete', label: 'Complete' },
-        { value: 'archived', label: 'Archived' },
+        { value: 'published', label: 'Published' },
       ]
     },
     {
@@ -149,15 +145,13 @@
     },
 ],
   filters: [
-    {
+     {
       name: 'status',
       type: 'select',
       label: 'Status',
-      defaultValue: [],
+      defaultValue: 'published',
       options: [
-        { value: 'draft', label: 'Draft' },
         { value: 'published', label: 'Published' },
-        { value: 'in_progress', label: 'In Progress' },
       ]
     },
     {

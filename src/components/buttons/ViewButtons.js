@@ -47,7 +47,7 @@ export const ViewButtons = ({
       const entityQueries = table[fullConfig.name];
       
       if (!entityQueries) {
-        console.error(`[ViewButtons] No queries found for entity: ${fullConfig.name}`);
+ 
         return null;
       }
 
@@ -56,20 +56,20 @@ export const ViewButtons = ({
                            entityQueries[`fetch${capitalizeFirst(fullConfig.singularLabel || fullConfig.name)}ById`];
       
       if (!fetchFunction) {
-        console.error(`[ViewButtons] Fetch function not found for entity: ${fullConfig.name}`);
+
         return null;
       }
 
       const { data, error } = await fetchFunction(entityId);
       
       if (error) {
-        console.error(`[ViewButtons] Failed to fetch record ${entityId}:`, error);
+    
         return null;
       }
       
       return data;
     } catch (err) {
-      console.error(`[ViewButtons] Error fetching record:`, err);
+  
       return null;
     }
   };
@@ -83,13 +83,13 @@ export const ViewButtons = ({
       recordData = await fetchRecordById(id);
       
       if (!recordData) {
-        console.error('[ViewButtons] No record data available');
+   
         return;
       }
     }
 
     if (!recordData) {
-      console.error('[ViewButtons] No record data available');
+
       return;
     }
 
@@ -109,11 +109,11 @@ export const ViewButtons = ({
 
   // Handle delete success
   const handleDeleteSuccess = (deletedId) => {
-    console.log('[ViewButtons] Record deleted:', deletedId);
+
     
     // ✅ If custom onDeleteSuccess provided, use it immediately (for tasks)
     if (onDeleteSuccess) {
-      console.log('[ViewButtons] Using custom onDeleteSuccess callback');
+
       onDeleteSuccess(deletedId);
       return;
     }
@@ -358,7 +358,7 @@ function getCollectionSpecificButtons(collectionName, item, showExport = true) {
         });
       }
       
-      console.log('[ViewButtons] Total buttons for project:', buttons.length); // Debug log
+
       break;
       
     case 'media':

@@ -228,229 +228,32 @@ export default function UniversalKanbanView({
         projectId: selectedProjectId
       });
 
-      // Step 1: Fetch tasks based on current company/project filter
-      // IMPORTANT: Don't filter by contact here - we want to see ALL assignments
-      // to determine which contacts have active tasks in the current scope
-      let activeTasks = [];
-      const activeStatuses = ['not_started', 'todo', 'in_progress'];
-      
-      // Build base filter for task fetching (excluding contact filter)
-      const baseFilters = {};
-      if (selectedProjectId && selectedProjectId !== 'all') {
-        baseFilters.project_id = selectedProjectId;
-      }
+      // Use the centralized query function to fetch contacts with active tasks
+      const filters = {};
       if (selectedCompanyId && selectedCompanyId !== 'all') {
-        baseFilters.company_id = selectedCompanyId;
+        filters.company_id = selectedCompanyId;
+      }
+      if (selectedProjectId && selectedProjectId !== 'all') {
+        filters.project_id = selectedProjectId;
       }
 
-      // Try different methods to fetch tasks with current filters
-      const taskQueryMethods = [
-        () => table.task.fetchTasks({ ...baseFilters, showCompleted: false }),
-        () => table.task.fetchTasksWithFilters({ ...baseFilters, showCompleted: false }),
-        () => table.task.fetchAll(baseFilters),
-        () => table.task.fetch(baseFilters),
-        async () => {
-          // Fallback method - fetch all and filter manually
-          const { data, error } = await table.task.fetchAll();
-          if (error) throw error;
-          
-          let filtered = data || [];
-          
-          // Apply filters manually
-          if (baseFilters.project_id) {
-            filtered = filtered.filter(task => task.project_id === baseFilters.project_id);
-          }
-          if (baseFilters.company_id) {
-            filtered = filtered.filter(task => task.company_id === baseFilters.company_id);
-          }
-          
-          return { data: filtered, error: null };
-        }
-      ];
-
-      let success = false;
-      for (const method of taskQueryMethods) {
-        try {
-          const result = await method();
-          
-          // Handle different response formats
-          if (result && result.data) {
-            activeTasks = result.data;
-          } else if (Array.isArray(result)) {
-            activeTasks = result;
-          } else if (result && Array.isArray(result.tasks)) {
-            activeTasks = result.tasks;
-          }
-          
-          success = true;
-          console.log('[UniversalKanbanView] Successfully fetched tasks for contact filtering:', activeTasks.length);
-          break;
-        } catch (methodError) {
-          console.log('[UniversalKanbanView] Task query method failed:', methodError.message);
-          continue;
-        }
-      }
-
-      if (!success) {
-        console.warn('[UniversalKanbanView] All task query methods failed for contact filtering');
-        activeTasks = [];
-      }
-
-      // Step 2: Filter to only active status tasks and exclude templates
-      const filteredActiveTasks = activeTasks.filter(task => 
-        activeStatuses.includes(task.status) && 
-        task.is_template !== true &&
-        task.assigned_id // Only tasks that have someone assigned
-      );
-
-      console.log('[UniversalKanbanView] Active tasks with assignments:', filteredActiveTasks.length);
-
-      // Step 3: Extract unique contact IDs from active tasks
-      const uniqueContactIds = [...new Set(
-        filteredActiveTasks
-          .map(task => task.assigned_id)
-          .filter(Boolean) // Remove null/undefined values
-      )];
-
-      console.log('[UniversalKanbanView] Unique contact IDs with active tasks:', uniqueContactIds);
-
-      // Debug: Check what methods are actually available on table.contact
-      console.log('[UniversalKanbanView] Available table.contact methods:', Object.keys(table.contact || {}));
-      console.log('[UniversalKanbanView] table.contact object:', table.contact);
-
-      // Step 4: Fetch contact details for these IDs
-      if (uniqueContactIds.length === 0) {
-        console.log('[UniversalKanbanView] No contacts have active task assignments in current context');
+      const { data, error } = await table.contact.fetchContactsWithActiveTasks(filters);
+      
+      if (error) {
+        console.error('[UniversalKanbanView] Error fetching contacts with active tasks:', error);
         setContacts([]);
         return;
       }
-
-      // Try different methods to fetch contact details
-      let contactData = [];
       
-      const contactQueryMethods = [
-        async () => {
-          // Method 1: Try fetchContactsByIds if it exists
-          const { data, error } = await table.contact.fetchContactsByIds(uniqueContactIds);
-          if (error) throw error;
-          return data;
-        },
-        async () => {
-          // Method 2: Try individual contact fetches with different method names
-          const contacts = [];
-          for (const contactId of uniqueContactIds) {
-            try {
-              // Try different individual fetch method names
-              let result = null;
-              const individualMethods = [
-                () => table.contact.fetchContact(contactId),
-                () => table.contact.fetch(contactId),
-                () => table.contact.getContact(contactId),
-                () => table.contact.get(contactId),
-                () => table.contact.fetchContactById(contactId),
-                () => table.contact.getById(contactId)
-              ];
-              
-              for (const method of individualMethods) {
-                try {
-                  const { data, error } = await method();
-                  if (!error && data) {
-                    result = data;
-                    break;
-                  }
-                } catch (methodError) {
-                  continue;
-                }
-              }
-              
-              if (result) {
-                contacts.push(result);
-              } else {
-                console.log(`[UniversalKanbanView] Failed to fetch contact ${contactId} with any method`);
-              }
-            } catch (err) {
-              console.log(`[UniversalKanbanView] Failed to fetch contact ${contactId}:`, err.message);
-            }
-          }
-          return contacts;
-        },
-        async () => {
-          // Method 3: Try different "fetch all" method names and filter
-          const allContactMethods = [
-            () => table.contact.fetchAllContacts(),
-            () => table.contact.fetchContacts(),
-            () => table.contact.fetchAll(),
-            () => table.contact.fetch(),
-            () => table.contact.getAll(),
-            () => table.contact.getContacts(),
-            () => table.contact.list()
-          ];
-          
-          for (const method of allContactMethods) {
-            try {
-              const { data, error } = await method();
-              if (!error && data) {
-                console.log(`[UniversalKanbanView] Successfully fetched all contacts:`, data.length);
-                return data.filter(contact => uniqueContactIds.includes(contact.id));
-              }
-            } catch (methodError) {
-              console.log(`[UniversalKanbanView] Contact fetch all method failed:`, methodError.message);
-              continue;
-            }
-          }
-          
-          throw new Error('No working fetchAll method found');
-        },
-        async () => {
-          // Method 4: Direct Supabase query fallback
-          // Import the supabase client directly if table methods don't work
-          console.log('[UniversalKanbanView] Trying direct Supabase client approach...');
-          
-          // Try to access the supabase client from the window or import it
-          if (window.supabase) {
-            const { data, error } = await window.supabase
-              .from('contacts')
-              .select('*')
-              .in('id', uniqueContactIds);
-            
-            if (error) throw error;
-            console.log(`[UniversalKanbanView] Direct Supabase query successful:`, data.length);
-            return data;
-          }
-          
-          throw new Error('No direct Supabase client available');
-        },
-        async () => {
-          // Method 5: Last resort - create mock contacts with IDs so at least the dropdown shows something
-          console.log('[UniversalKanbanView] Creating mock contacts as last resort...');
-          return uniqueContactIds.map(id => ({
-            id: id,
-            title: `Contact ${id}`,
-            first_name: `Contact`,
-            last_name: `${id}`,
-            email: `contact${id}@example.com`
-          }));
-        }
-      ];
-
-      for (const method of contactQueryMethods) {
-        try {
-          contactData = await method();
-          if (contactData && contactData.length > 0) {
-            console.log('[UniversalKanbanView] Successfully fetched contact details:', contactData.length);
-            break;
-          }
-        } catch (methodError) {
-          console.log('[UniversalKanbanView] Contact query method failed:', methodError.message);
-          continue;
-        }
+      console.log('[UniversalKanbanView] Successfully fetched contacts with active tasks:', data?.length || 0);
+      
+      if (data && data.length > 0) {
+        console.log('[UniversalKanbanView] Sample contact structure:', data[0]);
+      } else {
+        console.log('[UniversalKanbanView] No contacts have active task assignments in current context');
       }
-
-      // Step 5: Set the contacts
-      console.log('[UniversalKanbanView] Final contact data:', contactData);
-      console.log('[UniversalKanbanView] Sample contact structure:', contactData[0]);
-      setContacts(contactData || []);
-
+      
+      setContacts(data || []);
     } catch (error) {
       console.error('[UniversalKanbanView] Error fetching contacts with active tasks:', error);
       setContacts([]);
@@ -772,11 +575,14 @@ export default function UniversalKanbanView({
                     onChange={handleCompanyChange}
                   >
                     <MenuItem value="all">All Companies</MenuItem>
-                    {companies.map(company => (
-                      <MenuItem key={company.id} value={company.id}>
-                        {company.title}
-                      </MenuItem>
-                    ))}
+                    {[...companies]
+                      .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+                      .map(company => (
+                        <MenuItem key={company.id} value={company.id}>
+                          {company.title}
+                        </MenuItem>
+                      ))
+                    }
                   </Select>
                 </FormControl>
 
@@ -789,11 +595,14 @@ export default function UniversalKanbanView({
                     onChange={handleProjectChange}
                   >
                     <MenuItem value="all">All Projects</MenuItem>
-                    {projects.map(project => (
-                      <MenuItem key={project.id} value={project.id}>
-                        {project.title}
-                      </MenuItem>
-                    ))}
+                    {[...projects]
+                      .sort((a, b) => (a.title || '').localeCompare(b.title || ''))
+                      .map(project => (
+                        <MenuItem key={project.id} value={project.id}>
+                          {project.title}
+                        </MenuItem>
+                      ))
+                    }
                   </Select>
                 </FormControl>
 

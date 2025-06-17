@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import ReactFlow, {
   Background,
   Controls,
@@ -154,7 +154,25 @@ export const ElementMap = ({ projectId }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-const nodeTypes = useMemo(() => ({
+  // Memoize fetchPages to prevent it from changing on every render
+  const fetchPages = useCallback(async () => {
+    if (!projectId) return;
+    
+    const { data } = await supabase
+      .from('element')
+      .select(`id, title, status, parent_id, type, project_id, x, y, resource:resource_id (thumbnail:thumbnail_id (url))`)
+      .eq('project_id', projectId);
+
+    const rawNodes = buildNodes(data || []);
+    const rawEdges = buildEdges(data || []);
+    const finalNodes = layoutIfNeeded(rawNodes, rawEdges);
+
+    setPages(data || []);
+    setNodes(finalNodes);
+    setEdges(rawEdges);
+  }, [projectId, supabase]);
+
+  const nodeTypes = useMemo(() => ({
   page: (props) => (
     <NodeWrapper
       {...props}
@@ -193,29 +211,13 @@ const nodeTypes = useMemo(() => ({
       onRefresh={fetchPages} // Pass refresh function
     />
   ),
-}), [mode]); // Add fetchPages to dependencies if it changes
+}), [mode, fetchPages]); // Include fetchPages in dependencies
 
   const layoutIfNeeded = (nodes, edges) => {
     const hasLayout = nodes.every((n) => typeof n.position?.x === 'number' && typeof n.position?.y === 'number');
     return hasLayout ? nodes : applyLayout(nodes, edges, 'TB');
   };
 
-  const fetchPages = async () => {
-    if (!projectId) return;
-    
-    const { data } = await supabase
-      .from('element')
-      .select(`id, title, status, parent_id, type, project_id, x, y, resource:resource_id (thumbnail:thumbnail_id (url))`)
-      .eq('project_id', projectId);
-
-    const rawNodes = buildNodes(data || []);
-    const rawEdges = buildEdges(data || []);
-    const finalNodes = layoutIfNeeded(rawNodes, rawEdges);
-
-    setPages(data || []);
-    setNodes(finalNodes);
-    setEdges(rawEdges);
-  };
 
   // Fetch company_id from project
   const fetchProjectCompany = async () => {

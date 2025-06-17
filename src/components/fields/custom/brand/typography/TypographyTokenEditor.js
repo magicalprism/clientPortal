@@ -37,7 +37,7 @@ import {
   PencilSimple,
   DownloadSimple,
   Eye,
-  EyeOff,
+  EyeSlash,
   ArrowsClockwise,
   Warning,
   UploadSimple
@@ -1044,7 +1044,7 @@ export const TypographyTokenEditor = ({ record, field, editable = true }) => {
             }
             label={
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                {showSemantics ? <Eye size={16} /> : <EyeOff size={16} />}
+                {showSemantics ? <Eye size={16} /> : <EyeSlash size={16} />}
                 <span>Show semantic tokens</span>
               </Box>
             }

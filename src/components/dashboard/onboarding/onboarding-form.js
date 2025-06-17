@@ -25,6 +25,12 @@ import {
 } from "@mui/material";
 
 import { createClient } from "@/lib/supabase/browser";
+import { fetchCompaniesWithFilter } from "@/lib/supabase/queries/table/company";
+import { fetchProjectsByCompanyId, createProject } from "@/lib/supabase/queries/table/project";
+import { fetchOnboardingSectionsWithFields } from "@/lib/supabase/queries/table/onboardingsection";
+import { fetchFieldsForOnboarding, replaceFieldsForOnboarding } from "@/lib/supabase/queries/pivot/field_onboarding";
+import { fetchOnboardingsByCompanyAndProjectIds, createOnboarding, updateOnboardingById } from "@/lib/supabase/queries/table/onboarding";
+import { linkCompanyToProject } from "@/lib/supabase/queries/pivot/company_project";
 import { toast } from "@/components/core/toaster";
 import { paths } from "@/paths";
 
@@ -49,11 +55,7 @@ export function OnboardingForm({ onboarding }) {
   useEffect(() => {
     console.log("📥 useEffect: Fetching companies...");
     const fetchCompanies = async () => {
-      const { data, error } = await supabase
-        .from("company")
-        .select("id, title")
-        .eq("is_client", true)
-        .order("title");
+      const { data, error } = await fetchCompaniesWithFilter({ is_client: true }, ['id', 'title'], { column: 'title', ascending: true });
 
       if (error) {
         console.error("❌ Error fetching companies:", error);
@@ -73,11 +75,7 @@ export function OnboardingForm({ onboarding }) {
     const fetchProjects = async () => {
       if (!selectedCompanyId) return;
 
-      const { data, error } = await supabase
-        .from("project")
-        .select("id, title")
-        .eq("company_id", selectedCompanyId)
-        .order("title");
+      const { data, error } = await fetchProjectsByCompanyId(selectedCompanyId, ['id', 'title'], { column: 'title', ascending: true });
 
       if (error) {
         console.error("❌ Error fetching projects:", error);
@@ -96,19 +94,7 @@ export function OnboardingForm({ onboarding }) {
   useEffect(() => {
     console.log("📥 useEffect: Fetching sections with fields...");
     const fetchSectionsWithFields = async () => {
-      const { data, error } = await supabase
-        .from("onboardingsection")
-        .select(`
-          id,
-          title,
-          field_onboardingsection (
-            order,
-            field (
-              id,
-              title
-            )
-          )
-        `);
+      const { data, error } = await fetchOnboardingSectionsWithFields();
 
       if (error) {
         console.error("❌ Error fetching sections:", error);
@@ -162,10 +148,7 @@ export function OnboardingForm({ onboarding }) {
     setSelectedProjectId(onboarding.project_id);
 
     const fetchFields = async () => {
-      const { data, error } = await supabase
-        .from("field_onboarding")
-        .select("field_id")
-        .eq("onboarding_id", onboarding.id);
+      const { data, error } = await fetchFieldsForOnboarding(onboarding.id);
 
       if (error) {
         console.error("❌ Error fetching field_onboarding:", error);
@@ -195,29 +178,25 @@ export function OnboardingForm({ onboarding }) {
     try {
       const created = new Date();
 
-      const { data: project, error } = await supabase
-        .from("project")
-        .insert({
-          title: newProjectTitle,
-          company_id: selectedCompanyId,
-          created: created.toISOString(),
-        })
-        .select()
-        .single();
+      // Create the project
+      const { data: project, error } = await createProject({
+        title: newProjectTitle,
+        company_id: selectedCompanyId,
+        created: created.toISOString(),
+      });
 
       if (error) throw error;
       console.log("✅ Project created:", project);
 
-      await supabase.from("company_project").insert({
-        company_id: selectedCompanyId,
-        project_id: project.id,
-      });
+      // Link the project to the company
+      await linkCompanyToProject(selectedCompanyId, project.id);
 
-      const { data: updatedProjects } = await supabase
-        .from("project")
-        .select("id, title")
-        .eq("company_id", selectedCompanyId)
-        .order("title");
+      // Fetch updated projects
+      const { data: updatedProjects } = await fetchProjectsByCompanyId(
+        selectedCompanyId, 
+        ['id', 'title'], 
+        { column: 'title', ascending: true }
+      );
 
       console.log("🔁 Updated projects:", updatedProjects);
       setProjects(updatedProjects);
@@ -252,12 +231,14 @@ export function OnboardingForm({ onboarding }) {
     console.log("📦 Selected field IDs:", selectedFieldIds);
 
     try {
+      // Get current user - keep using auth API directly
       const { data: userData, error: userError } = await supabase.auth.getUser();
       if (userError) throw userError;
 
       const userId = userData?.user?.id;
       console.log("👤 Supabase user ID:", userId);
 
+      // Get contact for user - we could move this to a query function in the future
       const { data: contactData, error: contactError } = await supabase
         .from("contact")
         .select("id")
@@ -272,14 +253,12 @@ export function OnboardingForm({ onboarding }) {
       if (onboarding?.id) {
         console.log("🔄 Updating onboarding:", onboarding.id);
 
-        const { error: updateError } = await supabase
-          .from("onboarding")
-          .update({
-            company_id: selectedCompanyId,
-            project_id: selectedProjectId,
-            updated: created.toISOString(),
-          })
-          .eq("id", onboarding.id);
+        // Update the onboarding
+        const { error: updateError } = await updateOnboardingById(onboarding.id, {
+          company_id: selectedCompanyId,
+          project_id: selectedProjectId,
+          updated: created.toISOString(),
+        });
 
         if (updateError) {
           console.error("❌ Failed to update onboarding:", updateError);
@@ -287,29 +266,17 @@ export function OnboardingForm({ onboarding }) {
           return;
         }
 
-        const { error: deleteError } = await supabase
-          .from("field_onboarding")
-          .delete()
-          .eq("onboarding_id", onboarding.id);
+        // Replace all field relationships
+        const { error: replaceError } = await replaceFieldsForOnboarding(
+          onboarding.id, 
+          selectedFieldIds.map(fieldId => ({ 
+            field_id: fieldId, 
+            visible: true 
+          }))
+        );
 
-        if (deleteError) {
-          console.error("❌ Failed to clear existing fields:", deleteError);
-        }
-
-        if (selectedFieldIds.length) {
-          const inserts = selectedFieldIds.map((fieldId) => ({
-            onboarding_id: onboarding.id,
-            field_id: fieldId,
-            visible: true,
-          }));
-
-          const { error: insertError } = await supabase
-            .from("field_onboarding")
-            .insert(inserts);
-
-          if (insertError) {
-            console.error("❌ Failed to re-insert fields:", insertError);
-          }
+        if (replaceError) {
+          console.error("❌ Failed to update fields:", replaceError);
         }
 
         toast.success("Onboarding updated");
@@ -319,27 +286,24 @@ export function OnboardingForm({ onboarding }) {
         const company = companies.find((c) => c.id === selectedCompanyId);
         const project = projects.find((p) => p.id === selectedProjectId);
 
-        const { data: existing } = await supabase
-          .from("onboarding")
-          .select("id")
-          .eq("company_id", selectedCompanyId)
-          .eq("project_id", selectedProjectId);
+        // Check for existing onboardings with same company/project
+        const { data: existing } = await fetchOnboardingsByCompanyAndProjectIds(
+          selectedCompanyId, 
+          selectedProjectId
+        );
 
         const version = (existing?.length || 0) + 1;
         const title = `${company?.title} – ${project?.title} – v${version}`;
 
-        const { data: newOnboarding, error: createError } = await supabase
-          .from("onboarding")
-          .insert({
-            company_id: selectedCompanyId,
-            project_id: selectedProjectId,
-            author_id: authorId,
-            title,
-            created: created.toISOString(),
-            status: "in_progress",
-          })
-          .select()
-          .single();
+        // Create the onboarding
+        const { data: newOnboarding, error: createError } = await createOnboarding({
+          company_id: selectedCompanyId,
+          project_id: selectedProjectId,
+          author_id: authorId,
+          title,
+          created: created.toISOString(),
+          status: "in_progress",
+        });
 
         if (createError) {
           console.error("❌ Failed to create onboarding:", createError);
@@ -347,19 +311,18 @@ export function OnboardingForm({ onboarding }) {
           return;
         }
 
+        // Add field relationships if any fields were selected
         if (selectedFieldIds.length) {
-          const inserts = selectedFieldIds.map((fieldId) => ({
-            onboarding_id: newOnboarding.id,
-            field_id: fieldId,
-            visible: true,
-          }));
+          const { error: fieldsError } = await replaceFieldsForOnboarding(
+            newOnboarding.id, 
+            selectedFieldIds.map(fieldId => ({ 
+              field_id: fieldId, 
+              visible: true 
+            }))
+          );
 
-          const { error: insertError } = await supabase
-            .from("field_onboarding")
-            .insert(inserts);
-
-          if (insertError) {
-            console.error("❌ Failed to insert onboarding fields:", insertError);
+          if (fieldsError) {
+            console.error("❌ Failed to add fields:", fieldsError);
           }
         }
 

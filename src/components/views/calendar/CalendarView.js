@@ -44,33 +44,33 @@ export default function CalendarView({ config, filters }) {
       console.log('[updateCalendarDate] calendar updated to:', updatedDate);
       setCurrentDate(new Date(updatedDate));
     } else {
-      console.warn('[updateCalendarDate] calendarApi is undefined');
+
     }
   };
 
   const handlePrev = () => {
     const api = calendarRef.current?.getApi();
-    console.log('[handlePrev] clicked');
+
     if (api) {
       api.prev();
       const updatedDate = api.getDate();
-      console.log('[handlePrev] new date:', updatedDate);
+
       setCurrentDate(new Date(updatedDate));
     } else {
-      console.warn('[handlePrev] calendarApi is undefined');
+
     }
   };
 
   const handleNext = () => {
     const api = calendarRef.current?.getApi();
-    console.log('[handleNext] clicked');
+
     if (api) {
       api.next();
       const updatedDate = api.getDate();
-      console.log('[handleNext] new date:', updatedDate);
+
       setCurrentDate(new Date(updatedDate));
     } else {
-      console.warn('[handleNext] calendarApi is undefined');
+
     }
   };
 
@@ -78,7 +78,7 @@ export default function CalendarView({ config, filters }) {
     const newMonth = parseInt(e.target.value, 10);
     const newDate = new Date(currentDate);
     newDate.setMonth(newMonth);
-    console.log('[handleMonthChange] selected month:', newMonth, '→', newDate);
+
     updateCalendarDate(newDate);
   };
 
@@ -86,7 +86,7 @@ export default function CalendarView({ config, filters }) {
     const newYear = parseInt(e.target.value, 10);
     const newDate = new Date(currentDate);
     newDate.setFullYear(newYear);
-    console.log('[handleYearChange] selected year:', newYear, '→', newDate);
+
     updateCalendarDate(newDate);
   };
 
@@ -101,7 +101,7 @@ const fetchItems = async () => {
     .select(selectString);
 
   if (error) {
-    console.error('Failed to fetch records with company logo:', error);
+
     return;
   }
 
