@@ -391,20 +391,16 @@ export const KanbanColumn = ({
       
       console.log('[KanbanColumn] Adding task in column:', container.title);
       
-      // Use router to update URL parameters instead of using ModalContext
-      const currentUrl = new URL(window.location);
-      currentUrl.searchParams.set('modal', 'create');
-      currentUrl.searchParams.set('type', config.name || 'task');
-      
-      // Add initial data as URL parameters
-      Object.entries(initialData).forEach(([key, value]) => {
-        if (value) {
-          currentUrl.searchParams.set(key, value);
+      // Use the modal context to open the modal directly
+      openModal('create', {
+        config: fullConfig,
+        defaultValues: initialData,
+        onRefresh: () => {
+          if (onTaskUpdate) {
+            onTaskUpdate();
+          }
         }
       });
-      
-      console.log('[KanbanColumn] Navigating to:', currentUrl.pathname + currentUrl.search);
-      router.push(currentUrl.pathname + currentUrl.search);
     } catch (error) {
       console.error('[KanbanColumn] Error handling add task:', error);
     }
@@ -414,14 +410,16 @@ export const KanbanColumn = ({
     try {
       console.log('[KanbanColumn] Task clicked:', task.title, task.id);
       
-      // Use router to update URL parameters instead of using ModalContext
-      const currentUrl = new URL(window.location);
-      currentUrl.searchParams.set('modal', 'edit');
-      currentUrl.searchParams.set('type', config.name || 'task');
-      currentUrl.searchParams.set('id', task.id);
-      
-      console.log('[KanbanColumn] Navigating to:', currentUrl.pathname + currentUrl.search);
-      router.push(currentUrl.pathname + currentUrl.search);
+      // Use the modal context to open the modal directly
+      openModal('edit', {
+        config: collections[config.name] || config,
+        recordId: task.id,
+        onRefresh: () => {
+          if (onTaskUpdate) {
+            onTaskUpdate();
+          }
+        }
+      });
     } catch (error) {
       console.error('[KanbanColumn] Error handling task click:', error);
     }

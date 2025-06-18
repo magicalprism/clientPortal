@@ -34,7 +34,7 @@ import { getCurrentContactId } from '@/lib/utils/getCurrentContactId';
 import { useRouter } from 'next/navigation';
 
 export default function ChecklistWidget({
-  title = 'My Tasks',
+  title = 'Checklists',
   filter = {},
   entityTypes = ['event'], // Support multiple entity types
   maxItems = 8,

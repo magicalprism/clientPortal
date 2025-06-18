@@ -65,15 +65,34 @@ export const useProjectKanban = ({
           let tasksData = [];
           let tasksError = null;
           
-          // Fetch tasks by milestone IDs instead of project ID
+          const { createClient } = await import('@/lib/supabase/browser');
+          const supabase = createClient();
+          
           const taskQueryMethods = [
             async () => {
               if (!milestoneIds || milestoneIds.length === 0) {
                 return { data: [], error: null };
               }
               
-              const { createClient } = await import('@/lib/supabase/browser');
-              const supabase = createClient();
+              // Try to fetch tasks by both milestone_id and project_id
+              return await supabase
+                .from('task')
+                .select(`
+                  *,
+                  assigned_contact:assigned_id(id, title, first_name, last_name),
+                  company:company_id(id, title),
+                  project:project_id(id, title)
+                `)
+                .or(`milestone_id.in.(${milestoneIds.join(',')}),project_id.eq.${normalizedProjectId}`)
+                .eq('is_deleted', false)
+                .order('order_index')
+                .order('created_at');
+            },
+            async () => {
+              // Fallback: Try to fetch tasks by milestone_id only
+              if (!milestoneIds || milestoneIds.length === 0) {
+                return { data: [], error: null };
+              }
               
               return await supabase
                 .from('task')
@@ -84,6 +103,21 @@ export const useProjectKanban = ({
                   project:project_id(id, title)
                 `)
                 .in('milestone_id', milestoneIds)
+                .eq('is_deleted', false)
+                .order('order_index')
+                .order('created_at');
+            },
+            async () => {
+              // Fallback: Try to fetch tasks by project_id only
+              return await supabase
+                .from('task')
+                .select(`
+                  *,
+                  assigned_contact:assigned_id(id, title, first_name, last_name),
+                  company:company_id(id, title),
+                  project:project_id(id, title)
+                `)
+                .eq('project_id', normalizedProjectId)
                 .eq('is_deleted', false)
                 .order('order_index')
                 .order('created_at');
@@ -130,9 +164,36 @@ export const useProjectKanban = ({
             grouped[key] = [];
           }
           
+          // Check if we have tasks without milestone_id
+          const tasksWithoutMilestone = tasksData.filter(t => !t.milestone_id);
+          
+          // If we have tasks without milestone_id, create a default "Unassigned" milestone
+          if (tasksWithoutMilestone.length > 0) {
+            // Create a default "Unassigned" milestone if it doesn't exist
+            const unassignedMilestoneId = 'unassigned';
+            const unassignedKey = `milestone-${unassignedMilestoneId}`;
+            
+            // Add the unassigned milestone to the list if it doesn't exist
+            if (!milestoneIds.includes(unassignedMilestoneId)) {
+              const unassignedMilestone = {
+                id: unassignedMilestoneId,
+                title: 'Unassigned',
+                order_index: milestoneIds.length
+              };
+              
+              setMilestones(prev => [...prev, unassignedMilestone]);
+              grouped[unassignedKey] = [];
+            }
+            
+            // Add tasks without milestone_id to the "Unassigned" milestone
+            for (const t of tasksWithoutMilestone) {
+              grouped[unassignedKey].push(t);
+            }
+          }
+          
           // Group tasks by milestone
           for (const t of tasksData) {
-            // Skip tasks without milestone_id
+            // Skip tasks without milestone_id (they're already handled above)
             if (!t.milestone_id) continue;
             
             const key = `milestone-${t.milestone_id}`;

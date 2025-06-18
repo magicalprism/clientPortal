@@ -89,7 +89,9 @@ export const COLLECTION_ICONS = {
   element: File,
   contractpart: File,
   deliverable: Package,
-  payment: Briefcase
+  payment: Briefcase,
+  event: File, // Using File as fallback for event
+  proposal: Briefcase // Using Briefcase for proposal
 };
 
 export const COLLECTION_COLORS = {
@@ -105,7 +107,8 @@ export const COLLECTION_COLORS = {
   element: '#3f51b5',
   contractpart: '#8bc34a',
   deliverable: '#ff9800',
-  payment: '#4caf50'
+  payment: '#4caf50',
+  event: '#2196f3' // Blue color for event
 };
 
 /**
@@ -231,30 +234,35 @@ export function CollectionTabs({
           const config = collections[collectionName];
           const IconComponent = COLLECTION_ICONS[collectionName] || File;
           const count = resultCounts[collectionName] || 0;
-          const color = COLLECTION_COLORS[collectionName];
+          const color = COLLECTION_COLORS[collectionName] || '#666'; // Add fallback color to prevent alpha error
           
           return (
             <Tab
               key={collectionName}
               icon={
-                <Badge 
-                  badgeContent={count} 
-                  color="primary" 
-                  max={99}
-                  sx={{
-                    '& .MuiBadge-badge': {
-                      fontSize: '0.6rem',
-                      minWidth: '16px',
-                      height: '16px'
-                    }
-                  }}
-                >
-                  <IconComponent 
-                    size={20} 
-                    weight="regular"
-                    style={{ color: activeTab === index ? color : undefined }}
-                  />
-                </Badge>
+                (() => {
+                  const badgeContent = count > 50 ? "50+" : count.toString();
+                  return (
+                    <Badge 
+                      badgeContent={badgeContent} 
+                      color="primary" 
+                      sx={{
+                        '& .MuiBadge-badge': {
+                          fontSize: '0.6rem',
+                          minWidth: '22px', // Increased from 16px to ensure + sign is visible
+                          height: '16px',
+                          padding: '0 4px' // Add padding to ensure text has room
+                        }
+                      }}
+                    >
+                      <IconComponent 
+                        size={20} 
+                        weight="regular"
+                        style={{ color: activeTab === index ? color : undefined }}
+                      />
+                    </Badge>
+                  );
+                })()
               }
               label={config?.label || collectionName}
               iconPosition="start"
@@ -280,8 +288,30 @@ export function FilterSidebar({
   onFilterChange, 
   onClearAll,
   filterOptions = {},
-  loading = false 
+  loading = false,
+  onTabChange // Add onTabChange prop
 }) {
+  // State to track expanded accordions - initialize to null to ensure all accordions are closed on page load
+  const [expandedAccordion, setExpandedAccordion] = useState(null);
+  
+  // Reset expanded accordion when collections change
+  useEffect(() => {
+    setExpandedAccordion(null);
+  }, [targetCollections]);
+  
+  // Handle accordion change
+  const handleAccordionChange = (collectionName) => (event, isExpanded) => {
+    // Update expanded state
+    setExpandedAccordion(isExpanded ? collectionName : null);
+    
+    // If accordion is expanded, switch to the corresponding tab
+    if (isExpanded && typeof onTabChange === 'function') {
+      const tabIndex = targetCollections.findIndex(name => name === collectionName);
+      if (tabIndex !== -1) {
+        onTabChange(tabIndex);
+      }
+    }
+  };
   const theme = useTheme();
   
   const hasActiveFilters = Object.values(filters).some(collectionFilters =>
@@ -335,12 +365,13 @@ export function FilterSidebar({
           );
 
           const IconComponent = COLLECTION_ICONS[collectionName] || File;
-          const color = COLLECTION_COLORS[collectionName];
+          const color = COLLECTION_COLORS[collectionName] || '#666'; // Add fallback color to prevent alpha error
 
           return (
             <Accordion 
               key={collectionName} 
-              defaultExpanded={hasActiveFilters}
+              expanded={expandedAccordion === collectionName}
+              onChange={handleAccordionChange(collectionName)}
               sx={{
                 '&:before': { display: 'none' },
                 boxShadow: 'none',
@@ -366,7 +397,7 @@ export function FilterSidebar({
                   <Typography variant="subtitle2" sx={{ fontWeight: 500 }}>
                     {config.label}
                   </Typography>
-                  {hasActiveFilters && (
+                  {expandedAccordion === collectionName && (
                     <Chip 
                       size="small" 
                       label="Active" 
@@ -401,11 +432,38 @@ export function FilterSidebar({
  */
 function CollectionFilters({ config, collectionName, filters, onFilterChange, options }) {
   // Get filterable fields (select, status, relationship)
-  const filterableFields = config.fields?.filter(field =>
+  let filterableFields = config.fields?.filter(field =>
     field.type === 'select' || 
     field.type === 'status' || 
     field.type === 'relationship'
-  ).slice(0, 6) || []; // Limit to 6 filters per collection
+  ) || [];
+  
+  // Special handling for company collection - include filters from config.filters
+  if (collectionName === 'company' && config.filters) {
+    // Add filters from config.filters array, excluding 'sort' and 'search' filters
+    const additionalFilters = config.filters
+      .filter(filter => !['sort', 'search'].includes(filter.name)) // Exclude problematic filters
+      .map(filter => ({
+        ...filter,
+        // Ensure the filter has all necessary properties for FilterField
+        relation: filter.relation || undefined
+      }));
+    
+    // Combine fields and filters, removing duplicates by name
+    const allFields = [...filterableFields];
+    
+    // Add additional filters if they don't already exist in fields
+    additionalFilters.forEach(filter => {
+      if (!allFields.some(field => field.name === filter.name)) {
+        allFields.push(filter);
+      }
+    });
+    
+    filterableFields = allFields;
+  }
+  
+  // Limit to 8 filters per collection (increased from 6)
+  filterableFields = filterableFields.slice(0, 8);
 
   return (
     <Stack spacing={2}>
@@ -478,7 +536,8 @@ export function ResultsGrid({
   collectionName, 
   results = [], 
   loading = false,
-  emptyMessage = "No results found"
+  emptyMessage = "No results found",
+  onRefresh // Add onRefresh prop to handle record deletion
 }) {
   const router = useRouter();
   const config = collections[collectionName];
@@ -522,6 +581,7 @@ export function ResultsGrid({
             config={config}
             collectionName={collectionName}
             router={router}
+            onRefresh={onRefresh} // Pass onRefresh prop to ModernResultCard
           />
         </Grid>
       ))}
@@ -532,7 +592,7 @@ export function ResultsGrid({
 /**
  * Modern Result Card Component with improved design
  */
-function ModernResultCard({ item, config, collectionName, router }) {
+function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
   const theme = useTheme();
   const quickView = config?.quickView || {};
   const color = COLLECTION_COLORS[collectionName] || '#666';
@@ -672,8 +732,8 @@ function ModernResultCard({ item, config, collectionName, router }) {
               config={{ ...config, key: collectionName }}
               id={item.id}
               record={item}
-              showDelete={false}
-              // optionally: onRefresh={...}
+              showDelete={true}
+              onRefresh={onRefresh} // Pass onRefresh prop to ViewButtons for immediate UI updates
             />
           </Box>
 

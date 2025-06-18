@@ -43,6 +43,7 @@ export default function OrganizeMediaPage() {
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [notificationMessage, setNotificationMessage] = useState('');
   const [notificationType, setNotificationType] = useState('success');
+  const [showRecentActions, setShowRecentActions] = useState(true);
 
   // Fetch all reference data with better error handling
   const fetchOptions = useCallback(async () => {
@@ -736,13 +737,16 @@ export default function OrganizeMediaPage() {
                             value={item.selectedElements || []}
                             onChange={(e, value) => handleFieldChange(index, 'selectedElements', value)}
                             renderTags={(value, getTagProps) =>
-                              value.map((option, i) => (
-                                <Chip 
-                                  key={`element-${option.id}-${i}`}
-                                  label={option.title} 
-                                  {...getTagProps({ index: i })} 
-                                />
-                              ))
+                              value.map((option, i) => {
+                                const { key, ...tagProps } = getTagProps({ index: i });
+                                return (
+                                  <Chip 
+                                    key={key}
+                                    label={option.title} 
+                                    {...tagProps} 
+                                  />
+                                );
+                              })
                             }
                             renderInput={(params) => (
                               <TextField 
@@ -831,7 +835,7 @@ export default function OrganizeMediaPage() {
         )}
 
         {/* Recently Deleted Items */}
-        {recentlyDeleted.length > 0 && (
+        {recentlyDeleted.length > 0 && showRecentActions && (
           <Box 
             position="fixed" 
             bottom={80} 
@@ -839,9 +843,18 @@ export default function OrganizeMediaPage() {
             zIndex={1000}
           >
             <Card sx={{ p: 2, bgcolor: 'grey.100' }}>
-              <Typography variant="caption" display="block">
-                Recent Actions ({recentlyDeleted.length}):
-              </Typography>
+              <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                <Typography variant="caption">
+                  Recent Actions ({recentlyDeleted.length}):
+                </Typography>
+                <Button 
+                  size="small" 
+                  onClick={() => setShowRecentActions(false)}
+                  sx={{ minWidth: 'auto', p: 0.5 }}
+                >
+                  ✕
+                </Button>
+              </Box>
               {recentlyDeleted.slice(0, 3).map((item, i) => (
                 <Box key={item.id} display="flex" alignItems="center" gap={1} mt={1}>
                   <Typography variant="caption">

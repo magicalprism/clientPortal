@@ -119,14 +119,18 @@ export default function UniversalKanbanView({
     })
   );
 
-  // Set current contact as default when loaded
+  // Set current contact as default when loaded and trigger data reload
   useEffect(() => {
     if (currentContact && !currentContactLoading && !currentContactSetRef.current) {
-      console.log('[UniversalKanbanView] Setting current contact as default:', currentContact);
       setSelectedContactId(currentContact.id);
       currentContactSetRef.current = true;
+      
+      // Reload data to apply the contact filter
+      if (loadData) {
+        loadData();
+      }
     }
-  }, [currentContact, currentContactLoading]);
+  }, [currentContact, currentContactLoading, loadData]);
 
   // Fetch companies
   const fetchCompanies = useCallback(async () => {
@@ -141,7 +145,7 @@ export default function UniversalKanbanView({
       companiesLoadedRef.current = true;
       
     } catch (error) {
-      console.error('[UniversalKanbanView] Error fetching companies:', error);
+ 
       setCompanies([]);
     }
   }, []);
@@ -154,10 +158,10 @@ export default function UniversalKanbanView({
       if (companyId && companyId !== 'all') {
         // Only filter by company when a specific company is selected
         ({ data, error } = await table.project.fetchProjectsByCompanyId(companyId));
-        console.log('[UniversalKanbanView] Fetching projects for company:', companyId, 'Found:', data?.length || 0);
+ 
       } else {
         // Default: Show ALL projects regardless of company
-        console.log('[UniversalKanbanView] Fetching all projects');
+
         
         // Try different methods to get all projects
         const projectQueryMethods = [
@@ -197,13 +201,13 @@ export default function UniversalKanbanView({
               break;
             }
           } catch (methodError) {
-            console.log('[UniversalKanbanView] Project query method failed:', methodError.message);
+    
             continue;
           }
         }
 
         if (!success) {
-          console.warn('[UniversalKanbanView] All project query methods failed');
+   
           data = [];
           error = null;
         }
@@ -211,11 +215,11 @@ export default function UniversalKanbanView({
       
       if (error) throw error;
       
-      console.log('[UniversalKanbanView] Setting projects:', data?.length || 0);
+
       setProjects(data || []);
       
     } catch (error) {
-      console.error('[UniversalKanbanView] Error fetching projects:', error);
+
       setProjects([]);
     }
   }, []);
@@ -223,10 +227,7 @@ export default function UniversalKanbanView({
   // Fetch contacts that are assigned to active tasks in current filter context
   const fetchContacts = useCallback(async () => {
     try {
-      console.log('[UniversalKanbanView] Fetching contacts with active tasks for context:', {
-        companyId: selectedCompanyId,
-        projectId: selectedProjectId
-      });
+
 
       // Use the centralized query function to fetch contacts with active tasks
       const filters = {};
@@ -240,22 +241,22 @@ export default function UniversalKanbanView({
       const { data, error } = await table.contact.fetchContactsWithActiveTasks(filters);
       
       if (error) {
-        console.error('[UniversalKanbanView] Error fetching contacts with active tasks:', error);
+
         setContacts([]);
         return;
       }
       
-      console.log('[UniversalKanbanView] Successfully fetched contacts with active tasks:', data?.length || 0);
+
       
       if (data && data.length > 0) {
-        console.log('[UniversalKanbanView] Sample contact structure:', data[0]);
+
       } else {
-        console.log('[UniversalKanbanView] No contacts have active task assignments in current context');
+
       }
       
       setContacts(data || []);
     } catch (error) {
-      console.error('[UniversalKanbanView] Error fetching contacts with active tasks:', error);
+
       setContacts([]);
     }
   }, [selectedCompanyId, selectedProjectId]); // Re-run when company/project filters change (NOT when selectedContactId changes)
@@ -272,7 +273,7 @@ export default function UniversalKanbanView({
           fetchContacts()
         ]);
       } catch (error) {
-        console.error('[UniversalKanbanView] Error initializing data:', error);
+
       } finally {
         setIsLoading(false);
       }
@@ -323,12 +324,7 @@ export default function UniversalKanbanView({
     const task = tasks.find(t => t.id.toString() === taskId);
     setActiveTask(task);
     
-    console.log('[UniversalKanbanView] Drag started:', { 
-      activeId: active.id, 
-      taskId, 
-      taskTitle: task?.title,
-      taskStatus: task?.status 
-    });
+
   };
 
   const handleDragOver = (event) => {
@@ -361,7 +357,7 @@ export default function UniversalKanbanView({
     setActiveTask(null);
     
     if (!over) {
-      console.log('[UniversalKanbanView] Drag cancelled - no drop target');
+
       return;
     }
     
@@ -369,26 +365,26 @@ export default function UniversalKanbanView({
     const overId = over.id;
     
     if (activeId === overId) {
-      console.log('[UniversalKanbanView] Drag cancelled - same position');
+
       return;
     }
     
     const activeIsTask = activeId.toString().startsWith('task-');
     
     if (!activeIsTask) {
-      console.log('[UniversalKanbanView] Drag cancelled - not a task');
+
       return;
     }
     
     if (!activeTask) {
-      console.log('[UniversalKanbanView] Drag cancelled - no active task');
+
       return;
     }
     
     const targetContainer = containers.find(c => c.id === overId);
     
     if (!targetContainer) {
-      console.log('[UniversalKanbanView] Drag cancelled - not dropped on a valid column');
+
       return;
     }
     
@@ -396,39 +392,33 @@ export default function UniversalKanbanView({
     const oldStatus = activeTask.status || 'todo';
     
     if (newStatus === oldStatus) {
-      console.log('[UniversalKanbanView] Drag cancelled - same status');
+
       return;
     }
     
     const taskId = activeId.toString().replace('task-', '');
     
-    console.log('[UniversalKanbanView] Moving task between columns:', { 
-      taskId, 
-      taskTitle: activeTask.title,
-      from: oldStatus, 
-      to: newStatus,
-      isParent: !activeTask.parent_id
-    });
+
     
     try {
       await moveTask(taskId, oldStatus, newStatus, 0);
       
       if (!activeTask.parent_id) {
         const childTasks = tasks.filter(task => task.parent_id === activeTask.id);
-        console.log('[UniversalKanbanView] Moving child tasks with parent:', childTasks.length, 'children');
+
         
         for (const childTask of childTasks) {
           try {
             await moveTask(childTask.id, childTask.status || 'todo', newStatus, 0);
           } catch (childError) {
-            console.error('[UniversalKanbanView] Error moving child task:', childError);
+
           }
         }
       }
       
-      console.log('[UniversalKanbanView] Task move completed successfully');
+
     } catch (error) {
-      console.error('[UniversalKanbanView] Error moving task:', error);
+
     }
   };
 
@@ -443,7 +433,7 @@ export default function UniversalKanbanView({
   }, [router]);
 
   const handleModalSuccess = useCallback(async (newRecord) => {
-    console.log('[UniversalKanbanView] Modal success:', newRecord);
+
     
     if (newRecord) {
       await loadData();
@@ -497,14 +487,7 @@ export default function UniversalKanbanView({
     
     // Debug logging
     if (contact.id === 15 || contact.id === 47 || contact.id === 25) {
-      console.log(`[UniversalKanbanView] getContactDisplayInfo for contact ${contact.id}:`, {
-        contact,
-        extractedName: name,
-        title: contact.title,
-        firstName: contact.first_name,
-        lastName: contact.last_name,
-        email: contact.email
-      });
+      
     }
     
     return { name, avatar };
@@ -614,18 +597,13 @@ export default function UniversalKanbanView({
                     label="Assigned To"
                     onChange={handleContactChange}
                     renderValue={(value) => {
-                      console.log('[UniversalKanbanView] renderValue called with:', value, typeof value);
-                      console.log('[UniversalKanbanView] contacts available:', contacts.map(c => ({ id: c.id, idType: typeof c.id, title: c.title })));
-                      
                       if (value === 'all') return 'All Contacts';
                       if (value === 'current' || value === currentContact?.id) {
                         const { name } = getContactDisplayInfo(currentContact);
                         return `${name} (You)`;
                       }
                       const contact = contacts.find(c => c.id == value); // Use == instead of === for loose comparison
-                      console.log('[UniversalKanbanView] Found contact for renderValue:', contact);
                       const { name } = getContactDisplayInfo(contact);
-                      console.log('[UniversalKanbanView] Display name:', name);
                       return name;
                     }}
                   >
@@ -647,7 +625,6 @@ export default function UniversalKanbanView({
                       .filter(contact => contact.id !== currentContact?.id)
                       .map(contact => {
                         const { name, avatar } = getContactDisplayInfo(contact);
-                        console.log('[UniversalKanbanView] Rendering MenuItem for contact:', { id: contact.id, name, contact });
                         return (
                           <MenuItem key={contact.id} value={contact.id}>
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

@@ -21,7 +21,7 @@ import { MagnifyingGlass as MagnifyingGlassIcon } from "@phosphor-icons/react/di
 import { Users as UsersIcon } from "@phosphor-icons/react/dist/ssr/Users";
 
 import { SearchDialog } from "@/components/dashboard/layout/search-dialog";
-import { NotificationsPopover } from "@/components/dashboard/layout/notifications-popover";
+import { NotificationsPopover, NotificationsBadge } from "@/components/dashboard/layout/notifications-popover";
 import { ContactsPopover } from "@/components/dashboard/layout/contacts-popover";
 import { UserPopover } from "@/components/dashboard/layout/user-popover";
 import { MobileNav } from "@/components/dashboard/layout/mobile-nav";
@@ -106,7 +106,9 @@ function NotificationsButton() {
     <>
       <Tooltip title="Notifications">
         <IconButton onClick={popover.handleOpen} ref={popover.anchorRef}>
-          <BellIcon />
+          <NotificationsBadge>
+            <BellIcon />
+          </NotificationsBadge>
         </IconButton>
       </Tooltip>
       <NotificationsPopover anchorEl={popover.anchorRef.current} onClose={popover.handleClose} open={popover.open} />

@@ -24,6 +24,12 @@ export const dashboardConfig = {
 			title: "General",
 			items: [
 				{
+					key: "search",
+					title: "Search",
+					href: paths.dashboard.search,
+					icon: "magnifying-glass",
+				},
+				{
 					key: "settings",
 					title: "Settings",
 					href: paths.dashboard.settings.account,
@@ -157,6 +163,7 @@ export const dashboardConfig = {
 						{ key: "media", title: "List media", href: paths.dashboard.media.list },
 						{ key: "media:create", title: "Create media", href: paths.dashboard.media.create },
 						{ key: "media:details", title: "Media details", href: paths.dashboard.media.details("1") },
+						{ key: "media:organize", title: "Organize Attachments", href: paths.dashboard.media.organize },
 					],
 				},
 				

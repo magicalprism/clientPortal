@@ -575,7 +575,7 @@ isGenerated={true}
           pb: 2 
         }}>
           <Typography variant="h5" gutterBottom sx={{ mb: 0 }}>
-            My {(config?.label || 'Checklist')} 
+            My Checklists
           </Typography>
           
           <Tooltip title="Create checklist">

@@ -125,9 +125,9 @@ export const updateTask = async (id, updates) => {
     updated_at: new Date().toISOString()
   };
 
-  // Set completion timestamps based on status
-  if (updates.status === 'complete') {
-    updateData.completed_at = new Date().toISOString();
+  // Remove completed_at field if it exists in updates
+  if (updateData.completed_at) {
+    delete updateData.completed_at;
   }
 
   return await supabase
@@ -517,37 +517,101 @@ export const fetchTasksForContact = async (contactId) => {
  * Toggle task completion status
  */
 export const toggleTaskComplete = async (taskId, currentStatus) => {
-  const newStatus = currentStatus === 'complete' ? 'todo' : 'complete';
-  
-  // Update the main task
-  const { data, error } = await updateTask(taskId, { status: newStatus });
-  if (error) return { data: null, error };
+  try {
+    const newStatus = currentStatus === 'complete' ? 'todo' : 'complete';
+    
+    // Update the main task with more robust error handling
+    try {
+      // First try using updateTask function
+      const { data, error } = await updateTask(taskId, { status: newStatus });
+      
+      if (error) {
+        // Fall back to direct Supabase update
+        const fallbackResult = await supabase
+          .from('task')
+          .update({ 
+            status: newStatus,
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', taskId)
+          .select('*')
+          .single();
+          
+        if (fallbackResult.error) {
+          return { data: null, error: fallbackResult.error };
+        }
+        
+        // Use the fallback result data
+        const fallbackData = fallbackResult.data;
+        
+        // Handle subtasks and parent tasks with the fallback data
+        try {
+          // If marking as complete, also complete subtasks
+          if (newStatus === 'complete') {
+            await supabase
+              .from('task')
+              .update({ 
+                status: 'complete',
+                updated_at: new Date().toISOString()
+              })
+              .eq('parent_id', taskId)
+              .neq('status', 'complete');
+          }
 
-  // If marking as complete, also complete subtasks
-  if (newStatus === 'complete') {
-    await supabase
-      .from('task')
-      .update({ 
-        status: 'complete',
-        updated_at: new Date().toISOString()
-      })
-      .eq('parent_id', taskId)
-      .neq('status', 'complete');
+          // If marking as incomplete and has parent, mark parent as in_progress
+          if (newStatus !== 'complete' && fallbackData && fallbackData.parent_id) {
+            await supabase
+              .from('task')
+              .update({ 
+                status: 'in_progress',
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', fallbackData.parent_id)
+              .eq('status', 'complete');
+          }
+        } catch (relatedTaskError) {
+          // Continue even if related task updates fail
+        }
+        
+        return { data: fallbackData, error: null };
+      }
+      
+      // Handle subtasks and parent tasks
+      try {
+        // If marking as complete, also complete subtasks
+        if (newStatus === 'complete') {
+          await supabase
+            .from('task')
+            .update({ 
+              status: 'complete',
+              updated_at: new Date().toISOString()
+            })
+            .eq('parent_id', taskId)
+            .neq('status', 'complete');
+        }
+
+        // If marking as incomplete and has parent, mark parent as in_progress
+        if (newStatus !== 'complete' && data && data.parent_id) {
+          await supabase
+            .from('task')
+            .update({ 
+              status: 'in_progress',
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', data.parent_id)
+            .eq('status', 'complete');
+        }
+      } catch (relatedTaskError) {
+        // Continue even if related task updates fail
+      }
+
+      return { data, error: null };
+    } catch (updateError) {
+      return { data: null, error: updateError };
+    }
+  } catch (error) {
+    return { data: null, error };
   }
-
-  // If marking as incomplete and has parent, mark parent as in_progress
-  if (newStatus !== 'complete' && data.parent_id) {
-    await supabase
-      .from('task')
-      .update({ 
-        status: 'in_progress',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', data.parent_id)
-      .eq('status', 'complete');
-  }
-
-  return { data, error: null };
 };
 
 /**
@@ -575,10 +639,6 @@ export const updateTaskStatus = async (taskId, newStatus, newIndex = null) => {
 
   if (newIndex !== null) {
     updateData.order_index = newIndex;
-  }
-
-  if (newStatus === 'complete') {
-    updateData.completed_at = new Date().toISOString();
   }
 
   return await supabase
@@ -1117,10 +1177,6 @@ export const updateTaskStatusSimple = async (taskId, newStatus) => {
     status: newStatus,
     updated_at: new Date().toISOString()
   };
-
-  if (newStatus === 'complete') {
-    updateData.completed_at = new Date().toISOString();
-  }
 
   const { data, error } = await supabase
     .from('task')

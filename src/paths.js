@@ -130,6 +130,7 @@ export const paths = {
 			list: "/dashboard/media",
 			create: "/dashboard/media/create",
 			details: (mediaId) => `/dashboard/media/${mediaId}`,
+			organize: "/dashboard/organize-media",
 		},
 		product: {
 			list: "/dashboard/product",

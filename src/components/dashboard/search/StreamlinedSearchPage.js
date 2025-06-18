@@ -20,8 +20,8 @@ import {
   EmptySearchState
 } from '@/components/dashboard/search/SearchComponents';
 
-// Main collections to search - Updated to include media
-const DEFAULT_COLLECTIONS = ['project', 'company', 'contact', 'resource', 'media'];
+// Main collections to search - Updated to include task, product, event, contract, and proposal
+const DEFAULT_COLLECTIONS = ['project', 'company', 'contact', 'resource', 'media', 'task', 'product', 'event', 'contract', 'proposal'];
 
 /**
  * Modern Advanced Search Page with improved design
@@ -179,6 +179,7 @@ export default function StreamlinedSearchPage({
               onClearAll={handleClearAllFilters}
               filterOptions={filterOptions}
               loading={filterOptionsLoading}
+              onTabChange={handleTabChange} // Add onTabChange prop
             />
           </Grid>
 
