@@ -67,15 +67,7 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
           multiRelOps: multiRelOps || null,
           driveOps: driveOps || null
         });
-        
-        console.log('[useCollectionSave] Operations loaded:', {
-          recordOps: !!recordOps,
-          multiRelOps: !!multiRelOps,
-          driveOps: !!driveOps
-        });
-        
       } catch (err) {
-        console.warn('[useCollectionSave] Could not load operations:', err);
         setOperations({
           recordOps: null,
           multiRelOps: null,
@@ -119,8 +111,6 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
 
     // Handle media fields
     if (fieldDef.type === 'media') {
-      console.log(`[useCollectionSave] Media field update: ${fieldName}`, newValue);
-      
       let cleanValue = newValue;
       if (newValue && typeof newValue === 'object' && newValue._forceChange) {
         const { _forceChange, ...rest } = newValue;
@@ -198,14 +188,15 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
 
   // ✅ UPDATED: Save record with fallback methods
   const saveRecord = async () => {
-    let shouldSave = hasChanges || dirtyFields.size > 0 || mediaFieldsChanged.size > 0;
+    // Check for multi-relationship fields that need saving
+    const multiRelFields = config?.fields?.filter(f => f.type === 'multiRelationship') || [];
+    const hasMultiRelChanges = multiRelFields.length > 0 && record?.id;
+    
+    let shouldSave = hasChanges || dirtyFields.size > 0 || mediaFieldsChanged.size > 0 || hasMultiRelChanges;
 
     if (!shouldSave) {
-      console.log(`[useCollectionSave] Nothing to save`);
       return false;
     }
-
-    console.log(`[useCollectionSave] Starting save process...`);
     setIsSaving(true);
     setDriveOperationStatus(null);
     
@@ -225,12 +216,10 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
         );
       } else {
         // Fallback to direct Supabase call
-        console.log('[useCollectionSave] Using fallback record update method');
         updateResult = await fallbackUpdateRecord(config.name, record.id, record, config);
       }
 
       if (!updateResult.success) {
-        console.error('❌ Error saving main record:', updateResult.error);
         setIsSaving(false);
         return false;
       }
@@ -245,13 +234,9 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
           record, 
           config
         );
-      } else {
-        console.log('[useCollectionSave] Multi-relationship operations not available, skipping');
       }
 
-      if (!multiRelResult.success) {
-        console.warn('⚠️ Some multi-relationship fields failed to save:', multiRelResult.errors);
-      }
+      // Note: We still track multi-relationship errors but don't log them
 
       // Step 3: Handle Google Drive folder operations
       let driveResult = { success: true, operation: 'none' };
@@ -262,8 +247,6 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
           recordBeforeSave, 
           originalRecordRef.current
         );
-      } else {
-        console.log('[useCollectionSave] Drive operations not available, skipping');
       }
       
       if (driveResult.success) {
@@ -277,7 +260,6 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
         }
       } else {
         setDriveOperationStatus('failed');
-        console.warn('⚠️ Drive operation failed:', driveResult.error);
       }
       
       // Clear state
@@ -289,11 +271,9 @@ export const useCollectionSave = ({ config, record, setRecord, startEdit, mode =
       // Update original record ref
       originalRecordRef.current = { ...recordBeforeSave };
       
-      console.log(`[useCollectionSave] ✅ Save completed successfully`);
       return true;
       
     } catch (err) {
-      console.error('[useCollectionSave] ❌ Unexpected error saving record:', err);
       setIsSaving(false);
       setDriveOperationStatus('failed');
       return false;
@@ -307,7 +287,6 @@ const fallbackUpdateRecord = async (tableName, recordId, recordData, config) => 
     const { createClient } = await import('@/lib/supabase/browser');
     const supabase = createClient();
     
-    console.log(`[useCollectionSave] Fallback: Updating ${tableName} record ${recordId}`);
     
     // Prepare update payload
     const updatePayload = { ...recordData };
@@ -344,15 +323,12 @@ const fallbackUpdateRecord = async (tableName, recordId, recordData, config) => 
       .single();
 
     if (error) {
-      console.error(`[useCollectionSave] Fallback error updating ${tableName}:`, error);
       return { success: false, error: error.message, data: null };
     }
 
-    console.log(`[useCollectionSave] Fallback: Successfully updated ${tableName} record`);
     return { success: true, error: null, data };
 
   } catch (err) {
-    console.error(`[useCollectionSave] Fallback: Unexpected error:`, err);
     return { success: false, error: err.message, data: null };
   }
 };

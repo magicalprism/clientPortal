@@ -10,12 +10,9 @@ const supabase = createClient();
  */
 export const saveAllMultiRelationshipFields = async (tableName, recordId, recordData, config) => {
   try {
-    console.log(`[multiRelOps] Processing multi-relationship fields for ${tableName} record ${recordId}`);
-    
     const multiRelFields = config?.fields?.filter(f => f.type === 'multiRelationship') || [];
     
     if (multiRelFields.length === 0) {
-      console.log(`[multiRelOps] No multi-relationship fields found for ${tableName}`);
       return { success: true, errors: [] };
     }
 
@@ -38,14 +35,11 @@ export const saveAllMultiRelationshipFields = async (tableName, recordId, record
           errors.push({ field: field.name, error: result.error });
         }
       } catch (err) {
-        console.error(`[multiRelOps] Error processing field ${field.name}:`, err);
         errors.push({ field: field.name, error: err.message });
       }
     }
 
     const allSuccessful = errors.length === 0;
-    
-    console.log(`[multiRelOps] Processed ${multiRelFields.length} multi-relationship fields. ${errors.length} errors.`);
     
     return { 
       success: allSuccessful, 
@@ -54,7 +48,6 @@ export const saveAllMultiRelationshipFields = async (tableName, recordId, record
     };
 
   } catch (err) {
-    console.error(`[multiRelOps] Unexpected error:`, err);
     return { success: false, errors: [{ error: err.message }], results: [] };
   }
 };
@@ -65,23 +58,23 @@ export const saveAllMultiRelationshipFields = async (tableName, recordId, record
 export const saveMultiRelationshipField = async (tableName, recordId, fieldConfig, fieldValue, fullRecord = {}) => {
   try {
     const fieldName = fieldConfig.name;
-    console.log(`[multiRelOps] Saving multi-relationship field: ${fieldName}`);
 
     if (!fieldConfig.relation) {
-      console.error(`[multiRelOps] No relation config found for field ${fieldName}`);
       return { success: false, error: 'No relation configuration found' };
     }
 
-    const { table: relatedTable, pivotTable, sourceKey, targetKey } = fieldConfig.relation;
+    const { table: relatedTable, pivotTable, junctionTable, sourceKey, targetKey } = fieldConfig.relation;
     
     // Normalize the field value to an array of IDs
     const newIds = normalizeMultiRelationshipValue(fieldValue);
-    console.log(`[multiRelOps] Normalized IDs for ${fieldName}:`, newIds);
 
-    if (pivotTable) {
-      // Handle pivot table relationships
+    // Use either pivotTable or junctionTable (junctionTable is the newer naming convention)
+    const joinTable = pivotTable || junctionTable;
+
+    if (joinTable) {
+      // Handle pivot/junction table relationships
       return await savePivotRelationship(
-        pivotTable,
+        joinTable,
         sourceKey || `${tableName}_id`, 
         targetKey || `${relatedTable}_id`,
         recordId,
@@ -98,7 +91,6 @@ export const saveMultiRelationshipField = async (tableName, recordId, fieldConfi
     }
 
   } catch (err) {
-    console.error(`[multiRelOps] Error saving field ${fieldConfig.name}:`, err);
     return { success: false, error: err.message };
   }
 };
@@ -108,8 +100,6 @@ export const saveMultiRelationshipField = async (tableName, recordId, fieldConfi
  */
 const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId, newIds) => {
   try {
-    console.log(`[multiRelOps] Saving pivot relationship in ${pivotTable}: ${sourceKey}=${recordId}, ${targetKey} in [${newIds.join(', ')}]`);
-
     // First, get existing relationships
     const { data: existingRels, error: fetchError } = await supabase
       .from(pivotTable)
@@ -117,7 +107,6 @@ const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId,
       .eq(sourceKey, recordId);
 
     if (fetchError) {
-      console.error(`[multiRelOps] Error fetching existing relationships:`, fetchError);
       return { success: false, error: fetchError.message };
     }
 
@@ -129,8 +118,6 @@ const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId,
     const toAdd = newIds.filter(id => !existingSet.has(id));
     const toRemove = existingIds.filter(id => !newSet.has(id));
 
-    console.log(`[multiRelOps] Pivot changes - Add: [${toAdd.join(', ')}], Remove: [${toRemove.join(', ')}]`);
-
     // Remove relationships that are no longer needed
     if (toRemove.length > 0) {
       const { error: deleteError } = await supabase
@@ -140,7 +127,6 @@ const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId,
         .in(targetKey, toRemove);
 
       if (deleteError) {
-        console.error(`[multiRelOps] Error removing relationships:`, deleteError);
         return { success: false, error: deleteError.message };
       }
     }
@@ -158,16 +144,13 @@ const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId,
         .insert(insertData);
 
       if (insertError) {
-        console.error(`[multiRelOps] Error adding relationships:`, insertError);
         return { success: false, error: insertError.message };
       }
     }
 
-    console.log(`[multiRelOps] Successfully updated pivot relationships`);
     return { success: true, added: toAdd.length, removed: toRemove.length };
 
   } catch (err) {
-    console.error(`[multiRelOps] Error in savePivotRelationship:`, err);
     return { success: false, error: err.message };
   }
 };
@@ -177,8 +160,6 @@ const savePivotRelationship = async (pivotTable, sourceKey, targetKey, recordId,
  */
 const saveDirectRelationship = async (relatedTable, foreignKey, recordId, newIds) => {
   try {
-    console.log(`[multiRelOps] Saving direct relationship in ${relatedTable}: ${foreignKey}=${recordId} for IDs [${newIds.join(', ')}]`);
-
     // First, clear the foreign key for all records that were previously linked
     const { error: clearError } = await supabase
       .from(relatedTable)
@@ -186,7 +167,6 @@ const saveDirectRelationship = async (relatedTable, foreignKey, recordId, newIds
       .eq(foreignKey, recordId);
 
     if (clearError) {
-      console.error(`[multiRelOps] Error clearing existing relationships:`, clearError);
       return { success: false, error: clearError.message };
     }
 
@@ -201,16 +181,13 @@ const saveDirectRelationship = async (relatedTable, foreignKey, recordId, newIds
         .in('id', newIds.map(id => parseInt(id, 10)));
 
       if (updateError) {
-        console.error(`[multiRelOps] Error setting new relationships:`, updateError);
         return { success: false, error: updateError.message };
       }
     }
 
-    console.log(`[multiRelOps] Successfully updated direct relationships`);
     return { success: true, linkedCount: newIds.length };
 
   } catch (err) {
-    console.error(`[multiRelOps] Error in saveDirectRelationship:`, err);
     return { success: false, error: err.message };
   }
 };

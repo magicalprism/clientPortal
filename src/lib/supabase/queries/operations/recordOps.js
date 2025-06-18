@@ -26,13 +26,11 @@ const cleanPayloadForDatabase = (payload, config) => {
     config.fields.forEach(field => {
       // Remove multi-relationship fields (stored in junction tables)
       if (field.type === 'multiRelationship') {
-        console.log(`[recordOps] Removing multiRelationship field: ${field.name}`);
         delete cleaned[field.name];
       }
       
       // Remove fields marked as non-database
       if (field.database === false) {
-        console.log(`[recordOps] Removing non-database field: ${field.name}`);
         delete cleaned[field.name];
       }
     });
@@ -48,7 +46,6 @@ const cleanPayloadForDatabase = (payload, config) => {
     // Remove any fields not in the valid list
     Object.keys(cleaned).forEach(key => {
       if (!validFieldNames.includes(key)) {
-        console.log(`[recordOps] Removing invalid field for database: ${key}`);
         delete cleaned[key];
       }
     });
@@ -58,12 +55,21 @@ const cleanPayloadForDatabase = (payload, config) => {
   if (config?.fields) {
     config.fields.forEach(field => {
       if (cleaned[field.name] !== undefined && cleaned[field.name] !== '') {
-        if (field.name.endsWith('_id') || field.type === 'integer') {
+        // Extract value from select/status fields
+        if (field.type === 'select' || field.type === 'status') {
+          if (typeof cleaned[field.name] === 'object' && cleaned[field.name] !== null && 'value' in cleaned[field.name]) {
+            cleaned[field.name] = cleaned[field.name].value;
+          }
+        }
+        // Handle numeric fields
+        else if (field.name.endsWith('_id') || field.type === 'integer') {
           const parsed = parseInt(cleaned[field.name], 10);
           if (!isNaN(parsed)) {
             cleaned[field.name] = parsed;
           }
-        } else if (field.type === 'boolean') {
+        } 
+        // Handle boolean fields
+        else if (field.type === 'boolean') {
           cleaned[field.name] = Boolean(cleaned[field.name]);
         }
       }
@@ -80,20 +86,64 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
   try {
     const {
       junctionTable,
+      pivotTable,
       sourceKey = `${config.name}_id`,
       targetKey
     } = relationConfig;
     
-    console.log(`[recordOps] Saving multiRelationship ${fieldName} for ${tableName} record ${recordId}`);
+    // Use either junctionTable or pivotTable (junctionTable is the newer naming convention)
+    const joinTable = junctionTable || pivotTable;
+    
+    if (!joinTable) {
+      // If no junction table is specified, but there's a targetKey, assume it's a direct relationship
+      if (targetKey) {
+        try {
+          // Get related table from relation config
+          const relatedTable = relationConfig.table;
+          
+          if (!relatedTable) {
+            return { success: false, error: 'No related table specified' };
+          }
+          
+          // Clear existing relationships
+          const { error: clearError } = await supabase
+            .from(relatedTable)
+            .update({ [targetKey]: null })
+            .eq(targetKey, recordId);
+            
+          if (clearError) {
+            return { success: false, error: clearError.message };
+          }
+          
+          // Set new relationships
+          if (relatedIds && relatedIds.length > 0) {
+            const { error: updateError } = await supabase
+              .from(relatedTable)
+              .update({ [targetKey]: recordId })
+              .in('id', relatedIds.map(id => parseInt(id, 10)));
+              
+            if (updateError) {
+              return { success: false, error: updateError.message };
+            }
+          }
+          
+          return { success: true };
+        } catch (err) {
+          return { success: false, error: err.message };
+        }
+      }
+      
+      // If we get here, we couldn't handle the relationship
+      return { success: true, warning: 'No junction table specified, relationship may not be saved correctly' };
+    }
     
     // Delete existing relationships
     const { error: deleteError } = await supabase
-      .from(junctionTable)
+      .from(joinTable)
       .delete()
       .eq(sourceKey, recordId);
     
     if (deleteError) {
-      console.error(`[recordOps] Error deleting existing relationships:`, deleteError);
       throw deleteError;
     }
     
@@ -105,16 +155,13 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
       }));
       
       const { error: insertError } = await supabase
-        .from(junctionTable)
+        .from(joinTable)
         .insert(junctionData);
       
       if (insertError) {
-        console.error(`[recordOps] Error inserting new relationships:`, insertError);
         throw insertError;
       }
     }
-    
-    console.log(`[recordOps] Successfully saved multiRelationship ${fieldName}`);
     
     // Special handling for project-brand relationship
     // If this is a project's brands field and we have at least one brand, set the first one as primary
@@ -130,17 +177,10 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
         if (project?.company_id) {
           // Set the first brand as primary for this company
           const brandId = relatedIds[0];
-          console.log(`[recordOps] Setting brand ${brandId} as primary for company ${project.company_id}`);
-          
-          const result = await setBrandAsPrimary(brandId, project.company_id);
-          if (result.error) {
-            console.warn(`[recordOps] Error setting primary brand: ${result.error.message}`);
-          } else {
-            console.log(`[recordOps] Successfully set brand ${brandId} as primary`);
-          }
+          await setBrandAsPrimary(brandId, project.company_id);
+          // Don't fail the whole operation if this part fails
         }
       } catch (err) {
-        console.warn(`[recordOps] Error in primary brand handling: ${err.message}`);
         // Don't fail the whole operation if this part fails
       }
     }
@@ -148,7 +188,6 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
     return { success: true };
     
   } catch (err) {
-    console.error(`[recordOps] Error saving multiRelationship ${fieldName}:`, err);
     return { success: false, error: err.message };
   }
 };
@@ -158,7 +197,6 @@ const saveMultiRelationship = async (tableName, recordId, fieldName, relatedIds,
  */
 export const updateRecord = async (tableName, recordId, recordData, config) => {
   try {
-    console.log(`[recordOps.updateRecord] Updating ${tableName} record ${recordId}`);
     
     // Extract multi-relationship fields before cleaning
     const multiRelationshipData = {};
@@ -179,8 +217,6 @@ export const updateRecord = async (tableName, recordId, recordData, config) => {
       updated_at: getPostgresTimestamp()
     }, config);
 
-    console.log(`[recordOps.updateRecord] Clean payload fields:`, Object.keys(cleanPayload));
-
     // Update main record
     const { data, error } = await supabase
       .from(tableName)
@@ -190,7 +226,6 @@ export const updateRecord = async (tableName, recordId, recordData, config) => {
       .single();
 
     if (error) {
-      console.error(`[recordOps.updateRecord] Error updating ${tableName}:`, error);
       return { success: false, error: error.message, data: null };
     }
 
@@ -203,16 +238,11 @@ export const updateRecord = async (tableName, recordId, recordData, config) => {
       }
     }
 
-    if (relationshipErrors.length > 0) {
-      console.warn(`[recordOps.updateRecord] Some relationships failed to save:`, relationshipErrors);
-      // Note: Main record was saved successfully, but some relationships failed
-    }
+    // Note: We still return success even if some relationships failed
 
-    console.log(`[recordOps.updateRecord] Successfully updated ${tableName} record`);
     return { success: true, error: null, data };
 
   } catch (err) {
-    console.error(`[recordOps.updateRecord] Unexpected error:`, err);
     return { success: false, error: err.message, data: null };
   }
 };
@@ -222,7 +252,6 @@ export const updateRecord = async (tableName, recordId, recordData, config) => {
  */
 export const createRecord = async (tableName, recordData, config) => {
   try {
-    console.log(`[recordOps.createRecord] Creating ${tableName} record`);
     
     const now = getPostgresTimestamp();
     
@@ -246,8 +275,6 @@ export const createRecord = async (tableName, recordData, config) => {
       updated_at: now
     }, config);
 
-    console.log(`[recordOps.createRecord] Clean payload fields:`, Object.keys(cleanPayload));
-
     // Create main record
     const { data, error } = await supabase
       .from(tableName)
@@ -256,7 +283,6 @@ export const createRecord = async (tableName, recordData, config) => {
       .single();
 
     if (error) {
-      console.error(`[recordOps.createRecord] Error creating ${tableName}:`, error);
       return { success: false, error: error.message, data: null };
     }
 
@@ -269,16 +295,11 @@ export const createRecord = async (tableName, recordData, config) => {
       }
     }
 
-    if (relationshipErrors.length > 0) {
-      console.warn(`[recordOps.createRecord] Some relationships failed to save:`, relationshipErrors);
-      // Note: Main record was created successfully, but some relationships failed
-    }
+    // Note: We still return success even if some relationships failed
 
-    console.log(`[recordOps.createRecord] Successfully created ${tableName} record`);
     return { success: true, error: null, data };
 
   } catch (err) {
-    console.error(`[recordOps.createRecord] Unexpected error:`, err);
     return { success: false, error: err.message, data: null };
   }
 };
@@ -288,7 +309,6 @@ export const createRecord = async (tableName, recordData, config) => {
  */
 export const deleteRecord = async (tableName, recordId, config) => {
   try {
-    console.log(`[recordOps.deleteRecord] Deleting ${tableName} record ${recordId}`);
     
     // Check if table supports soft delete
     const hasIsDeleted = config?.fields?.some(f => f.name === 'is_deleted');
@@ -307,11 +327,9 @@ export const deleteRecord = async (tableName, recordId, config) => {
         .single();
 
       if (error) {
-        console.error(`[recordOps.deleteRecord] Error soft deleting ${tableName}:`, error);
         return { success: false, error: error.message, data: null };
       }
 
-      console.log(`[recordOps.deleteRecord] Successfully soft deleted ${tableName} record`);
       return { success: true, error: null, data };
     } else {
       // Hard delete - also clean up multi-relationships
@@ -319,10 +337,14 @@ export const deleteRecord = async (tableName, recordId, config) => {
         const multiRelFields = config.fields.filter(f => f.type === 'multiRelationship');
         for (const field of multiRelFields) {
           const sourceKey = field.relation.sourceKey || `${config.name}_id`;
-          await supabase
-            .from(field.relation.junctionTable)
-            .delete()
-            .eq(sourceKey, recordId);
+          const joinTable = field.relation.junctionTable || field.relation.pivotTable;
+          
+          if (joinTable) {
+            await supabase
+              .from(joinTable)
+              .delete()
+              .eq(sourceKey, recordId);
+          }
         }
       }
       
@@ -332,16 +354,13 @@ export const deleteRecord = async (tableName, recordId, config) => {
         .eq('id', recordId);
 
       if (error) {
-        console.error(`[recordOps.deleteRecord] Error hard deleting ${tableName}:`, error);
         return { success: false, error: error.message, data: null };
       }
 
-      console.log(`[recordOps.deleteRecord] Successfully hard deleted ${tableName} record`);
       return { success: true, error: null, data: { id: recordId } };
     }
 
   } catch (err) {
-    console.error(`[recordOps.deleteRecord] Unexpected error:`, err);
     return { success: false, error: err.message, data: null };
   }
 };

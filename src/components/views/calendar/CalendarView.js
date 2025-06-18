@@ -29,22 +29,12 @@ export default function CalendarView({ config, filters }) {
   const calendarRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const logCalendarApi = (label) => {
-    const api = calendarRef.current?.getApi();
-    console.log(`[${label}] calendarApi:`, api);
-    if (api) console.log(`[${label}] calendarApi.getDate():`, api.getDate());
-  };
-
   const updateCalendarDate = (date) => {
     const api = calendarRef.current?.getApi();
-    console.log('[updateCalendarDate] trying to go to:', date);
     if (api) {
       api.gotoDate(date);
       const updatedDate = api.getDate();
-      console.log('[updateCalendarDate] calendar updated to:', updatedDate);
       setCurrentDate(new Date(updatedDate));
-    } else {
-
     }
   };
 
@@ -91,9 +81,7 @@ export default function CalendarView({ config, filters }) {
   };
 
   useEffect(() => {
-    logCalendarApi('onRender');
-
-const fetchItems = async () => {
+    const fetchItems = async () => {
   const selectString = getCompanyLogoJoinSelect(config);
 
   const { data, error } = await supabase

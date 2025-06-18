@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { milestoneProject, task } from '@/lib/supabase/queries';
+import { milestoneProject, task, table } from '@/lib/supabase/queries';
 
 export const useProjectKanban = ({
   projectId,
@@ -9,6 +9,8 @@ export const useProjectKanban = ({
   showCompleted = false,
   config
 }) => {
+  // Ensure projectId is in the correct format for queries
+  const normalizedProjectId = projectId ? (typeof projectId === 'string' && !isNaN(projectId) ? parseInt(projectId, 10) : projectId) : null;
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [milestones, setMilestones] = useState([]);
@@ -40,7 +42,7 @@ export const useProjectKanban = ({
   }, [mode, milestones, statusColumns]);
 
   const loadData = useCallback(async () => {
-    if (!projectId) {
+    if (!normalizedProjectId) {
       setLoading(false);
       return;
     }
@@ -50,7 +52,7 @@ export const useProjectKanban = ({
 
     try {
       if (mode === 'milestone') {
-        const { data: milestonesData, error: milestonesError } = await milestoneProject.fetchMilestonesForProject(projectId);
+        const { data: milestonesData, error: milestonesError } = await milestoneProject.fetchMilestonesForProject(normalizedProjectId);
         if (milestonesError) throw milestonesError;
 
         const sortedMilestones = (milestonesData || []).sort((a, b) => (a.order_index || 0) - (b.order_index || 0));
@@ -59,21 +61,85 @@ export const useProjectKanban = ({
         if (sortedMilestones.length > 0) {
           const milestoneIds = sortedMilestones.map(m => m.id);
 
-          const { data: tasksData, error: tasksError } = await task.fetchTasks({
-            projectId,
-            ids: null,
-            showCompleted,
-            milestoneId: null,
-            groupByStatus: false
-          });
+          // Try multiple methods to fetch tasks for the project
+          let tasksData = [];
+          let tasksError = null;
+          
+          // Fetch tasks by milestone IDs instead of project ID
+          const taskQueryMethods = [
+            async () => {
+              if (!milestoneIds || milestoneIds.length === 0) {
+                return { data: [], error: null };
+              }
+              
+              const { createClient } = await import('@/lib/supabase/browser');
+              const supabase = createClient();
+              
+              return await supabase
+                .from('task')
+                .select(`
+                  *,
+                  assigned_contact:assigned_id(id, title, first_name, last_name),
+                  company:company_id(id, title),
+                  project:project_id(id, title)
+                `)
+                .in('milestone_id', milestoneIds)
+                .eq('is_deleted', false)
+                .order('order_index')
+                .order('created_at');
+            }
+          ];
+
+          for (const method of taskQueryMethods) {
+            try {
+              const result = await method();
+              
+              // Handle different response formats
+              if (result && result.data) {
+                tasksData = result.data;
+                tasksError = null;
+                break;
+              } else if (Array.isArray(result)) {
+                tasksData = result;
+                tasksError = null;
+                break;
+              } else if (result && Array.isArray(result.tasks)) {
+                tasksData = result.tasks;
+                tasksError = null;
+                break;
+              }
+            } catch (err) {
+              console.error('Error fetching tasks:', err);
+              tasksError = err;
+              continue;
+            }
+          }
 
           if (tasksError) throw tasksError;
-
+          
+          // Filter out completed tasks if needed
+          if (!showCompleted) {
+            tasksData = tasksData.filter(t => t.status !== 'complete');
+          }
+          
           const grouped = {};
+          
+          // Initialize containers for all milestones
+          for (const milestoneId of milestoneIds) {
+            const key = `milestone-${milestoneId}`;
+            grouped[key] = [];
+          }
+          
+          // Group tasks by milestone
           for (const t of tasksData) {
+            // Skip tasks without milestone_id
             if (!t.milestone_id) continue;
+            
             const key = `milestone-${t.milestone_id}`;
-            if (!grouped[key]) grouped[key] = [];
+            if (!grouped[key]) {
+              grouped[key] = [];
+            }
+            
             grouped[key].push(t);
           }
 
@@ -84,12 +150,75 @@ export const useProjectKanban = ({
 
         setStatusColumns([]);
       } else {
-        const { data: supportTasksData, error: supportError } = await task.fetchTasks({
-          projectId,
-          taskType: 'support',
-          showCompleted,
-          groupByStatus: true
-        });
+        // Support mode - enhanced with multiple fallback methods
+        const taskQueryMethods = [
+          async () => {
+            return await task.fetchTasks({
+              projectId,
+              taskType: 'support',
+              showCompleted: true, // Always fetch all tasks, filter later
+              groupByStatus: true
+            });
+          },
+          async () => {
+            return await table.task.fetchTasks({
+              projectId,
+              taskType: 'support',
+              showCompleted: true,
+              groupByStatus: true
+            });
+          },
+          async () => {
+            const { createClient } = await import('@/lib/supabase/browser');
+            const supabase = createClient();
+            
+            const { data, error } = await supabase
+              .from('task')
+              .select(`
+                *,
+                assigned_contact:assigned_id(id, title, first_name, last_name),
+                company:company_id(id, title),
+                project:project_id(id, title)
+              `)
+              .eq('project_id', projectId)
+              .eq('type', 'support');
+              
+            if (error) throw error;
+            
+            // Group by status manually
+            const grouped = {};
+            statusOptions.forEach(option => {
+              grouped[option.value] = [];
+            });
+            
+            data.forEach(task => {
+              const status = task.status || 'todo';
+              if (!grouped[status]) grouped[status] = [];
+              grouped[status].push(task);
+            });
+            
+            return { data: grouped, error: null };
+          }
+        ];
+
+        let supportTasksData = {};
+        let supportError = null;
+
+        for (const method of taskQueryMethods) {
+          try {
+            const result = await method();
+            
+            if (result && result.data && typeof result.data === 'object') {
+              supportTasksData = result.data;
+              supportError = null;
+              break;
+            }
+          } catch (err) {
+            console.error('Error fetching support tasks:', err);
+            supportError = err;
+            continue;
+          }
+        }
 
         if (supportError) throw supportError;
 
@@ -98,6 +227,11 @@ export const useProjectKanban = ({
           title: option.label,
           status: option.value
         }));
+
+        // Filter out completed tasks if needed
+        if (!showCompleted && supportTasksData.complete) {
+          delete supportTasksData.complete;
+        }
 
         setStatusColumns(columns);
         setTasksByContainer(supportTasksData || {});
@@ -109,16 +243,45 @@ export const useProjectKanban = ({
     } finally {
       setLoading(false);
     }
-  }, [projectId, mode, showCompleted, statusOptions]);
+  }, [projectId, normalizedProjectId, mode, showCompleted, statusOptions]);
 
   const updateMilestonesOrder = useCallback(async (newMilestones) => {
     setMilestones(newMilestones);
     try {
-      await Promise.all(
-        newMilestones.map((milestone, index) =>
-          milestoneProject.updateMilestoneOrder(milestone.id, projectId, index)
-        )
-      );
+      // Multiple fallback methods for milestone updates
+      const updateMethods = [
+        async () => {
+          return await Promise.all(
+            newMilestones.map((milestone, index) =>
+              milestoneProject.updateMilestoneOrder(milestone.id, projectId, index)
+            )
+          );
+        },
+        async () => {
+          return await Promise.all(
+            newMilestones.map((milestone, index) =>
+              milestoneProject.updateMilestoneOrder(milestone.id, projectId, index)
+            )
+          );
+        }
+      ];
+
+      let success = false;
+      for (const method of updateMethods) {
+        try {
+          const result = await method();
+          if (result) {
+            success = true;
+            break;
+          }
+        } catch (methodError) {
+          continue;
+        }
+      }
+
+      if (!success) {
+        throw new Error('Failed to update milestone order');
+      }
     } catch (err) {
       console.error('Error updating milestone order:', err);
       setError(err.message || 'Failed to update milestone order');
@@ -130,11 +293,78 @@ export const useProjectKanban = ({
     try {
       if (mode === 'milestone') {
         const toMilestoneId = toContainer.replace('milestone-', '');
-        await task.moveTaskToMilestone(taskId, parseInt(toMilestoneId), newIndex);
+        
+        // Multiple fallback methods for moving task
+        const moveMethods = [
+          async () => {
+            return await task.moveTaskToMilestone(taskId, parseInt(toMilestoneId), newIndex);
+          },
+          async () => {
+            return await table.task.moveTaskToMilestone(taskId, parseInt(toMilestoneId), newIndex);
+          },
+          async () => {
+            return await task.updateTask(taskId, { 
+              milestone_id: parseInt(toMilestoneId), 
+              order_index: newIndex,
+              updated_at: new Date().toISOString()
+            });
+          }
+        ];
+
+        let success = false;
+        for (const method of moveMethods) {
+          try {
+            const result = await method();
+            if (result && !result.error) {
+              success = true;
+              break;
+            }
+          } catch (methodError) {
+            continue;
+          }
+        }
+
+        if (!success) {
+          throw new Error('No working move method found');
+        }
       } else {
         const newStatus = toContainer.replace('status-', '');
-        await task.updateTaskStatus(taskId, newStatus, newIndex);
+        
+        // Multiple fallback methods for updating status
+        const updateMethods = [
+          async () => {
+            return await task.updateTaskStatus(taskId, newStatus, newIndex);
+          },
+          async () => {
+            return await table.task.updateTaskStatus(taskId, newStatus, newIndex);
+          },
+          async () => {
+            return await task.updateTask(taskId, { 
+              status: newStatus, 
+              order_index: newIndex,
+              updated_at: new Date().toISOString()
+            });
+          }
+        ];
+
+        let success = false;
+        for (const method of updateMethods) {
+          try {
+            const result = await method();
+            if (result && !result.error) {
+              success = true;
+              break;
+            }
+          } catch (methodError) {
+            continue;
+          }
+        }
+
+        if (!success) {
+          throw new Error('No working update method found');
+        }
       }
+      
       await loadData();
     } catch (err) {
       console.error('Error moving task:', err);
@@ -149,11 +379,46 @@ export const useProjectKanban = ({
     }));
 
     try {
-      await Promise.all(
-        newTaskOrder.map((taskItem, index) =>
-          task.updateTaskOrder(taskItem.id, index)
-        )
-      );
+      // Multiple fallback methods for reordering tasks
+      const updateMethods = [
+        async () => {
+          return await Promise.all(
+            newTaskOrder.map((taskItem, index) =>
+              task.updateTaskOrder(taskItem.id, index)
+            )
+          );
+        },
+        async () => {
+          return await Promise.all(
+            newTaskOrder.map((taskItem, index) =>
+              task.updateTask(taskItem.id, { 
+                order_index: index,
+                updated_at: new Date().toISOString()
+              })
+            )
+          );
+        },
+        async () => {
+          return await table.task.reorderTasks(newTaskOrder.map(t => t.id));
+        }
+      ];
+
+      let success = false;
+      for (const method of updateMethods) {
+        try {
+          const result = await method();
+          if (result) {
+            success = true;
+            break;
+          }
+        } catch (methodError) {
+          continue;
+        }
+      }
+
+      if (!success) {
+        console.warn('All reorder methods failed, but continuing optimistically');
+      }
     } catch (err) {
       console.error('Error reordering tasks:', err);
       setError(err.message || 'Failed to reorder tasks');

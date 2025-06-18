@@ -109,7 +109,7 @@ export function colorSchemes(config) {
 	let primary = primarySchemes[config.primaryColor];
 
 	if (!primary) {
-		logger.warn(`No primary color found for ${config.primaryColor}. Using neonBlue instead.`);
+
 		primary = primarySchemes.neonBlue;
 	}
 
