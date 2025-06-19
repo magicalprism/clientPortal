@@ -9,9 +9,19 @@ import {
   Alert,
   Fade,
   useTheme,
-  alpha
+  alpha,
+  Button,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
+  Paper,
+  CircularProgress
 } from '@mui/material';
+import { Trash, X, CheckSquare } from '@phosphor-icons/react';
 import { useAdvancedSearch } from '@/components/dashboard/search/useAdvancedSearch';
+import { deleteWithDependencies } from '@/lib/utils/deleteWithDependencies';
 import {
   SearchHeader,
   CollectionTabs,
@@ -20,8 +30,8 @@ import {
   EmptySearchState
 } from '@/components/dashboard/search/SearchComponents';
 
-// Main collections to search - Updated to include task, product, event, contract, and proposal
-const DEFAULT_COLLECTIONS = ['project', 'company', 'contact', 'resource', 'media', 'task', 'product', 'event', 'contract', 'proposal'];
+// Main collections to search - Updated to include email, task, product, event, contract, and proposal
+const DEFAULT_COLLECTIONS = ['project', 'company', 'contact', 'resource', 'media', 'email', 'task', 'product', 'event', 'contract', 'proposal'];
 
 /**
  * Modern Advanced Search Page with improved design
@@ -41,6 +51,7 @@ export default function StreamlinedSearchPage({
     updateFilter,
     clearAllFilters,
     results,
+    setResults,
     loading,
     resultCounts,
     error,
@@ -56,6 +67,97 @@ export default function StreamlinedSearchPage({
   const [activeTab, setActiveTab] = useState(0);
   const [filterOptions, setFilterOptions] = useState({});
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
+  
+  // Selection state for bulk operations
+  const [selectedItems, setSelectedItems] = useState({});
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  
+  // Handle item selection
+  const handleSelectItem = (item, isSelected) => {
+    setSelectedItems(prev => {
+      const currentSelected = [...(prev[currentCollection] || [])];
+      
+      if (isSelected) {
+        // Add item if not already selected
+        if (!currentSelected.some(selected => selected.id === item.id)) {
+          return {
+            ...prev,
+            [currentCollection]: [...currentSelected, item]
+          };
+        }
+      } else {
+        // Remove item if selected
+        return {
+          ...prev,
+          [currentCollection]: currentSelected.filter(selected => selected.id !== item.id)
+        };
+      }
+      
+      return prev;
+    });
+  };
+  
+  // Handle select all items
+  const handleSelectAll = (isSelected) => {
+    setSelectedItems(prev => {
+      if (isSelected) {
+        return {
+          ...prev,
+          [currentCollection]: [...currentResults]
+        };
+      } else {
+        return {
+          ...prev,
+          [currentCollection]: []
+        };
+      }
+    });
+  };
+  
+  // Clear selection for current collection
+  const handleClearSelection = () => {
+    setSelectedItems(prev => ({
+      ...prev,
+      [currentCollection]: []
+    }));
+  };
+  
+  // Handle bulk delete
+  const handleBulkDelete = async () => {
+    if (!currentSelectedItems.length) return;
+    
+    setIsDeleting(true);
+    setShowDeleteConfirm(false);
+    
+    try {
+      // Get IDs of selected items
+      const itemIds = currentSelectedItems.map(item => item.id);
+      
+      // Clear selection first
+      handleClearSelection();
+      
+      // Perform actual deletion
+      const result = await deleteWithDependencies(currentCollection, itemIds);
+      const { success, error } = result || { success: false, error: 'No result returned from deleteWithDependencies' };
+      
+      if (!success) {
+        console.error('Bulk delete failed:', error);
+        alert('Failed to delete some items: ' + error);
+      } else {
+        // Update the UI after successful deletion
+        // Instead of directly modifying the results state, refresh the data
+        searchAllCollections();
+      }
+    } catch (error) {
+      console.error('Unexpected error during bulk delete:', error);
+      alert('An unexpected error occurred during deletion');
+    } finally {
+      // Refresh to get accurate data regardless of success or failure
+      searchAllCollections();
+      setIsDeleting(false);
+    }
+  };
 
   // Sort collections alphabetically by their label for consistent ordering
   const sortedCollections = useMemo(() => {
@@ -70,6 +172,10 @@ export default function StreamlinedSearchPage({
   const currentCollection = sortedCollections[activeTab];
   const currentResults = results[currentCollection] || [];
   const currentLoading = loading[currentCollection] || false;
+  
+  // Get current selected items for the active collection
+  const currentSelectedItems = selectedItems[currentCollection] || [];
+  const hasSelectedItems = currentSelectedItems.length > 0;
 
   // Load filter options on mount
   useEffect(() => {
@@ -234,6 +340,52 @@ export default function StreamlinedSearchPage({
                   onTabChange={handleTabChange}
                   resultCounts={resultCounts}
                 />
+                
+                {/* Bulk Action Bar */}
+                {hasSelectedItems && (
+                  <Paper
+                    elevation={3}
+                    sx={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      p: 2,
+                      mb: 2,
+                      borderRadius: 2,
+                      backgroundColor: alpha(theme.palette.primary.main, 0.1),
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${alpha(theme.palette.primary.main, 0.2)}`
+                    }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CheckSquare size={20} weight="bold" style={{ marginRight: 8, color: theme.palette.primary.main }} />
+                      <Typography variant="subtitle1" color="primary.main" fontWeight={500}>
+                        {currentSelectedItems.length} {currentSelectedItems.length === 1 ? 'item' : 'items'} selected
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Button
+                        variant="outlined"
+                        color="inherit"
+                        size="small"
+                        startIcon={<X size={16} />}
+                        onClick={handleClearSelection}
+                      >
+                        Clear
+                      </Button>
+                      <Button
+                        variant="contained"
+                        color="error"
+                        size="small"
+                        startIcon={<Trash size={16} />}
+                        onClick={() => setShowDeleteConfirm(true)}
+                        disabled={isDeleting}
+                      >
+                        {isDeleting ? 'Deleting...' : 'Delete Selected'}
+                      </Button>
+                    </Box>
+                  </Paper>
+                )}
 
                 {/* Results Grid for Current Collection */}
                 <ResultsGrid
@@ -242,7 +394,46 @@ export default function StreamlinedSearchPage({
                   loading={currentLoading}
                   emptyMessage={`No ${currentCollection} results found`}
                   onRefresh={handleRefresh}
+                  selectedItems={currentSelectedItems}
+                  onSelectItem={handleSelectItem}
+                  onSelectAll={handleSelectAll}
+                  selectionEnabled={true}
                 />
+                
+                {/* Delete Confirmation Dialog */}
+                <Dialog
+                  open={showDeleteConfirm}
+                  onClose={() => setShowDeleteConfirm(false)}
+                  aria-labelledby="delete-dialog-title"
+                  aria-describedby="delete-dialog-description"
+                >
+                  <DialogTitle id="delete-dialog-title">
+                    Delete {currentSelectedItems.length} {currentSelectedItems.length === 1 ? 'item' : 'items'}?
+                  </DialogTitle>
+                  <DialogContent>
+                    <DialogContentText id="delete-dialog-description">
+                      Are you sure you want to delete the selected {currentSelectedItems.length} {currentSelectedItems.length === 1 ? 'item' : 'items'}? 
+                      This action cannot be undone and may also delete related data.
+                    </DialogContentText>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button 
+                      onClick={() => setShowDeleteConfirm(false)}
+                      disabled={isDeleting}
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      onClick={handleBulkDelete}
+                      color="error"
+                      variant="contained"
+                      disabled={isDeleting}
+                      startIcon={isDeleting ? <CircularProgress size={16} color="inherit" /> : <Trash size={16} />}
+                    >
+                      {isDeleting ? 'Deleting...' : 'Delete'}
+                    </Button>
+                  </DialogActions>
+                </Dialog>
 
                 {/* Search Statistics */}
                 {totalResults > 0 && (
@@ -330,12 +521,25 @@ export function MediaSearchPage() {
 }
 
 /**
+ * Email-focused search page
+ */
+export function EmailSearchPage() {
+  return (
+    <StreamlinedSearchPage
+      collections={['email', 'contact', 'company']}
+      title="Email Search"
+      subtitle="Search emails, contacts, and companies"
+    />
+  );
+}
+
+/**
  * All Collections search page
  */
 export function AllCollectionsSearchPage() {
   return (
     <StreamlinedSearchPage
-      collections={['company', 'contact', 'project', 'resource', 'media', 'task', 'contract', 'brand']}
+      collections={['company', 'contact', 'project', 'resource', 'media', 'email', 'task', 'contract', 'brand']}
       title="Universal Search"
       subtitle="Search across all your collections and data"
     />

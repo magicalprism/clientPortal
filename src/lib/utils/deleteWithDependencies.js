@@ -7,10 +7,18 @@ const PIVOT_MAP = {
     { table: 'media_section', foreignKey: 'section_id' }
   ],
   comment: [{ table: 'comment_contact', foreignKey: 'comment_id' }],
-  contact: [{ table: 'comment_contact', foreignKey: 'contact_id' }],
+  contact: [
+    { table: 'comment_contact', foreignKey: 'contact_id' },
+    { table: 'contact_email', foreignKey: 'contact_id' }
+  ],
   media: [{ table: 'media_section', foreignKey: 'media_id' }],
   contract: [{ table: 'contract_payment', foreignKey: 'contract_id' }],
-  payment: [{ table: 'contract_payment', foreignKey: 'payment_id' }]
+  payment: [{ table: 'contract_payment', foreignKey: 'payment_id' }],
+  email: [
+    { table: 'contact_email', foreignKey: 'email_id' },
+    { table: 'email_project', foreignKey: 'email_id' },
+    { table: 'category_email', foreignKey: 'email_id' }
+  ]
 };
 
 export async function deleteWithDependencies(tableName, ids = []) {

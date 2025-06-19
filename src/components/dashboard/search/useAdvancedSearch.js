@@ -60,7 +60,13 @@ export const useAdvancedSearch = (initialCollections = []) => {
         fields.push('brands:brand_project(brand(id, title))'); // join brand where brand.project_id = project.id
       }
       
-      // For problematic collections, use a simpler approach
+      // Handle email collection specifically for many-to-many relationships
+      if (collectionName === 'email') {
+        // Use basic fields for email to avoid join errors with direct relationships
+        return '*';
+      }
+      
+      // For other problematic collections, use a simpler approach
       if (['media', 'company', 'contact', 'task', 'product', 'event', 'contract', 'proposal'].includes(collectionName)) {
         // Just use basic fields for these collections to avoid join errors
         return '*';
@@ -73,8 +79,14 @@ export const useAdvancedSearch = (initialCollections = []) => {
             const relationTable = field.relation.table;
             const labelField = field.relation.labelField || 'title';
             
-            // Use simpler relationship queries to avoid errors
-            fields.push(`${field.name}_details:${relationTable}(id, ${labelField})`);
+            // Special handling for many-to-many relationships
+            if (collectionName === 'email' && field.name === 'contacts') {
+              // For email-contact many-to-many, use the junction table
+              fields.push(`contacts:contact_email(contact:contact_id(id, title))`);
+            } else {
+              // Use simpler relationship queries to avoid errors
+              fields.push(`${field.name}_details:${relationTable}(id, ${labelField})`);
+            }
           }
         } catch (err) {
           console.warn(`[useAdvancedSearch] Skipping field ${field.name} due to error:`, err);
@@ -103,12 +115,16 @@ export const useAdvancedSearch = (initialCollections = []) => {
 
   /**
    * Get searchable fields from config with safer defaults
+   * Only includes fields that actually exist in the collection
    */
   const getSearchableFields = useCallback((config) => {
     if (!config?.fields) return ['title'];
     
     try {
-      // First, get all text-type fields
+      // Get all field names that exist in the collection
+      const existingFieldNames = config.fields.map(field => field.name);
+      
+      // First, get all text-type fields that exist in the collection
       const textFields = config.fields
         .filter(field => {
           return (
@@ -118,15 +134,26 @@ export const useAdvancedSearch = (initialCollections = []) => {
         })
         .map(field => field.name);
       
-      // Always include important fields if they exist in the collection
+      // Always include important fields ONLY if they exist in the collection
       const importantFields = ['title', 'description', 'content'];
       importantFields.forEach(fieldName => {
-        if (!textFields.includes(fieldName) && config.fields.some(f => f.name === fieldName)) {
+        if (!textFields.includes(fieldName) && existingFieldNames.includes(fieldName)) {
           textFields.push(fieldName);
         }
       });
       
-      return textFields.length > 0 ? textFields : ['title'];
+      // If no text fields found, use 'title' if it exists, otherwise use the first field
+      if (textFields.length === 0) {
+        if (existingFieldNames.includes('title')) {
+          return ['title'];
+        } else if (existingFieldNames.length > 0) {
+          return [existingFieldNames[0]];
+        } else {
+          return [];
+        }
+      }
+      
+      return textFields;
     } catch (err) {
       console.warn('[useAdvancedSearch] Error getting searchable fields:', err);
       return ['title'];
@@ -148,15 +175,30 @@ export const useAdvancedSearch = (initialCollections = []) => {
         const searchableFields = getSearchableFields(config);
         if (searchableFields.length > 0) {
           try {
-            // Use a safer OR condition approach
-            const searchConditions = searchableFields
-              .map(field => `${field}.ilike.%${searchText.trim()}%`)
-              .join(',');
+            // First, check which fields actually exist in the collection
+            const existingFields = searchableFields.filter(field => 
+              config.fields?.some(f => f.name === field)
+            );
             
-            console.log(`[useAdvancedSearch] Applying search conditions for ${collectionName}:`, searchConditions);
-            
-            // Add the basic search conditions
-            modifiedQuery = modifiedQuery.or(searchConditions);
+            if (existingFields.length > 0) {
+              // Apply each existing field as an individual .or() condition
+              // This prevents 400 Bad Request errors while still modifying the query
+              existingFields.forEach(field => {
+                try {
+                  // Add an individual .or() condition for this field
+                  modifiedQuery = modifiedQuery.or(`${field}.ilike.%${searchText.trim()}%`);
+                } catch (fieldErr) {
+                  console.warn(`[useAdvancedSearch] Error adding .or() condition for ${collectionName}.${field}:`, fieldErr);
+                }
+              });
+            } else {
+              // If no existing fields found, try with 'title' as a fallback
+              try {
+                modifiedQuery = modifiedQuery.or(`title.ilike.%${searchText.trim()}%`);
+              } catch (fallbackErr) {
+                console.warn(`[useAdvancedSearch] Fallback search on title failed:`, fallbackErr);
+              }
+            }
             
             // Add foreign relationship search conditions based on collection type
             
@@ -196,8 +238,8 @@ export const useAdvancedSearch = (initialCollections = []) => {
             // Media relationships
             else if (collectionName === 'media') {
               try {
-                // Search for media where the uploader (contact) contains the search text
-                modifiedQuery = modifiedQuery.or(`uploader_details.first_name.ilike.%${searchText.trim()}%,uploader_details.last_name.ilike.%${searchText.trim()}%`);
+                // Search for media where the author (contact) contains the search text
+                modifiedQuery = modifiedQuery.or(`author_details.first_name.ilike.%${searchText.trim()}%,author_details.last_name.ilike.%${searchText.trim()}%`);
               } catch (err) {
                 console.warn('[useAdvancedSearch] Media relationship search failed:', err);
               }
@@ -210,18 +252,14 @@ export const useAdvancedSearch = (initialCollections = []) => {
 
       // Apply filters with individual error handling and foreign relationship consideration
       if (appliedFilters && typeof appliedFilters === 'object') {
-        console.log(`[useAdvancedSearch] Applying filters for ${collectionName}:`, appliedFilters);
-        
         // Always apply is_client=true filter to company collection if not explicitly set
         if (collectionName === 'company' && appliedFilters.is_client === undefined) {
-          console.log(`[useAdvancedSearch] Automatically applying is_client=true filter to company collection`);
           modifiedQuery = modifiedQuery.eq('is_client', true);
         }
         
         // First, apply direct filters to the collection
         Object.entries(appliedFilters).forEach(([fieldName, value]) => {
           if (value === null || value === undefined || value === '' || value === 'all') {
-            console.log(`[useAdvancedSearch] Skipping empty filter: ${fieldName}`);
             return;
           }
 
@@ -231,18 +269,14 @@ export const useAdvancedSearch = (initialCollections = []) => {
             const isRelationship = field?.type === 'relationship';
             
             if (isRelationship) {
-              console.log(`[useAdvancedSearch] Applying relationship filter: ${fieldName}`);
-              
               // Handle relationship fields differently based on collection type
               if (collectionName === 'project' && fieldName === 'company_id') {
                 // For projects, filter by company_id
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying company filter to project: IN ${JSON.stringify(value)}`);
                     modifiedQuery = modifiedQuery.in('company_id', value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying company filter to project: = ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.eq('company_id', value);
                 }
               }
@@ -250,35 +284,29 @@ export const useAdvancedSearch = (initialCollections = []) => {
                 // For projects, filter by author_id
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying author filter to project: IN ${JSON.stringify(value)}`);
                     modifiedQuery = modifiedQuery.in('author_id', value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying author filter to project: = ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.eq('author_id', value);
                 }
               }
-              else if (collectionName === 'media' && fieldName === 'uploader_id') {
-                // For media, filter by uploader_id
+              else if (collectionName === 'media' && fieldName === 'author_id') {
+                // For media, filter by author_id
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying uploader filter to media: IN ${JSON.stringify(value)}`);
-                    modifiedQuery = modifiedQuery.in('uploader_id', value);
+                    modifiedQuery = modifiedQuery.in('author_id', value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying uploader filter to media: = ${JSON.stringify(value)}`);
-                  modifiedQuery = modifiedQuery.eq('uploader_id', value);
+                  modifiedQuery = modifiedQuery.eq('author_id', value);
                 }
               }
               else if (collectionName === 'media' && fieldName === 'company_id') {
                 // For media, filter by company_id
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying company filter to media: IN ${JSON.stringify(value)}`);
                     modifiedQuery = modifiedQuery.in('company_id', value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying company filter to media: = ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.eq('company_id', value);
                 }
               }
@@ -286,11 +314,9 @@ export const useAdvancedSearch = (initialCollections = []) => {
                 // For contacts and companies, handle relationship fields
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying relationship filter to ${collectionName}: ${fieldName} IN ${JSON.stringify(value)}`);
                     modifiedQuery = modifiedQuery.in(fieldName, value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying relationship filter to ${collectionName}: ${fieldName} = ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.eq(fieldName, value);
                 }
               }
@@ -298,11 +324,9 @@ export const useAdvancedSearch = (initialCollections = []) => {
                 // For other relationship fields, apply standard filter
                 if (Array.isArray(value)) {
                   if (value.length > 0) {
-                    console.log(`[useAdvancedSearch] Applying standard relationship filter: ${fieldName} IN ${JSON.stringify(value)}`);
                     modifiedQuery = modifiedQuery.in(fieldName, value);
                   }
                 } else {
-                  console.log(`[useAdvancedSearch] Applying standard relationship filter: ${fieldName} = ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.eq(fieldName, value);
                 }
               }
@@ -310,11 +334,9 @@ export const useAdvancedSearch = (initialCollections = []) => {
               // Handle non-relationship fields
               if (Array.isArray(value)) {
                 if (value.length > 0) {
-                  console.log(`[useAdvancedSearch] Applying array filter: ${fieldName} IN ${JSON.stringify(value)}`);
                   modifiedQuery = modifiedQuery.in(fieldName, value);
                 }
               } else {
-                console.log(`[useAdvancedSearch] Applying scalar filter: ${fieldName} = ${JSON.stringify(value)}`);
                 modifiedQuery = modifiedQuery.eq(fieldName, value);
               }
             }
@@ -329,7 +351,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
         // For example, if filtering projects by status, also consider related entities
         if (collectionName === 'project' && appliedFilters.status) {
           try {
-            console.log(`[useAdvancedSearch] Applying cross-collection filter for project status: ${appliedFilters.status}`);
             // Additional logic could be added here to filter related entities
           } catch (err) {
             console.warn('[useAdvancedSearch] Cross-collection filter for project status failed:', err);
@@ -339,7 +360,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
         // If filtering by company, consider all related entities
         if (appliedFilters.company_id) {
           try {
-            console.log(`[useAdvancedSearch] Applying cross-collection filter for company_id: ${appliedFilters.company_id}`);
             // Additional logic could be added here to filter related entities
           } catch (err) {
             console.warn('[useAdvancedSearch] Cross-collection filter for company_id failed:', err);
@@ -349,15 +369,11 @@ export const useAdvancedSearch = (initialCollections = []) => {
         // If filtering by contact, consider all related entities
         if (appliedFilters.contact_id || appliedFilters.author_id) {
           try {
-            const contactId = appliedFilters.contact_id || appliedFilters.author_id;
-            console.log(`[useAdvancedSearch] Applying cross-collection filter for contact: ${contactId}`);
             // Additional logic could be added here to filter related entities
           } catch (err) {
             console.warn('[useAdvancedSearch] Cross-collection filter for contact failed:', err);
           }
         }
-      } else {
-        console.log(`[useAdvancedSearch] No filters to apply for ${collectionName}`);
       }
     } catch (err) {
       console.warn('[useAdvancedSearch] Error applying search and filters:', err);
@@ -390,7 +406,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
       let selectFields = '*';
       try {
         selectFields = buildSelectFields(config, collectionName);
-        console.log(`[useAdvancedSearch] Select fields for ${collectionName}:`, selectFields);
       } catch (selectErr) {
         console.warn(`[useAdvancedSearch] Using simple select for ${collectionName}:`, selectErr);
         selectFields = '*';
@@ -404,31 +419,30 @@ export const useAdvancedSearch = (initialCollections = []) => {
 
       // Apply sorting with fallback
       try {
-        // If there's no search text, sort alphabetically by title or name
+        // If there's no search text, sort alphabetically by title
         // Otherwise, sort by updated_at for relevance
         let sortField, sortOrder;
         
         if (!searchText || searchText.trim() === '') {
-          // Determine which field to use for alphabetical sorting
-          // Try title first, then name, then fall back to id
-          const hasTitle = await supabase.from(collectionName).select('title').limit(1);
-          const hasName = await supabase.from(collectionName).select('name').limit(1);
-          
-          if (!hasTitle.error && hasTitle.data && hasTitle.data.length > 0) {
-            sortField = 'title';
-          } else if (!hasName.error && hasName.data && hasName.data.length > 0) {
-            sortField = 'name';
-          } else {
+          // Always use 'title' for alphabetical sorting, or fall back to 'id'
+          // Note: 'name' field is never used in any tables
+          try {
+            // Check if the collection has a title field
+            const { error } = await supabase.from(collectionName).select('title').limit(1);
+            
+            // If no error, use title field, otherwise fall back to id
+            sortField = error ? 'id' : 'title';
+          } catch (err) {
+            // If any error occurs, fall back to id
+            console.warn(`[useAdvancedSearch] Error checking title field for ${collectionName}:`, err);
             sortField = 'id';
           }
           
           sortOrder = 'asc'; // Alphabetical order (A-Z)
-          console.log(`[useAdvancedSearch] No search query, sorting ${collectionName} alphabetically by ${sortField}`);
         } else {
           // When searching, sort by relevance (most recently updated first)
           sortField = options.sortField || 'updated_at';
           sortOrder = options.sortOrder || 'desc';
-          console.log(`[useAdvancedSearch] Search query present, sorting ${collectionName} by ${sortField} ${sortOrder}`);
         }
         
         query = query.order(sortField, { ascending: sortOrder === 'asc' });
@@ -449,7 +463,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
         console.error(`[useAdvancedSearch] Search error for ${collectionName}:`, queryError);
         
         // Try fallback query with minimal select
-        console.log(`[useAdvancedSearch] Attempting fallback query for ${collectionName}`);
         try {
           const fallbackQuery = supabase
             .from(collectionName)
@@ -463,7 +476,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
             throw fallbackError;
           }
           
-          console.log(`[useAdvancedSearch] Fallback successful for ${collectionName}:`, fallbackData?.length || 0);
           return {
             data: fallbackData || [],
             count: fallbackData?.length || 0
@@ -475,7 +487,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
         }
       }
 
-      console.log(`[useAdvancedSearch] Search results for ${collectionName}:`, data?.length || 0, 'items');
       return {
         data: data || [],
         count: count || data?.length || 0
@@ -497,17 +508,13 @@ export const useAdvancedSearch = (initialCollections = []) => {
       return { results: {}, counts: {} };
     }
 
-      console.log('[useAdvancedSearch] Searching collections:', { searchText, allFilters, targetCollections });
-
       try {
         // Use filters as they are, without applying them across collections
-        console.log('[useAdvancedSearch] Using collection-specific filters only');
         
         // Standard search for all collections with their specific filters
         const searchPromises = targetCollections.map(async (collectionName) => {
           // Only use filters specifically set for this collection
           const collectionFilters = allFilters[collectionName] || {};
-          console.log(`[useAdvancedSearch] Applying filters for ${collectionName}:`, collectionFilters);
           
           const result = await searchCollection(collectionName, searchText, collectionFilters);
           return { collectionName, ...result };
@@ -529,25 +536,146 @@ export const useAdvancedSearch = (initialCollections = []) => {
         // Special case for projects
         if (targetCollections.includes('project')) {
         try {
-          console.log(`[useAdvancedSearch] Performing simplified project search for "${searchText}"`);
           
           // STEP 1: Get all projects that directly match the search text
-          const { data: directProjectResults } = await supabase
-            .from('project')
-            .select('*')
-            .or(`title.ilike.%${searchText.trim()}%,description.ilike.%${searchText.trim()}%,site_name.ilike.%${searchText.trim()}%,site_tagline.ilike.%${searchText.trim()}%`)
-            .eq('is_deleted', false);
+          // Use individual queries instead of .or() to avoid 400 Bad Request
+          let directProjectResults = [];
           
-          console.log(`[useAdvancedSearch] Found ${directProjectResults?.length || 0} projects with direct match`);
+          // Search by title
+          try {
+            const { data: titleResults } = await supabase
+              .from('project')
+              .select('*')
+              .ilike('title', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (titleResults && titleResults.length > 0) {
+              directProjectResults = [...titleResults];
+            }
+          } catch (titleErr) {
+            console.warn('[useAdvancedSearch] Error searching project title:', titleErr);
+          }
+          
+          // Search by description
+          try {
+            const { data: descResults } = await supabase
+              .from('project')
+              .select('*')
+              .ilike('description', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (descResults && descResults.length > 0) {
+              // Add results that aren't already in the array
+              descResults.forEach(item => {
+                if (!directProjectResults.some(existing => existing.id === item.id)) {
+                  directProjectResults.push(item);
+                }
+              });
+            }
+          } catch (descErr) {
+            console.warn('[useAdvancedSearch] Error searching project description:', descErr);
+          }
+          
+          // Search by site_name
+          try {
+            const { data: siteNameResults } = await supabase
+              .from('project')
+              .select('*')
+              .ilike('site_name', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (siteNameResults && siteNameResults.length > 0) {
+              // Add results that aren't already in the array
+              siteNameResults.forEach(item => {
+                if (!directProjectResults.some(existing => existing.id === item.id)) {
+                  directProjectResults.push(item);
+                }
+              });
+            }
+          } catch (siteNameErr) {
+            console.warn('[useAdvancedSearch] Error searching project site_name:', siteNameErr);
+          }
+          
+          // Search by site_tagline
+          try {
+            const { data: taglineResults } = await supabase
+              .from('project')
+              .select('*')
+              .ilike('site_tagline', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (taglineResults && taglineResults.length > 0) {
+              // Add results that aren't already in the array
+              taglineResults.forEach(item => {
+                if (!directProjectResults.some(existing => existing.id === item.id)) {
+                  directProjectResults.push(item);
+                }
+              });
+            }
+          } catch (taglineErr) {
+            console.warn('[useAdvancedSearch] Error searching project site_tagline:', taglineErr);
+          }
+          
           
           // STEP 2: Get all contacts that match the search text
-          const { data: matchingContacts } = await supabase
-            .from('contact')
-            .select('id, first_name, last_name, email')
-            .or(`first_name.ilike.%${searchText.trim()}%,last_name.ilike.%${searchText.trim()}%,email.ilike.%${searchText.trim()}%`)
-            .eq('is_deleted', false);
+          // Use individual queries instead of .or() to avoid 400 Bad Request
+          let matchingContacts = [];
           
-          console.log(`[useAdvancedSearch] Found ${matchingContacts?.length || 0} contacts matching "${searchText}"`);
+          // Search by first_name
+          try {
+            const { data: firstNameResults } = await supabase
+              .from('contact')
+              .select('id, first_name, last_name, email')
+              .ilike('first_name', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (firstNameResults && firstNameResults.length > 0) {
+              matchingContacts = [...firstNameResults];
+            }
+          } catch (firstNameErr) {
+            console.warn('[useAdvancedSearch] Error searching contact first_name:', firstNameErr);
+          }
+          
+          // Search by last_name
+          try {
+            const { data: lastNameResults } = await supabase
+              .from('contact')
+              .select('id, first_name, last_name, email')
+              .ilike('last_name', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (lastNameResults && lastNameResults.length > 0) {
+              // Add results that aren't already in the array
+              lastNameResults.forEach(item => {
+                if (!matchingContacts.some(existing => existing.id === item.id)) {
+                  matchingContacts.push(item);
+                }
+              });
+            }
+          } catch (lastNameErr) {
+            console.warn('[useAdvancedSearch] Error searching contact last_name:', lastNameErr);
+          }
+          
+          // Search by email
+          try {
+            const { data: emailResults } = await supabase
+              .from('contact')
+              .select('id, first_name, last_name, email')
+              .ilike('email', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            if (emailResults && emailResults.length > 0) {
+              // Add results that aren't already in the array
+              emailResults.forEach(item => {
+                if (!matchingContacts.some(existing => existing.id === item.id)) {
+                  matchingContacts.push(item);
+                }
+              });
+            }
+          } catch (emailErr) {
+            console.warn('[useAdvancedSearch] Error searching contact email:', emailErr);
+          }
+          
           
           // STEP 3: Get all projects where these contacts are authors
           let authorProjects = [];
@@ -560,7 +688,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
               .eq('is_deleted', false);
             
             authorProjects = projects || [];
-            console.log(`[useAdvancedSearch] Found ${authorProjects.length} projects where matching contacts are authors`);
           }
           
           // STEP 4: Get all projects associated with these contacts through the pivot table
@@ -585,7 +712,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
                 .eq('is_deleted', false);
               
               relatedProjects = projects || [];
-              console.log(`[useAdvancedSearch] Found ${relatedProjects.length} projects related to matching contacts via pivot table`);
             }
           }
           
@@ -606,7 +732,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
               .eq('is_deleted', false);
             
             companyProjects = projects || [];
-            console.log(`[useAdvancedSearch] Found ${companyProjects.length} projects for companies matching "${searchText}"`);
           }
           
           // STEP 6: Get all projects associated with companies that are associated with matching contacts
@@ -632,7 +757,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
                   .eq('is_deleted', false);
                 
                 contactCompanyProjects = projects || [];
-                console.log(`[useAdvancedSearch] Found ${contactCompanyProjects.length} projects for companies associated with matching contacts`);
               }
             } catch (error) {
               console.error('[useAdvancedSearch] Error finding projects via contact->company relationship:', error);
@@ -657,7 +781,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
           });
           
           const uniqueProjectsArray = Object.values(uniqueProjects);
-          console.log(`[useAdvancedSearch] Total unique projects found for "${searchText}": ${uniqueProjectsArray.length}`);
           
           // Replace the project results with our comprehensive results
           newResults.project = uniqueProjectsArray;
@@ -671,23 +794,111 @@ export const useAdvancedSearch = (initialCollections = []) => {
         // Special case for companies
         if (targetCollections.includes('company')) {
           try {
-            console.log(`[useAdvancedSearch] Performing comprehensive company search for "${searchText}"`);
             
             // STEP 1: Get all companies that directly match the search text
-            const { data: directCompanyResults } = await supabase
-              .from('company')
-              .select('*')
-              .or(`title.ilike.%${searchText.trim()}%,description.ilike.%${searchText.trim()}%`)
-              .eq('is_deleted', false);
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let directCompanyResults = [];
             
-            console.log(`[useAdvancedSearch] Found ${directCompanyResults?.length || 0} companies with direct match`);
+            // Search by title
+            try {
+              const { data: titleResults } = await supabase
+                .from('company')
+                .select('*')
+                .ilike('title', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (titleResults && titleResults.length > 0) {
+                directCompanyResults = [...titleResults];
+              }
+            } catch (titleErr) {
+              console.warn('[useAdvancedSearch] Error searching company title:', titleErr);
+            }
+            
+            // Check if description field exists in company collection before searching
+            const companyConfig = collections['company'];
+            const companyFields = companyConfig?.fields?.map(field => field.name) || [];
+            
+            if (companyFields.includes('description')) {
+              // Only search description if it exists in the collection
+              try {
+                const { data: descResults } = await supabase
+                  .from('company')
+                  .select('*')
+                  .ilike('description', `%${searchText.trim()}%`)
+                  .eq('is_deleted', false);
+                
+                if (descResults && descResults.length > 0) {
+                  // Add results that aren't already in the array
+                  descResults.forEach(item => {
+                    if (!directCompanyResults.some(existing => existing.id === item.id)) {
+                      directCompanyResults.push(item);
+                    }
+                  });
+                }
+              } catch (descErr) {
+                console.warn('[useAdvancedSearch] Error searching company description:', descErr);
+              }
+            }
+            
             
             // STEP 2: Get all contacts that match the search text
-            const { data: matchingContacts } = await supabase
-              .from('contact')
-              .select('id, first_name, last_name, email')
-              .or(`first_name.ilike.%${searchText.trim()}%,last_name.ilike.%${searchText.trim()}%,email.ilike.%${searchText.trim()}%`)
-              .eq('is_deleted', false);
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let matchingContacts = [];
+            
+            // Search by first_name
+            try {
+              const { data: firstNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('first_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (firstNameResults && firstNameResults.length > 0) {
+                matchingContacts = [...firstNameResults];
+              }
+            } catch (firstNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact first_name:', firstNameErr);
+            }
+            
+            // Search by last_name
+            try {
+              const { data: lastNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('last_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (lastNameResults && lastNameResults.length > 0) {
+                // Add results that aren't already in the array
+                lastNameResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (lastNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact last_name:', lastNameErr);
+            }
+            
+            // Search by email
+            try {
+              const { data: emailResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('email', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (emailResults && emailResults.length > 0) {
+                // Add results that aren't already in the array
+                emailResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (emailErr) {
+              console.warn('[useAdvancedSearch] Error searching contact email:', emailErr);
+            }
             
             // STEP 3: Get all companies associated with these contacts through the pivot table
             let contactCompanies = [];
@@ -712,7 +923,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
                     .eq('is_deleted', false);
                   
                   contactCompanies = companies || [];
-                  console.log(`[useAdvancedSearch] Found ${contactCompanies.length} companies associated with matching contacts`);
                 }
               } catch (error) {
                 console.error('[useAdvancedSearch] Error finding companies via contact relationship:', error);
@@ -734,7 +944,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
             });
             
             const uniqueCompaniesArray = Object.values(uniqueCompanies);
-            console.log(`[useAdvancedSearch] Total unique companies found for "${searchText}": ${uniqueCompaniesArray.length}`);
             
             // Replace the company results with our comprehensive results
             newResults.company = uniqueCompaniesArray;
@@ -745,28 +954,496 @@ export const useAdvancedSearch = (initialCollections = []) => {
           }
         }
         
+        // Special case for email
+        if (targetCollections.includes('email')) {
+          try {
+            
+            // STEP 1: Get all emails that directly match the search text
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let directEmailResults = [];
+            
+            // Search by title
+            try {
+              const { data: titleResults } = await supabase
+                .from('email')
+                .select('*')
+                .ilike('title', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (titleResults && titleResults.length > 0) {
+                directEmailResults = [...titleResults];
+              }
+            } catch (titleErr) {
+              console.warn('[useAdvancedSearch] Error searching email title:', titleErr);
+            }
+            
+            // Search by summary
+            try {
+              const { data: summaryResults } = await supabase
+                .from('email')
+                .select('*')
+                .ilike('summary', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (summaryResults && summaryResults.length > 0) {
+                // Add results that aren't already in the array
+                summaryResults.forEach(item => {
+                  if (!directEmailResults.some(existing => existing.id === item.id)) {
+                    directEmailResults.push(item);
+                  }
+                });
+              }
+            } catch (summaryErr) {
+              console.warn('[useAdvancedSearch] Error searching email summary:', summaryErr);
+            }
+            
+            // Search by url
+            try {
+              const { data: urlResults } = await supabase
+                .from('email')
+                .select('*')
+                .ilike('url', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (urlResults && urlResults.length > 0) {
+                // Add results that aren't already in the array
+                urlResults.forEach(item => {
+                  if (!directEmailResults.some(existing => existing.id === item.id)) {
+                    directEmailResults.push(item);
+                  }
+                });
+              }
+            } catch (urlErr) {
+              console.warn('[useAdvancedSearch] Error searching email url:', urlErr);
+            }
+            
+            
+            // STEP 2: Get all contacts that match the search text
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let matchingContacts = [];
+            
+            // Search by first_name
+            try {
+              const { data: firstNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('first_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (firstNameResults && firstNameResults.length > 0) {
+                matchingContacts = [...firstNameResults];
+              }
+            } catch (firstNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact first_name:', firstNameErr);
+            }
+            
+            // Search by last_name
+            try {
+              const { data: lastNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('last_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (lastNameResults && lastNameResults.length > 0) {
+                // Add results that aren't already in the array
+                lastNameResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (lastNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact last_name:', lastNameErr);
+            }
+            
+            // Search by email
+            try {
+              const { data: emailResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('email', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (emailResults && emailResults.length > 0) {
+                // Add results that aren't already in the array
+                emailResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (emailErr) {
+              console.warn('[useAdvancedSearch] Error searching contact email:', emailErr);
+            }
+            
+            // STEP 3: Get all emails associated with these contacts through the pivot table
+            let contactEmails = [];
+            if (matchingContacts?.length > 0) {
+              try {
+                const contactIds = matchingContacts.map(contact => contact.id);
+                
+                // First get the email IDs from the contact_email pivot table
+                const { data: contactEmailPivots } = await supabase
+                  .from('contact_email')
+                  .select('email_id')
+                  .in('contact_id', contactIds);
+                
+                if (contactEmailPivots?.length > 0) {
+                  const emailIds = contactEmailPivots.map(item => item.email_id);
+                  
+                  // Then get the actual emails
+                  const { data: emails } = await supabase
+                    .from('email')
+                    .select('*')
+                    .in('id', emailIds)
+                    .eq('is_deleted', false);
+                  
+                  contactEmails = emails || [];
+                }
+              } catch (error) {
+                console.error('[useAdvancedSearch] Error finding emails via contact relationship:', error);
+              }
+            }
+            
+            // STEP 4: Get all emails authored by these contacts
+            let authoredEmails = [];
+            if (matchingContacts?.length > 0) {
+              try {
+                const contactIds = matchingContacts.map(contact => contact.id);
+                
+                const { data: emails } = await supabase
+                  .from('email')
+                  .select('*')
+                  .in('author_id', contactIds)
+                  .eq('is_deleted', false);
+                
+                authoredEmails = emails || [];
+              } catch (error) {
+                console.error('[useAdvancedSearch] Error finding emails via author relationship:', error);
+              }
+            }
+            
+            // STEP 5: Get all companies that match the search text
+            const { data: matchingCompanies } = await supabase
+              .from('company')
+              .select('id')
+              .ilike('title', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            // STEP 6: Get all emails associated with these companies
+            let companyEmails = [];
+            if (matchingCompanies?.length > 0) {
+              try {
+                const companyIds = matchingCompanies.map(company => company.id);
+                
+                // Get emails directly associated with companies
+                const { data: emails } = await supabase
+                  .from('email')
+                  .select('*')
+                  .in('company_id', companyIds)
+                  .eq('is_deleted', false);
+                
+                companyEmails = emails || [];
+              } catch (error) {
+                console.error('[useAdvancedSearch] Error finding emails via company relationship:', error);
+              }
+            }
+            
+            // STEP 7: Get all projects that match the search text
+            const { data: matchingProjects } = await supabase
+              .from('project')
+              .select('id')
+              .ilike('title', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            // STEP 8: Get all emails associated with these projects through the pivot table
+            let projectEmails = [];
+            if (matchingProjects?.length > 0) {
+              try {
+                const projectIds = matchingProjects.map(project => project.id);
+                
+                // First get the email IDs from the email_project pivot table
+                const { data: emailProjectPivots } = await supabase
+                  .from('email_project')
+                  .select('email_id')
+                  .in('project_id', projectIds);
+                
+                if (emailProjectPivots?.length > 0) {
+                  const emailIds = emailProjectPivots.map(item => item.email_id);
+                  
+                  // Then get the actual emails
+                  const { data: emails } = await supabase
+                    .from('email')
+                    .select('*')
+                    .in('id', emailIds)
+                    .eq('is_deleted', false);
+                  
+                  projectEmails = emails || [];
+                }
+              } catch (error) {
+                console.error('[useAdvancedSearch] Error finding emails via project relationship:', error);
+              }
+            }
+            
+            // STEP 9: Combine all email results and remove duplicates
+            const allEmails = [
+              ...(directEmailResults || []),
+              ...(contactEmails || []),
+              ...(authoredEmails || []),
+              ...(companyEmails || []),
+              ...(projectEmails || [])
+            ];
+            
+            // Remove duplicates by creating a map keyed by email ID
+            const uniqueEmails = {};
+            allEmails.forEach(email => {
+              if (email && email.id) {
+                uniqueEmails[email.id] = email;
+              }
+            });
+            
+            const uniqueEmailsArray = Object.values(uniqueEmails);
+            
+            // Replace the email results with our comprehensive results
+            newResults.email = uniqueEmailsArray;
+            newCounts.email = uniqueEmailsArray.length;
+          } catch (error) {
+            console.error('[useAdvancedSearch] Error in comprehensive email search:', error);
+            // Keep the original results if the comprehensive search fails
+          }
+        }
+        
+        // Special case for contact
+        if (targetCollections.includes('contact')) {
+          try {
+            // STEP 1: Get all contacts that directly match the search text
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let directContactResults = [];
+            
+            // Search by first_name
+            try {
+              const { data: firstNameResults } = await supabase
+                .from('contact')
+                .select('*')
+                .ilike('first_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (firstNameResults && firstNameResults.length > 0) {
+                directContactResults = [...firstNameResults];
+              }
+            } catch (firstNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact first_name:', firstNameErr);
+            }
+            
+            // Search by last_name
+            try {
+              const { data: lastNameResults } = await supabase
+                .from('contact')
+                .select('*')
+                .ilike('last_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (lastNameResults && lastNameResults.length > 0) {
+                // Add results that aren't already in the array
+                lastNameResults.forEach(item => {
+                  if (!directContactResults.some(existing => existing.id === item.id)) {
+                    directContactResults.push(item);
+                  }
+                });
+              }
+            } catch (lastNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact last_name:', lastNameErr);
+            }
+            
+            // Search by email
+            try {
+              const { data: emailResults } = await supabase
+                .from('contact')
+                .select('*')
+                .ilike('email', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (emailResults && emailResults.length > 0) {
+                // Add results that aren't already in the array
+                emailResults.forEach(item => {
+                  if (!directContactResults.some(existing => existing.id === item.id)) {
+                    directContactResults.push(item);
+                  }
+                });
+              }
+            } catch (emailErr) {
+              console.warn('[useAdvancedSearch] Error searching contact email:', emailErr);
+            }
+            
+            // STEP 2: Get all companies that match the search text
+            const { data: matchingCompanies } = await supabase
+              .from('company')
+              .select('id')
+              .ilike('title', `%${searchText.trim()}%`)
+              .eq('is_deleted', false);
+            
+            // STEP 3: Get all contacts associated with these companies through the pivot table
+            let companyContacts = [];
+            if (matchingCompanies?.length > 0) {
+              try {
+                const companyIds = matchingCompanies.map(company => company.id);
+                
+                // First get the contact IDs from the company_contact pivot table
+                const { data: companyContactPivots } = await supabase
+                  .from('company_contact')
+                  .select('contact_id')
+                  .in('company_id', companyIds);
+                
+                if (companyContactPivots?.length > 0) {
+                  const contactIds = companyContactPivots.map(item => item.contact_id);
+                  
+                  // Then get the actual contacts
+                  const { data: contacts } = await supabase
+                    .from('contact')
+                    .select('*')
+                    .in('id', contactIds)
+                    .eq('is_deleted', false);
+                  
+                  companyContacts = contacts || [];
+                }
+              } catch (error) {
+                console.error('[useAdvancedSearch] Error finding contacts via company relationship:', error);
+              }
+            }
+            
+            // STEP 4: Combine all contact results and remove duplicates
+            const allContacts = [
+              ...(directContactResults || []),
+              ...(companyContacts || [])
+            ];
+            
+            // Remove duplicates by creating a map keyed by contact ID
+            const uniqueContacts = {};
+            allContacts.forEach(contact => {
+              if (contact && contact.id) {
+                uniqueContacts[contact.id] = contact;
+              }
+            });
+            
+            const uniqueContactsArray = Object.values(uniqueContacts);
+            
+            // Replace the contact results with our comprehensive results
+            newResults.contact = uniqueContactsArray;
+            newCounts.contact = uniqueContactsArray.length;
+          } catch (error) {
+            console.error('[useAdvancedSearch] Error in comprehensive contact search:', error);
+            // Keep the original results if the comprehensive search fails
+          }
+        }
+        
         // Special case for media
         if (targetCollections.includes('media')) {
           try {
-            console.log(`[useAdvancedSearch] Performing comprehensive media search for "${searchText}"`);
             
             // STEP 1: Get all media that directly match the search text
-            const { data: directMediaResults } = await supabase
-              .from('media')
-              .select('*')
-              .or(`title.ilike.%${searchText.trim()}%,description.ilike.%${searchText.trim()}%,alt_text.ilike.%${searchText.trim()}%,filename.ilike.%${searchText.trim()}%`)
-              .eq('is_deleted', false);
+            // Use a more robust approach to handle potential field errors
+            let directMediaResults = [];
+            try {
+              // Try searching by title only first (most reliable field)
+              const { data: titleResults, error: titleError } = await supabase
+                .from('media')
+                .select('*')
+                .ilike('title', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (!titleError && titleResults) {
+                directMediaResults = [...titleResults];
+              }
+              
+              // Try description field separately
+              try {
+                const { data: descResults, error: descError } = await supabase
+                  .from('media')
+                  .select('*')
+                  .ilike('description', `%${searchText.trim()}%`)
+                  .eq('is_deleted', false);
+                
+                if (!descError && descResults) {
+                  // Add results that aren't already in the array
+                  descResults.forEach(item => {
+                    if (!directMediaResults.some(existing => existing.id === item.id)) {
+                      directMediaResults.push(item);
+                    }
+                  });
+                }
+              } catch (descErr) {
+                console.warn('[useAdvancedSearch] Error searching media description:', descErr);
+              }
+              
+              // Skip alt_text and filename fields as they might be causing the error
+              
+            } catch (mediaErr) {
+              console.error('[useAdvancedSearch] Error in direct media search:', mediaErr);
+              directMediaResults = [];
+            }
             
-            console.log(`[useAdvancedSearch] Found ${directMediaResults?.length || 0} media with direct match`);
             
             // STEP 2: Get all contacts that match the search text
-            const { data: matchingContacts } = await supabase
-              .from('contact')
-              .select('id, first_name, last_name, email')
-              .or(`first_name.ilike.%${searchText.trim()}%,last_name.ilike.%${searchText.trim()}%,email.ilike.%${searchText.trim()}%`)
-              .eq('is_deleted', false);
+            // Use individual queries instead of .or() to avoid 400 Bad Request
+            let matchingContacts = [];
             
-            // STEP 3: Get all media uploaded by these contacts
+            // Search by first_name
+            try {
+              const { data: firstNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('first_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (firstNameResults && firstNameResults.length > 0) {
+                matchingContacts = [...firstNameResults];
+              }
+            } catch (firstNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact first_name:', firstNameErr);
+            }
+            
+            // Search by last_name
+            try {
+              const { data: lastNameResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('last_name', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (lastNameResults && lastNameResults.length > 0) {
+                // Add results that aren't already in the array
+                lastNameResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (lastNameErr) {
+              console.warn('[useAdvancedSearch] Error searching contact last_name:', lastNameErr);
+            }
+            
+            // Search by email
+            try {
+              const { data: emailResults } = await supabase
+                .from('contact')
+                .select('id, first_name, last_name, email')
+                .ilike('email', `%${searchText.trim()}%`)
+                .eq('is_deleted', false);
+              
+              if (emailResults && emailResults.length > 0) {
+                // Add results that aren't already in the array
+                emailResults.forEach(item => {
+                  if (!matchingContacts.some(existing => existing.id === item.id)) {
+                    matchingContacts.push(item);
+                  }
+                });
+              }
+            } catch (emailErr) {
+              console.warn('[useAdvancedSearch] Error searching contact email:', emailErr);
+            }
+            
+            // STEP 3: Get all media authored by these contacts
             let contactMedia = [];
             if (matchingContacts?.length > 0) {
               try {
@@ -775,11 +1452,10 @@ export const useAdvancedSearch = (initialCollections = []) => {
                 const { data: media } = await supabase
                   .from('media')
                   .select('*')
-                  .in('uploader_id', contactIds)
+                  .in('author_id', contactIds)
                   .eq('is_deleted', false);
                 
                 contactMedia = media || [];
-                console.log(`[useAdvancedSearch] Found ${contactMedia.length} media uploaded by matching contacts`);
               } catch (error) {
                 console.error('[useAdvancedSearch] Error finding media via contact relationship:', error);
               }
@@ -842,7 +1518,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
                   .eq('is_deleted', false);
                 
                 companyMedia = media || [];
-                console.log(`[useAdvancedSearch] Found ${companyMedia.length} media associated with matching companies`);
               } catch (error) {
                 console.error('[useAdvancedSearch] Error finding media via company relationship:', error);
               }
@@ -886,7 +1561,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
                     .eq('is_deleted', false);
                   
                   projectMedia = media || [];
-                  console.log(`[useAdvancedSearch] Found ${projectMedia.length} media associated with projects of matching companies`);
                 }
               } catch (error) {
                 console.error('[useAdvancedSearch] Error finding media via project relationship:', error);
@@ -910,7 +1584,6 @@ export const useAdvancedSearch = (initialCollections = []) => {
             });
             
             const uniqueMediaArray = Object.values(uniqueMedia);
-            console.log(`[useAdvancedSearch] Total unique media found for "${searchText}": ${uniqueMediaArray.length}`);
             
             // Replace the media results with our comprehensive results
             newResults.media = uniqueMediaArray;

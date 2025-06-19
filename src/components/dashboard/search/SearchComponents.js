@@ -30,7 +30,9 @@ import {
   Tab,
   InputAdornment,
   alpha,
-  useTheme
+  useTheme,
+  Checkbox,
+  FormControlLabel
 } from '@mui/material';
 import {
   CaretDown as ExpandMoreIcon,
@@ -85,6 +87,7 @@ export const COLLECTION_ICONS = {
   contract: Briefcase,
   brand: Tag,
   media: FolderOpen,
+  email: Envelope,
   product: Package,
   element: File,
   contractpart: File,
@@ -103,6 +106,7 @@ export const COLLECTION_COLORS = {
   contract: '#9ca3af',
   brand: '#9c27b0',
   media: '#9ca3af',
+  email: '#00bcd4', // Cyan color for email
   product: '#ff5722',
   element: '#3f51b5',
   contractpart: '#8bc34a',
@@ -500,20 +504,29 @@ function CollectionFilters({ config, collectionName, filters, onFilterChange, op
 }
 
 /**
- * Individual Filter Field Component - FIXED with proper key props
+ * Individual Filter Field Component - FIXED with robust value handling for all collections
  */
 function FilterField({ field, value, onChange, options }) {
   // Use the defaultValue from the field configuration when value is empty or not set
+  // Ensure we always have a valid value (empty string as fallback)
+  // This is critical to prevent the "out-of-range value `undefined`" error
   const effectiveValue = value === undefined || value === null || value === '' 
-    ? field.defaultValue 
+    ? (field.defaultValue !== undefined ? field.defaultValue : '') 
     : value;
 
+  // For select or status fields
   if (field.type === 'select' || field.type === 'status') {
+    // Verify that the value is one of the available options
+    const isValidOption = field.options?.some(option => option.value === effectiveValue);
+    
+    // If not a valid option, default to empty string
+    const safeValue = isValidOption ? effectiveValue : '';
+    
     return (
       <FormControl fullWidth size="small">
         <InputLabel>{field.label}</InputLabel>
         <Select
-          value={effectiveValue}
+          value={safeValue}
           onChange={(e) => onChange(e.target.value)}
           label={field.label}
           sx={{ borderRadius: 1 }}
@@ -529,12 +542,22 @@ function FilterField({ field, value, onChange, options }) {
     );
   }
 
+  // For relationship fields
   if (field.type === 'relationship') {
+    // Ensure we always have a valid value for relationship fields too
+    const relationshipValue = value === undefined || value === null ? '' : value;
+    
+    // Verify that the value is one of the available options
+    const isValidOption = options?.some(option => option.id === relationshipValue);
+    
+    // If not a valid option, default to empty string
+    const safeValue = isValidOption ? relationshipValue : '';
+    
     return (
       <FormControl fullWidth size="small">
         <InputLabel>{field.label}</InputLabel>
         <Select
-          value={value}
+          value={safeValue}
           onChange={(e) => onChange(e.target.value)}
           label={field.label}
           sx={{ borderRadius: 1 }}
@@ -554,17 +577,34 @@ function FilterField({ field, value, onChange, options }) {
 }
 
 /**
- * Modern Results Grid Component
+ * Modern Results Grid Component with selection functionality
  */
 export function ResultsGrid({ 
   collectionName, 
   results = [], 
   loading = false,
   emptyMessage = "No results found",
-  onRefresh // Add onRefresh prop to handle record deletion
+  onRefresh, // Add onRefresh prop to handle record deletion
+  // Selection props
+  selectedItems = [],
+  onSelectItem,
+  onSelectAll,
+  selectionEnabled = false
 }) {
   const router = useRouter();
+  const theme = useTheme();
   const config = collections[collectionName];
+
+  // Compute if all items are selected
+  const allSelected = results.length > 0 && selectedItems.length === results.length;
+  const someSelected = selectedItems.length > 0 && selectedItems.length < results.length;
+
+  // Handle select all change
+  const handleSelectAllChange = (event) => {
+    if (onSelectAll) {
+      onSelectAll(event.target.checked);
+    }
+  };
 
   if (loading) {
     return (
@@ -597,26 +637,80 @@ export function ResultsGrid({
   }
 
   return (
-    <Grid container spacing={3}>
-      {results.map(item => (
-        <Grid item xs={12} sm={6} lg={4} key={item.id}>
-          <ModernResultCard
-            item={item}
-            config={config}
-            collectionName={collectionName}
-            router={router}
-            onRefresh={onRefresh} // Pass onRefresh prop to ModernResultCard
+    <>
+      {/* Select All Header */}
+      {selectionEnabled && results.length > 0 && (
+        <Box 
+          sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            mb: 2,
+            p: 2,
+            borderRadius: 2,
+            backgroundColor: alpha('#ffffff', 0.7),
+            backdropFilter: 'blur(10px)',
+            border: `1px solid ${alpha('#e0e0e0', 0.1)}`
+          }}
+        >
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={allSelected}
+                indeterminate={someSelected}
+                onChange={handleSelectAllChange}
+                color="primary"
+              />
+            }
+            label={
+              <Typography variant="body2" fontWeight={500}>
+                {allSelected 
+                  ? `All ${results.length} items selected` 
+                  : someSelected 
+                    ? `${selectedItems.length} of ${results.length} items selected` 
+                    : `Select all ${results.length} items`
+                }
+              </Typography>
+            }
           />
-        </Grid>
-      ))}
-    </Grid>
+        </Box>
+      )}
+
+      {/* Results Grid */}
+      <Grid container spacing={3}>
+        {results.map(item => (
+          <Grid item xs={12} sm={6} lg={4} key={item.id}>
+            <ModernResultCard
+              item={item}
+              config={config}
+              collectionName={collectionName}
+              router={router}
+              onRefresh={onRefresh}
+              // Selection props
+              selected={selectedItems.some(selected => selected.id === item.id)}
+              onSelectItem={onSelectItem}
+              selectionEnabled={selectionEnabled}
+            />
+          </Grid>
+        ))}
+      </Grid>
+    </>
   );
 }
 
 /**
- * Modern Result Card Component with improved design
+ * Modern Result Card Component with improved design and selection
  */
-function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
+function ModernResultCard({ 
+  item, 
+  config, 
+  collectionName, 
+  router, 
+  onRefresh,
+  // Selection props
+  selected = false,
+  onSelectItem,
+  selectionEnabled = false
+}) {
   const theme = useTheme();
   const quickView = config?.quickView || {};
   const color = COLLECTION_COLORS[collectionName] || '#666';
@@ -627,6 +721,13 @@ function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
   const subtitle = item[quickView.subtitleField] || item.status || '';
   const description = item[quickView.descriptionField] || item.description || '';
 
+  // Handle selection change
+  const handleSelectionChange = (event) => {
+    event.stopPropagation(); // Prevent card click
+    if (onSelectItem) {
+      onSelectItem(item, event.target.checked);
+    }
+  };
   
   // Handle thumbnail/avatar with proper fallbacks
   const getAvatarSrc = () => {
@@ -655,9 +756,6 @@ function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
 
   const avatarSrc = getAvatarSrc();
 
-  
-
-
   return (
     <Card 
       sx={{ 
@@ -670,13 +768,44 @@ function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
         border: `1px solid ${alpha(color, 0.2)}`,
         borderTop: `4px solid ${color}`,
         transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        position: 'relative', // For absolute positioning of checkbox
         '&:hover': {
           transform: 'translateY(-8px)',
           boxShadow: `0 20px 40px ${alpha(color, 0.2)}`,
           borderColor: alpha(color, 0.4)
-        }
+        },
+        ...(selected && {
+          boxShadow: `0 0 0 2px ${theme.palette.primary.main}, 0 20px 40px ${alpha(color, 0.2)}`,
+          borderColor: theme.palette.primary.main
+        })
       }}
     >
+      {/* Selection Checkbox */}
+      {selectionEnabled && (
+        <Box 
+          sx={{ 
+            position: 'absolute', 
+            top: 8, 
+            right: 8, 
+            zIndex: 1,
+            backgroundColor: alpha('#ffffff', 0.8),
+            borderRadius: '50%',
+            width: 32,
+            height: 32,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+        >
+          <Checkbox
+            checked={selected}
+            onChange={handleSelectionChange}
+            color="primary"
+            size="small"
+          />
+        </Box>
+      )}
+      
       <CardContent sx={{ flexGrow: 1, p: 3 }}>
         {/* Header with avatar and title */}
         <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 2, mb: 2 }}>
@@ -743,25 +872,23 @@ function ModernResultCard({ item, config, collectionName, router, onRefresh }) {
             {description}
           </Typography>
         )}
-
       </CardContent>
-          <Divider sx={{ borderColor: alpha(color, 0.1) }} />
-          <Box sx={{ 
-            p: 1.5, 
-            display: 'flex', 
-            justifyContent: 'center',
-            backgroundColor: alpha(color, 0.02)
-          }}>
-            <ViewButtons 
-              config={{ ...config, key: collectionName }}
-              id={item.id}
-              record={item}
-              showDelete={true}
-              onRefresh={onRefresh} // Pass onRefresh prop to ViewButtons for immediate UI updates
-            />
-          </Box>
-
-     
+      
+      <Divider sx={{ borderColor: alpha(color, 0.1) }} />
+      <Box sx={{ 
+        p: 1.5, 
+        display: 'flex', 
+        justifyContent: 'center',
+        backgroundColor: alpha(color, 0.02)
+      }}>
+        <ViewButtons 
+          config={{ ...config, key: collectionName }}
+          id={item.id}
+          record={item}
+          showDelete={true}
+          onRefresh={onRefresh} // Pass onRefresh prop to ViewButtons for immediate UI updates
+        />
+      </Box>
     </Card>
   );
 }

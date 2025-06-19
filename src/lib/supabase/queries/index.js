@@ -7,6 +7,7 @@ import * as taskModule from './table/task-adapters'; // Use task-adapters instea
 import * as companyModule from './table/company';
 import * as elementModule from './table/element';
 import * as mediaModule from './table/media';
+import * as emailModule from './table/email';
 import * as brandModule from './table/brand';
 import * as checklistModule from './table/checklist';
 import * as contactModule from './table/contact';
@@ -36,6 +37,9 @@ import * as commentProjectModule from './pivot/comment_project';
 import * as companyProjectModule from './pivot/company_project';
 import * as contactProjectModule from './pivot/contact_project';
 import * as eventProjectModule from './pivot/event_project';
+import * as emailProjectModule from './pivot/email_project';
+import * as contactEmailModule from './pivot/contact_email';
+import * as categoryEmailModule from './pivot/category_email';
 import * as fieldOnboardingModule from './pivot/field_onboarding';
 import * as mediaProjectModule from './pivot/media_project';
 import * as milestoneProjectModule from './pivot/milestone_project';
@@ -50,6 +54,7 @@ export const table = {
   company: companyModule,
   element: elementModule,
   media: mediaModule,
+  email: emailModule,
   brand: brandModule,
   typography: typographyModule,
   checklist: checklistModule,
@@ -81,6 +86,9 @@ export const pivot = {
   company_project: companyProjectModule,
   contact_project: contactProjectModule,
   event_project: eventProjectModule,
+  email_project: emailProjectModule,
+  contact_email: contactEmailModule,
+  category_email: categoryEmailModule,
   field_onboarding: fieldOnboardingModule,
   media_project: mediaProjectModule,
   milestone_project: milestoneProjectModule
@@ -98,6 +106,7 @@ export { typographyModule as typography };
 export { companyModule as company };
 export { elementModule as element };
 export { mediaModule as media };
+export { emailModule as email };
 export { brandModule as brand };
 export { checklistModule as checklist };
 export { contactModule as contact };
@@ -127,6 +136,9 @@ export { commentProjectModule as comment_project };
 export { companyProjectModule as company_project };
 export { contactProjectModule as contact_project };
 export { eventProjectModule as event_project };
+export { emailProjectModule as email_project };
+export { contactEmailModule as contact_email };
+export { categoryEmailModule as category_email };
 export { fieldOnboardingModule as field_onboarding };
 export { mediaProjectModule as media_project };
 export { milestoneProjectModule as milestone_project };
