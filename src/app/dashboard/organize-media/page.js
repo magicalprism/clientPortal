@@ -308,20 +308,19 @@ export default function OrganizeMediaPage() {
     }
   };
 
-  // Handle rejection by marking as deleted in database
+  // Handle rejection by changing status to rejected
   const handleReject = async (item, index) => {
     try {
       // Remove from display immediately
       const updated = mediaItems.filter((_, i) => i !== index);
       setMediaItems(updated);
 
-      // Mark as deleted in database
+      // Change status to rejected in database
       const { error } = await supabase
         .from('media')
         .update({ 
-          is_deleted: true,
-          deleted_at: new Date().toISOString(),
-          status: 'rejected'
+          status: 'rejected',
+          updated_at: new Date().toISOString()
         })
         .eq('id', item.id);
 
@@ -335,7 +334,7 @@ export default function OrganizeMediaPage() {
       }, ...prev.slice(0, 4)]); // Keep last 5 for undo
 
       // Show success message
-      setNotificationMessage(`Media rejected. Will be permanently deleted after 24 hours.`);
+      setNotificationMessage(`Media rejected.`);
       setNotificationType('warning');
       setNotificationOpen(true);
 
@@ -450,12 +449,10 @@ export default function OrganizeMediaPage() {
         ]);
 
       } else if (deletedItem.action === 'reject') {
-        // For rejection undo, unmark as deleted
+        // For rejection undo, change status back to unsorted
         await supabase
           .from('media')
           .update({
-            is_deleted: false,
-            deleted_at: null,
             status: 'unsorted',
             updated_at: new Date().toISOString()
           })

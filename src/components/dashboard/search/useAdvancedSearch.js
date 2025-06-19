@@ -404,8 +404,33 @@ export const useAdvancedSearch = (initialCollections = []) => {
 
       // Apply sorting with fallback
       try {
-        const sortField = options.sortField || 'updated_at';
-        const sortOrder = options.sortOrder || 'desc';
+        // If there's no search text, sort alphabetically by title or name
+        // Otherwise, sort by updated_at for relevance
+        let sortField, sortOrder;
+        
+        if (!searchText || searchText.trim() === '') {
+          // Determine which field to use for alphabetical sorting
+          // Try title first, then name, then fall back to id
+          const hasTitle = await supabase.from(collectionName).select('title').limit(1);
+          const hasName = await supabase.from(collectionName).select('name').limit(1);
+          
+          if (!hasTitle.error && hasTitle.data && hasTitle.data.length > 0) {
+            sortField = 'title';
+          } else if (!hasName.error && hasName.data && hasName.data.length > 0) {
+            sortField = 'name';
+          } else {
+            sortField = 'id';
+          }
+          
+          sortOrder = 'asc'; // Alphabetical order (A-Z)
+          console.log(`[useAdvancedSearch] No search query, sorting ${collectionName} alphabetically by ${sortField}`);
+        } else {
+          // When searching, sort by relevance (most recently updated first)
+          sortField = options.sortField || 'updated_at';
+          sortOrder = options.sortOrder || 'desc';
+          console.log(`[useAdvancedSearch] Search query present, sorting ${collectionName} by ${sortField} ${sortOrder}`);
+        }
+        
         query = query.order(sortField, { ascending: sortOrder === 'asc' });
       } catch (sortErr) {
         console.warn(`[useAdvancedSearch] Sorting failed for ${collectionName}, using default:`, sortErr);
@@ -472,161 +497,21 @@ export const useAdvancedSearch = (initialCollections = []) => {
       return { results: {}, counts: {} };
     }
 
-    console.log('[useAdvancedSearch] Searching collections:', { searchText, allFilters, targetCollections });
+      console.log('[useAdvancedSearch] Searching collections:', { searchText, allFilters, targetCollections });
 
-    try {
-      // Check if we have any active filters that should be applied across collections
-      const hasCompanyFilter = Object.values(allFilters).some(collectionFilters => 
-        collectionFilters?.company_id && collectionFilters.company_id !== '' && collectionFilters.company_id !== 'all'
-      );
-      
-      const hasContactFilter = Object.values(allFilters).some(collectionFilters => 
-        (collectionFilters?.contact_id && collectionFilters.contact_id !== '' && collectionFilters.contact_id !== 'all') ||
-        (collectionFilters?.author_id && collectionFilters.author_id !== '' && collectionFilters.author_id !== 'all')
-      );
-      
-      const hasStatusFilter = Object.values(allFilters).some(collectionFilters => 
-        collectionFilters?.status && collectionFilters.status !== '' && collectionFilters.status !== 'all'
-      );
-      
-      console.log('[useAdvancedSearch] Cross-collection filters:', { 
-        hasCompanyFilter, 
-        hasContactFilter, 
-        hasStatusFilter 
-      });
-      
-      // Extract specific filter values
-      let companyIds = [];
-      let contactIds = [];
-      let statusValues = [];
-      
-      // Collect all company IDs from filters
-      if (hasCompanyFilter) {
-        Object.values(allFilters).forEach(collectionFilters => {
-          if (collectionFilters?.company_id) {
-            if (Array.isArray(collectionFilters.company_id)) {
-              companyIds = [...companyIds, ...collectionFilters.company_id];
-            } else if (collectionFilters.company_id !== '' && collectionFilters.company_id !== 'all') {
-              companyIds.push(collectionFilters.company_id);
-            }
-          }
-        });
-        companyIds = [...new Set(companyIds)]; // Remove duplicates
-        console.log('[useAdvancedSearch] Collected company IDs for cross-collection filtering:', companyIds);
-      }
-      
-      // Collect all contact IDs from filters
-      if (hasContactFilter) {
-        Object.values(allFilters).forEach(collectionFilters => {
-          if (collectionFilters?.contact_id) {
-            if (Array.isArray(collectionFilters.contact_id)) {
-              contactIds = [...contactIds, ...collectionFilters.contact_id];
-            } else if (collectionFilters.contact_id !== '' && collectionFilters.contact_id !== 'all') {
-              contactIds.push(collectionFilters.contact_id);
-            }
-          }
+      try {
+        // Use filters as they are, without applying them across collections
+        console.log('[useAdvancedSearch] Using collection-specific filters only');
+        
+        // Standard search for all collections with their specific filters
+        const searchPromises = targetCollections.map(async (collectionName) => {
+          // Only use filters specifically set for this collection
+          const collectionFilters = allFilters[collectionName] || {};
+          console.log(`[useAdvancedSearch] Applying filters for ${collectionName}:`, collectionFilters);
           
-          if (collectionFilters?.author_id) {
-            if (Array.isArray(collectionFilters.author_id)) {
-              contactIds = [...contactIds, ...collectionFilters.author_id];
-            } else if (collectionFilters.author_id !== '' && collectionFilters.author_id !== 'all') {
-              contactIds.push(collectionFilters.author_id);
-            }
-          }
+          const result = await searchCollection(collectionName, searchText, collectionFilters);
+          return { collectionName, ...result };
         });
-        contactIds = [...new Set(contactIds)]; // Remove duplicates
-        console.log('[useAdvancedSearch] Collected contact IDs for cross-collection filtering:', contactIds);
-      }
-      
-      // Collect all status values from filters
-      if (hasStatusFilter) {
-        Object.values(allFilters).forEach(collectionFilters => {
-          if (collectionFilters?.status) {
-            if (Array.isArray(collectionFilters.status)) {
-              statusValues = [...statusValues, ...collectionFilters.status];
-            } else if (collectionFilters.status !== '' && collectionFilters.status !== 'all') {
-              statusValues.push(collectionFilters.status);
-            }
-          }
-        });
-        statusValues = [...new Set(statusValues)]; // Remove duplicates
-        console.log('[useAdvancedSearch] Collected status values for cross-collection filtering:', statusValues);
-      }
-      
-      // Apply cross-collection filters to each collection's filters
-      const enhancedFilters = { ...allFilters };
-      
-      if (hasCompanyFilter && companyIds.length > 0) {
-        // Apply company filter to all collections that have a company_id field
-        targetCollections.forEach(collectionName => {
-          const config = collections[collectionName];
-          const hasCompanyField = config?.fields?.some(field => field.name === 'company_id');
-          
-          if (hasCompanyField) {
-            enhancedFilters[collectionName] = {
-              ...enhancedFilters[collectionName],
-              company_id: companyIds.length === 1 ? companyIds[0] : companyIds
-            };
-          }
-        });
-      }
-      
-      if (hasContactFilter && contactIds.length > 0) {
-        // Apply contact filter to all collections that have a contact_id or author_id field
-        targetCollections.forEach(collectionName => {
-          const config = collections[collectionName];
-          const hasContactField = config?.fields?.some(field => 
-            field.name === 'contact_id' || field.name === 'author_id' || field.name === 'uploader_id'
-          );
-          
-          if (hasContactField) {
-            if (config?.fields?.some(field => field.name === 'contact_id')) {
-              enhancedFilters[collectionName] = {
-                ...enhancedFilters[collectionName],
-                contact_id: contactIds.length === 1 ? contactIds[0] : contactIds
-              };
-            }
-            
-            if (config?.fields?.some(field => field.name === 'author_id')) {
-              enhancedFilters[collectionName] = {
-                ...enhancedFilters[collectionName],
-                author_id: contactIds.length === 1 ? contactIds[0] : contactIds
-              };
-            }
-            
-            if (config?.fields?.some(field => field.name === 'uploader_id')) {
-              enhancedFilters[collectionName] = {
-                ...enhancedFilters[collectionName],
-                uploader_id: contactIds.length === 1 ? contactIds[0] : contactIds
-              };
-            }
-          }
-        });
-      }
-      
-      if (hasStatusFilter && statusValues.length > 0) {
-        // Apply status filter to all collections that have a status field
-        targetCollections.forEach(collectionName => {
-          const config = collections[collectionName];
-          const hasStatusField = config?.fields?.some(field => field.name === 'status');
-          
-          if (hasStatusField) {
-            enhancedFilters[collectionName] = {
-              ...enhancedFilters[collectionName],
-              status: statusValues.length === 1 ? statusValues[0] : statusValues
-            };
-          }
-        });
-      }
-      
-      console.log('[useAdvancedSearch] Enhanced filters with cross-collection filtering:', enhancedFilters);
-      
-      // Standard search for all collections with enhanced filters
-      const searchPromises = targetCollections.map(async (collectionName) => {
-        const collectionFilters = enhancedFilters[collectionName] || {};
-        const result = await searchCollection(collectionName, searchText, collectionFilters);
-        return { collectionName, ...result };
-      });
 
       const allResults = await Promise.all(searchPromises);
       

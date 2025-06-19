@@ -460,6 +460,15 @@ export const project = {
         entity: 'project',
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      showInTable: true,
+      defaultValue: false
+    },
         // Hidden database fields for Drive integration
     {
       name: 'drive_folder_id',
@@ -546,6 +555,18 @@ export const project = {
         { value: 'title:desc', label: 'Title (Z–A)' },
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
+      ],
+      excludeFromViews: ['dashboard']
+    },
+    {
+      name: 'is_deleted',
+      type: 'select',
+      label: 'Show Deleted',
+      multiple: false,
+      defaultValue: false,
+      options: [
+        { value: false, label: 'Hide Deleted' },
+        { value: true, label: 'Show Deleted' }
       ],
       excludeFromViews: ['dashboard']
     }

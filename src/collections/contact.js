@@ -201,6 +201,15 @@ export const contact = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      showInTable: true,
+      defaultValue: false
+    },
 ],
 
     filters: [
@@ -235,9 +244,16 @@ export const contact = {
               excludeFromViews: ['calendar', 'checklist']
 
       },
-    
-      
-      
+      {
+        name: 'is_deleted',
+        type: 'select',
+        label: 'Show Deleted',
+        multiple: false,
+        defaultValue: false,
+        options: [
+          { value: false, label: 'Hide Deleted' },
+          { value: true, label: 'Show Deleted' }
+        ]
+      }
     ]
 }
-      

@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Card,
@@ -197,6 +197,15 @@ export function CollectionTabs({
 }) {
   const theme = useTheme();
   
+  // Sort collections alphabetically by their label
+  const sortedCollections = useMemo(() => {
+    return [...targetCollections].sort((a, b) => {
+      const labelA = collections[a]?.label || a;
+      const labelB = collections[b]?.label || b;
+      return labelA.localeCompare(labelB);
+    });
+  }, [targetCollections]);
+  
   return (
     <Paper 
       sx={{ 
@@ -230,7 +239,7 @@ export function CollectionTabs({
           }
         }}
       >
-        {targetCollections.map((collectionName, index) => {
+        {sortedCollections.map((collectionName, index) => {
           const config = collections[collectionName];
           const IconComponent = COLLECTION_ICONS[collectionName] || File;
           const count = resultCounts[collectionName] || 0;
@@ -241,17 +250,18 @@ export function CollectionTabs({
               key={collectionName}
               icon={
                 (() => {
-                  const badgeContent = count > 50 ? "50+" : count.toString();
+                  // Use a simple dot indicator instead of count
+                  const hasResults = count > 0;
                   return (
                     <Badge 
-                      badgeContent={badgeContent} 
+                      variant="dot"
                       color="primary" 
+                      invisible={!hasResults}
                       sx={{
-                        '& .MuiBadge-badge': {
-                          fontSize: '0.6rem',
-                          minWidth: '22px', // Increased from 16px to ensure + sign is visible
-                          height: '16px',
-                          padding: '0 4px' // Add padding to ensure text has room
+                        '& .MuiBadge-dot': {
+                          height: '8px',
+                          width: '8px',
+                          borderRadius: '50%'
                         }
                       }}
                     >
@@ -294,6 +304,15 @@ export function FilterSidebar({
   // State to track expanded accordions - initialize to null to ensure all accordions are closed on page load
   const [expandedAccordion, setExpandedAccordion] = useState(null);
   
+  // Sort collections alphabetically by their label
+  const sortedCollections = useMemo(() => {
+    return [...targetCollections].sort((a, b) => {
+      const labelA = collections[a]?.label || a;
+      const labelB = collections[b]?.label || b;
+      return labelA.localeCompare(labelB);
+    });
+  }, [targetCollections]);
+  
   // Reset expanded accordion when collections change
   useEffect(() => {
     setExpandedAccordion(null);
@@ -330,7 +349,7 @@ export function FilterSidebar({
         backdropFilter: 'blur(10px)'
       }}
     >
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, pl: 2 }}>
         <Typography variant="h6" sx={{ fontWeight: 600 }}>
           Filters
         </Typography>
@@ -354,8 +373,8 @@ export function FilterSidebar({
         </Box>
       )}
 
-      <Stack spacing={1}>
-        {targetCollections.map(collectionName => {
+      <Stack spacing={0.5}>
+        {sortedCollections.map(collectionName => {
           const config = collections[collectionName];
           if (!config) return null;
 
@@ -382,9 +401,9 @@ export function FilterSidebar({
                 expandIcon={<CaretDown size={16} weight="regular" />}
                 sx={{
                   borderRadius: 1,
-                  backgroundColor: alpha(color, 0.05),
+                  py: 0.2,
                   '&:hover': {
-                    backgroundColor: alpha(color, 0.1)
+                    backgroundColor: theme.palette.action.hover
                   }
                 }}
               >
@@ -438,8 +457,8 @@ function CollectionFilters({ config, collectionName, filters, onFilterChange, op
     field.type === 'relationship'
   ) || [];
   
-  // Special handling for company collection - include filters from config.filters
-  if (collectionName === 'company' && config.filters) {
+  // Include filters from config.filters for all collections
+  if (config.filters) {
     // Add filters from config.filters array, excluding 'sort' and 'search' filters
     const additionalFilters = config.filters
       .filter(filter => !['sort', 'search'].includes(filter.name)) // Exclude problematic filters
@@ -484,12 +503,17 @@ function CollectionFilters({ config, collectionName, filters, onFilterChange, op
  * Individual Filter Field Component - FIXED with proper key props
  */
 function FilterField({ field, value, onChange, options }) {
+  // Use the defaultValue from the field configuration when value is empty or not set
+  const effectiveValue = value === undefined || value === null || value === '' 
+    ? field.defaultValue 
+    : value;
+
   if (field.type === 'select' || field.type === 'status') {
     return (
       <FormControl fullWidth size="small">
         <InputLabel>{field.label}</InputLabel>
         <Select
-          value={value}
+          value={effectiveValue}
           onChange={(e) => onChange(e.target.value)}
           label={field.label}
           sx={{ borderRadius: 1 }}

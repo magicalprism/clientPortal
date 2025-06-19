@@ -178,6 +178,15 @@ export const resource = {
         targetKey: 'category_id'
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      showInTable: true,
+      defaultValue: false
+    },
 
   
   ],
@@ -222,6 +231,17 @@ export const resource = {
         labelField: 'title',
 
       }
+    },
+    {
+      name: 'is_deleted',
+      type: 'select',
+      label: 'Show Deleted',
+      multiple: false,
+      defaultValue: false,
+      options: [
+        { value: false, label: 'Hide Deleted' },
+        { value: true, label: 'Show Deleted' }
+      ]
     }
     
   ]

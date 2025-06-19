@@ -121,7 +121,12 @@ export const media = {
       type: 'select',
       tab: 'Meta',
       width: 'auto',
+      showInTable: true,
       options: [
+        { label: 'Unsorted', value: 'unsorted' },
+        { label: 'Pending', value: 'pending' },
+        { label: 'Approved', value: 'approved' },
+        { label: 'Rejected', value: 'rejected' },
         { label: 'Uploaded', value: 'uploaded' },
         { label: 'Linked', value: 'linked' },
       ]
@@ -240,6 +245,14 @@ export const media = {
           { label: 'Folder', value: 'folder' }
       ]
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      showInTable: true,
+      defaultValue: false
+    },
   ],
   filters: [
     {
@@ -320,6 +333,17 @@ export const media = {
       options: [
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
+      ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'select',
+      label: 'Show Deleted',
+      multiple: false,
+      defaultValue: false,
+      options: [
+        { value: false, label: 'Hide Deleted' },
+        { value: true, label: 'Show Deleted' }
       ]
     }
     

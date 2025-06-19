@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Container,
   Grid,
@@ -48,7 +48,8 @@ export default function StreamlinedSearchPage({
     hasActiveFilters,
     isSearching,
     targetCollections,
-    loadAllFilterOptions
+    loadAllFilterOptions,
+    searchAllCollections
   } = useAdvancedSearch(collections);
 
   // UI state
@@ -56,8 +57,17 @@ export default function StreamlinedSearchPage({
   const [filterOptions, setFilterOptions] = useState({});
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(true);
 
-  // Get current collection
-  const currentCollection = targetCollections[activeTab];
+  // Sort collections alphabetically by their label for consistent ordering
+  const sortedCollections = useMemo(() => {
+    return [...targetCollections].sort((a, b) => {
+      const labelA = collections[a]?.label || a;
+      const labelB = collections[b]?.label || b;
+      return labelA.localeCompare(labelB);
+    });
+  }, [targetCollections]);
+
+  // Get current collection from sorted array
+  const currentCollection = sortedCollections[activeTab];
   const currentResults = results[currentCollection] || [];
   const currentLoading = loading[currentCollection] || false;
 
@@ -96,6 +106,30 @@ export default function StreamlinedSearchPage({
   // Handle clear all filters
   const handleClearAllFilters = () => {
     clearAllFilters();
+  };
+
+  // Handle refresh after record deletion or update
+  const handleRefresh = (deletedId) => {
+    // If we have a deletedId, update the results state immediately for responsive UI
+    if (deletedId && results) {
+      // Create a new results object with the deleted item filtered out
+      const updatedResults = { ...results };
+      
+      // Update each collection's results
+      Object.keys(updatedResults).forEach(collectionKey => {
+        if (Array.isArray(updatedResults[collectionKey])) {
+          updatedResults[collectionKey] = updatedResults[collectionKey].filter(
+            item => item.id !== deletedId
+          );
+        }
+      });
+      
+      // Update the results state immediately for responsive UI
+      setResults(updatedResults);
+    }
+    
+    // Then refresh the data from the server
+    searchAllCollections();
   };
 
   // Check if we should show empty state
@@ -173,7 +207,7 @@ export default function StreamlinedSearchPage({
           {/* Filters Sidebar */}
           <Grid item xs={12} md={3}>
             <FilterSidebar
-              collections={targetCollections}
+              collections={sortedCollections}
               filters={filters}
               onFilterChange={handleFilterChange}
               onClearAll={handleClearAllFilters}
@@ -195,7 +229,7 @@ export default function StreamlinedSearchPage({
               <>
                 {/* Collection Tabs */}
                 <CollectionTabs
-                  collections={targetCollections}
+                  collections={sortedCollections}
                   activeTab={activeTab}
                   onTabChange={handleTabChange}
                   resultCounts={resultCounts}
@@ -207,6 +241,7 @@ export default function StreamlinedSearchPage({
                   results={currentResults}
                   loading={currentLoading}
                   emptyMessage={`No ${currentCollection} results found`}
+                  onRefresh={handleRefresh}
                 />
 
                 {/* Search Statistics */}
