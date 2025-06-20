@@ -359,6 +359,9 @@ export function TaskModal({ onClose, onTaskDelete, onTaskUpdate, onCommentAdd, o
 								</Stack>
 							</Box>
 							
+							{/* Related Items */}
+							<RelatedItemsSection task={task} />
+							
 							{/* Delete button */}
 							<Box sx={{ mt: 2 }}>
 								<Button
@@ -580,4 +583,101 @@ function CommentAdd({ onAdd }) {
 
 function countDoneSubtasks(subtasks = []) {
 	return subtasks.reduce((acc, curr) => acc + (curr.done ? 1 : 0), 0);
+}
+
+// Import the field renderers
+import { RelationshipFieldRenderer } from "@/components/fields/relationships/RelationshipFieldRenderer";
+import { MultiRelationshipFieldRenderer } from "@/components/fields/relationships/multi/MultiRelationshipFieldRenderer";
+import { ViewButtons } from "@/components/buttons/ViewButtons";
+import * as collections from "@/collections";
+
+// Component to display relationship fields in the TaskModal
+function RelatedItemsSection({ task }) {
+	// Skip if no task
+	if (!task) return null;
+
+	// Find relationship fields in the task
+	const relationshipFields = [];
+	const multiRelationshipFields = [];
+
+	// Iterate through task properties to find relationship fields
+	Object.entries(task).forEach(([key, value]) => {
+		// Skip standard properties that we already display
+		if ([
+			'id', 'title', 'description', 'status', 'priority', 'due_date',
+			'assignees', 'attachments', 'comments', 'labels', 'subtasks', 'author'
+		].includes(key)) {
+			return;
+		}
+
+		// Check for relationship fields (ends with _id and has a corresponding object)
+		if (key.endsWith('_id') && value && task[key.replace('_id', '')]) {
+			relationshipFields.push({
+				name: key,
+				value,
+				record: task,
+				relation: {
+					table: key.replace('_id', ''),
+					labelField: 'title',
+					linkTo: `/dashboard/${key.replace('_id', '')}`
+				}
+			});
+		}
+
+		// Check for multi-relationship fields (array of IDs with corresponding _details)
+		if (Array.isArray(value) && task[`${key}_details`] && Array.isArray(task[`${key}_details`])) {
+			multiRelationshipFields.push({
+				name: key,
+				value,
+				record: task,
+				relation: {
+					table: key,
+					labelField: 'title',
+					linkTo: `/dashboard/${key}`
+				}
+			});
+		}
+	});
+
+	// If no relationship fields found, don't render the section
+	if (relationshipFields.length === 0 && multiRelationshipFields.length === 0) {
+		return null;
+	}
+
+	return (
+		<Box>
+			<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+				Related Items
+			</Typography>
+			<Stack spacing={2}>
+				{/* Render single relationships */}
+				{relationshipFields.map((field) => (
+					<Box key={field.name} sx={{ mb: 1 }}>
+						<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+							{field.name.replace('_id', '').replace(/([A-Z])/g, ' $1').trim()}
+						</Typography>
+						<RelationshipFieldRenderer
+							value={field.value}
+							field={field}
+							record={task}
+						/>
+					</Box>
+				))}
+
+				{/* Render multi-relationships */}
+				{multiRelationshipFields.map((field) => (
+					<Box key={field.name} sx={{ mb: 1 }}>
+						<Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.5 }}>
+							{field.name.replace(/([A-Z])/g, ' $1').trim()}
+						</Typography>
+						<MultiRelationshipFieldRenderer
+							value={field.value}
+							field={field}
+							record={task}
+						/>
+					</Box>
+				))}
+			</Stack>
+		</Box>
+	);
 }

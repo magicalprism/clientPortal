@@ -20,3 +20,4 @@ export { login } from './login';
 export { color } from './color';
 export { event } from './event';
 export { email } from './email';
+export { category } from './category';

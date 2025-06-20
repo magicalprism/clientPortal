@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Typography } from '@mui/material';
+import { Typography, Box } from '@mui/material';
+import { ViewButtons } from '@/components/buttons/ViewButtons';
 import { RelationshipField } from '@/components/fields/relationships/RelationshipField';
+import * as collections from '@/collections';
 
 export const RelationshipFieldRenderer = ({
   value,
@@ -16,6 +18,7 @@ export const RelationshipFieldRenderer = ({
   const labelField = field.relation?.labelField || 'title';
   const relatedKey = field.name.replace('_id', ''); // e.g., company_id -> company
   const relatedLabel = record?.[relatedKey]?.[labelField];
+  const relatedRecord = record?.[relatedKey];
 
   const [localValue, setLocalValue] = useState(value ?? null);
   const [isDirty, setIsDirty] = useState(false);
@@ -42,6 +45,31 @@ export const RelationshipFieldRenderer = ({
     );
   }
 
+  // If we have a value and related record, show the label with ViewButtons
+  if (value && relatedRecord) {
+    // Get the related collection config
+    const relatedConfig = field.relation?.table ? collections[field.relation.table] : null;
+    
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Typography variant="body2">
+          {relatedLabel || `ID: ${value}`}
+        </Typography>
+        
+        {relatedConfig && (
+          <ViewButtons
+            config={relatedConfig}
+            id={value}
+            record={relatedRecord}
+            size="small"
+            showDelete={false}
+          />
+        )}
+      </Box>
+    );
+  }
+
+  // Otherwise, just show the text
   return (
     <Typography variant="body2">
       {relatedLabel || '—'}

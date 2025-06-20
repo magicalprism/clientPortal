@@ -8,6 +8,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { Typography } from '@mui/material';
 import { MultiRelationshipField } from '@/components/fields/relationships/multi/MultiRelationshipField';
+import { RelatedTagsField } from '@/components/fields/relationships/multi/RelatedTagsField';
 // Fix import method
 import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
 
@@ -59,6 +60,19 @@ export const MultiRelationshipFieldRenderer = ({
       return <Typography variant="body2">—</Typography>;
     }
 
+    // Use RelatedTagsField for clickable tags in read-only mode
+    if (field.relation?.table) {
+      return (
+        <RelatedTagsField
+          field={field}
+          parentId={record?.id}
+          hideLabel={true}
+          relatedItems={details}
+        />
+      );
+    }
+
+    // Fallback to plain text if no table is defined
     const labels = details
       .filter(item => item)
       .map((item) => item[labelField] || `ID: ${item.id}`);

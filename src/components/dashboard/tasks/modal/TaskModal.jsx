@@ -83,8 +83,10 @@ import { RelationshipField } from '@/components/fields/relationships/Relationshi
 import { GalleryRelationshipFieldRenderer } from '@/components/fields/media/GalleryRelationshipFieldRenderer';
 import { MultiRelationshipFieldRenderer } from '@/components/fields/relationships/multi/MultiRelationshipFieldRenderer.jsx';
 import { SimpleMultiRelationshipField } from '@/components/fields/relationships/multi/SimpleMultiRelationshipField';
+import { RelatedTagsField } from '@/components/fields/relationships/multi/RelatedTagsField';
 import { CustomFieldRenderer } from '@/components/fields/custom/CustomFieldRenderer';
 import { saveMultiRelationshipField } from '@/lib/supabase/queries/pivot/multirelationship';
+import { ViewButtons } from '@/components/buttons/ViewButtons';
 import * as collections from '@/collections';
 
 export default function TaskModal({ onClose, onDelete, onUpdate, open, record, config, debug = false }) {
@@ -679,16 +681,24 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                     <Avatar src={assignee.avatar} sx={{ width: 24, height: 24 }}>
                       {assignee.title ? assignee.title.charAt(0) : 'U'}
                     </Avatar>
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ flex: 1 }}>
                       {assignee.title || `User ${assigned_id}`}
                     </Typography>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => setSelectDialogOpen({ type: 'assignee' })}
-                      sx={{ ml: 'auto' }}
-                    >
-                      <PencilSimpleIcon size={16} />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <ViewButtons 
+                        config={collections.contact}
+                        id={assigned_id}
+                        record={assignee}
+                        showDelete={false}
+                        size="small"
+                      />
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setSelectDialogOpen({ type: 'assignee' })}
+                      >
+                        <PencilSimpleIcon size={16} />
+                      </IconButton>
+                    </Box>
                   </Stack>
                 ) : (
                   <Button 
@@ -716,16 +726,24 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                     <Avatar src={record.company_id_details.logo?.url} sx={{ width: 24, height: 24 }}>
                       {record.company_id_details.title ? record.company_id_details.title.charAt(0) : 'C'}
                     </Avatar>
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ flex: 1 }}>
                       {record.company_id_details.title || `Company ${record.company_id}`}
                     </Typography>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => setSelectDialogOpen({ type: 'company' })}
-                      sx={{ ml: 'auto' }}
-                    >
-                      <PencilSimpleIcon size={16} />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <ViewButtons 
+                        config={collections.company}
+                        id={record.company_id}
+                        record={record.company_id_details}
+                        showDelete={false}
+                        size="small"
+                      />
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setSelectDialogOpen({ type: 'company' })}
+                      >
+                        <PencilSimpleIcon size={16} />
+                      </IconButton>
+                    </Box>
                   </Stack>
                 ) : (
                   <Button 
@@ -753,16 +771,24 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                     <Avatar sx={{ width: 24, height: 24, bgcolor: 'primary.main' }}>
                       {record.project_id_details.title ? record.project_id_details.title.charAt(0) : 'P'}
                     </Avatar>
-                    <Typography variant="body2">
+                    <Typography variant="body2" sx={{ flex: 1 }}>
                       {record.project_id_details.title || `Project ${record.project_id}`}
                     </Typography>
-                    <IconButton 
-                      size="small" 
-                      onClick={() => setSelectDialogOpen({ type: 'project' })}
-                      sx={{ ml: 'auto' }}
-                    >
-                      <PencilSimpleIcon size={16} />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <ViewButtons 
+                        config={collections.project}
+                        id={record.project_id}
+                        record={record.project_id_details}
+                        showDelete={false}
+                        size="small"
+                      />
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setSelectDialogOpen({ type: 'project' })}
+                      >
+                        <PencilSimpleIcon size={16} />
+                      </IconButton>
+                    </Box>
                   </Stack>
                 ) : (
                   <Button 
@@ -1092,36 +1118,47 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                 </DialogActions>
               </Dialog>
 
-              {/* Labels/Tags using SimpleMultiRelationshipField to avoid infinite loop */}
+              {/* Labels/Tags using RelatedTagsField for clickable navigation */}
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
                   Labels
                 </Typography>
                 <Box sx={{ mb: 2 }}>
-                  <SimpleMultiRelationshipField
-                    field={config?.fields?.find(f => f.name === 'tags')}
-                    value={tags || []}
-                    record={{
-                      ...record,
-                      id: id,
-                      tags_details: labels || []
-                    }}
-                    config={config}
-                    onChange={(newValue) => {
-                        console.log("Tags changed (SimpleMultiRelationshipField):", newValue);
+                  {labels && labels.length > 0 ? (
+                    <RelatedTagsField
+                      field={{
+                        name: 'tags',
+                        label: 'Labels',
+                        relation: {
+                          table: 'category',
+                          labelField: 'title',
+                          // Use task collection instead of category (which doesn't exist)
+                          linkTo: '/dashboard/task'
+                        }
+                      }}
+                      value={tags || []}
+                      relatedItems={labels.map(label => ({
+                        id: label.id,
+                        [label.title ? 'title' : 'name']: label.title || label.name,
+                        color: label.color
+                      }))}
+                      onChange={(newValue) => {
+                        console.log("Tags changed (RelatedTagsField):", newValue);
                         
                         // Update the UI immediately for responsiveness
                         setHydratedRecord(prev => ({
                           ...prev,
-                          tags: newValue.ids,
-                          tags_details: newValue.details
+                          tags: newValue,
+                          tags_details: labels.filter(label => 
+                            newValue.includes(label.id)
+                          )
                         }));
                         
                         // If we have an ID, update the database
                         if (id) {
                           // Use the proper query function to save the relationship
                           const fieldDef = config?.fields?.find(f => f.name === 'tags');
-                          saveMultiRelationshipField('task', id, 'tags', newValue.ids, fieldDef)
+                          saveMultiRelationshipField('task', id, 'tags', newValue, fieldDef)
                             .then(result => {
                               if (!result.success) {
                                 console.error("Failed to save tags:", result.error);
@@ -1131,8 +1168,23 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                               }
                             });
                         }
-                    }}
-                  />
+                      }}
+                    />
+                  ) : (
+                    <Button 
+                      variant="outlined" 
+                      sx={{ 
+                        borderStyle: 'dashed', 
+                        width: '100%',
+                        justifyContent: 'center',
+                        color: 'text.secondary'
+                      }}
+                      onClick={() => setSelectDialogOpen({ type: 'label' })}
+                    >
+                      <PlusIcon size={16} style={{ marginRight: 8 }} />
+                      Add Labels
+                    </Button>
+                  )}
                 </Box>
               </Box>
               
@@ -1203,47 +1255,72 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                 </Box>
               </Box>
               
-              {/* Resources using SimpleMultiRelationshipField to avoid infinite loop */}
+              {/* Resources using RelatedTagsField for clickable navigation */}
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
                   Resources
                 </Typography>
                 <Box sx={{ mb: 2 }}>
-                  <SimpleMultiRelationshipField
-                    field={config?.fields?.find(f => f.name === 'resources')}
-                    value={record.resources || []}
-                    record={{
-                      ...record,
-                      id: id,
-                      resources_details: record.resources_details || record.resources || []
-                    }}
-                    config={config}
-                    onChange={(newValue) => {
-                      console.log("Resources changed (SimpleMultiRelationshipField):", newValue);
-                      
-                      // Update the UI immediately for responsiveness
-                      setHydratedRecord(prev => ({
-                        ...prev,
-                        resources: newValue.ids,
-                        resources_details: newValue.details
-                      }));
-                      
-                      // If we have an ID, update the database
-                      if (id) {
-                        // Use the proper query function to save the relationship
-                        const fieldDef = config?.fields?.find(f => f.name === 'resources');
-                        saveMultiRelationshipField('task', id, 'resources', newValue.ids, fieldDef)
-                          .then(result => {
-                            if (!result.success) {
-                              console.error("Failed to save resources:", result.error);
-                            } else {
-                              console.log("Resources saved successfully:", result);
-                              // Don't refresh the task to avoid infinite loops
-                            }
-                          });
-                      }
-                    }}
-                  />
+                  {record.resources_details && record.resources_details.length > 0 ? (
+                    <RelatedTagsField
+                      field={{
+                        name: 'resources',
+                        label: 'Resources',
+                        relation: {
+                          table: 'resource',
+                          labelField: 'title',
+                          // Ensure we're using a valid collection path
+                          linkTo: '/dashboard/resource'
+                        }
+                      }}
+                      value={record.resources || []}
+                      relatedItems={record.resources_details.map(resource => ({
+                        id: resource.id,
+                        [resource.title ? 'title' : 'name']: resource.title || resource.name
+                      }))}
+                      onChange={(newValue) => {
+                        console.log("Resources changed (RelatedTagsField):", newValue);
+                        
+                        // Update the UI immediately for responsiveness
+                        setHydratedRecord(prev => ({
+                          ...prev,
+                          resources: newValue,
+                          resources_details: record.resources_details.filter(resource => 
+                            newValue.includes(resource.id)
+                          )
+                        }));
+                        
+                        // If we have an ID, update the database
+                        if (id) {
+                          // Use the proper query function to save the relationship
+                          const fieldDef = config?.fields?.find(f => f.name === 'resources');
+                          saveMultiRelationshipField('task', id, 'resources', newValue, fieldDef)
+                            .then(result => {
+                              if (!result.success) {
+                                console.error("Failed to save resources:", result.error);
+                              } else {
+                                console.log("Resources saved successfully:", result);
+                                // Don't refresh the task to avoid infinite loops
+                              }
+                            });
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Button 
+                      variant="outlined" 
+                      sx={{ 
+                        borderStyle: 'dashed', 
+                        width: '100%',
+                        justifyContent: 'center',
+                        color: 'text.secondary'
+                      }}
+                      onClick={() => setSelectDialogOpen({ type: 'resource' })}
+                    >
+                      <PlusIcon size={16} style={{ marginRight: 8 }} />
+                      Add Resources
+                    </Button>
+                  )}
                 </Box>
               </Box>
               
@@ -1441,8 +1518,8 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
     };
   }, [fetchOptions]);
   
-  // Memoize the organizeHierarchy function to prevent unnecessary re-renders
-  const organizeHierarchy = React.useCallback((data) => {
+  // Define organizeHierarchy function before it's used
+  const organizeHierarchy = (data) => {
     // First, sort all items alphabetically by the label field
     const sortedData = [...data].sort((a, b) => {
       const labelA = a[labelField]?.toLowerCase() || '';
@@ -1489,7 +1566,7 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
     sortChildren(rootItems);
     
     return rootItems;
-  }, [labelField]);
+  };
   
   // Handle selection
   const handleSelect = (option) => {
