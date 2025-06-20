@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/browser';
 import { pivot } from '@/lib/supabase/queries';
 
-export const useComments = ({ entity, entityId }) => {
+export const useComments = ({ entity, entityId, projectId, companyId }) => {
   const supabase = createClient();
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -106,13 +106,26 @@ export const useComments = ({ entity, entityId }) => {
 
       const contactId = contact.id;
 
-      // Insert new comment - ONLY the fields that exist in your schema
+      // Insert new comment with project_id and company_id if available
+      const commentData = { 
+        content: content,
+        author_id: contactId
+      };
+      
+      // Add project_id and company_id if they are available
+      if (entity.toLowerCase() === 'task' && projectId) {
+        commentData.project_id = projectId;
+      }
+      
+      if (entity.toLowerCase() === 'task' && companyId) {
+        commentData.company_id = companyId;
+      }
+      
+      console.log('[Comments] Inserting comment with data:', commentData);
+      
       const { data: newComments, error: insertError } = await supabase
         .from('comment')
-        .insert([{ 
-          content: content,
-          author_id: contactId
-        }])
+        .insert([commentData])
         .select('*, author:author_id(id, title, email, thumbnail:thumbnail_id(url))');
 
       if (insertError || !newComments || newComments.length === 0) {
@@ -133,10 +146,21 @@ export const useComments = ({ entity, entityId }) => {
         }
       } else if (entity.toLowerCase() === 'task') {
         // Use the dedicated pivot module for task comments
-        const { success, error } = await pivot.comment_task.linkCommentToTask(commentId, entityId);
+        console.log('[Comments] Linking comment to task');
         
-        if (!success) {
-          console.error('Error linking comment to task:', error);
+        try {
+          const { success, error } = await pivot.comment_task.linkCommentToTask(commentId, entityId);
+          
+          if (error) {
+            console.error('[Comments] Error details from linkCommentToTask:', error);
+          }
+          
+          if (!success) {
+            console.error('[Comments] Failed to link comment to task');
+            return;
+          }
+        } catch (err) {
+          console.error('[Comments] Exception when linking comment to task:', err);
           return;
         }
       } else {

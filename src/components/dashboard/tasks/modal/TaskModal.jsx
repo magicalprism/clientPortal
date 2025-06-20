@@ -31,6 +31,7 @@ import Paper from "@mui/material/Paper";
 import Radio from "@mui/material/Radio";
 import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
+import Switch from "@mui/material/Switch";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
@@ -42,6 +43,7 @@ import { Clock as ClockIcon } from "@phosphor-icons/react/dist/ssr/Clock";
 import { File as FileIcon } from "@phosphor-icons/react/dist/ssr/File";
 import { Flag as FlagIcon } from "@phosphor-icons/react/dist/ssr/Flag";
 import { Info as InfoIcon } from "@phosphor-icons/react/dist/ssr/Info";
+import { Link as LinkIcon } from "@phosphor-icons/react/dist/ssr/Link";
 import { PaperPlaneTilt as PaperPlaneTiltIcon } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
 import { PencilSimple as PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
@@ -106,7 +108,9 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
     company: false,
     attachment: false,
     label: false,
-    resource: false
+    resource: false,
+    element: false,
+    checklist: false
   });
   
   // Hydrate the record and fetch child tasks when it changes
@@ -417,9 +421,24 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
             </Tooltip>
           </Box>
           
-          <IconButton onClick={onClose} edge="end">
-            <XIcon />
-          </IconButton>
+          <Box sx={{ display: "flex", alignItems: "center" }}>
+            {/* Time tracking moved to header */}
+            <Paper variant="outlined" sx={{ p: 1, borderRadius: 1, mr: 2 }}>
+              <Stack direction="row" spacing={1} alignItems="center">
+                <ClockIcon size={16} />
+                <Typography variant="body2">
+                  No time logged
+                </Typography>
+                <Button size="small" variant="text">
+                  Start timer
+                </Button>
+              </Stack>
+            </Paper>
+            
+            <IconButton onClick={onClose} edge="end">
+              <XIcon />
+            </IconButton>
+          </Box>
         </Box>
         
         {/* Main content area */}
@@ -644,11 +663,70 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                   field={{
                     component: 'CommentThread',
                     props: {
-                      entity: 'task'
+                      entity: 'task',
+                      projectId: record.project_id,
+                      companyId: record.company_id
                     }
                   }}
                   record={hydratedRecord}
                 />
+              </Box>
+              
+              {/* Reference Link */}
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
+                  Reference Link
+                </Typography>
+                <OutlinedInput
+                  fullWidth
+                  placeholder="Add a reference link"
+                  value={record.ref_link || ''}
+                  onChange={(e) => handleTaskUpdate("ref_link", e.target.value)}
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <LinkIcon size={20} />
+                    </InputAdornment>
+                  }
+                />
+              </Box>
+              
+              {/* Boolean Fields */}
+              <Box>
+                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
+                  Task Properties
+                </Typography>
+                <Stack direction="row" spacing={2} sx={{ flexWrap: 'wrap' }}>
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={!!record.is_launch}
+                        onChange={(e) => handleTaskUpdate("is_launch", e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Launch Task"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={!!record.is_template}
+                        onChange={(e) => handleTaskUpdate("is_template", e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Template Task"
+                  />
+                  <FormControlLabel
+                    control={
+                      <Switch
+                        checked={!!record.is_deleted}
+                        onChange={(e) => handleTaskUpdate("is_deleted", e.target.checked)}
+                        size="small"
+                      />
+                    }
+                    label="Deleted"
+                  />
+                </Stack>
               </Box>
             </Stack>
           </Grid>
@@ -806,6 +884,51 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                 )}
               </Box>
               
+              {/* Checklist - single relationship */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+                  Checklist
+                </Typography>
+                {record.checklist_id && record.checklist_id_details ? (
+                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                    <Avatar sx={{ width: 24, height: 24, bgcolor: 'secondary.main' }}>
+                      {record.checklist_id_details.title ? record.checklist_id_details.title.charAt(0) : 'C'}
+                    </Avatar>
+                    <Typography variant="body2" sx={{ flex: 1 }}>
+                      {record.checklist_id_details.title || `Checklist ${record.checklist_id}`}
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 0.5 }}>
+                      <ViewButtons 
+                        config={collections.checklist}
+                        id={record.checklist_id}
+                        record={record.checklist_id_details}
+                        showDelete={false}
+                        size="small"
+                      />
+                      <IconButton 
+                        size="small" 
+                        onClick={() => setSelectDialogOpen({ type: 'checklist' })}
+                      >
+                        <PencilSimpleIcon size={16} />
+                      </IconButton>
+                    </Box>
+                  </Stack>
+                ) : (
+                  <Button 
+                    variant="outlined" 
+                    sx={{ 
+                      borderStyle: 'dashed', 
+                      width: '100%',
+                      justifyContent: 'center',
+                      color: 'text.secondary'
+                    }}
+                    onClick={() => setSelectDialogOpen({ type: 'checklist' })}
+                  >
+                    Add Checklist
+                  </Button>
+                )}
+              </Box>
+              
               {/* Date Range */}
               <Box>
                 <Stack direction="row" spacing={1} alignItems="left" sx={{ mb: 1 }}>
@@ -914,7 +1037,9 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                           selectDialogOpen.type === 'project' ? 'Project' : 
                           selectDialogOpen.type === 'label' ? 'Label' : 
                           selectDialogOpen.type === 'attachment' ? 'Media' :
-                          selectDialogOpen.type === 'resource' ? 'Resource' : ''}
+                          selectDialogOpen.type === 'resource' ? 'Resource' :
+                          selectDialogOpen.type === 'element' ? 'Element' :
+                          selectDialogOpen.type === 'checklist' ? 'Checklist' : ''}
                 </DialogTitle>
                 <DialogContent
                 sx={{
@@ -1109,6 +1234,81 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                         }
                         
                         // Don't close the dialog to allow selecting multiple resources
+                      }}
+                    />
+                  )}
+                  
+                  {selectDialogOpen.type === 'element' && (
+                    <SelectionList 
+                      table="element"
+                      labelField="title"
+                      multiSelect
+                      onSelect={(selected) => {
+                        // Handle multi-select for elements
+                        // First check if this element is already selected
+                        const isAlreadySelected = record.elements && 
+                          record.elements.some(e => 
+                            e.id === selected.id || e === selected.id
+                          );
+                        
+                        if (!isAlreadySelected) {
+                          // Add the element to the record
+                          const updatedElements = [
+                            ...(record.elements || []),
+                            selected
+                          ];
+                          
+                          // Update the UI
+                          setHydratedRecord(prev => ({
+                            ...prev,
+                            elements: updatedElements
+                          }));
+                          
+                          // If we have an ID, update the task in the database
+                          if (id) {
+                            // Create a link in the junction table
+                            supabase
+                              .from('element_task')
+                              .insert({
+                                task_id: id,
+                                element_id: selected.id
+                              })
+                              .then(({ error }) => {
+                                if (error) {
+                                  console.error("Failed to link element to task:", error);
+                                  alert(`Failed to link element to task: ${JSON.stringify(error)}`);
+                                  return;
+                                }
+                                
+                                console.log("Element linked to task successfully");
+                                
+                                // Refresh the task to get updated elements
+                                fetchTaskById(id).then(({ data: refreshedTask }) => {
+                                  if (refreshedTask) {
+                                    onUpdate?.(refreshedTask);
+                                  }
+                                });
+                              });
+                          }
+                        }
+                        
+                        // Don't close the dialog to allow selecting multiple elements
+                      }}
+                    />
+                  )}
+                  
+                  {selectDialogOpen.type === 'checklist' && (
+                    <SelectionList 
+                      table="checklist"
+                      labelField="title"
+                      onSelect={(selected) => {
+                        handleTaskUpdate("checklist_id", selected.id);
+                        setHydratedRecord(prev => ({
+                          ...prev, 
+                          checklist_id: selected.id,
+                          checklist_id_details: selected
+                        }));
+                        setSelectDialogOpen({ type: null });
                       }}
                     />
                   )}
@@ -1324,6 +1524,75 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                 </Box>
               </Box>
               
+              
+              {/* Elements using RelatedTagsField for clickable navigation */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+                  Elements
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  {record.elements_details && record.elements_details.length > 0 ? (
+                    <RelatedTagsField
+                      field={{
+                        name: 'elements',
+                        label: 'Elements',
+                        relation: {
+                          table: 'element',
+                          labelField: 'title',
+                          linkTo: '/dashboard/element'
+                        }
+                      }}
+                      value={record.elements || []}
+                      relatedItems={record.elements_details.map(element => ({
+                        id: element.id,
+                        [element.title ? 'title' : 'name']: element.title || element.name
+                      }))}
+                      onChange={(newValue) => {
+                        console.log("Elements changed (RelatedTagsField):", newValue);
+                        
+                        // Update the UI immediately for responsiveness
+                        setHydratedRecord(prev => ({
+                          ...prev,
+                          elements: newValue,
+                          elements_details: record.elements_details?.filter(element => 
+                            newValue.includes(element.id)
+                          ) || []
+                        }));
+                        
+                        // If we have an ID, update the database
+                        if (id) {
+                          // Use the proper query function to save the relationship
+                          const fieldDef = config?.fields?.find(f => f.name === 'elements');
+                          saveMultiRelationshipField('task', id, 'elements', newValue, fieldDef)
+                            .then(result => {
+                              if (!result.success) {
+                                console.error("Failed to save elements:", result.error);
+                              } else {
+                                console.log("Elements saved successfully:", result);
+                                // Don't refresh the task to avoid infinite loops
+                              }
+                            });
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Button 
+                      variant="outlined" 
+                      sx={{ 
+                        borderStyle: 'dashed', 
+                        width: '100%',
+                        justifyContent: 'center',
+                        color: 'text.secondary'
+                      }}
+                      onClick={() => setSelectDialogOpen({ type: 'element' })}
+                    >
+                      <PlusIcon size={16} style={{ marginRight: 8 }} />
+                      Add Elements
+                    </Button>
+                  )}
+                </Box>
+              </Box>
+              
               {/* Delete button */}
               <Box sx={{ mt: 2 }}>
                 <Button
@@ -1462,14 +1731,74 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
   // Memoize filters to prevent unnecessary re-renders
   const memoizedFilters = React.useMemo(() => filters, [JSON.stringify(filters)]);
   
+  // Define organizeHierarchy function before it's used
+  const organizeHierarchy = React.useCallback((data) => {
+    // First, sort all items alphabetically by the label field
+    const sortedData = [...data].sort((a, b) => {
+      const labelA = a[labelField]?.toLowerCase() || '';
+      const labelB = b[labelField]?.toLowerCase() || '';
+      return labelA.localeCompare(labelB);
+    });
+    
+    // Create a map for quick lookup
+    const itemMap = new Map();
+    sortedData.forEach(item => {
+      itemMap.set(item.id, { ...item, children: [] });
+    });
+    
+    // Build the hierarchy
+    const rootItems = [];
+    
+    sortedData.forEach(item => {
+      const mappedItem = itemMap.get(item.id);
+      
+      if (item.parent_id && itemMap.has(item.parent_id)) {
+        // This is a child item, add it to its parent
+        const parent = itemMap.get(item.parent_id);
+        parent.children.push(mappedItem);
+      } else {
+        // This is a root item
+        rootItems.push(mappedItem);
+      }
+    });
+    
+    // Sort children at each level alphabetically
+    const sortChildren = (items) => {
+      items.forEach(item => {
+        if (item.children && item.children.length > 0) {
+          item.children.sort((a, b) => {
+            const labelA = a[labelField]?.toLowerCase() || '';
+            const labelB = b[labelField]?.toLowerCase() || '';
+            return labelA.localeCompare(labelB);
+          });
+          sortChildren(item.children); // Recursively sort grandchildren
+        }
+      });
+    };
+    
+    sortChildren(rootItems);
+    
+    return rootItems;
+  }, [labelField]);
+  
   // Memoize the fetchOptions function to prevent unnecessary re-renders
   const fetchOptions = React.useCallback(async () => {
     try {
       setLoading(true);
       
       // Build the query
-      // Include parent_id and description for hierarchical organization and hover info
-      let query = supabase.from(table).select(`id, ${labelField}, parent_id, description`);
+      // Include parent_id for hierarchical organization
+      let query;
+      
+      // Only include description if it's not the checklist table (which doesn't have this column)
+      if (table === 'checklist') {
+        query = supabase.from(table).select(`id, ${labelField}, parent_id`);
+      } else {
+        query = supabase.from(table).select(`id, ${labelField}, parent_id, description`);
+      }
+      
+      // Always filter out deleted records
+      query = query.eq('is_deleted', false);
       
       // Apply filters if any
       memoizedFilters.forEach(filter => {
@@ -1517,56 +1846,6 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
       clearTimeout(timeoutId);
     };
   }, [fetchOptions]);
-  
-  // Define organizeHierarchy function before it's used
-  const organizeHierarchy = (data) => {
-    // First, sort all items alphabetically by the label field
-    const sortedData = [...data].sort((a, b) => {
-      const labelA = a[labelField]?.toLowerCase() || '';
-      const labelB = b[labelField]?.toLowerCase() || '';
-      return labelA.localeCompare(labelB);
-    });
-    
-    // Create a map for quick lookup
-    const itemMap = new Map();
-    sortedData.forEach(item => {
-      itemMap.set(item.id, { ...item, children: [] });
-    });
-    
-    // Build the hierarchy
-    const rootItems = [];
-    
-    sortedData.forEach(item => {
-      const mappedItem = itemMap.get(item.id);
-      
-      if (item.parent_id && itemMap.has(item.parent_id)) {
-        // This is a child item, add it to its parent
-        const parent = itemMap.get(item.parent_id);
-        parent.children.push(mappedItem);
-      } else {
-        // This is a root item
-        rootItems.push(mappedItem);
-      }
-    });
-    
-    // Sort children at each level alphabetically
-    const sortChildren = (items) => {
-      items.forEach(item => {
-        if (item.children && item.children.length > 0) {
-          item.children.sort((a, b) => {
-            const labelA = a[labelField]?.toLowerCase() || '';
-            const labelB = b[labelField]?.toLowerCase() || '';
-            return labelA.localeCompare(labelB);
-          });
-          sortChildren(item.children); // Recursively sort grandchildren
-        }
-      });
-    };
-    
-    sortChildren(rootItems);
-    
-    return rootItems;
-  };
   
   // Handle selection
   const handleSelect = (option) => {

@@ -391,23 +391,12 @@ export const task = {
         { value: 'todo', label: 'To do' },
         { value: 'in_progress', label: 'In Progress' },
         { value: 'complete', label: 'Complete' },
-        { value: 'archived', label: 'Archived' },    
+        { value: 'archived', label: 'Archived' },
+        { value: 'saved', label: 'Saved'}    
       ],
       defaultValue: ['todo', 'not_started'],
     },
-    {
-      name: 'type',
-      type: 'select',
-      label: 'Event Type',
-      multiple: true,
-      options: [
-        { value: 'task', label: 'Task' },
-        { value: 'vacation', label: 'Vacation' },
-        { value: 'meeting', label: 'Meeting' },
-        { value: 'archived', label: 'Archived' },       
-      ],
-      defaultValue: ['task'],
-    },
+
      {
     name: 'assigned_id',
     label: 'Assigned to',

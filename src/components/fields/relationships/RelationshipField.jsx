@@ -29,6 +29,9 @@ export const RelationshipField = ({ field, value, editable, onChange, record }) 
   
       setLoading(true);
       let query = supabase.from(field.relation.table).select(`id, ${field.relation.labelField}`);
+      
+      // Always filter out deleted records
+      query = query.eq('is_deleted', false);
   
       try {
         const resolvedFilter = resolveDynamicFilter(field.relation.filter || {}, record);

@@ -62,6 +62,8 @@ export const CustomFieldRenderer = ({
             key={`comment-thread-${record?.id || 'new'}`}
             entity={field.props?.entity}
             entityId={record?.id}
+            projectId={field.props?.projectId}
+            companyId={field.props?.companyId}
           />
             );
 

@@ -118,6 +118,9 @@ export const useMultiRelationOptions = ({ field, record, debug = false }) => {
       const fields = Array.from(new Set(['id', labelField, 'parent_id', ...tableFields]));
       let query = supabase.from(table).select(['id', labelField, 'parent_id'].join(', '));
       
+      // Always filter out deleted records
+      query = query.eq('is_deleted', false);
+      
       // Apply dynamic filters if applicable
       let dynamicFilters = {};
       if (filterFrom && filter && parentId) {

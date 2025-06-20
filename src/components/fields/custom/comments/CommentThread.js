@@ -11,14 +11,19 @@ import { useCurrentContact } from '@/hooks/useCurrentContact';
 import RichTextFieldRenderer from '@/components/fields/text/richText/RichTextFieldRenderer';
 import NextLink from 'next/link';
 
-export const CommentThread = ({ entity, entityId }) => {
-  console.log('[CommentThread] Rendering with entity:', entity, 'entityId:', entityId);
+export const CommentThread = ({ entity, entityId, projectId, companyId }) => {
+  console.log('[CommentThread] Rendering with entity:', entity, 'entityId:', entityId, 'projectId:', projectId, 'companyId:', companyId);
   
   const [input, setInput] = useState('');
   const [editorKey, setEditorKey] = useState(0); // Add a key to force re-render
   const [viewingComment, setViewingComment] = useState(null); // Track which comment is being viewed
   const { contact, loading: contactLoading } = useCurrentContact();
-  const { comments, addComment, deleteComment, loading: commentsLoading } = useComments({ entity, entityId });
+  const { comments, addComment, deleteComment, loading: commentsLoading } = useComments({ 
+    entity, 
+    entityId, 
+    projectId, 
+    companyId 
+  });
   
   console.log('[CommentThread] Comments:', comments);
 

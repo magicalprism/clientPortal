@@ -35,6 +35,8 @@ export const fetchCommentsForTask = async (taskId) => {
 
 /**
  * Link a comment to a task
+ * @param {string} commentId - The comment ID
+ * @param {string} taskId - The task ID
  */
 export const linkCommentToTask = async (commentId, taskId) => {
   try {
@@ -61,13 +63,17 @@ export const linkCommentToTask = async (commentId, taskId) => {
   }
 
   // Otherwise, create the link
+  const insertData = {
+    comment_id: commentId,
+    task_id: taskId,
+    created_at: new Date().toISOString()
+  };
+  
+  console.log('[comment_task] Inserting data:', insertData);
+  
   const { data, error } = await supabase
     .from('comment_task')
-    .insert([{
-      comment_id: commentId,
-      task_id: taskId,
-      created_at: new Date().toISOString()
-    }])
+    .insert([insertData])
     .select();
 
   return {
