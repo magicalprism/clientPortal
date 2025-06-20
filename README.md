@@ -36,6 +36,15 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/deploym
 Template documentation https://material-kit-pro-react-docs-bslicwx3m-devias.vercel.app/environment-variables
 
 
+## Troubleshooting
+
+### Pivot Tables and Relationships
+
+- **Endless Loops**: If you encounter endless loops when working with pivot tables, it's likely there is a duplicate entry in the pivot table. Check for duplicate records in the junction table.
+
+- **Data Not Displaying**: If a pivot table array isn't displaying properly, it's likely because of Row-Level Security (RLS) policies. Check your Supabase RLS policies to ensure they allow the necessary access.
+
+
 ## Config Files
 How to Configure Fields for FieldRenderer
 Each field in your config (config.fields) can support different types, display logic, and view-specific behavior. Here's how to set it all up correctly.

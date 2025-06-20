@@ -8,24 +8,36 @@ export const useComments = ({ entity, entityId }) => {
   const [comments, setComments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Log when the hook is called
+  console.log('[Comments] useComments hook called with:', { entity, entityId });
+
   useEffect(() => {
     const fetchComments = async () => {
       console.log('[Comments] Entity:', entity);
       console.log('[Comments] Entity ID:', entityId);
 
       try {
-        // Use the appropriate method based on entity type
-        if (entity.toLowerCase() === 'project') {
-          // Use the dedicated pivot module for project comments
-          const projectComments = await pivot.comment_project.fetchCommentsForProject(entityId);
-          console.log('[Comments] Project comments:', projectComments);
-          
-          // Sort by created_at
-          projectComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-          
-          setComments(projectComments || []);
-        } else {
-          // For other entities, use the dynamic approach
+      // Use the appropriate method based on entity type
+      if (entity.toLowerCase() === 'project') {
+        // Use the dedicated pivot module for project comments
+        const projectComments = await pivot.comment_project.fetchCommentsForProject(entityId);
+        console.log('[Comments] Project comments:', projectComments);
+        
+        // Sort by created_at
+        projectComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        
+        setComments(projectComments || []);
+      } else if (entity.toLowerCase() === 'task') {
+        // Use the dedicated pivot module for task comments
+        const taskComments = await pivot.comment_task.fetchCommentsForTask(entityId);
+        console.log('[Comments] Task comments:', taskComments);
+        
+        // Sort by created_at
+        taskComments.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+        
+        setComments(taskComments || []);
+      } else {
+        // For other entities, use the dynamic approach
           const linkTable = `comment_${entity.toLowerCase()}`;
           const entityField = `${entity.toLowerCase()}_id`;
           
@@ -119,6 +131,14 @@ export const useComments = ({ entity, entityId }) => {
           console.error('Error linking comment to project:', error);
           return;
         }
+      } else if (entity.toLowerCase() === 'task') {
+        // Use the dedicated pivot module for task comments
+        const { success, error } = await pivot.comment_task.linkCommentToTask(commentId, entityId);
+        
+        if (!success) {
+          console.error('Error linking comment to task:', error);
+          return;
+        }
       } else {
         // For other entities, use the dynamic approach
         const linkTable = `comment_${entity.toLowerCase()}`;
@@ -149,6 +169,14 @@ export const useComments = ({ entity, entityId }) => {
         
         if (!success) {
           console.error('Error unlinking comment from project:', error);
+          return;
+        }
+      } else if (entity.toLowerCase() === 'task') {
+        // Use the dedicated pivot module for task comments
+        const { success, error } = await pivot.comment_task.unlinkCommentFromTask(commentId, entityId);
+        
+        if (!success) {
+          console.error('Error unlinking comment from task:', error);
           return;
         }
       } else {

@@ -59,6 +59,7 @@ export const CustomFieldRenderer = ({
       case 'CommentThread':
       return (
          <CommentThread
+            key={`comment-thread-${record?.id || 'new'}`}
             entity={field.props?.entity}
             entityId={record?.id}
           />

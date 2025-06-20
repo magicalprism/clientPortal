@@ -83,7 +83,7 @@ import { RelationshipField } from '@/components/fields/relationships/Relationshi
 import { GalleryRelationshipFieldRenderer } from '@/components/fields/media/GalleryRelationshipFieldRenderer';
 import { MultiRelationshipFieldRenderer } from '@/components/fields/relationships/multi/MultiRelationshipFieldRenderer.jsx';
 import { SimpleMultiRelationshipField } from '@/components/fields/relationships/multi/SimpleMultiRelationshipField';
-import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
+import { CustomFieldRenderer } from '@/components/fields/custom/CustomFieldRenderer';
 import { saveMultiRelationshipField } from '@/lib/supabase/queries/pivot/multirelationship';
 import * as collections from '@/collections';
 
@@ -638,7 +638,15 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
               
               {/* Comments */}
               <Box>
-                <CommentThread entity="task" entityId={id} />
+                <CustomFieldRenderer
+                  field={{
+                    component: 'CommentThread',
+                    props: {
+                      entity: 'task'
+                    }
+                  }}
+                  record={hydratedRecord}
+                />
               </Box>
             </Stack>
           </Grid>

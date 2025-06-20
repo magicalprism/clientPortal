@@ -253,6 +253,16 @@ export const task = {
         targetKey: 'resource_id'
       }
     },
+        {
+      name: 'comments',
+      type: 'comments',
+      label: 'Comments',
+      tab: 'Notes',
+      group: 'General',
+      props: {
+        entity: 'task',
+      }
+    },
     { 
       name: 'checklist_id', 
       label: 'Checklist', 

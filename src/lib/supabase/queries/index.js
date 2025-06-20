@@ -34,6 +34,7 @@ import * as brandProjectModule from './pivot/brand_project';
 import * as categoryProjectModule from './pivot/category_project';
 import * as checklistTaskModule from './pivot/checklist_task';
 import * as commentProjectModule from './pivot/comment_project';
+import * as commentTaskModule from './pivot/comment_task';
 import * as companyProjectModule from './pivot/company_project';
 import * as contactProjectModule from './pivot/contact_project';
 import * as eventProjectModule from './pivot/event_project';
@@ -83,6 +84,7 @@ export const pivot = {
   category_project: categoryProjectModule,
   checklist_task: checklistTaskModule,
   comment_project: commentProjectModule,
+  comment_task: commentTaskModule,
   company_project: companyProjectModule,
   contact_project: contactProjectModule,
   event_project: eventProjectModule,
@@ -133,6 +135,7 @@ export { brandProjectModule as brand_project };
 export { categoryProjectModule as category_project };
 export { checklistTaskModule as checklist_task };
 export { commentProjectModule as comment_project };
+export { commentTaskModule as comment_task };
 export { companyProjectModule as company_project };
 export { contactProjectModule as contact_project };
 export { eventProjectModule as event_project };

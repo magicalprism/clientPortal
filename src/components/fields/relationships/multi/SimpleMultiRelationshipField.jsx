@@ -27,11 +27,6 @@ export const SimpleMultiRelationshipField = ({
   record,
   config,
 }) => {
-  console.log('[SimpleMultiRelationshipField] Rendering with props:', { 
-    fieldName: field?.name, 
-    value, 
-    recordId: record?.id 
-  });
 
   // Initialize state
   const [options, setOptions] = useState([]);
@@ -62,10 +57,10 @@ export const SimpleMultiRelationshipField = ({
   // Fetch options on mount
   useEffect(() => {
     const fetchOptions = async () => {
-      console.log(`[SimpleMultiRelationshipField:${instanceId}] Fetching options for ${field?.name}`);
+  
       
       if (!table) {
-        console.error(`[SimpleMultiRelationshipField:${instanceId}] No table specified for ${field?.name}`);
+
         setLoading(false);
         return;
       }
@@ -79,12 +74,12 @@ export const SimpleMultiRelationshipField = ({
           .select(`id, ${labelField}`);
           
         if (error) {
-          console.error(`[SimpleMultiRelationshipField:${instanceId}] Error fetching options:`, error);
+
           setLoading(false);
           return;
         }
         
-        console.log(`[SimpleMultiRelationshipField:${instanceId}] Fetched ${data?.length} options for ${field?.name}`);
+
         
         // Sort options alphabetically
         const sortedOptions = [...(data || [])].sort((a, b) => {
@@ -96,7 +91,7 @@ export const SimpleMultiRelationshipField = ({
         setOptions(sortedOptions);
         setLoading(false);
       } catch (err) {
-        console.error(`[SimpleMultiRelationshipField:${instanceId}] Error in fetchOptions:`, err);
+
         setLoading(false);
       }
     };
@@ -107,7 +102,7 @@ export const SimpleMultiRelationshipField = ({
   // Initialize selected values from props
   useEffect(() => {
     const normalizedValue = normalizeValue(value);
-    console.log(`[SimpleMultiRelationshipField:${instanceId}] Initializing selected values:`, normalizedValue);
+
     setSelectedValues(normalizedValue);
   }, [value, instanceId]);
 
@@ -118,7 +113,7 @@ export const SimpleMultiRelationshipField = ({
 
   // Handle selection changes
   const handleChange = (_, newSelectedOptions) => {
-    console.log(`[SimpleMultiRelationshipField:${instanceId}] Selection changed:`, newSelectedOptions);
+
     
     // Extract IDs from selected options
     const newSelectedIds = (newSelectedOptions || [])
@@ -135,7 +130,7 @@ export const SimpleMultiRelationshipField = ({
         details: newSelectedOptions
       };
       
-      console.log(`[SimpleMultiRelationshipField:${instanceId}] Calling onChange with:`, result);
+
       onChange(result);
     }
   };
@@ -143,17 +138,11 @@ export const SimpleMultiRelationshipField = ({
   // Save to database directly (for testing)
   const saveToDatabase = async () => {
     if (!parentId || !junctionTable) {
-      console.error(`[SimpleMultiRelationshipField:${instanceId}] Cannot save: missing parentId or junctionTable`);
+
       return;
     }
     
-    console.log(`[SimpleMultiRelationshipField:${instanceId}] Saving to database:`, {
-      parentId,
-      junctionTable,
-      sourceKey,
-      targetKey,
-      selectedValues
-    });
+
     
     try {
       // Get existing relationships
@@ -168,11 +157,7 @@ export const SimpleMultiRelationshipField = ({
       const toAdd = selectedValues.filter(id => !existingIds.includes(id));
       const toRemove = existingIds.filter(id => !selectedValues.includes(id));
       
-      console.log(`[SimpleMultiRelationshipField:${instanceId}] Changes:`, {
-        existing: existingIds,
-        toAdd,
-        toRemove
-      });
+
       
       // Add new relationships
       if (toAdd.length > 0) {
@@ -186,7 +171,7 @@ export const SimpleMultiRelationshipField = ({
           .insert(insertData);
 
         if (insertError) {
-          console.error(`[SimpleMultiRelationshipField:${instanceId}] Error inserting:`, insertError);
+
         }
       }
 
@@ -202,14 +187,14 @@ export const SimpleMultiRelationshipField = ({
             });
 
           if (deleteError) {
-            console.error(`[SimpleMultiRelationshipField:${instanceId}] Error removing:`, deleteError);
+
           }
         }
       }
       
-      console.log(`[SimpleMultiRelationshipField:${instanceId}] Save completed`);
+ 
     } catch (err) {
-      console.error(`[SimpleMultiRelationshipField:${instanceId}] Save error:`, err);
+
     }
   };
 

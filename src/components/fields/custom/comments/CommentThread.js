@@ -12,11 +12,15 @@ import RichTextFieldRenderer from '@/components/fields/text/richText/RichTextFie
 import NextLink from 'next/link';
 
 export const CommentThread = ({ entity, entityId }) => {
+  console.log('[CommentThread] Rendering with entity:', entity, 'entityId:', entityId);
+  
   const [input, setInput] = useState('');
   const [editorKey, setEditorKey] = useState(0); // Add a key to force re-render
   const [viewingComment, setViewingComment] = useState(null); // Track which comment is being viewed
   const { contact, loading: contactLoading } = useCurrentContact();
   const { comments, addComment, deleteComment, loading: commentsLoading } = useComments({ entity, entityId });
+  
+  console.log('[CommentThread] Comments:', comments);
 
   const handleSubmit = async () => {
     if (!input.trim()) return;
