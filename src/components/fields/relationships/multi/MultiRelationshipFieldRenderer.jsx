@@ -1,6 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+// DEBUG VERSION - With extensive logging to track infinite loop
+// IMPORTANT: Infinite loops with this component are often caused by duplicate value combinations 
+// in the pivot/junction table. If you experience infinite loops, check for duplicate entries
+// in the junction table (e.g., duplicate task_id + resource_id combinations).
+
+import { useEffect, useState, useRef } from 'react';
 import { Typography } from '@mui/material';
 import { MultiRelationshipField } from '@/components/fields/relationships/multi/MultiRelationshipField';
 // Fix import method
@@ -27,22 +32,26 @@ export const MultiRelationshipFieldRenderer = ({
   // Store both original and current values for comparison
   const [originalValue, setOriginalValue] = useState([]);
   const [currentValue, setCurrentValue] = useState([]);
-  const [initialized, setInitialized] = useState(false);
+  
+  // Debounce reference for onChange
+  const debounceTimerRef = useRef(null);
 
-  // Initialize on mount
+  // Initialize and update when value changes
   useEffect(() => {
-    if (!initialized) {
-      const normalized = normalizeMultiRelationshipValue(value);
+    const normalized = normalizeMultiRelationshipValue(value);
+    
+    // Only log on first initialization
+    if (currentValue.length === 0 && originalValue.length === 0) {
       console.log(`[MultiRelationshipFieldRenderer] ${field.name} initializing:`, {
         raw: value,
         normalized
       });
-      
       setOriginalValue(normalized);
-      setCurrentValue(normalized);
-      setInitialized(true);
     }
-  }, [field.name, value, initialized]);
+    
+    // Always update currentValue when value prop changes
+    setCurrentValue(normalized);
+  }, [field.name, value]);
 
   // Read-only display
   if (!editable) {
@@ -61,7 +70,7 @@ export const MultiRelationshipFieldRenderer = ({
     );
   }
 
-  // Handle change with explicit save button activation
+  // Handle change with explicit save button activation and debouncing
   const handleChange = (newValue) => {
     let selectedIds;
     let selectedDetails;
@@ -83,13 +92,23 @@ export const MultiRelationshipFieldRenderer = ({
       });
     }
 
-    // Update local state
+    // Check if value has actually changed from current value
+    // Convert to sets for comparison since order doesn't matter
+    const currentSet = new Set(currentValue);
+    const newSet = new Set(selectedIds);
+    
+    // Skip update if values are the same (prevents infinite loop)
+    if (currentSet.size === newSet.size && 
+        [...currentSet].every(id => newSet.has(id))) {
+      console.log(`[MultiRelationshipFieldRenderer] ${field.name} no change detected, skipping update`);
+      return;
+    }
+    
+    // Update local state immediately for UI responsiveness
     setCurrentValue(selectedIds);
     
-    // Check if value has actually changed
-    // Convert to sets for comparison since order doesn't matter
+    // Check if value has changed from original value
     const originalSet = new Set(originalValue);
-    const newSet = new Set(selectedIds);
     
     // If lengths differ or any item is not in the original set, changes detected
     const hasChanges = 
@@ -98,29 +117,33 @@ export const MultiRelationshipFieldRenderer = ({
     
     console.log(`[MultiRelationshipFieldRenderer] ${field.name} changed:`, {
       originalValue,
+      currentValue,
       newValue: selectedIds,
       hasChanges
     });
 
-    // CRITICAL: Force setHasChanges in multiple ways to ensure save button activation
-    
-    // 1. Call onChange with complete object
-    if (typeof onChange === 'function') {
-      onChange({
-        ids: selectedIds,
-        details: selectedDetails
-      });
+    // Clear any existing debounce timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
     }
     
-    // 2. If collectionSave is available, call setHasChanges directly
-    if (collectionSave && typeof collectionSave.setHasChanges === 'function') {
-      collectionSave.setHasChanges(true);
-    }
-    
-    // 3. If changes detected, update the record directly with both values
-    if (hasChanges && record && config) {
-      // Update both the field and _details fields
-      if (typeof window !== 'undefined') {
+    // Debounce the update operations to prevent infinite loops
+    debounceTimerRef.current = setTimeout(() => {
+      // 1. Call onChange with complete object
+      if (typeof onChange === 'function') {
+        onChange({
+          ids: selectedIds,
+          details: selectedDetails
+        });
+      }
+      
+      // 2. If collectionSave is available, call setHasChanges directly
+      if (hasChanges && collectionSave && typeof collectionSave.setHasChanges === 'function') {
+        collectionSave.setHasChanges(true);
+      }
+      
+      // 3. If changes detected, dispatch event (but only if really needed)
+      if (hasChanges && record && config && typeof window !== 'undefined') {
         // Trigger a custom event to notify parent components
         const event = new CustomEvent('multiRelationshipChanged', {
           detail: {
@@ -133,7 +156,10 @@ export const MultiRelationshipFieldRenderer = ({
         });
         window.dispatchEvent(event);
       }
-    }
+      
+      // Clear the timer reference
+      debounceTimerRef.current = null;
+    }, 300); // 300ms debounce
   };
 
 

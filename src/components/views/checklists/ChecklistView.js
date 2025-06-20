@@ -80,7 +80,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     const dueTodayTasks = tasks.filter(task => isToday(task.due_date));
     const dueThisWeekTasks = tasks.filter(task => isThisWeek(task.due_date) && !isToday(task.due_date));
 
-    console.log('[ChecklistView] Generated checklists - Due Today:', dueTodayTasks.length, 'Due This Week:', dueThisWeekTasks.length);
+   
 
     const generatedChecklists = [];
 
@@ -126,26 +126,25 @@ export default function ChecklistView({ config, overId, dragging }) {
 
   // Fetch data function
   const fetchData = useCallback(async () => {
-    console.log('[ChecklistView] Fetching data...');
+
     setIsLoading(true);
     
     try {
       const currentUserId = await getCurrentContactId();
-      console.log('[ChecklistView] Current user ID:', currentUserId);
+
 
       // Use centralized query functions instead of direct Supabase queries
       const { data: checklistsData, error: checklistError } = await fetchUserChecklists(currentUserId);
       const { data: tasksData, error: taskError } = await fetchTasksByAssignedId(currentUserId);
 
       if (checklistError) {
-        console.error('Checklist fetch error:', checklistError);
+
       }
       if (taskError) {
-        console.error('Task fetch error:', taskError);
+ 
       }
       
-      console.log('[ChecklistView] Fetched checklists:', checklistsData?.length || 0);
-      console.log('[ChecklistView] Fetched tasks:', tasksData?.length || 0);
+  
 
       // Ensure order_index is set for checklists that don't have it
       const processedChecklists = (checklistsData || []).map((cl, index) => ({
@@ -158,7 +157,7 @@ export default function ChecklistView({ config, overId, dragging }) {
       const activeTasks = tasksData?.filter(task => task.status !== 'complete') || [];
       setTasks(activeTasks);
     } catch (error) {
-      console.error('[ChecklistView] Fetch error:', error);
+
     } finally {
       setIsLoading(false);
     }
@@ -175,7 +174,7 @@ export default function ChecklistView({ config, overId, dragging }) {
 
   // Handle task completion
   const handleToggleComplete = async (taskId) => {
-    console.log('[ChecklistView] Marking task complete:', taskId);
+
     
     // Update state immediately for responsive UI
     setTasks((prev) => prev.filter((t) => t.id !== taskId));
@@ -184,23 +183,23 @@ export default function ChecklistView({ config, overId, dragging }) {
       const { error } = await updateTask(taskId, { status: 'complete' });
         
       if (error) {
-        console.error('[ChecklistView] Error marking task complete:', error);
+    
         await fetchData();
       }
     } catch (err) {
-      console.error('[ChecklistView] Unexpected error marking task complete:', err);
+ 
       await fetchData();
     }
   };
 
   // Handle task deletion
   const handleTaskDelete = async (taskId) => {
-    console.log('[ChecklistView] Deleting task:', taskId);
+
     
     // Update state immediately for responsive UI
     setTasks((prev) => {
       const filtered = prev.filter((t) => t.id !== taskId);
-      console.log('[ChecklistView] Tasks after deletion:', filtered.length);
+
       return filtered;
     });
     
@@ -208,32 +207,32 @@ export default function ChecklistView({ config, overId, dragging }) {
       const { error } = await deleteTask(taskId);
         
       if (error) {
-        console.error('[ChecklistView] Error deleting task:', error);
+    
         await fetchData();
       } else {
-        console.log('[ChecklistView] Task deleted successfully from database');
+    
       }
     } catch (err) {
-      console.error('[ChecklistView] Unexpected error deleting task:', err);
+
       await fetchData();
     }
   };
 
   // Handle inline task addition
   const handleTaskAdd = (newTask) => {
-    console.log('[ChecklistView] Adding new task to state:', newTask);
+
     
     // Add the new task to state immediately, but check for duplicates
     setTasks((prev) => {
       // Check if task already exists (prevent duplicates)
       const exists = prev.some(task => task.id === newTask.id);
       if (exists) {
-        console.log('[ChecklistView] Task already exists, skipping duplicate');
+
         return prev;
       }
       
       const updated = [...prev, newTask];
-      console.log('[ChecklistView] Tasks updated, new length:', updated.length);
+
       return updated;
     });
   };
@@ -243,7 +242,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     // Don't allow editing generated checklists
     if (typeof id === 'string') return;
     
-    console.log('[ChecklistView] Updating checklist:', id, title);
+ 
     
     // Update state immediately
     setChecklists(prev => prev.map(cl => 
@@ -254,11 +253,11 @@ export default function ChecklistView({ config, overId, dragging }) {
       const { error } = await updateChecklist(id, { title });
         
       if (error) {
-        console.error('[ChecklistView] Error updating checklist:', error);
+
         await fetchData();
       }
     } catch (err) {
-      console.error('[ChecklistView] Unexpected error updating checklist:', err);
+  
       await fetchData();
     }
   };
@@ -268,7 +267,7 @@ export default function ChecklistView({ config, overId, dragging }) {
     // Don't allow deleting generated checklists
     if (typeof id === 'string') return;
     
-    console.log('[ChecklistView] Deleting checklist:', id);
+  
     
     // Update state immediately
     setChecklists(prev => prev.filter(cl => cl.id !== id));
@@ -279,18 +278,18 @@ export default function ChecklistView({ config, overId, dragging }) {
       const { error } = await deleteChecklist(id, false);
       
       if (error) {
-        console.error('[ChecklistView] Error deleting checklist:', error);
+    
         await fetchData();
       }
     } catch (err) {
-      console.error('[ChecklistView] Unexpected error deleting checklist:', err);
+
       await fetchData();
     }
   };
 
   // Handle create checklist button click
   const handleCreateChecklist = async () => {
-    console.log('[ChecklistView] Opening create checklist modal');
+
     
     try {
       const currentUserId = await getCurrentContactId();
@@ -310,13 +309,13 @@ export default function ChecklistView({ config, overId, dragging }) {
       
       router.push(currentUrl.pathname + currentUrl.search);
     } catch (err) {
-      console.error('[ChecklistView] Error getting current user:', err);
+
     }
   };
 
   // Handle modal close
   const handleModalClose = () => {
-    console.log('[ChecklistView] Modal closed');
+
     window.history.back();
   };
 
@@ -324,7 +323,7 @@ export default function ChecklistView({ config, overId, dragging }) {
 
   // Handle modal refresh/success
   const handleModalRefresh = () => {
-    console.log('[ChecklistView] Modal refresh triggered');
+
     fetchData();
   };
 
@@ -347,27 +346,26 @@ export default function ChecklistView({ config, overId, dragging }) {
       };
     });
     
-    console.log('[ChecklistView] Grouped tasks updated:', result.map(cl => ({ id: cl.id, taskCount: cl.tasks?.length || 0 })));
+    
     return result;
   }, [filteredChecklists, tasks]);
 
   // Handle drag and drop
   const handleDragEnd = async (event) => {
     const { active, over } = event;
-    console.log('[ChecklistView] Drag end:', { active: active?.id, over: over?.id });
+
     
     if (!active || !over || active.id === over.id) return;
 
     // Handle checklist reordering (only real checklists, not generated ones)
     if (!isNaN(active.id) && !isNaN(over.id)) {
-      console.log('[ChecklistView] Reordering checklists:', active.id, '→', over.id);
+
       
       const realChecklists = checklists.filter(cl => !cl.isGenerated);
       const oldIndex = realChecklists.findIndex((c) => c.id === active.id);
       const newIndex = realChecklists.findIndex((c) => c.id === over.id);
       
-      console.log('[ChecklistView] Indices:', { oldIndex, newIndex });
-      
+
       if (oldIndex !== -1 && newIndex !== -1) {
         const newOrder = arrayMove(realChecklists, oldIndex, newIndex);
         
@@ -377,7 +375,7 @@ export default function ChecklistView({ config, overId, dragging }) {
           order_index: index
         }));
         
-        console.log('[ChecklistView] Updating order:', updates);
+
         
         // Update database first
         try {
@@ -388,7 +386,7 @@ export default function ChecklistView({ config, overId, dragging }) {
             });
             
             if (error) {
-              console.error('[ChecklistView] Error updating checklist order:', error);
+      
             }
           }
           
@@ -399,7 +397,7 @@ export default function ChecklistView({ config, overId, dragging }) {
           }));
           
         } catch (err) {
-          console.error('[ChecklistView] Unexpected error updating order:', err);
+
           // Refresh data on error
           fetchData();
         }
@@ -430,7 +428,7 @@ export default function ChecklistView({ config, overId, dragging }) {
             )
           );
         } else {
-          console.error('[ChecklistView] Error moving task to checklist:', error);
+      
         }
         return;
       }
@@ -459,7 +457,7 @@ export default function ChecklistView({ config, overId, dragging }) {
               )
             );
           } else {
-            console.error('[ChecklistView] Error moving task to checklist:', error);
+        
           }
         } else {
           // Reorder within same checklist
@@ -491,7 +489,7 @@ export default function ChecklistView({ config, overId, dragging }) {
               return updated;
             });
           } else {
-            console.error('[ChecklistView] Error reordering tasks:', error);
+         
           }
         }
       }
@@ -499,7 +497,7 @@ export default function ChecklistView({ config, overId, dragging }) {
   };
 
   const handleDragStart = ({ active }) => {
-    console.log('[ChecklistView] Drag start:', active?.id);
+
     setActiveTask(active);
   };
 

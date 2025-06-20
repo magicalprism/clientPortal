@@ -4,10 +4,14 @@ import { createClient } from '@/lib/supabase/browser';
 import { normalizeMultiRelationshipValue } from '@/lib/utils/filters/listfilters/normalizeMultiRelationshipValue';
 
 /**
+ * IMPORTANT: Infinite loops with multirelationship fields are often caused by duplicate value combinations 
+ * in the pivot/junction table. If you experience infinite loops, check for duplicate entries
+ * in the junction table (e.g., duplicate task_id + resource_id combinations).
+ * 
  * Hook for syncing multirelationship values with the database
  * Handles junction tables for many-to-many relationships
  */
-export const useMultiRelationSync = () => {
+export const useMultiRelationSync = ({ debug = false } = {}) => {
   const supabase = createClient();
 
   /**
@@ -24,7 +28,9 @@ export const useMultiRelationSync = () => {
    */
   const syncMultiRelation = async ({ field, parentId, selectedIds, options, onChange }) => {
     if (!field?.relation) {
-      console.warn('[useMultiRelationSync] Missing field relation configuration');
+      if (debug) {
+        console.warn('[useMultiRelationSync] Missing field relation configuration');
+      }
       return null;
     }
     
@@ -43,20 +49,24 @@ export const useMultiRelationSync = () => {
     
     // Validate required parameters
     if (!parentId || !junctionTable || !table) {
-      console.warn('[useMultiRelationSync] Missing required parameters:', {
-        parentId, junctionTable, table
-      });
+      if (debug) {
+        console.warn('[useMultiRelationSync] Missing required parameters:', {
+          parentId, junctionTable, table
+        });
+      }
       return null;
     }
     
-    // Log operation
-    console.log(`[useMultiRelationSync] Syncing ${selectedIds.length} selected IDs for ${field.name}`, {
-      parentId,
-      junctionTable, 
-      sourceKey,
-      targetKey,
-      selectedIds: selectedIds.slice(0, 5).join(', ') + (selectedIds.length > 5 ? '...' : '')
-    });
+    // Log operation only in debug mode
+    if (debug) {
+      console.log(`[useMultiRelationSync] Syncing ${selectedIds.length} selected IDs for ${field.name}`, {
+        parentId,
+        junctionTable, 
+        sourceKey,
+        targetKey,
+        selectedIds: selectedIds.slice(0, 5).join(', ') + (selectedIds.length > 5 ? '...' : '')
+      });
+    }
 
     try {
       // Normalize selected IDs
@@ -69,7 +79,9 @@ export const useMultiRelationSync = () => {
         .eq(sourceKey, parentId);
         
       if (fetchError) {
-        console.error('[useMultiRelationSync] Error fetching existing relationships:', fetchError);
+        if (debug) {
+          console.error('[useMultiRelationSync] Error fetching existing relationships:', fetchError);
+        }
         return null;
       }
       
@@ -85,15 +97,19 @@ export const useMultiRelationSync = () => {
       const newStr = sortedNew.join(',');
       const hasChanges = existingStr !== newStr;
       
-      console.log(`[useMultiRelationSync] Comparing changes for ${field.name}:`, {
-        existingCount: existingIds.length,
-        newCount: normalizedIds.length,
-        hasChanges
-      });
+      if (debug) {
+        console.log(`[useMultiRelationSync] Comparing changes for ${field.name}:`, {
+          existingCount: existingIds.length,
+          newCount: normalizedIds.length,
+          hasChanges
+        });
+      }
       
       // Skip if no changes needed
       if (!hasChanges) {
-        console.log(`[useMultiRelationSync] No changes needed for ${field.name}`);
+        if (debug) {
+          console.log(`[useMultiRelationSync] No changes needed for ${field.name}`);
+        }
         
         // Retrieve existing data for consistency
         const { data: linkedData } = await supabase
@@ -120,11 +136,15 @@ export const useMultiRelationSync = () => {
           .insert(insertData);
 
         if (insertError) {
-          console.error('[useMultiRelationSync] Error inserting new relationships:', insertError);
+          if (debug) {
+            console.error('[useMultiRelationSync] Error inserting new relationships:', insertError);
+          }
           return null;
         }
 
-        console.log(`[useMultiRelationSync] Inserted ${toAdd.length} new relationships for ${field.name}`);
+        if (debug) {
+          console.log(`[useMultiRelationSync] Inserted ${toAdd.length} new relationships for ${field.name}`);
+        }
       }
 
       // Remove deselected relationships
@@ -138,12 +158,14 @@ export const useMultiRelationSync = () => {
               [targetKey]: id
             });
 
-          if (deleteError) {
+          if (deleteError && debug) {
             console.error(`[useMultiRelationSync] Error removing relationship for ${id}:`, deleteError);
           }
         }
 
-        console.log(`[useMultiRelationSync] Removed ${toRemove.length} relationships for ${field.name}`);
+        if (debug) {
+          console.log(`[useMultiRelationSync] Removed ${toRemove.length} relationships for ${field.name}`);
+        }
       }
 
       // Fetch updated data
@@ -153,7 +175,9 @@ export const useMultiRelationSync = () => {
         .in('id', normalizedIds.length > 0 ? normalizedIds : ['0']);
 
       if (error) {
-        console.error('[useMultiRelationSync] Fetching updated records failed:', error);
+        if (debug) {
+          console.error('[useMultiRelationSync] Fetching updated records failed:', error);
+        }
         return null;
       }
 
@@ -167,7 +191,9 @@ export const useMultiRelationSync = () => {
       
       return linkedData || [];
     } catch (err) {
-      console.error('[useMultiRelationSync] Sync error:', err);
+      if (debug) {
+        console.error('[useMultiRelationSync] Sync error:', err);
+      }
       return null;
     }
   };
@@ -183,7 +209,9 @@ export const useMultiRelationSync = () => {
    */
   const saveAllMultiRelationships = async ({ config, record }) => {
     if (!record?.id || !config?.fields) {
-      console.warn('[saveAllMultiRelationships] Missing record ID or config fields');
+      if (debug) {
+        console.warn('[saveAllMultiRelationships] Missing record ID or config fields');
+      }
       return false;
     }
     
@@ -197,7 +225,9 @@ export const useMultiRelationSync = () => {
       return true;
     }
     
-    console.log(`[saveAllMultiRelationships] Processing ${multiRelationshipFields.length} multirelationship fields for record ${record.id}`);
+    if (debug) {
+      console.log(`[saveAllMultiRelationships] Processing ${multiRelationshipFields.length} multirelationship fields for record ${record.id}`);
+    }
     
     try {
       // Process each field sequentially
@@ -222,11 +252,15 @@ export const useMultiRelationSync = () => {
       // Check if all operations succeeded
       const success = results.every(Boolean);
       
-      console.log(`[saveAllMultiRelationships] Completed with status: ${success ? 'success' : 'failure'}`);
+      if (debug) {
+        console.log(`[saveAllMultiRelationships] Completed with status: ${success ? 'success' : 'failure'}`);
+      }
       
       return success;
     } catch (error) {
-      console.error('[saveAllMultiRelationships] Error saving multirelationships:', error);
+      if (debug) {
+        console.error('[saveAllMultiRelationships] Error saving multirelationships:', error);
+      }
       return false;
     }
   };

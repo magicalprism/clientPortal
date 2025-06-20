@@ -172,7 +172,25 @@ export const task = {
       fullWidth: true,
 
     },      
-  
+  {
+  name: 'attachments',
+  label: 'All Media',
+  type: 'galleryRelationship',
+  tab: 'Content',
+  database: false,
+  showAll: true,
+  relation: {
+    table: 'media',
+    labelField: 'title',
+    junctionTable: 'media_task',
+    sourceKey: 'task_id',
+    targetKey: 'media_id',
+    foreignKey: 'task_id',
+    filter: {
+      
+    }
+  }, 
+},
 
     
     //Meta
@@ -216,6 +234,23 @@ export const task = {
         junctionTable: 'category_task',
         sourceKey: 'task_id',
         targetKey: 'category_id'
+      }
+    },
+
+        {
+      name: 'resources',
+      label: 'Resources',
+      type: 'multiRelationship',
+      displayMode: 'tags',
+      group: 'General',
+      tab: 'Meta',
+      relation: {
+        table: 'resource',
+        labelField: 'title',
+        linkTo: '/dashboard/resource',
+        junctionTable: 'resource_task',
+        sourceKey: 'task_id',
+        targetKey: 'resource_id'
       }
     },
     { 

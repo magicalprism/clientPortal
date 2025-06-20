@@ -13,6 +13,7 @@ import { Upload, LinkSimple, Link } from '@phosphor-icons/react';
 import { createClient } from '@/lib/supabase/browser';
 import { MediaActions } from '@/components/fields/media/components/MediaActions';
 import { MediaPreviewCard } from '@/components/fields/media/components/MediaPreviewCard';
+import { SimpleThumbnailTemplate } from '@/components/fields/media/components/SimpleThumbnailTemplate';
 import * as collections from '@/collections';
 
 // Initialize variables to hold component references
@@ -421,25 +422,72 @@ export const GalleryRelationshipField = ({
             Loading media items...
           </Typography>
         ) : items.length > 0 ? (
-          <Grid container spacing={2}>
-            {items.map((media) => (
-              <Grid item xs={12} sm={6} md={4} key={media.id}>
-                <MediaPreviewCard 
-                  media={media} 
-                  onRemove={editable ? () => handleRemove(media.id) : null} 
-                  onEdit={editable ? (mediaItem, anchorEl) => {
-                    setModalState(prev => ({
-                      ...prev,
-                      editOpen: true,
-                      editingItem: mediaItem
-                    }));
-                  } : null}
-                  field={field}
-                  config={config}
-                  showControls={editable}
-                />
-              </Grid>
-            ))}
+          <Grid 
+            container 
+            spacing={2} 
+            className="media-gallery-grid"
+          >
+            {items.map((media) => {
+              // Check if we should use the simple thumbnail template
+              const useSimpleTemplate = field?.displayOptions?.thumbnailTemplate === 'simple';
+              
+              // Determine grid size based on displayOptions or default
+              const gridSize = field?.displayOptions?.gridSize || 'medium';
+              const gridSizeMap = {
+                small: { xs: 12, sm: 12, md: 12 },
+                medium: { xs: 12, sm: 12, md: 12 },
+                large: { xs: 12, sm: 12, md:12 }
+              };
+              const gridProps = gridSizeMap[gridSize] || gridSizeMap.medium;
+              
+              // Determine if we should show title based on displayOptions
+              const showTitle = field?.displayOptions?.showTitle === 'icon-only' 
+                ? !media?.mime_type?.startsWith('image') // Only show for non-images
+                : field?.displayOptions?.showTitle !== false; // Default to true
+              
+              return (
+                <Grid 
+                  item 
+                  {...gridProps}
+                  key={media.id}
+                  className="media-item"
+                >
+                  {useSimpleTemplate ? (
+                    <SimpleThumbnailTemplate
+                      media={media}
+                      onRemove={editable ? () => handleRemove(media.id) : null}
+                      onEdit={editable ? (mediaItem, anchorEl) => {
+                        setModalState(prev => ({
+                          ...prev,
+                          editOpen: true,
+                          editingItem: mediaItem
+                        }));
+                      } : null}
+                      showControls={editable}
+                      size={gridSize}
+                    />
+                  ) : (
+                    <MediaPreviewCard 
+                      media={media} 
+                      onRemove={editable ? () => handleRemove(media.id) : null} 
+                      onEdit={editable ? (mediaItem, anchorEl) => {
+                        setModalState(prev => ({
+                          ...prev,
+                          editOpen: true,
+                          editingItem: mediaItem
+                        }));
+                      } : null}
+                      field={field}
+                      config={config}
+                      showControls={editable}
+                      showTitle={showTitle}
+                      showSubtitle={field?.displayOptions?.hideDescription !== true}
+                      aspectRatio={field?.displayOptions?.thumbnailAspectRatio || 'auto'}
+                    />
+                  )}
+                </Grid>
+              );
+            })}
           </Grid>
         ) : (
           <Box sx={{ p: 2, textAlign: 'center', bgcolor: 'grey.50', borderRadius: 1 }}>

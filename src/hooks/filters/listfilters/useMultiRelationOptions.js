@@ -58,7 +58,7 @@ const flattenSortedTree = (tree, level = 0, labelField = 'title') => {
  * @param {Object} param0.record - Parent record for context (optional)
  * @returns {Object} - { options, loading, setOptions, refresh }
  */
-export const useMultiRelationOptions = ({ field, record }) => {
+export const useMultiRelationOptions = ({ field, record, debug = false }) => {
   const supabase = createClient();
   const [options, setOptions] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -87,24 +87,30 @@ export const useMultiRelationOptions = ({ field, record }) => {
       return;
     }
 
-    console.log('[RELATION DEBUG]', {
-  parentId,
-  fieldName: field?.name,
-  relation: field?.relation
-});
+    // Only log in debug mode
+    if (debug) {
+      console.log('[RELATION DEBUG]', {
+        parentId,
+        fieldName: field?.name,
+        relation: field?.relation
+      });
+    }
     
     setLoading(true);
     setError(null);
 
-    console.log('[RELATION DEBUG]', {
-  parentId,
-  parentTable,
-  fieldName: field?.name,
-  table: relation?.table,
-  labelField,
-  isOneToMany: relation?.isOneToMany,
-  targetKey: relation?.targetKey,
-});
+    // Only log in debug mode
+    if (debug) {
+      console.log('[RELATION DEBUG]', {
+        parentId,
+        parentTable,
+        fieldName: field?.name,
+        table: relation?.table,
+        labelField,
+        isOneToMany: relation?.isOneToMany,
+        targetKey: relation?.targetKey,
+      });
+    }
 
     
     try {
@@ -205,7 +211,7 @@ export const useMultiRelationOptions = ({ field, record }) => {
     } finally {
       setLoading(false);
     }
-  }, [table, labelField, filterFrom, filter, parentId, parentTable, tableFields]);
+  }, [table, labelField, filterFrom, filter, parentId, parentTable, tableFields, debug, field?.name, relation?.isOneToMany, relation?.targetKey]);
   
   // Fetch options on mount and when dependencies change
   useEffect(() => {

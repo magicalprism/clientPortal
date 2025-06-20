@@ -41,11 +41,14 @@ import { CaretRight as CaretRightIcon } from "@phosphor-icons/react/dist/ssr/Car
 import { Clock as ClockIcon } from "@phosphor-icons/react/dist/ssr/Clock";
 import { File as FileIcon } from "@phosphor-icons/react/dist/ssr/File";
 import { Flag as FlagIcon } from "@phosphor-icons/react/dist/ssr/Flag";
+import { Info as InfoIcon } from "@phosphor-icons/react/dist/ssr/Info";
 import { PaperPlaneTilt as PaperPlaneTiltIcon } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
 import { PencilSimple as PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag";
 import { X as XIcon } from "@phosphor-icons/react/dist/ssr/X";
+import { Eye } from "@phosphor-icons/react/dist/ssr/Eye";
+import { Trash } from "@phosphor-icons/react/dist/ssr/Trash";
 import { createBrowserClient } from '@supabase/ssr';
 import { updateTask, fetchTaskById, createTask, fetchChildTasks } from '@/lib/supabase/queries/table/task';
 import { hydrateRecord } from '@/lib/utils/hydrateRecord';
@@ -77,8 +80,14 @@ const statusColors = {
 };
 
 import { RelationshipField } from '@/components/fields/relationships/RelationshipField';
+import { GalleryRelationshipFieldRenderer } from '@/components/fields/media/GalleryRelationshipFieldRenderer';
+import { MultiRelationshipFieldRenderer } from '@/components/fields/relationships/multi/MultiRelationshipFieldRenderer.jsx';
+import { SimpleMultiRelationshipField } from '@/components/fields/relationships/multi/SimpleMultiRelationshipField';
+import { CommentThread } from '@/components/fields/custom/comments/CommentThread';
+import { saveMultiRelationshipField } from '@/lib/supabase/queries/pivot/multirelationship';
+import * as collections from '@/collections';
 
-export default function TaskModal({ onClose, onDelete, onUpdate, open, record, config }) {
+export default function TaskModal({ onClose, onDelete, onUpdate, open, record, config, debug = false }) {
   // Get the modal context functions
   const { openModal } = useModal();
   
@@ -94,7 +103,8 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
     project: false,
     company: false,
     attachment: false,
-    label: false
+    label: false,
+    resource: false
   });
   
   // Hydrate the record and fetch child tasks when it changes
@@ -109,7 +119,10 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
           // Fetch child tasks
           const { data: children } = await fetchChildTasks(record.id);
           if (children && children.length > 0) {
-            console.log("Fetched child tasks:", children);
+            // Only log in debug mode
+            if (debug) {
+              console.log("Fetched child tasks:", children);
+            }
             setChildTasks(children);
           }
         } catch (error) {
@@ -183,9 +196,12 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
   // State to track newly added subtasks in the current session
   const [sessionSubtasks, setSessionSubtasks] = React.useState([]);
   
-  // Normalize subtasks data
+  // Normalize subtasks data - with optimized dependencies and conditional logging
   const normalizedSubtasks = React.useMemo(() => {
-    console.log('Normalizing subtasks:', { sessionSubtasks, subtasks, children, childTasks });
+    // Only log in debug mode
+    if (debug) {
+      console.log('Normalizing subtasks:', { sessionSubtasks, subtasks, children, childTasks });
+    }
     
     // Start with session subtasks (these are the ones added during this modal session)
     let result = [...sessionSubtasks];
@@ -242,9 +258,13 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
       result = [...result, ...formattedChildTasks];
     }
     
-    console.log('Normalized subtasks result:', result);
+    // Only log in debug mode
+    if (debug) {
+      console.log('Normalized subtasks result:', result);
+    }
+    
     return result;
-  }, [subtasks, children, sessionSubtasks, childTasks]);
+  }, [subtasks, children, sessionSubtasks, childTasks, debug]);
   
   // Handle opening a subtask
   const handleOpenSubtask = async (subtaskId) => {
@@ -294,72 +314,6 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
     }
   };
   
-  // Handle comment addition
-  const handleCommentAdd = async (content) => {
-    if (!id || !content) return;
-    
-    try {
-      console.log("Adding comment:", content);
-      
-      // Step 1: Create a new comment in the database
-      const { data: newComment, error: commentError } = await supabase
-        .from('comment')
-        .insert({
-          content,
-          author_id: author_id || 25, // Use the current user's ID or fallback to a default
-          created_at: new Date().toISOString()
-        })
-        .select('*, author:author_id(id, title, first_name, last_name, thumbnail_media:thumbnail_id(id, url, alt_text))')
-        .single();
-      
-      if (commentError) {
-        console.error("Failed to add comment:", commentError.message);
-        return;
-      }
-      
-      console.log("Comment created successfully:", newComment);
-      
-      // Step 2: Create a link between the comment and the task in the junction table
-      const { error: linkError } = await supabase
-        .from('comment_task')
-        .insert({
-          comment_id: newComment.id,
-          task_id: id
-        });
-      
-      if (linkError) {
-        console.error("Failed to link comment to task:", linkError.message);
-        // Consider deleting the comment if linking fails
-        return;
-      }
-      
-      console.log("Comment linked to task successfully");
-      
-      // Update the UI optimistically
-      const updatedComments = [...(comments || []), {
-        id: newComment.id,
-        content: newComment.content,
-        author: newComment.author || { 
-          id: author_id || 25,
-          name: "Current User", 
-          avatar: "/assets/avatar.png" 
-        },
-        createdAt: newComment.created_at
-      }];
-      
-      if (onUpdate) {
-        onUpdate({ ...record, comments: updatedComments });
-      }
-      
-      // Refresh the task to get the updated comments
-      const { data: refreshedTask } = await fetchTaskById(id);
-      if (refreshedTask) {
-        onUpdate?.(refreshedTask);
-      }
-    } catch (err) {
-      console.error("Error adding comment:", err);
-    }
-  };
 
   return (
     <>
@@ -560,7 +514,49 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                                 color: subtask.done ? 'text.disabled' : 'text.primary'
                               }} 
                             />
-                            <CaretRightIcon size={16} color="action" />
+                            <Box sx={{ display: 'flex', gap: 1 }}>
+                              <IconButton 
+                                size="small" 
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent opening the subtask
+                                  handleOpenSubtask(subtask.id);
+                                }}
+                                title="View subtask"
+                              >
+                                <Eye size={16} />
+                              </IconButton>
+                              <IconButton 
+                                size="small" 
+                                onClick={(e) => {
+                                  e.stopPropagation(); // Prevent opening the subtask
+                                  // Delete the subtask
+                                  if (confirm(`Are you sure you want to delete "${subtask.title}"?`)) {
+                                    updateTask(subtask.id, { is_deleted: true })
+                                      .then(() => {
+                                        // Update the UI by removing the subtask
+                                        const updatedSubtasks = normalizedSubtasks.filter(st => st.id !== subtask.id);
+                                        
+                                        // If we have children array, update it
+                                        if (children && children.length > 0) {
+                                          const updatedChildren = children.filter(child => child.id !== subtask.id);
+                                          onUpdate?.({ ...record, children: updatedChildren });
+                                        } 
+                                        // Otherwise update subtasks array
+                                        else {
+                                          onUpdate?.({ ...record, subtasks: updatedSubtasks });
+                                        }
+                                      })
+                                      .catch(err => {
+                                        console.error("Failed to delete subtask:", err);
+                                      });
+                                  }
+                                }}
+                                title="Delete subtask"
+                                color="error"
+                              >
+                                <Trash size={16} />
+                              </IconButton>
+                            </Box>
                           </ListItemButton>
                         </ListItem>
                       ))}
@@ -642,27 +638,7 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
               
               {/* Comments */}
               <Box>
-                <Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
-                  Comments
-                </Typography>
-                
-                {comments && comments.length > 0 ? (
-                  <Stack spacing={3}>
-                    {comments.map((comment, index) => (
-                      <CommentItem comment={comment} connector={index < comments.length - 1} key={comment.id} />
-                    ))}
-                  </Stack>
-                ) : (
-                  <Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>
-                    No comments yet
-                  </Typography>
-                )}
-                
-                <CommentAdd
-                  onAdd={(content) => {
-                    handleCommentAdd(content);
-                  }}
-                />
+                <CommentThread entity="task" entityId={id} />
               </Box>
             </Stack>
           </Grid>
@@ -798,28 +774,12 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
               
               {/* Date Range */}
               <Box>
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                <Stack direction="row" spacing={1} alignItems="left" sx={{ mb: 1 }}>
                   <Typography variant="subtitle2" color="text.secondary">
                     Date Range
                   </Typography>
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        size="small"
-                        checked={!!record.start_date}
-                        onChange={(e) => {
-                          if (!e.target.checked) {
-                            handleTaskUpdate("start_date", null);
-                          } else {
-                            // Set a default start date (today)
-                            handleTaskUpdate("start_date", new Date().toISOString());
-                          }
-                        }}
-                      />
-                    }
-                    label={<Typography variant="caption">Show start date</Typography>}
-                    sx={{ ml: 'auto' }}
-                  />
+                 
+      
                 </Stack>
                 
                 {record.start_date && (
@@ -859,6 +819,25 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                     }}
                   />
                 </Stack>
+                <Stack >
+                  <FormControlLabel
+                  sx={{mt: 1}}
+                    control={
+                      <Checkbox
+                        checked={!!record.start_date}
+                        onChange={(e) => {
+                          if (!e.target.checked) {
+                            handleTaskUpdate("start_date", null);
+                          } else {
+                            // Set a default start date (today)
+                            handleTaskUpdate("start_date", new Date().toISOString());
+                          }
+                        }}
+                      />
+                    }
+                    label={<Typography variant="subtitle2">Show start date</Typography>}
+                  />
+                </Stack>
               </Box>
               
               {/* Time tracking */}
@@ -883,17 +862,33 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
               <Dialog
                 open={!!selectDialogOpen.type}
                 onClose={() => setSelectDialogOpen({ type: null })}
-                maxWidth="sm"
-                fullWidth
+                maxWidth="xs"
+                sx={{
+                  "& .MuiDialog-paper": { 
+                    width: "50%", 
+                    maxHeight: "60%",
+                    maxWidth: "300px",
+                    p: 2,
+                  }
+                }}
               >
-                <DialogTitle>
+                <DialogTitle
+                sx={{px: 2}}
+                >
                   Select {selectDialogOpen.type === 'assignee' ? 'Contact' : 
                           selectDialogOpen.type === 'company' ? 'Company' : 
                           selectDialogOpen.type === 'project' ? 'Project' : 
                           selectDialogOpen.type === 'label' ? 'Label' : 
-                          selectDialogOpen.type === 'attachment' ? 'Media' : ''}
+                          selectDialogOpen.type === 'attachment' ? 'Media' :
+                          selectDialogOpen.type === 'resource' ? 'Resource' : ''}
                 </DialogTitle>
-                <DialogContent>
+                <DialogContent
+                sx={{
+                  p: 0, 
+                  pr: 1,
+
+                }}
+                >
                   {selectDialogOpen.type === 'assignee' && (
                     <SelectionList 
                       table="contact"
@@ -980,16 +975,106 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                       labelField="title"
                       multiSelect
                       onSelect={(selected) => {
-                        // Handle multi-select for attachments
-                        const updatedAttachments = [
-                          ...(attachments || []),
-                          selected
-                        ];
+                        // Check if this media is already selected
+                        const mediaId = selected.id;
+                        const isAlreadySelected = attachments && 
+                          attachments.some(a => 
+                            (typeof a === 'object' ? a.id === mediaId : a === mediaId)
+                          );
                         
-                        setHydratedRecord(prev => ({
-                          ...prev,
-                          attachments: updatedAttachments
-                        }));
+                        if (!isAlreadySelected) {
+                          // Add the media to the UI
+                          const updatedAttachments = [
+                            ...(attachments || []),
+                            selected
+                          ];
+                          
+                          // Update the UI
+                          setHydratedRecord(prev => ({
+                            ...prev,
+                            attachments: updatedAttachments
+                          }));
+                          
+                          // If we have an ID, create a link in the junction table
+                          if (id) {
+                            // Create a link in the junction table
+                            supabase
+                              .from('media_task')
+                              .insert({
+                                task_id: id,
+                                media_id: mediaId
+                              })
+                              .then(({ error }) => {
+                                if (error) {
+                                  console.error("Failed to link media to task:", error);
+                                  // Show the error to help debugging
+                                  alert(`Failed to link media to task: ${JSON.stringify(error)}`);
+                                  return;
+                                }
+                                
+                                console.log("Media linked to task successfully");
+                              });
+                          }
+                        }
+                      }}
+                    />
+                  )}
+                  
+                  {selectDialogOpen.type === 'resource' && (
+                    <SelectionList 
+                      table="resource"
+                      labelField="title"
+                      multiSelect
+                      onSelect={(selected) => {
+                        // Handle multi-select for resources
+                        // First check if this resource is already selected
+                        const isAlreadySelected = record.resources && 
+                          record.resources.some(r => 
+                            r.id === selected.id || r === selected.id
+                          );
+                        
+                        if (!isAlreadySelected) {
+                          // Add the resource to the record
+                          const updatedResources = [
+                            ...(record.resources || []),
+                            selected
+                          ];
+                          
+                          // Update the UI
+                          setHydratedRecord(prev => ({
+                            ...prev,
+                            resources: updatedResources
+                          }));
+                          
+                          // If we have an ID, update the task in the database
+                          if (id) {
+                                      // Create a link in the junction table
+                                      supabase
+                                        .from('resource_task')
+                                        .insert({
+                                          task_id: id,
+                                          resource_id: selected.id
+                                        })
+                                        .then(({ error }) => {
+                                          if (error) {
+                                            console.error("Failed to link resource to task:", error);
+                                            alert(`Failed to link resource to task: ${JSON.stringify(error)}`);
+                                            return;
+                                          }
+                                          
+                                          console.log("Resource linked to task successfully");
+                                          
+                                          // Refresh the task to get updated resources
+                                          fetchTaskById(id).then(({ data: refreshedTask }) => {
+                                            if (refreshedTask) {
+                                              onUpdate?.(refreshedTask);
+                                            }
+                                          });
+                                        });
+                          }
+                        }
+                        
+                        // Don't close the dialog to allow selecting multiple resources
                       }}
                     />
                   )}
@@ -999,135 +1084,158 @@ export default function TaskModal({ onClose, onDelete, onUpdate, open, record, c
                 </DialogActions>
               </Dialog>
 
-              {/* Labels/Tags */}
+              {/* Labels/Tags using SimpleMultiRelationshipField to avoid infinite loop */}
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
                   Labels
                 </Typography>
-                <Box>
-                  {/* Display existing labels */}
-                  {labels && labels.length > 0 ? (
-                    <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap" }}>
-                      {labels.map((label) => (
-                        <Chip
-                          key={label.id || label}
-                          label={label.title || label}
-                          size="small"
-                          icon={<TagIcon size={14} />}
-                          onDelete={() => {
-                            // Remove this tag from the junction table
-                            if (id && (label.id || label)) {
-                              const categoryId = label.id || label;
-                              
-                              // Delete from the junction table
-                              supabase
-                                .from('category_task')
-                                .delete()
-                                .eq('task_id', id)
-                                .eq('category_id', categoryId)
-                                .then(({ error }) => {
-                                  if (error) {
-                                    console.error("Failed to remove tag:", error);
-                                    return;
-                                  }
-                                  
-                                  // Update the UI
-                                  setHydratedRecord(prev => ({
-                                    ...prev,
-                                    tags: (prev.tags || []).filter(t => t !== categoryId),
-                                    tags_details: (prev.tags_details || []).filter(l => 
-                                      l.id !== categoryId && l !== categoryId
-                                    )
-                                  }));
-                                });
-                            }
-                          }}
-                        />
-                      ))}
-                    </Stack>
-                  ) : null}
-                  
-                  {/* Button to add labels */}
-                  <Button 
-                    variant="outlined" 
-                    sx={{ 
-                      borderStyle: 'dashed', 
-                      width: '100%',
-                      justifyContent: 'center',
-                      color: 'text.secondary',
-                      mb: 2
+                <Box sx={{ mb: 2 }}>
+                  <SimpleMultiRelationshipField
+                    field={config?.fields?.find(f => f.name === 'tags')}
+                    value={tags || []}
+                    record={{
+                      ...record,
+                      id: id,
+                      tags_details: labels || []
                     }}
-                    onClick={() => setSelectDialogOpen({ type: 'label' })}
-                  >
-                    Add Labels
-                  </Button>
+                    config={config}
+                    onChange={(newValue) => {
+                        console.log("Tags changed (SimpleMultiRelationshipField):", newValue);
+                        
+                        // Update the UI immediately for responsiveness
+                        setHydratedRecord(prev => ({
+                          ...prev,
+                          tags: newValue.ids,
+                          tags_details: newValue.details
+                        }));
+                        
+                        // If we have an ID, update the database
+                        if (id) {
+                          // Use the proper query function to save the relationship
+                          const fieldDef = config?.fields?.find(f => f.name === 'tags');
+                          saveMultiRelationshipField('task', id, 'tags', newValue.ids, fieldDef)
+                            .then(result => {
+                              if (!result.success) {
+                                console.error("Failed to save tags:", result.error);
+                              } else {
+                                console.log("Tags saved successfully:", result);
+                                // Don't refresh the task to avoid infinite loops
+                              }
+                            });
+                        }
+                    }}
+                  />
                 </Box>
               </Box>
               
-              {/* Attachments */}
+              {/* Attachments using GalleryRelationshipFieldRenderer with SimpleThumbnailTemplate */}
               <Box>
                 <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
                   Attachments
                 </Typography>
                 <Box>
-                  {/* Display existing attachments */}
-                  {attachments && attachments.length > 0 ? (
-                    <Stack spacing={1} sx={{ mb: 2 }}>
-                      {attachments.map((attachment) => (
-                        <Paper
-                          key={attachment.id}
-                          sx={{ borderRadius: 1, p: 1 }}
-                          variant="outlined"
-                        >
-                          <Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-                            <FileIcon size={16} />
-                            <Box sx={{ minWidth: 0, flex: 1 }}>
-                              <Typography noWrap variant="body2">
-                                {attachment.title || attachment.name || `File ${attachment.id}`}
-                              </Typography>
-                              <Typography color="text.secondary" variant="caption">
-                                {attachment.size}
-                              </Typography>
-                            </Box>
-                            <IconButton 
-                              size="small" 
-                              onClick={() => {
-                                // Remove this attachment
-                                if (id && attachment.id) {
-                                  // We should handle this through a junction table, but for now
-                                  // we'll just update the UI
-                                  const updatedAttachments = attachments.filter(a => a.id !== attachment.id);
-                                  
-                                  // Update the UI
-                                  setHydratedRecord(prev => ({
-                                    ...prev, 
-                                    attachments: updatedAttachments
-                                  }));
-                                }
-                              }}
-                            >
-                              <XIcon size={16} />
-                            </IconButton>
-                          </Stack>
-                        </Paper>
-                      ))}
-                    </Stack>
-                  ) : null}
-                  
-                  {/* Button to add attachments */}
-                  <Button 
-                    variant="outlined" 
-                    sx={{ 
-                      borderStyle: 'dashed', 
-                      width: '100%',
-                      justifyContent: 'center',
-                      color: 'text.secondary',
-                      mb: 2
+                  <GalleryRelationshipFieldRenderer
+                    field={{
+                      name: 'attachments',
+                      label: 'All Media',
+                      type: 'galleryRelationship',
+                      displayOptions: {
+                      gridSize: 'large', // Set to large for 2 items per row
+                        showTitle: 'icon-only', // Only show title for icon/folder types
+                        showType: false, // Don't show type
+                        hideStatus: true,
+                        hideDescription: true,
+                        compactMode: true,
+                        squareThumbnails: true,
+                        thumbnailAspectRatio: '1:1',
+                        thumbnailTemplate: 'simple' // Use the simple template
+                      },
+                      relation: {
+                        table: 'media',
+                        labelField: 'title',
+                        junctionTable: 'media_task',
+                        sourceKey: 'task_id',
+                        targetKey: 'media_id',
+                        foreignKey: 'task_id'
+                      },
+                      parentId: id,
+                      parentTable: 'task'
                     }}
-                    onClick={() => setSelectDialogOpen({ type: 'attachment' })}
-                  >
-                    Add Attachments
-                  </Button>
+                    value={attachments || []}
+                    record={{
+                      ...record,
+                      id: id
+                    }}
+                    config={config}
+                    editable={true}
+                    isEditing={true}
+                    sx={{
+                      '& .media-gallery-grid': {
+                        gridTemplateColumns: 'repeat(2, 1fr) !important', // 2 columns as requested
+                      },
+                      '& .media-item': {
+                        display: 'flex',
+                        justifyContent: 'center',
+                        padding: '8px 0'
+                      }
+                    }}
+                    onChange={(newAttachments) => {
+                      // Update the record with the new attachments
+                      setHydratedRecord(prev => ({
+                        ...prev,
+                        attachments: newAttachments
+                      }));
+                      
+                      // If we have an ID, update the task in the database
+                      if (id) {
+                        handleTaskUpdate("attachments", newAttachments);
+                      }
+                    }}
+                  />
+                </Box>
+              </Box>
+              
+              {/* Resources using SimpleMultiRelationshipField to avoid infinite loop */}
+              <Box>
+                <Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+                  Resources
+                </Typography>
+                <Box sx={{ mb: 2 }}>
+                  <SimpleMultiRelationshipField
+                    field={config?.fields?.find(f => f.name === 'resources')}
+                    value={record.resources || []}
+                    record={{
+                      ...record,
+                      id: id,
+                      resources_details: record.resources_details || record.resources || []
+                    }}
+                    config={config}
+                    onChange={(newValue) => {
+                      console.log("Resources changed (SimpleMultiRelationshipField):", newValue);
+                      
+                      // Update the UI immediately for responsiveness
+                      setHydratedRecord(prev => ({
+                        ...prev,
+                        resources: newValue.ids,
+                        resources_details: newValue.details
+                      }));
+                      
+                      // If we have an ID, update the database
+                      if (id) {
+                        // Use the proper query function to save the relationship
+                        const fieldDef = config?.fields?.find(f => f.name === 'resources');
+                        saveMultiRelationshipField('task', id, 'resources', newValue.ids, fieldDef)
+                          .then(result => {
+                            if (!result.success) {
+                              console.error("Failed to save resources:", result.error);
+                            } else {
+                              console.log("Resources saved successfully:", result);
+                              // Don't refresh the task to avoid infinite loops
+                            }
+                          });
+                      }
+                    }}
+                  />
                 </Box>
               </Box>
               
@@ -1253,174 +1361,127 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 }
 
 
-function CommentItem({ comment, connector }) {
-  // Extract data from comment object, handling different formats
-  const author = comment.author || comment.author_id_details || { 
-    id: comment.author_id, 
-    title: "User " + comment.author_id 
-  };
-  
-  const content = comment.content;
-  const createdAt = comment.createdAt || comment.created_at;
-  const replies = comment.comments || comment.replies || [];
-  
-  // Format the author name
-  const authorName = author.title || 
-    (author.first_name && author.last_name 
-      ? `${author.first_name} ${author.last_name}` 
-      : `User ${author.id}`);
-  
-  // Get avatar URL
-  const avatarUrl = author.thumbnail_media?.url || 
-    author.avatar || 
-    "/assets/avatar.png";
-  
-  // Determine if the current user can reply
-  const canReply = true; // Simplified for now
-
-  return (
-    <Stack direction="row" spacing={2}>
-      <Box sx={{ display: "flex", flexDirection: "column" }}>
-        <Avatar src={avatarUrl}>
-          {/* Fallback to initials if no avatar */}
-          {!avatarUrl && authorName.charAt(0)}
-        </Avatar>
-        {connector ? (
-          <Box sx={{ flex: "1 1 auto", pt: 3 }}>
-            <Box
-              sx={{
-                bgcolor: "var(--mui-palette-divider)",
-                height: "100%",
-                minHeight: "24px",
-                mx: "auto",
-                width: "1px",
-              }}
-            />
-          </Box>
-        ) : null}
-      </Box>
-      <Stack spacing={3} sx={{ flex: "1 1 auto" }}>
-        <div>
-          <Stack direction="row" spacing={1} sx={{ flexWrap: "wrap", justifyContent: "space-between" }}>
-            <Typography variant="subtitle2">{authorName}</Typography>
-            {createdAt ? (
-              <Typography sx={{ whiteSpace: "nowrap" }} variant="caption">
-                {dayjs(createdAt).fromNow()}
-              </Typography>
-            ) : null}
-          </Stack>
-          <Typography variant="body2">{content}</Typography>
-          {canReply ? (
-            <div>
-              <Link sx={{ cursor: "pointer" }} variant="body2">
-                Reply
-              </Link>
-            </div>
-          ) : null}
-        </div>
-        {replies?.length ? (
-          <Stack spacing={2}>
-            {replies.map((subComment, index) => (
-              <CommentItem comment={subComment} connector={index < replies.length - 1} key={subComment.id} />
-            ))}
-          </Stack>
-        ) : null}
-      </Stack>
-    </Stack>
-  );
-}
-
-function CommentAdd({ onAdd }) {
-  const [content, setContent] = React.useState("");
-
-  const handleAdd = React.useCallback(() => {
-    if (!content) {
-      return;
-    }
-
-    onAdd?.(content);
-    setContent("");
-  }, [content, onAdd]);
-
-  return (
-    <OutlinedInput
-      endAdornment={
-        <InputAdornment position="end">
-          <IconButton
-            onClick={() => {
-              handleAdd();
-            }}
-          >
-            <PaperPlaneTiltIcon />
-          </IconButton>
-        </InputAdornment>
-      }
-      onChange={(event) => {
-        setContent(event.target.value);
-      }}
-      onKeyUp={(event) => {
-        if (event.key === "Enter") {
-          handleAdd();
-        }
-      }}
-      placeholder="Add a comment..."
-      startAdornment={
-        <InputAdornment position="start">
-          <Avatar src="/assets/avatar.png" />
-        </InputAdornment>
-      }
-      sx={{ "--Input-paddingBlock": "12px" }}
-      value={content}
-    />
-  );
-}
 
 function countDoneSubtasks(subtasks = []) {
   return subtasks.reduce((acc, curr) => acc + (curr.done ? 1 : 0), 0);
 }
 
-// Selection List component for relationship fields
+// Selection List component for relationship fields with hierarchical display
 function SelectionList({ table, labelField = 'title', filters = [], multiSelect = false, onSelect }) {
   const [options, setOptions] = React.useState([]);
+  const [hierarchicalOptions, setHierarchicalOptions] = React.useState([]);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState(null);
   const [selected, setSelected] = React.useState(multiSelect ? [] : null);
   
-  // Fetch options from the database
-  React.useEffect(() => {
-    const fetchOptions = async () => {
-      try {
-        setLoading(true);
-        
-        // Build the query
-        let query = supabase.from(table).select(`id, ${labelField}`);
-        
-        // Apply filters if any
-        filters.forEach(filter => {
-          if (filter.field && filter.value !== undefined) {
-            query = query.eq(filter.field, filter.value);
-          }
-        });
-        
-        // Execute the query
-        const { data, error } = await query;
-        
-        if (error) {
-          console.error(`Error fetching ${table} options:`, error);
-          setError(`Failed to load options: ${error.message}`);
-        } else {
-          setOptions(data || []);
+  // Memoize filters to prevent unnecessary re-renders
+  const memoizedFilters = React.useMemo(() => filters, [JSON.stringify(filters)]);
+  
+  // Memoize the fetchOptions function to prevent unnecessary re-renders
+  const fetchOptions = React.useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      // Build the query
+      // Include parent_id and description for hierarchical organization and hover info
+      let query = supabase.from(table).select(`id, ${labelField}, parent_id, description`);
+      
+      // Apply filters if any
+      memoizedFilters.forEach(filter => {
+        if (filter.field && filter.value !== undefined) {
+          query = query.eq(filter.field, filter.value);
         }
-      } catch (err) {
-        console.error(`Error in fetchOptions for ${table}:`, err);
-        setError(`An unexpected error occurred: ${err.message}`);
-      } finally {
-        setLoading(false);
+      });
+      
+      // Execute the query
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error(`Error fetching ${table} options:`, error);
+        setError(`Failed to load options: ${error.message}`);
+      } else {
+        setOptions(data || []);
+        
+        // Organize data into hierarchical structure
+        const hierarchical = organizeHierarchy(data || []);
+        setHierarchicalOptions(hierarchical);
       }
+    } catch (err) {
+      console.error(`Error in fetchOptions for ${table}:`, err);
+      setError(`An unexpected error occurred: ${err.message}`);
+    } finally {
+      setLoading(false);
+    }
+  }, [table, labelField, memoizedFilters, organizeHierarchy]);
+  
+  // Fetch options from the database only when the component mounts or when the dependencies change
+  React.useEffect(() => {
+    // Use a flag to prevent duplicate fetches
+    let isMounted = true;
+    
+    // Add a small delay to prevent rapid consecutive API calls
+    const timeoutId = setTimeout(() => {
+      if (isMounted) {
+        fetchOptions();
+      }
+    }, 100);
+    
+    // Cleanup function to prevent memory leaks
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, [fetchOptions]);
+  
+  // Memoize the organizeHierarchy function to prevent unnecessary re-renders
+  const organizeHierarchy = React.useCallback((data) => {
+    // First, sort all items alphabetically by the label field
+    const sortedData = [...data].sort((a, b) => {
+      const labelA = a[labelField]?.toLowerCase() || '';
+      const labelB = b[labelField]?.toLowerCase() || '';
+      return labelA.localeCompare(labelB);
+    });
+    
+    // Create a map for quick lookup
+    const itemMap = new Map();
+    sortedData.forEach(item => {
+      itemMap.set(item.id, { ...item, children: [] });
+    });
+    
+    // Build the hierarchy
+    const rootItems = [];
+    
+    sortedData.forEach(item => {
+      const mappedItem = itemMap.get(item.id);
+      
+      if (item.parent_id && itemMap.has(item.parent_id)) {
+        // This is a child item, add it to its parent
+        const parent = itemMap.get(item.parent_id);
+        parent.children.push(mappedItem);
+      } else {
+        // This is a root item
+        rootItems.push(mappedItem);
+      }
+    });
+    
+    // Sort children at each level alphabetically
+    const sortChildren = (items) => {
+      items.forEach(item => {
+        if (item.children && item.children.length > 0) {
+          item.children.sort((a, b) => {
+            const labelA = a[labelField]?.toLowerCase() || '';
+            const labelB = b[labelField]?.toLowerCase() || '';
+            return labelA.localeCompare(labelB);
+          });
+          sortChildren(item.children); // Recursively sort grandchildren
+        }
+      });
     };
     
-    fetchOptions();
-  }, [table, labelField, JSON.stringify(filters)]);
+    sortChildren(rootItems);
+    
+    return rootItems;
+  }, [labelField]);
   
   // Handle selection
   const handleSelect = (option) => {
@@ -1450,6 +1511,75 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
     }
   };
   
+  // Recursive function to render hierarchical items
+  const renderHierarchicalItems = (items, level = 0) => {
+    return items.map(item => (
+      <React.Fragment key={item.id}>
+        <ListItem 
+          disablePadding
+          secondaryAction={
+            multiSelect ? (
+              <Checkbox
+                edge="end"
+                checked={selected.some(selectedItem => selectedItem.id === item.id)}
+                onChange={() => handleSelect(item)}
+              />
+            ) : (
+              <Radio
+                edge="end"
+                checked={selected && selected.id === item.id}
+                onChange={() => handleSelect(item)}
+              />
+            )
+          }
+        >
+          {item.description ? (
+            <Tooltip 
+              title={item.description} 
+              placement="right"
+              enterDelay={500}
+              arrow
+            >
+              <ListItemButton 
+                onClick={() => handleSelect(item)}
+                sx={{ pl: 2 + level * 2 }} // Indent based on hierarchy level
+              >
+                <ListItemText 
+                  primary={item[labelField] || `Item ${item.id}`}
+                  primaryTypographyProps={{
+                    fontWeight: level === 0 ? 'medium' : 'normal'
+                  }}
+                  secondary={item.description ? 
+                    // Use a string instead of a Box component to avoid nesting div in p
+                    "Description available" 
+                    : undefined
+                  }
+                />
+              </ListItemButton>
+            </Tooltip>
+          ) : (
+            <ListItemButton 
+              onClick={() => handleSelect(item)}
+              sx={{ pl: 2 + level * 2 }} // Indent based on hierarchy level
+            >
+              <ListItemText 
+                primary={item[labelField] || `Item ${item.id}`}
+                primaryTypographyProps={{
+                  fontWeight: level === 0 ? 'medium' : 'normal'
+                }}
+              />
+            </ListItemButton>
+          )}
+        </ListItem>
+        
+        {/* Render children recursively */}
+        {item.children && item.children.length > 0 && (
+          renderHierarchicalItems(item.children, level + 1)
+        )}
+      </React.Fragment>
+    ));
+  };
+  
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
@@ -1477,31 +1607,7 @@ function SelectionList({ table, labelField = 'title', filters = [], multiSelect 
   return (
     <Box>
       <List>
-        {options.map(option => (
-          <ListItem 
-            key={option.id}
-            disablePadding
-            secondaryAction={
-              multiSelect ? (
-                <Checkbox
-                  edge="end"
-                  checked={selected.some(item => item.id === option.id)}
-                  onChange={() => handleSelect(option)}
-                />
-              ) : (
-                <Radio
-                  edge="end"
-                  checked={selected && selected.id === option.id}
-                  onChange={() => handleSelect(option)}
-                />
-              )
-            }
-          >
-            <ListItemButton onClick={() => handleSelect(option)}>
-              <ListItemText primary={option[labelField] || `Item ${option.id}`} />
-            </ListItemButton>
-          </ListItem>
-        ))}
+        {renderHierarchicalItems(hierarchicalOptions)}
       </List>
       
       {multiSelect && (

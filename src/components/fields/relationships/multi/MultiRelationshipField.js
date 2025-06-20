@@ -32,6 +32,8 @@ export const MultiRelationshipField = ({
   refreshRecord, 
   debug = false 
 }) => {
+  // Track the last sync timestamp to prevent race conditions
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState(0);
   const router = useRouter();
   
   // CRITICAL: Always initialize with arrays to prevent controlled/uncontrolled switching
@@ -52,11 +54,12 @@ export const MultiRelationshipField = ({
       parentId: record?.id,
       parentTable: field.parentTable || field.relation?.sourceTable
     },
-    record
+    record,
+    debug // Pass debug flag to useMultiRelationOptions
   });
   
   // Sync hook for database operations
-  const { syncMultiRelation } = useMultiRelationSync();
+  const { syncMultiRelation } = useMultiRelationSync({ debug }); // Pass debug flag to useMultiRelationSync
 
   // Get field configuration
   const labelField = field.relation?.labelField || 'title';
@@ -140,7 +143,7 @@ export const MultiRelationshipField = ({
     return enriched;
   }, [options, normalizedValue, labelField, field.name, record]);
 
-  // Handle selection changes with proper array handling
+  // Handle selection changes with proper array handling and change detection
   const handleChange = useCallback(async (_, selectedOptionObjects) => {
     // CRITICAL: Ensure selectedOptionObjects is always an array
     const safeSelected = Array.isArray(selectedOptionObjects) ? selectedOptionObjects : [];
@@ -151,6 +154,19 @@ export const MultiRelationshipField = ({
       .map(opt => String(opt.id))
       .filter(Boolean);
     
+    // IMPORTANT: Check if there's an actual change to prevent infinite loops
+    const currentIds = new Set(normalizedValue.map(String));
+    const newIds = new Set(selectedIds.map(String));
+    
+    // Skip processing if the sets are identical (same values, same order doesn't matter)
+    if (currentIds.size === newIds.size && 
+        [...currentIds].every(id => newIds.has(id))) {
+      if (debug) {
+        console.log(`[MultiRelationshipField] ${field.name} - No actual change detected, skipping update`);
+      }
+      return; // No actual change, exit early to prevent loops
+    }
+    
     // Create details array for UI updates
     const selectedDetails = safeSelected
       .filter(opt => opt && opt.id) // Filter out invalid options
@@ -160,26 +176,30 @@ export const MultiRelationshipField = ({
         indentedLabel: opt.indentedLabel || opt[labelField] || `ID: ${opt.id}`
       }));
     
-    // Log change info
-    console.log(`[MultiRelationshipField] ${field.name} selection changed:`, {
-      prevCount: normalizedValue.length,
-      newCount: selectedIds.length,
-      selectedIds: selectedIds.length > 0 ? selectedIds : '(empty)'
-    });
+    // Log change info only in debug mode
+    if (debug) {
+      console.log(`[MultiRelationshipField] ${field.name} selection changed:`, {
+        prevCount: normalizedValue.length,
+        newCount: selectedIds.length,
+        selectedIds: selectedIds.length > 0 ? selectedIds : '(empty)'
+      });
+    }
     
     // Update internal state
     setInternalValue(selectedIds);
     
     // Update debug info
-    setDebugInfo(prev => ({
-      ...prev,
-      lastChange: {
-        timestamp: new Date().toISOString(),
-        newIds: selectedIds,
-        newIdsCount: selectedIds.length,
-        newDetails: selectedDetails.length
-      }
-    }));
+    if (debug) {
+      setDebugInfo(prev => ({
+        ...prev,
+        lastChange: {
+          timestamp: new Date().toISOString(),
+          newIds: selectedIds,
+          newIdsCount: selectedIds.length,
+          newDetails: selectedDetails.length
+        }
+      }));
+    }
     
     // Create a standard response format
     const responseFormat = {
@@ -193,41 +213,64 @@ export const MultiRelationshipField = ({
     }
     
     // Then sync with the database if we have a parentId
+    // Use debouncing to prevent rapid consecutive API calls
     if (parentId) {
-      try {
-        const linkedData = await syncMultiRelation({
-          field,
-          parentId,
-          selectedIds,
-          options: options || [],
-          onChange: () => {} // Avoid duplicate callbacks
-        });
-        
-        if (linkedData?.length > 0) {
-          const enriched = linkedData
-            .filter(item => item && item.id)
-            .map(item => ({
-              ...item,
-              indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
-            }));
-
-          // Update options with any new data
-          setOptions(prev => {
-            const prevArray = Array.isArray(prev) ? prev : [];
-            const map = new Map([...prevArray, ...enriched].map(item => [item.id, item]));
-            return Array.from(map.values());
-          });
+      // Generate a unique timestamp for this sync operation
+      const syncTimestamp = Date.now();
+      setLastSyncTimestamp(syncTimestamp);
+      
+      // Debounce the sync operation to prevent rapid consecutive API calls
+      setTimeout(() => {
+        // Only proceed if this is still the latest sync request
+        if (syncTimestamp === lastSyncTimestamp) {
+          try {
+            syncMultiRelation({
+              field,
+              parentId,
+              selectedIds,
+              options: options || [],
+              onChange: () => {} // Avoid duplicate callbacks
+            }).then(linkedData => {
+              if (linkedData?.length > 0) {
+                const enriched = linkedData
+                  .filter(item => item && item.id)
+                  .map(item => ({
+                    ...item,
+                    indentedLabel: item.indentedLabel || item[labelField] || `ID: ${item.id}`
+                  }));
+      
+                // Update options with any new data
+                setOptions(prev => {
+                  const prevArray = Array.isArray(prev) ? prev : [];
+                  const map = new Map([...prevArray, ...enriched].map(item => [item.id, item]));
+                  return Array.from(map.values());
+                });
+              }
+              
+              // Refresh the parent record to ensure sync - but only if we have a function
+              if (refreshRecord && typeof refreshRecord === 'function') {
+                refreshRecord();
+              }
+            }).catch(err => {
+              if (debug) {
+                console.error(`[MultiRelationshipField] Error syncing ${field.name}:`, err);
+              } else {
+                console.error(`Error syncing relationship:`, err);
+              }
+            });
+          } catch (err) {
+            if (debug) {
+              console.error(`[MultiRelationshipField] Error in sync operation:`, err);
+            } else {
+              console.error(`Error in relationship sync:`, err);
+            }
+          }
+        } else if (debug) {
+          console.log(`[MultiRelationshipField] ${field.name} sync skipped - newer sync in progress`);
         }
-        
-        // Refresh the parent record to ensure sync
-        if (refreshRecord && typeof refreshRecord === 'function') {
-          refreshRecord();
-        }
-      } catch (err) {
-        console.error(`[MultiRelationshipField] Error syncing ${field.name}:`, err);
-      }
+      }, 300); // 300ms debounce
     }
-  }, [field, parentId, labelField, onChange, options, refreshRecord, syncMultiRelation, normalizedValue]);
+  }, [field, parentId, labelField, onChange, options, refreshRecord, syncMultiRelation, normalizedValue, debug]);
 
   // Handle refreshing the options list
   const handleRefresh = () => {
@@ -239,26 +282,27 @@ export const MultiRelationshipField = ({
     setShowDebug(prev => !prev);
   };
 
-  // Add this to your component that edits records
+  // Debug logging only when debug mode is enabled
   useEffect(() => {
-    if (!config) return;
-    console.log('Current record state:', record);
+    if (!config || !debug) return;
     
-    // Check multi fields specifically
-    const multiFields = config.fields
-      .filter(f => f.type === 'multiRelationship')
-      .map(f => f.name);
-      
-    multiFields.forEach(fieldName => {
-      console.log(`Field ${fieldName}:`, {
-        value: record[fieldName],
-        details: record[`${fieldName}_details`]
+    // Only log in debug mode
+    if (debug) {
+      console.log(`[MultiRelationshipField] ${field.name} record state:`, {
+        id: record?.id,
+        fieldValue: record?.[field.name]
       });
-    });
-  }, [record]);
+    }
+  }, [record, config, field.name, debug]);
 
-  console.log('Raw value:', value);
-  console.log('Normalized:', normalizeMultiRelationshipValue(value));
+  // Avoid excessive logging
+  if (debug) {
+    console.log(`[MultiRelationshipField] ${field.name} render:`, {
+      valueType: typeof value,
+      isArray: Array.isArray(value),
+      normalizedLength: normalizedValue.length
+    });
+  }
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
