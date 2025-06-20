@@ -9,25 +9,17 @@ import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
 
 import { BoardView } from "./board-view";
 import { ColumnModal } from "./column-modal";
-import { TaskModal } from "./task-modal";
 import { TasksContext } from "./tasks-context";
 
-export function TasksView(_) {
+export function TasksView({ config }) {
 	const {
 		columns,
-		tasks,
 		currentColumnId,
-		currentTaskId,
 		setCurrentColumnId,
-		setCurrentTaskId,
 		updateColumn,
-		updateTask,
-		deleteTask,
-		addComment,
 	} = React.useContext(TasksContext);
 
 	const currentColumn = currentColumnId ? columns.get(currentColumnId) : undefined;
-	const currentTask = currentTaskId ? tasks.get(currentTaskId) : undefined;
 
 	return (
 		<React.Fragment>
@@ -64,21 +56,6 @@ export function TasksView(_) {
 					}}
 					onColumnUpdate={updateColumn}
 					open
-				/>
-			) : null}
-			{currentTask ? (
-				<TaskModal
-					onClose={() => {
-						setCurrentTaskId(undefined);
-					}}
-					onCommentAdd={addComment}
-					onTaskDelete={(taskId) => {
-						setCurrentColumnId(undefined);
-						deleteTask(taskId);
-					}}
-					onTaskUpdate={updateTask}
-					open
-					task={currentTask}
 				/>
 			) : null}
 		</React.Fragment>

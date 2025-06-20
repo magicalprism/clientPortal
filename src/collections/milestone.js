@@ -214,9 +214,23 @@ export const milestone = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    }
   ],
   
   filters: [
+    {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
     {
       name: 'status',
       type: 'select',
@@ -264,6 +278,12 @@ export const milestone = {
       ],
       defaultValue: 'order_index:asc',
       excludeFromViews: ['calendar']
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

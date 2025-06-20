@@ -220,6 +220,14 @@ export const product = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    }
   ],
   
   filters: [
@@ -275,6 +283,12 @@ export const product = {
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

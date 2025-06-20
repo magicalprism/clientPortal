@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { createClient } from "@/lib/supabase/browser";
+import { useModal } from "@/components/modals/ModalContext";
 
 function noop() {}
 
@@ -20,16 +21,14 @@ export const TasksContext = React.createContext({
   updateTask: noop,
   addComment: noop,
   openTaskModal: noop,
-  closeTaskModal: noop,
-  taskModal: { open: false, columnId: null, taskId: null },
 });
 
-export function TasksProvider({ children, columns: initialColumns = [], tasks: initialTasks = [] }) {
+export function TasksProvider({ children, columns: initialColumns = [], tasks: initialTasks = [], config }) {
+  const { openModal } = useModal();
   const [columns, setColumns] = React.useState(new Map());
   const [tasks, setTasks] = React.useState(new Map());
   const [currentColumnId, setCurrentColumnId] = React.useState();
   const [currentTaskId, setCurrentTaskId] = React.useState();
-  const [taskModal, setTaskModal] = React.useState({ open: false, columnId: null, taskId: null });
 
   React.useEffect(() => {
     setColumns(new Map(initialColumns.map((col) => [col.id, col])));
@@ -42,11 +41,27 @@ export function TasksProvider({ children, columns: initialColumns = [], tasks: i
   const supabase = createClient();
 
   const openTaskModal = (columnId = null, taskId = null) => {
-    setTaskModal({ open: true, columnId, taskId });
-  };
-
-  const closeTaskModal = () => {
-    setTaskModal({ open: false, columnId: null, taskId: null });
+    // Find the task in the tasks Map
+    const task = taskId ? tasks.get(taskId) : null;
+    
+    // Open the global modal with the task type
+    openModal('task', {
+      config,
+      record: task || {},
+      onUpdate: (updatedTask) => {
+        if (updatedTask && updatedTask.id) {
+          handleUpdateTask(updatedTask.id, updatedTask);
+        }
+      },
+      onDelete: (deletedId) => {
+        if (deletedId) {
+          handleDeleteTask(deletedId);
+        }
+      },
+      onRefresh: () => {
+        // Refresh tasks if needed
+      }
+    });
   };
 
   const handleCreateTask = async (columnId, title) => {
@@ -233,8 +248,6 @@ export function TasksProvider({ children, columns: initialColumns = [], tasks: i
         addComment: handleAddComment,
         dragTask: handleDragTask,
         openTaskModal,
-        closeTaskModal,
-        taskModal,
       }}
     >
       {children}

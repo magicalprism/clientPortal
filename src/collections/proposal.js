@@ -302,6 +302,14 @@ export const proposal = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    },
   ],
   
   filters: [
@@ -356,6 +364,12 @@ export const proposal = {
         { value: 'title:desc', label: 'Title (Z–A)' },
       ],
       defaultValue: 'created_at:desc'
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

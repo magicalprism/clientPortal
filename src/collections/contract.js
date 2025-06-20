@@ -294,9 +294,23 @@ export const contract = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    },
   ],
   
   filters: [
+    {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
     {
       name: 'status',
       type: 'select',
@@ -354,6 +368,12 @@ export const contract = {
         { value: 'start_date:desc', label: 'Start Date (Newest)' },
         { value: 'start_date:asc', label: 'Start Date (Oldest)' },
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

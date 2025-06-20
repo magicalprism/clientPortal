@@ -166,9 +166,23 @@ export const feature = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    },
   ],
   
   filters: [
+    {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
     {
       name: 'type',
       type: 'select',
@@ -183,13 +197,9 @@ export const feature = {
     },
     {
       name: 'is_active',
-      type: 'select',
+      type: 'boolean',
       label: 'Status',
-      defaultValue: [],
-      options: [
-        { value: true, label: 'Active' },
-        { value: false, label: 'Inactive' },
-      ]
+      defaultValue: true
     },
     {
       name: 'sort',
@@ -203,6 +213,12 @@ export const feature = {
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

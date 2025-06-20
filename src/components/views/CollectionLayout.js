@@ -1,13 +1,15 @@
 'use client';
 
-import { Box, Button, Stack, Typography, Container } from '@mui/material';
-import { Plus as PlusIcon } from '@phosphor-icons/react';
+import { Box, Button, Stack, Typography, Container, IconButton } from '@mui/material';
+import { Plus as PlusIcon, FunnelSimple as FilterIcon } from '@phosphor-icons/react';
 import { useRouter, usePathname } from 'next/navigation';
 import { ViewSwitcher } from '@/components/views/ViewSwitcher';
 import { CollectionFilters } from '@/components/views/components/CollectionFilters';
 import { TablePagination } from '@mui/material';
 import { useModal } from '@/components/modals/ModalContext';
 import * as collections from '@/collections';
+
+import { useState } from 'react';
 
 export const CollectionLayout = ({
   config,
@@ -33,9 +35,15 @@ export const CollectionLayout = ({
   const pathname = usePathname();
   const { openModal } = useModal();
   
+  // State for filter modal
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  
   // ✅ Check if current view should hide filters
   const currentViewConfig = config.views?.[currentView];
   const shouldHideFilters = currentViewConfig?.hideFilters === true;
+  
+  // Check if any filters are active
+  const hasFilters = Object.values(filters || {}).some(Boolean);
   
   const handleDefaultAdd = () => {
     router.push(`/dashboard/${config.name}/create`);
@@ -52,6 +60,7 @@ export const CollectionLayout = ({
         paddingLeft: 0,
       }}
     >
+      {/* Header row: Filter icon, View switcher, search, and Add button */}
       <Box
         sx={{
           display: 'flex',
@@ -59,32 +68,54 @@ export const CollectionLayout = ({
           alignItems: 'center',
           px: 0,
           mb: 2,
-          flexWrap: 'wrap',
         }}
       >
+        {/* Left side: Filter icon, View switcher and search */}
         <Box
           sx={{
             display: 'flex',
             alignItems: 'center',
-            flexWrap: 'wrap',
             gap: 2,
             flexGrow: 1,
-            paddingLeft: 0,
           }}
         >
+          {/* Filter icon button */}
+          {!shouldHideFilters && (
+            <IconButton 
+              onClick={() => setFilterModalOpen(true)}
+              disableRipple
+              sx={{
+                height: 40, 
+                width: 40,
+                padding: 1,
+                bgcolor: 'background.paper',
+                border: '1px solid',
+                borderColor: 'divider',
+                borderRadius: 1
+              }}
+            >
+              <FilterIcon 
+                size={20} 
+                weight="regular"
+                style={{ 
+                  color: hasFilters ? 'var(--mui-palette-primary-main)' : 'var(--mui-palette-text-secondary)',
+                  backgroundColor: 'transparent'
+                }}
+              />
+            </IconButton>
+          )}
+          
+          {/* View switcher */}
           {config.views && Object.keys(config.views).length > 1 && (
             <ViewSwitcher
               currentView={currentView}
               onChange={onViewChange}
               views={config.views}
               noLabel
-              sx={{
-                paddingLeft: 0,
-              }}
             />
           )}
-
-          {/* ✅ Conditionally render filters based on view config */}
+          
+          {/* Search field */}
           {!shouldHideFilters && (
             <CollectionFilters
               config={config}
@@ -96,10 +127,15 @@ export const CollectionLayout = ({
               onClearFilters={onClearFilters}
               setIgnoreDefaults={setIgnoreDefaults}
               setDefaultValues={setDefaultValues}
+              showFilterIcon={false} // Don't show filter icon in CollectionFilters
+              showSearchOnly={true} // Only show search in CollectionFilters
+              filterModalOpen={filterModalOpen} // Pass filter modal state
+              setFilterModalOpen={setFilterModalOpen} // Pass filter modal handler
             />
           )}
         </Box>
 
+        {/* Right side: Add button */}
         <Button
           variant="contained"
           startIcon={<PlusIcon />}
@@ -110,6 +146,28 @@ export const CollectionLayout = ({
         </Button>
       </Box>
 
+      {/* Active filters display */}
+      {!shouldHideFilters && hasFilters && (
+        <Box sx={{ mb: 2 }}>
+          <CollectionFilters
+            config={config}
+            filters={filters}
+            onChange={onFilterChange}
+            sortDir={sortDir}
+            onSortChange={onSortChange}
+            onDeleteSuccess={onDeleteSuccess}
+            onClearFilters={onClearFilters}
+            setIgnoreDefaults={setIgnoreDefaults}
+            setDefaultValues={setDefaultValues}
+            showFilterIcon={false}
+            showSearchOnly={false}
+            showActiveFiltersOnly={true}
+            filterModalOpen={filterModalOpen}
+            setFilterModalOpen={setFilterModalOpen}
+          />
+        </Box>
+      )}
+      
       {children}
       
       <Box sx={{ px: 3, pt: 2 }}>

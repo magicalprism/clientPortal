@@ -234,14 +234,9 @@ export const resource = {
     },
     {
       name: 'is_deleted',
-      type: 'select',
+      type: 'boolean',
       label: 'Show Deleted',
-      multiple: false,
-      defaultValue: false,
-      options: [
-        { value: false, label: 'Hide Deleted' },
-        { value: true, label: 'Show Deleted' }
-      ]
+      defaultValue: false
     }
     
   ]

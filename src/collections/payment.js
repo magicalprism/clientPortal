@@ -243,6 +243,14 @@ export const payment = {
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    }
   ],
   
   filters: [
@@ -319,6 +327,12 @@ export const payment = {
       ],
       defaultValue: 'due_date:asc',
       excludeFromViews: ['calendar']
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

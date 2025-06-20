@@ -174,6 +174,12 @@ export const email = {
   ],
   filters: [
     {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
+    {
       name: 'status',
       type: 'select',
       label: 'Status',
@@ -210,14 +216,9 @@ export const email = {
     },
     {
       name: 'is_deleted',
-      type: 'select',
+      type: 'boolean',
       label: 'Show Deleted',
-      multiple: false,
-      defaultValue: false,
-      options: [
-        { value: false, label: 'Hide Deleted' },
-        { value: true, label: 'Show Deleted' }
-      ]
+      defaultValue: false
     }
   ]
 };

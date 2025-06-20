@@ -131,6 +131,14 @@
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    }
 ],
   filters: [
       {
@@ -161,6 +169,12 @@
         { value: 'created_at:asc', label: 'Oldest Created' }
       ],
       defaultValue: 'title:asc'
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

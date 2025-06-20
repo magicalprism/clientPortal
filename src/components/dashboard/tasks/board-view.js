@@ -34,7 +34,6 @@ export function BoardView() {
 		columns,
 		tasks,
 		setCurrentColumnId,
-		setCurrentTaskId,
 		createColumn,
 		clearColumn,
 		deleteColumn,
@@ -102,7 +101,7 @@ export function BoardView() {
 							onColumnDelete={deleteColumn}
 							onColumnEdit={setCurrentColumnId}
 							onTaskCreate={createTask}
-							onTaskOpen={setCurrentTaskId}
+							onTaskOpen={openTaskModal}
 
 
 							tasks={tasksFiltered}

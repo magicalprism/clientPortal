@@ -150,7 +150,6 @@ export const brand = {
       name: 'primary_color',
       label: 'Primary',
       description: '--primary-color-500',
-      type: 'color',
       type: 'text',
       tab: 'Fields', 
       group: 'Colors',
@@ -440,6 +439,14 @@ export const brand = {
       }, 
     },
     {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    },
+    {
       name: 'status',
       type: 'select',
       label: 'Status',
@@ -507,13 +514,13 @@ export const brand = {
 
     */
   ],
-    filters: [
-        {
-        name: 'search',
-        label: 'Search',
-        type: 'text',
-        multiple: false
-      },
+  filters: [
+    {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
     {
       name: 'status',
       type: 'select',
@@ -546,7 +553,12 @@ export const brand = {
         { value: 'created_at:desc', label: 'Newest Created' },
         { value: 'created_at:asc', label: 'Oldest Created' }
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
-    
   ]
 };

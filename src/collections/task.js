@@ -312,6 +312,14 @@ export const task = {
         linkTo: '/dashboard/contact' // or dynamically derive from config
       }, 
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    },
   
   ],
   filters: [
@@ -320,14 +328,12 @@ export const task = {
         label: 'Search',
         type: 'text',
         multiple: false,
-         excludeFromViews: ['templateTree', 'calendar', , 'kanban'],
       },
       {
         name: 'is_template',
         label: 'Is Template',
          type: 'boolean',
          multiple: false,
-          excludeFromViews: ['templateTree', , 'kanban'],
 
       },
     {
@@ -342,7 +348,6 @@ export const task = {
         { value: 'complete', label: 'Complete' },
         { value: 'archived', label: 'Archived' },    
       ],
-      excludeFromViews: ['calendar','templateTree', , 'kanban'],
       defaultValue: ['todo', 'not_started'],
     },
     {
@@ -356,21 +361,6 @@ export const task = {
         { value: 'meeting', label: 'Meeting' },
         { value: 'archived', label: 'Archived' },       
       ],
-      defaultValue: [],
-      excludeFromViews: ['table', 'checklist', 'templateTree', 'projectkanban', 'kanban']
-    },
-     {
-      name: 'type',
-      type: 'select',
-      label: 'Event Type',
-      multiple: true,
-      options: [
-        { value: 'task', label: 'Task' },
-        { value: 'vacation', label: 'Vacation' },
-        { value: 'meeting', label: 'Meeting' },
-        { value: 'archived', label: 'Archived' },       
-      ],
-      excludeFromViews: ['calendar', 'templateTree', 'projectkanban', 'kanban'],
       defaultValue: ['task'],
     },
      {
@@ -378,7 +368,6 @@ export const task = {
     label: 'Assigned to',
     type: 'relationship',
     multiple: false, // ✅ Single-select for assignment (typically one person)
-    excludeFromViews: ['templateTree', 'projectkanban', 'kanban'],
     relation: {
       table: 'contact',
       labelField: 'title', // ✅ This should show names, not IDs
@@ -395,6 +384,13 @@ export const task = {
       ],
       defaultValue: 'due_date:asc',
       excludeFromViews: ['calendar', 'checklist', 'templateTree', 'projectkanban', 'kanban' ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false,
+      excludeFromViews: ['calendar', 'checklist', 'templateTree', 'projectkanban', 'kanban']
     }
   ]
 };

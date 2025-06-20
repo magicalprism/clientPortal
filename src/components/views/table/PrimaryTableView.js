@@ -110,7 +110,28 @@ export default function PrimaryTableView({
       });
 
       if (f.name === 'search') {
-        parentQuery = parentQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+        // Get all text and rich text fields to search through
+        // Include fields with no type (or undefined/null type) since they default to text
+        const searchableFields = config.fields
+          .filter(field => 
+            ['text', 'richText'].includes(field.type) || 
+            !field.type || 
+            field.type === undefined || 
+            field.type === null
+          )
+          .map(field => field.name);
+        
+        // If no searchable fields found, fallback to title and content
+        if (searchableFields.length === 0) {
+          parentQuery = parentQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+        } else {
+          // Build OR condition for all searchable fields
+          const searchConditions = searchableFields
+            .map(fieldName => `${fieldName}.ilike.%${value}%`)
+            .join(',');
+          
+          parentQuery = parentQuery.or(searchConditions);
+        }
       } else if (f.multiple && Array.isArray(value)) {
         if (['select', 'relationship', 'boolean'].includes(f.type)) {
           parentQuery = parentQuery.in(f.name, value);
@@ -159,7 +180,28 @@ export default function PrimaryTableView({
 
 
       if (f.name === 'search') {
-        childQuery = childQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+        // Get all text and rich text fields to search through
+        // Include fields with no type (or undefined/null type) since they default to text
+        const searchableFields = config.fields
+          .filter(field => 
+            ['text', 'richText'].includes(field.type) || 
+            !field.type || 
+            field.type === undefined || 
+            field.type === null
+          )
+          .map(field => field.name);
+        
+        // If no searchable fields found, fallback to title and content
+        if (searchableFields.length === 0) {
+          childQuery = childQuery.or(`title.ilike.%${value}%,content.ilike.%${value}%`);
+        } else {
+          // Build OR condition for all searchable fields
+          const searchConditions = searchableFields
+            .map(fieldName => `${fieldName}.ilike.%${value}%`)
+            .join(',');
+          
+          childQuery = childQuery.or(searchConditions);
+        }
       } else if (f.multiple && Array.isArray(value)) {
         if (['select', 'relationship', 'boolean'].includes(f.type)) {
           childQuery = childQuery.in(f.name, value);

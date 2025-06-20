@@ -326,6 +326,12 @@ export const event = {
         { value: 'start_time:asc', label: 'Start Time (Upcoming)' },
         { value: 'created_at:desc', label: 'Newest Created' }
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

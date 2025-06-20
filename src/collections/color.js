@@ -81,7 +81,8 @@ export const color = {
 
     // Timestamps
     { name: 'created_at', label: 'Created At', type: 'timestamp', tab: 'Meta', group: 'System', showInTable: true },
-    { name: 'updated_at', label: 'Updated At', type: 'timestamp', tab: 'Meta', group: 'System' }
+    { name: 'updated_at', label: 'Updated At', type: 'timestamp', tab: 'Meta', group: 'System' },
+    { name: 'is_deleted', label: 'Show Deleted', type: 'boolean', tab: 'Meta', group: 'System', defaultValue: false }
   ],
 
   filters: [
@@ -129,6 +130,12 @@ export const color = {
         { value: 'created_at:desc', label: 'Newest' },
         { value: 'created_at:asc', label: 'Oldest' }
       ]
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
     }
   ]
 };

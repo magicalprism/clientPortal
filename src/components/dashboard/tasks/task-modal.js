@@ -10,23 +10,28 @@ import Dialog from "@mui/material/Dialog";
 import DialogContent from "@mui/material/DialogContent";
 import Divider from "@mui/material/Divider";
 import FormControlLabel from "@mui/material/FormControlLabel";
+import Grid from "@mui/material/Grid";
 import IconButton from "@mui/material/IconButton";
 import InputAdornment from "@mui/material/InputAdornment";
 import LinearProgress from "@mui/material/LinearProgress";
 import Link from "@mui/material/Link";
+import MenuItem from "@mui/material/MenuItem";
 import OutlinedInput from "@mui/material/OutlinedInput";
 import Paper from "@mui/material/Paper";
+import Select from "@mui/material/Select";
 import Stack from "@mui/material/Stack";
-import Tab from "@mui/material/Tab";
-import Tabs from "@mui/material/Tabs";
 import Tooltip from "@mui/material/Tooltip";
 import Typography from "@mui/material/Typography";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import { Archive as ArchiveIcon } from "@phosphor-icons/react/dist/ssr/Archive";
+import { CalendarBlank as CalendarIcon } from "@phosphor-icons/react/dist/ssr/CalendarBlank";
+import { Clock as ClockIcon } from "@phosphor-icons/react/dist/ssr/Clock";
 import { File as FileIcon } from "@phosphor-icons/react/dist/ssr/File";
+import { Flag as FlagIcon } from "@phosphor-icons/react/dist/ssr/Flag";
 import { PaperPlaneTilt as PaperPlaneTiltIcon } from "@phosphor-icons/react/dist/ssr/PaperPlaneTilt";
 import { PencilSimple as PencilSimpleIcon } from "@phosphor-icons/react/dist/ssr/PencilSimple";
 import { Plus as PlusIcon } from "@phosphor-icons/react/dist/ssr/Plus";
+import { Tag as TagIcon } from "@phosphor-icons/react/dist/ssr/Tag";
 import { X as XIcon } from "@phosphor-icons/react/dist/ssr/X";
 import { createBrowserClient } from '@supabase/ssr';
 import { updateTask } from '@/lib/supabase/queries/table/task';
@@ -39,6 +44,23 @@ const supabase = createBrowserClient(
 	process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_KEY
 );
 
+// Priority colors
+const priorityColors = {
+  low: "#4caf50",
+  medium: "#ff9800",
+  high: "#f44336",
+  urgent: "#9c27b0"
+};
+
+// Status colors
+const statusColors = {
+  not_started: "#9e9e9e",
+  todo: "#2196f3",
+  in_progress: "#ff9800",
+  complete: "#4caf50",
+  archived: "#757575"
+};
+
 export function TaskModal({ onClose, onTaskDelete, onTaskUpdate, onCommentAdd, open, task }) {
 	const {
 		assignees = [],
@@ -49,42 +71,87 @@ export function TaskModal({ onClose, onTaskDelete, onTaskUpdate, onCommentAdd, o
 		description = "",
 		id,
 		title,
+		status = "todo",
+		priority = "medium",
+		due_date,
 	} = task;
-
-	const [tab, setTab] = React.useState("overview");
 
 	return (
 		<Dialog
-			maxWidth="sm"
+			maxWidth="md"
 			onClose={onClose}
 			open={open}
 			sx={{
-				"& .MuiDialog-container": { justifyContent: "flex-end" },
-				"& .MuiDialog-paper": { height: "100%", width: "100%" },
+				"& .MuiDialog-container": { justifyContent: "center" },
+				"& .MuiDialog-paper": { height: "90%", width: "90%", maxWidth: "1200px" },
 			}}
 		>
-			<DialogContent sx={{ display: "flex", flexDirection: "column", minHeight: 0, p: 0 }}>
-				<Box sx={{ flex: "0 0 auto", p: 3 }}>
-					<IconButton onClick={onClose}>
+			<DialogContent sx={{ display: "flex", flexDirection: "column", p: 0, overflow: "hidden" }}>
+				{/* Header */}
+				<Box 
+					sx={{ 
+						display: "flex", 
+						alignItems: "center", 
+						justifyContent: "space-between", 
+						p: 2, 
+						borderBottom: "1px solid", 
+						borderColor: "divider",
+						bgcolor: "background.paper",
+					}}
+				>
+					<Box sx={{ display: "flex", alignItems: "center" }}>
+						<Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+							Task #{id?.substring(0, 8)}
+						</Typography>
+						
+						<Select
+							value={status}
+							size="small"
+							onChange={(e) => onTaskUpdate?.(id, { status: e.target.value })}
+							sx={{ 
+								minWidth: 150, 
+								mr: 2,
+								'& .MuiSelect-select': {
+									color: statusColors[status],
+									fontWeight: 'medium'
+								}
+							}}
+						>
+							<MenuItem value="not_started">Not Started</MenuItem>
+							<MenuItem value="todo">To Do</MenuItem>
+							<MenuItem value="in_progress">In Progress</MenuItem>
+							<MenuItem value="complete">Complete</MenuItem>
+							<MenuItem value="archived">Archived</MenuItem>
+						</Select>
+						
+						<Tooltip title="Priority">
+							<Chip 
+								icon={<FlagIcon />} 
+								label={priority?.charAt(0).toUpperCase() + priority?.slice(1)} 
+								size="small"
+								sx={{ 
+									bgcolor: priorityColors[priority] + '20',
+									color: priorityColors[priority],
+									fontWeight: 'medium',
+									'& .MuiChip-icon': {
+										color: priorityColors[priority]
+									}
+								}}
+							/>
+						</Tooltip>
+					</Box>
+					
+					<IconButton onClick={onClose} edge="end">
 						<XIcon />
 					</IconButton>
 				</Box>
-				<Divider />
-				<Tabs
-					onChange={(_, value) => {
-						setTab(value);
-					}}
-					sx={{ px: 3 }}
-					value={tab}
-				>
-					<Tab label="Overview" tabIndex={0} value="overview" />
-					<Tab label="Subtasks" tabIndex={0} value="subtasks" />
-					<Tab label="Comments" tabIndex={0} value="comments" />
-				</Tabs>
-				<Divider />
-				<Box sx={{ display: "flex", flex: "1 1 auto", flexDirection: "column", minHeight: 0, overflowY: "auto", p: 3 }}>
-					{tab === "overview" ? (
-						<Stack spacing={4} sx={{ flex: "1 1 auto" }}>
+				
+				{/* Main content area */}
+				<Grid container sx={{ flex: 1, overflow: "hidden" }}>
+					{/* Left content area (70%) */}
+					<Grid item xs={12} md={8} sx={{ height: "100%", overflow: "auto", borderRight: "1px solid", borderColor: "divider", p: 3 }}>
+						<Stack spacing={4}>
+							{/* Title and description */}
 							<EditableDetails
 								id={id}
 								description={description ?? ""}
@@ -92,151 +159,223 @@ export function TaskModal({ onClose, onTaskDelete, onTaskUpdate, onCommentAdd, o
 									onTaskUpdate?.(id, params)
 								}}
 								title={title ?? ""}
-								/>
-
-							<Stack divider={<Divider />} spacing={2} sx={{ flex: "1 1 auto" }}>
-								<Stack spacing={1}>
-									<Typography variant="subtitle2">Created by</Typography>
-									<Stack direction="row" spacing={2}>
-										<Avatar src={task.author.avatar} />
-										<div>
-											<Typography variant="subtitle2">{task.author.name}</Typography>
+							/>
+							
+							{/* Subtasks */}
+							<Box>
+								<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
+									Subtasks
+								</Typography>
+								
+								{subtasks.length > 0 ? (
+									<Stack spacing={2}>
+										<Stack spacing={1}>
 											<Typography color="text.secondary" variant="body2">
-												@{task.author.username}
+												{countDoneSubtasks(subtasks)} of {subtasks.length}
 											</Typography>
-										</div>
-									</Stack>
-								</Stack>
-								<Stack spacing={1}>
-									<Typography variant="subtitle2">Assignees</Typography>
-									<Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-										{assignees.map((assignee) => (
-											<Avatar key={assignee.id} src={assignee.avatar} />
-										))}
-										<IconButton>
-											<PlusIcon />
-										</IconButton>
-									</Stack>
-								</Stack>
-								<Stack spacing={1}>
-									<Typography variant="subtitle2">Due date</Typography>
-									<DatePicker format="MMM D, YYYY" name="dueDate" sx={{ maxWidth: "250px" }} />
-								</Stack>
-								<Stack spacing={1}>
-									<Typography variant="subtitle2">Labels</Typography>
-									<Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-										{labels.map((label) => (
-											<Chip
-												key={label}
-												label={label}
-												onDelete={() => {
-													// noop
-												}}
-												size="small"
-												variant="soft"
+											<LinearProgress
+												sx={{ bgcolor: "var(--mui-palette-background-level1)" }}
+												value={(100 / subtasks.length) * countDoneSubtasks(subtasks)}
+												variant="determinate"
 											/>
-										))}
-										<IconButton>
-											<PlusIcon />
-										</IconButton>
+										</Stack>
+										<Stack gap={1}>
+											{subtasks.map((subtask) => (
+												<FormControlLabel
+													control={<Checkbox checked={subtask.done} />}
+													key={subtask.id}
+													label={subtask.title}
+												/>
+											))}
+										</Stack>
 									</Stack>
+								) : (
+									<Typography color="text.secondary" variant="body2">
+										No subtasks yet
+									</Typography>
+								)}
+								
+								<Button 
+									color="primary" 
+									startIcon={<PlusIcon />} 
+									variant="outlined"
+									size="small"
+									sx={{ mt: 2 }}
+								>
+									Add subtask
+								</Button>
+							</Box>
+							
+							{/* Comments */}
+							<Box>
+								<Typography variant="subtitle1" sx={{ mb: 2, fontWeight: 'medium' }}>
+									Comments
+								</Typography>
+								
+								{comments.length > 0 ? (
+									<Stack spacing={3}>
+										{comments.map((comment, index) => (
+											<CommentItem comment={comment} connector={index < comments.length - 1} key={comment.id} />
+										))}
+									</Stack>
+								) : (
+									<Typography color="text.secondary" variant="body2" sx={{ mb: 2 }}>
+										No comments yet
+									</Typography>
+								)}
+								
+								<CommentAdd
+									onAdd={(content) => {
+										onCommentAdd?.(id, content);
+									}}
+								/>
+							</Box>
+						</Stack>
+					</Grid>
+					
+					{/* Right sidebar (30%) */}
+					<Grid item xs={12} md={4} sx={{ height: "100%", overflow: "auto", bgcolor: "background.default", p: 3 }}>
+						<Stack spacing={3}>
+							{/* Created by */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Created by
+								</Typography>
+								<Stack direction="row" spacing={1} alignItems="center">
+									<Avatar src={task.author?.avatar} sx={{ width: 24, height: 24 }} />
+									<Typography variant="body2">
+										{task.author?.name}
+									</Typography>
 								</Stack>
+							</Box>
+							
+							{/* Assignees */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Assignees
+								</Typography>
+								<Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+									{assignees.map((assignee) => (
+										<Tooltip key={assignee.id} title={assignee.name || "User"}>
+											<Avatar src={assignee.avatar} sx={{ width: 32, height: 32 }} />
+										</Tooltip>
+									))}
+									<IconButton size="small">
+										<PlusIcon />
+									</IconButton>
+								</Stack>
+							</Box>
+							
+							{/* Due date */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Due date
+								</Typography>
+								<Stack direction="row" spacing={1} alignItems="center">
+									<CalendarIcon size={16} />
+									<DatePicker 
+										format="MMM D, YYYY" 
+										name="dueDate" 
+										value={due_date ? dayjs(due_date) : null}
+										slotProps={{ textField: { size: 'small', fullWidth: true } }}
+									/>
+								</Stack>
+							</Box>
+							
+							{/* Time tracking */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Time tracking
+								</Typography>
+								<Paper variant="outlined" sx={{ p: 1.5, borderRadius: 1 }}>
+									<Stack direction="row" spacing={1} alignItems="center">
+										<ClockIcon size={16} />
+										<Typography variant="body2">
+											No time logged
+										</Typography>
+										<Button size="small" variant="text" sx={{ ml: 'auto' }}>
+											Start timer
+										</Button>
+									</Stack>
+								</Paper>
+							</Box>
+							
+							{/* Labels/Tags */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Labels
+								</Typography>
+								<Stack direction="row" spacing={1} sx={{ alignItems: "center", flexWrap: "wrap" }}>
+									{labels.map((label) => (
+										<Chip
+											key={label}
+											label={label}
+											size="small"
+											onDelete={() => {
+												// noop
+											}}
+											icon={<TagIcon size={14} />}
+										/>
+									))}
+									<IconButton size="small">
+										<PlusIcon />
+									</IconButton>
+								</Stack>
+							</Box>
+							
+							{/* Attachments */}
+							<Box>
+								<Typography variant="subtitle2" sx={{ mb: 1, color: "text.secondary" }}>
+									Attachments
+								</Typography>
 								<Stack spacing={1}>
-									<Typography variant="subtitle2">Attachments</Typography>
-									<Stack direction="row" spacing={2} sx={{ alignItems: "center", flexWrap: "wrap" }}>
-										{attachments.map((attachment) => (
-											<Paper
-												key={attachment.id}
-												sx={{ borderRadius: 1, p: "4px 8px", maxWidth: "220px" }}
-												variant="outlined"
-											>
-												<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
-													<div>
-														<FileIcon fontSize="var(--icon-fontSize-lg)" />
-													</div>
-													<Box sx={{ minWidth: 0 }}>
-														<Typography noWrap variant="body2">
-															{attachment.name}
-														</Typography>
-														<Typography color="text.secondary" variant="body2">
-															{attachment.size}
-														</Typography>
-													</Box>
-												</Stack>
-											</Paper>
-										))}
-										<IconButton>
-											<PlusIcon />
-										</IconButton>
-									</Stack>
+									{attachments.map((attachment) => (
+										<Paper
+											key={attachment.id}
+											sx={{ borderRadius: 1, p: 1 }}
+											variant="outlined"
+										>
+											<Stack direction="row" spacing={1} sx={{ alignItems: "center" }}>
+												<FileIcon size={16} />
+												<Box sx={{ minWidth: 0 }}>
+													<Typography noWrap variant="body2">
+														{attachment.name}
+													</Typography>
+													<Typography color="text.secondary" variant="caption">
+														{attachment.size}
+													</Typography>
+												</Box>
+											</Stack>
+										</Paper>
+									))}
+									<Button 
+										color="primary" 
+										startIcon={<PlusIcon />} 
+										variant="outlined"
+										size="small"
+									>
+										Add attachment
+									</Button>
 								</Stack>
-							</Stack>
-							<Box sx={{ display: "flex", justifyContent: "center" }}>
+							</Box>
+							
+							{/* Delete button */}
+							<Box sx={{ mt: 2 }}>
 								<Button
 									color="error"
 									onClick={() => {
 										onTaskDelete?.(id);
 									}}
 									startIcon={<ArchiveIcon />}
+									fullWidth
+									variant="outlined"
 								>
-									Archive
+									Archive Task
 								</Button>
 							</Box>
 						</Stack>
-					) : null}
-					{tab === "subtasks" ? (
-						<Stack spacing={2}>
-							{subtasks.length > 0 ? (
-								<Stack spacing={2}>
-									<Stack spacing={1}>
-										<Typography color="text.secondary" variant="subtitle2">
-											{countDoneSubtasks(subtasks)} of 5
-										</Typography>
-										<LinearProgress
-											sx={{ bgcolor: "var(--mui-palette-background-level1)" }}
-											value={(100 / subtasks.length) * countDoneSubtasks(subtasks)}
-											variant="determinate"
-										/>
-									</Stack>
-									<Stack gap={1}>
-										{subtasks.map((subtask) => (
-											<FormControlLabel
-												control={<Checkbox checked={subtask.done} />}
-												key={subtask.id}
-												label={subtask.title}
-											/>
-										))}
-									</Stack>
-								</Stack>
-							) : null}
-							<div>
-								<Button color="secondary" startIcon={<PlusIcon />} variant="outlined">
-									Add subtask
-								</Button>
-							</div>
-						</Stack>
-					) : null}
-					{tab === "comments" ? (
-						<Stack spacing={5}>
-							{comments.length > 0 ? (
-								<Stack spacing={3}>
-									{comments.map((comment, index) => (
-										<CommentItem comment={comment} connector={index < comments.length - 1} key={comment.id} />
-									))}
-								</Stack>
-							) : (
-								<Typography color="text.secondary" sx={{ fontStyle: "italic" }} variant="body2">
-									No comments yet
-								</Typography>
-							)}
-							<CommentAdd
-								onAdd={(content) => {
-									onCommentAdd?.(id, content);
-								}}
-							/>
-						</Stack>
-					) : null}
-				</Box>
+					</Grid>
+				</Grid>
 			</DialogContent>
 		</Dialog>
 	);
@@ -279,13 +418,15 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 					name="title"
 					onChange={(event) => setTitle(event.target.value)}
 					value={title}
+					placeholder="Task title"
+					sx={{ fontSize: "1.25rem", fontWeight: "500" }}
 				/>
 				<OutlinedInput
-					maxRows={5}
-					minRows={3}
+					maxRows={8}
+					minRows={4}
 					multiline
 					onChange={(event) => setDescription(event.target.value)}
-					placeholder="No description"
+					placeholder="Add a description..."
 					value={description}
 				/>
 				<Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}>
@@ -293,6 +434,7 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 						color="secondary"
 						onClick={() => {
 							setTitle(initialTitle);
+							setDescription(initialDescription);
 							setEdit(false);
 						}}
 						size="small"
@@ -308,17 +450,30 @@ function EditableDetails({ description: initialDescription, onUpdate, title: ini
 	}
 
 	return (
-		<Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
-			<Stack spacing={1} sx={{ flex: "1 1 auto" }}>
-				<Typography variant="h5">{title}</Typography>
-				<Typography color="text.secondary" variant="body2">
+		<Box>
+			<Stack direction="row" spacing={2} sx={{ alignItems: "flex-start" }}>
+				<Stack spacing={1} sx={{ flex: "1 1 auto" }}>
+					<Typography variant="h5" sx={{ fontWeight: "500" }}>{title}</Typography>
+				</Stack>
+				<IconButton onClick={() => setEdit(true)}>
+					<PencilSimpleIcon />
+				</IconButton>
+			</Stack>
+			{description ? (
+				<Typography color="text.secondary" variant="body1" sx={{ mt: 1, whiteSpace: "pre-wrap" }}>
 					{description}
 				</Typography>
-			</Stack>
-			<IconButton onClick={() => setEdit(true)}>
-				<PencilSimpleIcon />
-			</IconButton>
-		</Stack>
+			) : (
+				<Typography 
+					color="text.secondary" 
+					variant="body2" 
+					sx={{ mt: 1, fontStyle: "italic", cursor: "pointer" }}
+					onClick={() => setEdit(true)}
+				>
+					Add a description...
+				</Typography>
+			)}
+		</Box>
 	);
 }
 

@@ -135,8 +135,22 @@
         filter: {}
       }
     },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      tab: 'Meta',
+      group: 'General',
+      defaultValue: false
+    }
 ],
      filters: [
+    {
+      name: 'search',
+      label: 'Search',
+      type: 'text',
+      multiple: false
+    },
     {
       name: 'type',
       type: 'select',
@@ -148,7 +162,24 @@
         { value: 'strategy', label: 'Strategy' },
       ]
     },
-
+    {
+      name: 'sort',
+      type: 'select',
+      label: 'Sort',
+      options: [
+        { value: 'created_at:desc', label: 'Newest Created' },
+        { value: 'created_at:asc', label: 'Oldest Created' },
+        { value: 'title:asc', label: 'Title (A–Z)' },
+        { value: 'title:desc', label: 'Title (Z–A)' }
+      ],
+      defaultValue: 'created_at:desc'
+    },
+    {
+      name: 'is_deleted',
+      type: 'boolean',
+      label: 'Show Deleted',
+      defaultValue: false
+    }
   ]
 };
 

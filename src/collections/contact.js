@@ -246,7 +246,7 @@ export const contact = {
       },
       {
         name: 'is_deleted',
-        type: 'select',
+        type: 'boolean',
         label: 'Show Deleted',
         multiple: false,
         defaultValue: false,
